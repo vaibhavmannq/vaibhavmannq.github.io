@@ -276,9 +276,11 @@ function resolve(p: number, journey: readonly Segment[]): JourneyState;  // pure
 **Boot tier:** start at tier 1 on mobile or unknown devices and tier 2 on desktop. Drop one tier if the `Save-Data` header is on or device memory is ≤ 4 GB.
 
 **Governor:**
-- Every 1 s, compute the 95th-percentile frame time.
-- **> 15 ms:** step down one tier.
-- **< 11 ms for 3 consecutive windows:** step up one tier.
+- Every 1 s, compute the 95th-percentile interval between rendered frames (the loop caps
+  rendering at 60 fps, so this is measured against that ~16.7 ms budget, not the cost of
+  producing a frame).
+- **> 20 ms:** step down one tier.
+- **< 17.5 ms for 3 consecutive windows:** step up one tier.
 - After any change, wait 2 s before changing again (hysteresis).
 - Never exceed tier 3 on WebGL2. Tier 4 requires WebGPU.
 - **Invariant:** tiers never change camera paths, composition, content, timing or palette.
@@ -583,3 +585,4 @@ During planning, the demo-1 sea was ported to TSL and run in a throwaway build (
 | S13 | A faint horizon band is visible in the port (also present in the prototype) | Tune fog/max distance during phase 1 look-dev |
 | S14 | Plans dry-run (2026-09-13): every code block of the phase 0 and phase 1 plans was extracted and run. Biome clean, `tsc` 0 errors, 65/65 unit tests, build 256.7 KB gzip, 9/9 Chromium e2e including axe. Firefox/WebKit e2e not run locally (CI runs them). Playwright test timeout set to 120 s; axe and reduced-motion tests run in `?stills` mode | Software-rendered WebGL in headless browsers takes ~20 s to compile the sea, so HTML-only tests would otherwise time out |
 | S15 | Minimum Safari is **16.4** (§9), not 15. The build keeps `target: 'es2023'` | Owner decision (2026-09-13) after the Phase 0 final review found `es2023` output and `lib` APIs (e.g. class static blocks, `toSorted`) can't run on Safari 15.x–16.3; 16.4 matches Vite 8's own baseline and Safari 15 has a negligible share in 2026 |
+| S16 | Governor thresholds (§5.6) are **> 20 ms** to step down and **< 17.5 ms** to step up, not 15/11 | The loop caps rendering at 60 fps, so `boot.ts` can only ever feed the governor the interval between rendered frames (~16.7 ms on a healthy device), never a true per-frame cost. The old 15/11 ms thresholds sat below that floor, so every device ratcheted down to tier 0 within seconds of entering and could never recover (final whole-branch review, C1, 2026-09-14). Measuring CPU time inside the frame callback instead was considered and rejected: this scene's cost is almost entirely GPU-side and `render()` returns before the GPU finishes, so CPU time reads ~2 ms on every device and would climb to the top tier on a budget phone — the opposite failure |

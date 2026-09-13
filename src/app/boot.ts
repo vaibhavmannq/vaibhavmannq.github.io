@@ -139,14 +139,17 @@ export async function boot(): Promise<void> {
     moonlit.render();
     frames += 1;
 
-    const frameMs = dtSeconds * 1000;
-    hud?.record(frameMs);
+    // Gap between rendered frames, not the cost of one — the loop caps at 60 fps, so a
+    // healthy device sits at ~16.7 ms here. The governor's thresholds are tuned against
+    // that budget (see governor.ts).
+    const frameIntervalMs = dtSeconds * 1000;
+    hud?.record(frameIntervalMs);
     hud?.paint(nowMs, { backend: moonlit.backend, tier, renderScale: TIERS[tier].renderScale, progress: p });
 
     // Let the governor judge only real, warmed-up, non-idle frames
     const warmedUp = nowMs - enteredAt > 1500;
     if (params.tier === undefined && warmedUp && !loop.isIdle(nowMs)) {
-      const next = governor.sample(frameMs, nowMs);
+      const next = governor.sample(frameIntervalMs, nowMs);
       if (next !== null) applyTier(next);
     }
   });
