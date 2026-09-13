@@ -44,9 +44,13 @@ const writePose = (out: CameraPose, pose: CameraPose): CameraPose => {
 // poseAt and idlePose are called every frame (directly, and from each other) to compute a
 // short-lived "target" pose that's read once and discarded — see moonsink/index.ts. Rather than
 // allocate a fresh object each call, they write into these two dedicated scratch objects and
-// return them. The two are never the same object, so a call that reads both a poseAt() result and
-// an idlePose() result in the same frame still sees two independent poses (rule: never let two
-// scratch objects that are both "live" in one frame alias each other).
+// return them. They are NOT always distinct: poseAt, reducedMotionTarget, and idlePose(t, true)
+// (reduced motion) all hand back this same poseAtScratch object; only idlePose(t, false) returns
+// the second, distinct idleScratch object. Production call sites are safe because the caller
+// spreads poseAt's result into its own persistent state at construction (moonsink/index.ts) and
+// never holds two of these results live at once within a frame — but code that compares two
+// results of these functions (tests included) must snapshot each side (e.g. `{ ...poseAt(...) }`)
+// before comparing, or it is comparing the same object to itself.
 const poseAtScratch: CameraPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
 const idleScratch: CameraPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
 
