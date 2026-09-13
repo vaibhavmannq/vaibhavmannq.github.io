@@ -173,7 +173,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 5: STOP. Ask the owner to approve the new budget**
+- [ ] **Step 5: Budget decision (owner approved 270 KB on 2026-09-13; skip straight to Step 6)**
 
 Ask exactly: *"The spike measured 254.3 KB gzip for Three.js + WebGPU + bloom + the sea. Approve raising the JS budget from 250 KB to 270 KB?"*
 - **If approved:** do Step 6.
