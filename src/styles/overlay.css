@@ -76,6 +76,9 @@ html.is-stills .world {
 .gate[data-state="entered"] {
   opacity: 0;
   visibility: hidden;
+  /* No transition delay needed here (unlike visibility, which stays delayed so the fade is
+     visible): a click during the 1.2s fade should reach the content underneath, not the gate. */
+  pointer-events: none;
 }
 
 .gate__glyph {
