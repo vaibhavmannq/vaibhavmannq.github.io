@@ -128,7 +128,7 @@ index.html ─ title screen · section text · project dialog   (real HTML)
     │        └──► Overlay ─► text reveals · rail · URL hash · dialog
     │
     ├─ Renderer ─ WebGPURenderer (WebGL2 fallback)
-    │             PostProcessing: pass(A) [+ pass(B)] → transition node → bloom node → output
+    │             RenderPipeline: pass(A) [+ pass(B)] → transition node → bloom node → output
     │
     ├─ Quality ─ boot tier + live frame-time watcher (changes cost, never composition)
     └─ content/ ─ site + projects as typed data
@@ -548,3 +548,35 @@ A unit test checks that slugs are unique, required fields are present, and every
 - GSAP vs Motion: https://motion.dev/docs/gsap-vs-motion
 - Motion vanilla API: https://motion.dev/docs/quick-start
 - Static site generators 2026: https://thesoftwarescout.com/best-static-site-generators-2026-astro-next-js-hugo-more/
+
+---
+
+## 17. Changes after the verification spike (2026-09-13)
+
+During planning, the demo-1 sea was ported to TSL and run in a throwaway build (Three.js r186, Vite 8, TypeScript 7), on **both** the WebGPU and the WebGL2 backends.
+
+**Verified in the spike:**
+- zero shader or console errors on both backends
+- visuals match the prototype
+- 3D meshes sink into the water via `depthNode`
+- the ray march compiles to one shader function called once per pixel
+- `tsc` and Biome are clean
+
+**Findings that change this spec:**
+
+| # | Change | Reason |
+|---|---|---|
+| S1 | Post-processing uses **`THREE.RenderPipeline`** | `PostProcessing` was renamed in r183 |
+| S2 | **TSL functions with `setLayout()` must be pure**: uniforms are passed as parameters, never read inside | Reading a uniform inside a layout function fails WGSL compilation (`struct member nodeUniform0 not found`) |
+| S3 | Reversed `smoothstep` edges are replaced by `smoothstep(a, b, x).oneMinus()` | Undefined in WGSL |
+| S4 | The sea's X axis is mirrored into "sea space"; the camera converts with `position.x = -x`, `rotation.y = π - yaw`, order `YXZ` | The prototype used a left-handed camera; this keeps every prototype constant unchanged |
+| S5 | The sea's output uses the prototype tone curve raised to 1.364, with `renderer.toneMapping = NoToneMapping` | The pipeline's sRGB output transform follows; this reproduces the prototype brightness |
+| S6 | Region interface (§5.2): no async `load()`; `applyTier(settings)` replaces `setQuality(tier)`; shaders pre-compile in boot via `renderer.compileAsync` | Simpler; compile happens once behind the title screen |
+| S7 | Region segments carry `sections: SectionAnchor[]` | §5.2 said sections come from config anchors; this makes it explicit |
+| S8 | Tier table (§5.6): bloom is off (0–1) / on (2–4); no half-resolution bloom in phase 1; motes live inside the sea shader | Fewer moving parts; the prototype's motes were already shader-based |
+| S9 | **JS budget: measured 254.3 KB gzip** for renderer + TSL + bloom + sea (above the 250 KB target) | Phase 1 Task 1 asks the owner to approve 270 KB (§7, §15 risk realised) |
+| S10 | CI (§12.4) is one workflow file `ci.yml` with `check` and `deploy` jobs (`deploy` needs `check`, main pushes only) | Same guarantee without cross-workflow triggers |
+| S11 | Visual screenshot baselines (§12.3) move to phase 3 | Software-GPU screenshots differ per OS; phase 1 uses console-error, frame-count, axe and manual checks |
+| S12 | Lenis honours OS reduced motion for wheel smoothing by itself; the in-page motion toggle controls scene and text motion | Lenis README (1.3.x) |
+| S13 | A faint horizon band is visible in the port (also present in the prototype) | Tune fog/max distance during phase 1 look-dev |
+| S14 | Plans dry-run (2026-09-13): every code block of the phase 0 and phase 1 plans was extracted and run. Biome clean, `tsc` 0 errors, 65/65 unit tests, build 256.7 KB gzip, 9/9 Chromium e2e including axe. Firefox/WebKit e2e not run locally (CI runs them). Playwright test timeout set to 120 s; axe and reduced-motion tests run in `?stills` mode | Software-rendered WebGL in headless browsers takes ~20 s to compile the sea, so HTML-only tests would otherwise time out |
