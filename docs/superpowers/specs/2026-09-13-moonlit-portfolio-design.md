@@ -177,7 +177,7 @@ my-portfolio/
 ├─ tests/        unit/ · e2e/
 ├─ docs/superpowers/specs/   this document
 ├─ CREDITS.md
-└─ .github/workflows/        ci.yml · deploy.yml
+└─ .github/workflows/        ci.yml (single workflow, check + deploy jobs — see §17 S10)
 ```
 
 ### 5.2 Core types
