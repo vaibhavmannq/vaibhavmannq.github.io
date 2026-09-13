@@ -1,0 +1,65 @@
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { pass } from 'three/tsl';
+import type { Camera, Node, Scene } from 'three/webgpu';
+import { NoToneMapping, RenderPipeline, WebGPURenderer } from 'three/webgpu';
+import type { TierSettings } from '../quality/tiers';
+
+export interface MoonlitRenderer {
+  readonly renderer: WebGPURenderer;
+  readonly backend: 'webgpu' | 'webgl2';
+  /** Build the output graph for this scene (call once per scene/camera). */
+  setView(scene: Scene, camera: Camera): void;
+  applyTier(settings: TierSettings, devicePixelRatio: number): void;
+  resize(width: number, height: number): void;
+  render(): void;
+}
+
+/** Throws if neither WebGPU nor WebGL2 is available; boot.ts catches that and shows stills. */
+export async function createRenderer(container: HTMLElement, forceWebGL: boolean): Promise<MoonlitRenderer> {
+  const renderer = new WebGPURenderer({ antialias: false, forceWebGL });
+  await renderer.init();
+  // The sea shader applies the prototype's own tone curve; the pipeline only converts to sRGB.
+  renderer.toneMapping = NoToneMapping;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.append(renderer.domElement);
+
+  const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend === true ? 'webgpu' : 'webgl2';
+  const pipeline = new RenderPipeline(renderer);
+
+  let plainOutput: Node | null = null;
+  let bloomOutput: Node | null = null;
+  let bloomEnabled = false;
+
+  const selectOutput = () => {
+    const next = bloomEnabled ? bloomOutput : plainOutput;
+    if (next === null) return;
+    pipeline.outputNode = next;
+    pipeline.needsUpdate = true;
+  };
+
+  return {
+    renderer,
+    backend,
+    setView(scene, camera) {
+      const scenePass = pass(scene, camera);
+      const color = scenePass.getTextureNode('output');
+      plainOutput = color;
+      // Both graphs are built once; switching tiers just picks one (no rebuild, no leaks)
+      bloomOutput = color.add(bloom(color, 0.45, 0.4, 0.6));
+      selectOutput();
+    },
+    applyTier(settings, devicePixelRatio) {
+      renderer.setPixelRatio(devicePixelRatio * settings.renderScale);
+      if (settings.bloom !== bloomEnabled) {
+        bloomEnabled = settings.bloom;
+        selectOutput();
+      }
+    },
+    resize(width, height) {
+      renderer.setSize(width, height);
+    },
+    render() {
+      pipeline.render();
+    },
+  };
+}
