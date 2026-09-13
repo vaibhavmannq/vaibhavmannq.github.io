@@ -12,7 +12,7 @@ import { createRenderer, type MoonlitRenderer } from '../render/renderer';
 import { createScroll } from '../scroll/scroll';
 import { detectCapabilities } from './capabilities';
 import { exposeDebug } from './debug';
-import { createLoop } from './loop';
+import { createLoop, type Loop } from './loop';
 import { readDebugParams } from './params';
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -91,6 +91,28 @@ export async function boot(): Promise<void> {
     return;
   }
 
+  // GPU context loss (driver reset, GPU switch, tab recovering from a crash): stop the loop and
+  // fall back to stills so the page stays usable. `loop` is assigned further down, once it
+  // exists; rebuild/retry is deliberately out of scope for Phase 1 (spec §6 only asks for a
+  // graceful fallback, not recovery).
+  let loop: Loop | undefined;
+  let contextLost = false;
+  const handleContextLoss = (reason: unknown) => {
+    if (contextLost) return;
+    contextLost = true;
+    console.warn('GPU context lost; showing stills instead.', reason);
+    loop?.stop();
+    moonlit.renderer.domElement.remove();
+    startStills();
+  };
+  moonlit.renderer.domElement.addEventListener('webglcontextlost', () => handleContextLoss('webglcontextlost'), {
+    passive: true,
+  });
+  // WebGPU reports loss as a promise on the device rather than a DOM event.
+  (moonlit.renderer.backend as { device?: { lost?: Promise<unknown> } }).device?.lost?.then((info) =>
+    handleContextLoss(info),
+  );
+
   const region = createMoonsink(ctx);
   gate.onEnter(() => region.setEntered(true));
   if (gate.state === 'entered') region.setEntered(true);
@@ -137,7 +159,7 @@ export async function boot(): Promise<void> {
   const hud = params.hud ? createHud(document.body) : null;
   let frames = 0;
 
-  const loop = createLoop((nowMs, dtSeconds) => {
+  loop = createLoop((nowMs, dtSeconds) => {
     scroll.raf(nowMs);
     p = params.p ?? scroll.progress();
     state = resolve(p, journey);
@@ -157,7 +179,7 @@ export async function boot(): Promise<void> {
 
     // Let the governor judge only real, warmed-up, non-idle frames
     const warmedUp = nowMs - enteredAt > 1500;
-    if (params.tier === undefined && warmedUp && !loop.isIdle(nowMs)) {
+    if (params.tier === undefined && warmedUp && !loop?.isIdle(nowMs)) {
       const next = governor.sample(frameIntervalMs, nowMs);
       if (next !== null) applyTier(next);
     }
