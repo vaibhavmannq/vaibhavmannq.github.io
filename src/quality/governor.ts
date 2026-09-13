@@ -2,9 +2,16 @@ import { clampTier, type Tier } from './tiers';
 
 export interface GovernorOptions {
   windowMs: number;
-  /** Step down when the 95th-percentile frame time is above this. */
+  /**
+   * Step down when the 95th-percentile interval between rendered frames is above this.
+   * The loop caps rendering at 60 fps (loop.ts), so this is measured against that ~16.7 ms
+   * budget, not against how long a frame costs to produce.
+   */
   downThresholdMs: number;
-  /** Count a window as "fast" when the 95th percentile is below this. */
+  /**
+   * Count a window as "fast" when the 95th-percentile interval between rendered frames is
+   * below this. Same vsync-interval signal as downThresholdMs, just the recovery side.
+   */
   upThresholdMs: number;
   upWindowsRequired: number;
   cooldownMs: number;
@@ -12,8 +19,12 @@ export interface GovernorOptions {
 
 export const DEFAULT_GOVERNOR: GovernorOptions = {
   windowMs: 1000,
-  downThresholdMs: 15,
-  upThresholdMs: 11,
+  // A healthy 60 fps device is pinned at ~16.7 ms between frames, so the down threshold sits
+  // above that (frames are only "slow" once a vsync is actually being missed, ~20 ms+).
+  downThresholdMs: 20,
+  // The up threshold sits just under the 60 fps budget, with slack for jitter, so a device
+  // that is comfortably keeping the cap can actually be recognised as fast.
+  upThresholdMs: 17.5,
   upWindowsRequired: 3,
   cooldownMs: 2000,
 };
@@ -41,6 +52,8 @@ export class Governor {
     this.options = options;
   }
 
+  // Not read in production (boot.ts tracks its own `tier`); kept for the unit tests, which
+  // read it directly to assert the governor's internal state (M1).
   get current(): Tier {
     return this.tier;
   }
