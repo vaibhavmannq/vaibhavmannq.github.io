@@ -30,7 +30,11 @@ export function createMoonsink(ctx: RegionContext): MoonsinkRegion {
   scene.add(sea.mesh, ring.group);
 
   let entered = false;
-  let current: CameraPose = poseAt(MOONSINK_PATH, 0);
+  // `current` is the camera's own persistent pose, mutated in place every frame from here on.
+  // poseAt/idlePose/reducedMotionTarget hand back a short-lived scratch object each call (see
+  // cameraPath.ts) — copy it here at construction, and never let `current` itself become one of
+  // those scratch objects below, or a later unrelated call would silently overwrite it.
+  const current: CameraPose = { ...poseAt(MOONSINK_PATH, 0) };
 
   const applyPose = (pose: CameraPose) => {
     const { position, rotation } = toThreeCamera(pose);
@@ -56,8 +60,18 @@ export function createMoonsink(ctx: RegionContext): MoonsinkRegion {
       else if (ctx.reducedMotion) target = reducedMotionTarget(local);
       else target = poseAt(MOONSINK_PATH, local);
 
-      // Reduced motion cuts straight to the viewpoint; otherwise the camera glides after the target
-      current = ctx.reducedMotion ? target : approachPose(current, target, dtSeconds);
+      // Reduced motion cuts straight to the viewpoint; otherwise the camera glides after the
+      // target. Both branches write into `current` in place rather than repointing the variable
+      // at `target`, which cameraPath.ts reuses as scratch space on the next call.
+      if (ctx.reducedMotion) {
+        current.x = target.x;
+        current.y = target.y;
+        current.z = target.z;
+        current.yaw = target.yaw;
+        current.pitch = target.pitch;
+      } else {
+        approachPose(current, target, dtSeconds);
+      }
       applyPose(current);
       ring.update(timeSeconds, ctx.reducedMotion);
     },

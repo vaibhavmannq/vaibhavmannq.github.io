@@ -4,8 +4,12 @@ import type { JourneyState, RegionSegment, SectionId, Segment } from './types';
 /** Floating-point slack so a value that lands exactly on an anchor counts as "reached". */
 const EPSILON = 1e-9;
 
+/** Plain loop instead of `.reduce()`: `resolve` calls this every frame, and `.reduce()` would
+ *  allocate a fresh closure each time. */
 export function totalLength(journey: readonly Segment[]): number {
-  return journey.reduce((sum, segment) => sum + segment.length, 0);
+  let sum = 0;
+  for (let i = 0; i < journey.length; i++) sum += (journey[i] as Segment).length;
+  return sum;
 }
 
 function sectionAt(segment: RegionSegment, local: number): SectionId {
@@ -18,7 +22,16 @@ function sectionAt(segment: RegionSegment, local: number): SectionId {
   return current;
 }
 
-/** Turn scroll progress p (0..1) into "where are we in the journey". Pure: no DOM, no time. */
+// `resolve` is called every frame from the loop, so it writes into this one reusable object
+// instead of allocating a fresh JourneyState (and fresh `a`/`b` objects) each time. Safe because
+// every caller reads the fields it needs immediately, in the same synchronous step, before the
+// next `resolve` call — see boot.ts. `b` starts undefined and only ever gets its own scratch
+// object the first time a transition is actually resolved (phase 1's journey has none, so in
+// production this never allocates at all).
+const stateScratch: JourneyState = { a: { region: 'moonsink', local: 0 }, mix: 0, section: 'intro' };
+
+/** Turn scroll progress p (0..1) into "where are we in the journey". No DOM, no time — but, like
+ *  the loop it feeds, it hands back the same object every call rather than a fresh one. */
 export function resolve(p: number, journey: readonly Segment[]): JourneyState {
   const first = journey[0];
   if (first === undefined || first.kind !== 'region') throw new Error('journey must start with a region');
@@ -36,18 +49,28 @@ export function resolve(p: number, journey: readonly Segment[]): JourneyState {
       const local = segment.length > 0 ? clamp01((position - start) / segment.length) : 1;
 
       if (segment.kind === 'region') {
-        return { a: { region: segment.region, local }, mix: 0, section: sectionAt(segment, local) };
+        stateScratch.a.region = segment.region;
+        stateScratch.a.local = local;
+        stateScratch.b = undefined;
+        stateScratch.mix = 0;
+        stateScratch.effect = undefined;
+        stateScratch.section = sectionAt(segment, local);
+        return stateScratch;
       }
 
       const next = journey[i + 1];
       if (next === undefined || next.kind !== 'region') throw new Error('a transition must sit between two regions');
-      return {
-        a: { region: previousRegion.region, local: 1 },
-        b: { region: next.region, local: 0 },
-        mix: smoothstep(0, 1, local),
-        effect: segment.effect,
-        section: local < 0.5 ? sectionAt(previousRegion, 1) : sectionAt(next, 0),
-      };
+      stateScratch.a.region = previousRegion.region;
+      stateScratch.a.local = 1;
+      if (stateScratch.b === undefined) stateScratch.b = { region: next.region, local: 0 };
+      else {
+        stateScratch.b.region = next.region;
+        stateScratch.b.local = 0;
+      }
+      stateScratch.mix = smoothstep(0, 1, local);
+      stateScratch.effect = segment.effect;
+      stateScratch.section = local < 0.5 ? sectionAt(previousRegion, 1) : sectionAt(next, 0);
+      return stateScratch;
     }
 
     if (segment.kind === 'region') previousRegion = segment;
