@@ -116,8 +116,17 @@ export async function boot(): Promise<void> {
     }, 150);
   });
 
-  // Compile shaders behind the title screen so the first scroll never stutters
-  await moonlit.renderer.compileAsync(region.scene, region.camera);
+  // Compile shaders behind the title screen so the first scroll never stutters. This is where
+  // WGSL compile errors on WebGPU would surface (spec §17 S2) — guard it the same way renderer
+  // creation is guarded above, so a failure here still leaves a usable page.
+  try {
+    await moonlit.renderer.compileAsync(region.scene, region.camera);
+  } catch (error) {
+    console.warn('Shader compilation failed; showing stills instead.', error);
+    moonlit.renderer.domElement.remove();
+    startStills();
+    return;
+  }
   gate.setReady();
 
   let enteredAt = gate.state === 'entered' ? performance.now() : Number.POSITIVE_INFINITY;
