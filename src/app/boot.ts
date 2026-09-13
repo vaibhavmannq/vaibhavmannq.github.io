@@ -55,7 +55,10 @@ export async function boot(): Promise<void> {
   // Test hook: ?p=… jumps straight into the journey
   if (params.p !== undefined) gate.enter();
 
+  let stillsStarted = false;
   const startStills = () => {
+    if (stillsStarted) return;
+    stillsStarted = true;
     root.classList.add('is-stills');
     exposeDebug({
       backend: 'stills',
@@ -149,6 +152,10 @@ export async function boot(): Promise<void> {
     startStills();
     return;
   }
+  // A context loss can race this await (spec §17 S14: ~20 s on a software GPU). If it fired while
+  // we were waiting, handleContextLoss already switched to stills — don't also start the 3D loop
+  // on a now-dead device.
+  if (contextLost) return;
   gate.setReady();
 
   let enteredAt = gate.state === 'entered' ? performance.now() : Number.POSITIVE_INFINITY;
