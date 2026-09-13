@@ -2,7 +2,6 @@ export type GateState = 'loading' | 'ready' | 'entered';
 
 export interface Gate {
   readonly state: GateState;
-  setStatus(message: string): void;
   setReady(): void;
   enter(): void;
   onEnter(listener: () => void): void;
@@ -21,9 +20,6 @@ export function createGate(root: HTMLElement, button: HTMLButtonElement, status:
   const gate: Gate = {
     get state() {
       return state;
-    },
-    setStatus(message) {
-      status.textContent = message;
     },
     setReady() {
       if (state !== 'loading') return;
