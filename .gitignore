@@ -1,0 +1,19 @@
+# dependencies & build output
+node_modules/
+dist/
+
+# brainstorming prototypes (throwaway, kept locally only)
+.superpowers/
+
+# test & tooling output
+test-results/
+playwright-report/
+.lighthouseci/
+coverage/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
