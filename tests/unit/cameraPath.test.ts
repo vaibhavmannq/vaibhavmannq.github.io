@@ -45,7 +45,7 @@ describe('approachPose', () => {
 
 describe('idlePose and reducedMotionTarget', () => {
   it('holds perfectly still with reduced motion', () => {
-    expect(idlePose(12.3, true)).toEqual(poseAt(MOONSINK_PATH, 0));
+    expect({ ...idlePose(12.3, true) }).toEqual({ ...poseAt(MOONSINK_PATH, 0) });
   });
 
   it('drifts gently otherwise', () => {
@@ -53,8 +53,8 @@ describe('idlePose and reducedMotionTarget', () => {
   });
 
   it('cuts between two viewpoints instead of flying', () => {
-    expect(reducedMotionTarget(0.2)).toEqual(poseAt(MOONSINK_PATH, 0));
-    expect(reducedMotionTarget(0.9)).toEqual(poseAt(MOONSINK_PATH, 1));
+    expect({ ...reducedMotionTarget(0.2) }).toEqual({ ...poseAt(MOONSINK_PATH, 0) });
+    expect({ ...reducedMotionTarget(0.9) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
 });
 
