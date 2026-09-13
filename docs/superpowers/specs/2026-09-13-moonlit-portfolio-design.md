@@ -460,14 +460,16 @@ A unit test checks that slugs are unique, required fields are present, and every
 | Smoothness | **Manual real-device checklist** | Automated browsers have no real GPU, so smoothness is never claimed from CI |
 
 ### 12.4 GitHub Actions
-- **`ci.yml`** (pull requests and pushes):
-  - `actions/checkout@v7`, then `actions/setup-node@v7` (Node 24, npm cache)
-  - `npm ci`, `npm run check`, `npm run build`, `npm run test`
-  - Playwright install, `npm run e2e`, `npm run size`
-- **`deploy.yml`** (push to `main`, after the CI job passes):
-  - the same build
-  - `actions/configure-pages@v6`, then `actions/upload-pages-artifact@v5` (`dist/`), then `actions/deploy-pages@v5`
+One workflow file, **`ci.yml`**, with two jobs (§17 S10):
+- **`check` job** (pushes to `main`, pull requests, manual runs):
+  - `actions/checkout@v7`, then `actions/setup-node@v7` (Node from `.nvmrc`, npm cache)
+  - `npm ci`, `npm run check`, `npm run test`, `npm run build`, `npm run size`
+  - Playwright install, `npm run e2e`, then upload Playwright traces/report with `actions/upload-artifact@v7` (kept 7 days)
+  - on pushes to `main` only: `actions/upload-pages-artifact@v5` (`dist/`)
+- **`deploy` job** (needs `check`; pushes to `main` only):
+  - `actions/configure-pages@v6`, then `actions/deploy-pages@v5`
   - permissions: `pages: write`, `id-token: write`
+- Concurrency: outdated runs on other branches and pull requests are cancelled; runs on `main` are never cancelled mid-deploy.
 - **Vite `base`:** `/` (user site).
 
 ### 12.5 GitHub Pages limits

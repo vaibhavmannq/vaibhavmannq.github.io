@@ -17,7 +17,8 @@
 
 ## Global Constraints
 
-- Exact versions: three 0.186.0, @types/three 0.186.0, lenis 1.3.26, lil-gui 0.21.0, @axe-core/playwright 4.13.0.
+- Exact versions: three 0.186.0, @types/three 0.186.0, @types/node 24.13.4, lenis 1.3.26, lil-gui 0.21.0, @axe-core/playwright 4.13.0.
+- **Everything TypeScript is type-checked:** `src` + unit tests via `tsconfig.json`, and config files + browser tests via `tsconfig.node.json`. Both run inside `npm run build`.
 - Import Three.js **only** from `three/webgpu` and `three/tsl` (plus the BloomNode addon). Never from `three`.
 - **TSL rule:** any shader function with `.setLayout()` must be **pure**. It never reads a `uniform` directly; uniforms are passed in as parameters. Reading one inside a layout function breaks WGSL (`struct member nodeUniform0 not found`, found in the spike).
 - **Reversed `smoothstep` edges are forbidden** in TSL (undefined in WGSL). Use `smoothstep(a, b, x).oneMinus()`.
@@ -93,13 +94,14 @@
 **Concept:** Phase 1 brings in three runtime libraries: **Three.js**, which draws the 3D world, **Lenis**, which smooths the scroll, and **lil-gui**, which gives us live sliders during development. We work on a branch so `main` (the live site) only changes when the phase is reviewed. The size budget from Phase 0 is 250 KB, but the spike measured Three.js + WebGPU + bloom + the sea at 254.3 KB. Raising a budget is a decision, not an accident, so this task stops and asks you.
 
 **Files:**
-- Modify: `package.json` (dependencies)
+- Modify: `package.json` (dependencies, `build` script)
+- Create: `tsconfig.node.json` (type-checks config files and browser tests)
 - Modify: `vite.config.ts` (chunk warning threshold)
 - Modify: `.size-limit.json` (limit)
 
 **Interfaces:**
 - Consumes: Phase 0 scripts
-- Produces: `three`, `lenis`, `lil-gui`, `@axe-core/playwright` available to later tasks
+- Produces: `three`, `lenis`, `lil-gui`, `@axe-core/playwright`, `@types/node` available to later tasks; `npm run build` now also type-checks `*.config.ts`, `tests/e2e/**` and `src/app/debug.ts` (the `window.__moonlit` declaration Task 11 creates)
 
 - [ ] **Step 1: Create the branch**
 
@@ -121,7 +123,7 @@ File: `package.json`
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "check": "biome check .",
     "format": "biome check --write .",
@@ -138,6 +140,7 @@ File: `package.json`
     "@biomejs/biome": "2.5.13",
     "@playwright/test": "1.63.0",
     "@size-limit/file": "13.1.1",
+    "@types/node": "24.13.4",
     "@types/three": "0.186.0",
     "lil-gui": "0.21.0",
     "size-limit": "13.1.1",
@@ -173,6 +176,27 @@ export default defineConfig({
 });
 ```
 
+- [ ] **Step 4b: Type-check the config files and browser tests**
+
+`tsconfig.json` only covers `src` and `tests/unit`. The config files (`vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`) and the browser tests run in Node, so they get their own config with Node's types. It also includes `src/app/debug.ts` (created in Task 11), so the browser tests know the type of `window.__moonlit`.
+
+File: `tsconfig.node.json`
+```json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"]
+  },
+  "include": ["*.config.ts", "tests/e2e", "src/app/debug.ts"]
+}
+```
+
+Run:
+```powershell
+npx tsc --noEmit -p tsconfig.node.json
+```
+Expected: no output, exit code 0. (Before this change, `playwright.config.ts` failed with `Cannot find name 'process'`.)
+
 - [ ] **Step 5: Budget decision (owner approved 270 KB on 2026-09-13; skip straight to Step 6)**
 
 Ask exactly: *"The spike measured 254.3 KB gzip for Three.js + WebGPU + bloom + the sea. Approve raising the JS budget from 250 KB to 270 KB?"*
@@ -197,16 +221,18 @@ File: `.size-limit.json`
 
 ```powershell
 npm run check
-git add package.json package-lock.json vite.config.ts .size-limit.json
-git commit -m "chore: add three, lenis, lil-gui and axe; set JS budget"
+npx tsc --noEmit -p tsconfig.node.json
+git add package.json package-lock.json tsconfig.node.json vite.config.ts .size-limit.json
+git commit -m "chore: add three, lenis, lil-gui and axe; type-check configs; set JS budget"
 ```
 
 **Walkthrough (for the owner):**
 - **`dependencies`:** what ships to visitors (Three.js, Lenis).
 - **`devDependencies`:** tools that never reach the browser (types, tests, lil-gui, which we only load in dev).
 - **`chunkSizeWarningLimit`:** only quiets Vite's generic "big file" warning. The real guard is `.size-limit.json`.
+- **`tsconfig.node.json`:** a second type-check for code that runs in Node rather than the browser: the config files and the browser tests. `@types/node` teaches TypeScript what `process.env` is. `npm run build` runs both checks, so a typo in a test fails the build instead of a CI run.
 
-**Check (owner):** `git branch --show-current` prints `phase-1-moonsink`, and `npm ls three` shows `three@0.186.0`.
+**Check (owner):** `git branch --show-current` prints `phase-1-moonsink`, `npm ls three` shows `three@0.186.0`, and `npx tsc --noEmit -p tsconfig.node.json` prints nothing.
 
 ---
 
@@ -265,6 +291,12 @@ describe('smoothstep', () => {
   it('is slower near the edges than in the middle', () => {
     expect(smoothstep(0, 1, 0.1)).toBeLessThan(0.1);
     expect(smoothstep(0, 1, 0.9)).toBeGreaterThan(0.9);
+  });
+
+  it('acts as a step instead of returning NaN when both edges are equal', () => {
+    expect(smoothstep(2, 2, 1)).toBe(0);
+    expect(smoothstep(2, 2, 2)).toBe(1);
+    expect(smoothstep(2, 2, 3)).toBe(1);
   });
 });
 
@@ -333,6 +365,8 @@ export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
 
 /** Hermite ease between two edges: 0 before edge0, 1 after edge1, smooth in between. */
 export const smoothstep = (edge0: number, edge1: number, x: number): number => {
+  // Equal edges would divide 0 by 0 (NaN); treat them as a hard step instead
+  if (edge0 === edge1) return x < edge0 ? 0 : 1;
   const t = clamp01((x - edge0) / (edge1 - edge0));
   return t * t * (3 - 2 * t);
 };
@@ -3520,6 +3554,8 @@ import { expect, test } from '@playwright/test';
 import { collectConsoleErrors, waitForMoonlit } from './helpers';
 
 test('title screen loads without console errors and the world renders', async ({ page }) => {
+  // Two long waits below (shader compile, then first frames) can each take up to 90 s on a CPU-rendered CI browser
+  test.setTimeout(200_000);
   const errors = collectConsoleErrors(page);
   await page.goto('/?time=4');
 
