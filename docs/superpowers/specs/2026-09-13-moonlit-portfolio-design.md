@@ -371,7 +371,7 @@ A unit test checks that slugs are unique, required fields are present, and every
 | Support level | Browsers / devices (as of 2026-09) | Rendering path |
 |---|---|---|
 | Full, WebGPU | Chrome / Edge 113+ desktop · Chrome 121+ on Android 12+ · Safari 26+ (macOS, iOS, iPadOS) · Firefox 141+ Windows · Firefox 145+ macOS (Apple Silicon) | WebGPU, tiers 0–4 |
-| Full, WebGL2 fallback | Firefox on Android and Linux · Safari 15–18 · Android GPUs without WebGPU drivers | WebGL2, tiers 0–3 |
+| Full, WebGL2 fallback | Firefox on Android and Linux · Safari 16.4–18 · Android GPUs without WebGPU drivers | WebGL2, tiers 0–3 |
 | Stills mode | Browsers without WebGL2, or with the GPU blocklisted | §6 |
 
 - **Minimum layout width:** 320 px.
@@ -580,3 +580,4 @@ During planning, the demo-1 sea was ported to TSL and run in a throwaway build (
 | S12 | Lenis honours OS reduced motion for wheel smoothing by itself; the in-page motion toggle controls scene and text motion | Lenis README (1.3.x) |
 | S13 | A faint horizon band is visible in the port (also present in the prototype) | Tune fog/max distance during phase 1 look-dev |
 | S14 | Plans dry-run (2026-09-13): every code block of the phase 0 and phase 1 plans was extracted and run. Biome clean, `tsc` 0 errors, 65/65 unit tests, build 256.7 KB gzip, 9/9 Chromium e2e including axe. Firefox/WebKit e2e not run locally (CI runs them). Playwright test timeout set to 120 s; axe and reduced-motion tests run in `?stills` mode | Software-rendered WebGL in headless browsers takes ~20 s to compile the sea, so HTML-only tests would otherwise time out |
+| S15 | Minimum Safari is **16.4** (§9), not 15. The build keeps `target: 'es2023'` | Owner decision (2026-09-13) after the Phase 0 final review found `es2023` output and `lib` APIs (e.g. class static blocks, `toSorted`) can't run on Safari 15.x–16.3; 16.4 matches Vite 8's own baseline and Safari 15 has a negligible share in 2026 |

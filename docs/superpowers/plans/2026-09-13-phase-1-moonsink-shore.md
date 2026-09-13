@@ -34,7 +34,7 @@
 - **IP:** no Wuthering Waves assets or terms; never the word "Tacet".
 - **Git:**
   - Work on branch `phase-1-moonsink`.
-  - Every commit message ends with the attribution trailer lines required by the executing session.
+  - Commit messages contain only a subject (and optional body): **no `Co-Authored-By:` or any other attribution trailer** (owner instruction, 2026-09-13).
 - **Shell:** commands are written for PowerShell (one per line).
 - **Working model:** every task ends with a **Walkthrough** and a **Check** for the owner (spec §13).
 
@@ -3715,7 +3715,7 @@ git push -u origin phase-1-moonsink
 
 Open the link Git prints (or go to the repo and click **Compare & pull request**). Fill in:
 - **Title:** `Phase 1: Moonsink Shore vertical slice`
-- **Description:** a short summary of what the phase adds (sea, ring, title screen, sections, tiers, tests), ending with the attribution lines required by the executing session.
+- **Description:** a short summary of what the phase adds (sea, ring, title screen, sections, tiers, tests). No attribution or "generated with" lines.
 
 - [ ] **Step 4: Wait for CI**
 
@@ -3802,7 +3802,7 @@ Edit spec §3.3: replace the sentence starting "**Typography:** Cormorant Garamo
 
 Append a row to §17:
 
-| S15 | Phase 1 device results: (paste the Step 1 table summary) | Real-device exit check |
+| S16 | Phase 1 device results: (paste the Step 1 table summary) | Real-device exit check |
 
 - [ ] **Step 6: Commit and tag**
 

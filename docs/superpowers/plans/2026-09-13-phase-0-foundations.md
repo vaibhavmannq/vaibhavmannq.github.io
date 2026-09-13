@@ -18,7 +18,7 @@
 - Line endings are LF in the repo (`.gitattributes`).
 - **IP:** no Wuthering Waves assets or terminology anywhere (spec §1).
 - Git identity for this repo: `Vaibhav Mann <93813535+vaibhavmannq@users.noreply.github.com>` (already set locally).
-- Every commit message ends with the attribution trailer lines required by the executing session.
+- Commit messages contain only a subject (and optional body): **no `Co-Authored-By:` or any other attribution trailer** (owner instruction, 2026-09-13).
 - Commands are written to work in **PowerShell** (the owner's shell): one command per line, no `&&` chaining in the terminal (inside `package.json` scripts `&&` is fine).
 - **Working model (spec §13):** Claude writes the code. Every task ends with a **Walkthrough** (plain-language tour for the owner) and a **Check** the owner can run.
 
