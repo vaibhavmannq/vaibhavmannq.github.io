@@ -573,7 +573,7 @@ git commit -m "feat: add math helpers with unit tests"
 - **`smoothstep`:** like `lerp`'s progress, but it starts and ends gently instead of snapping. It's why motion in the prototype felt calm.
 - **The tests read like sentences:** `describe` names the function, `it` names one behaviour, and `expect(…).toBe(…)` is the actual check.
 
-**Check (owner):** `npm run test` shows 6 passing tests. Break one number in `math.ts`, re-run to see which test catches it, then undo.
+**Check (owner):** `npm run test` shows 5 passing tests. Break one number in `math.ts`, re-run to see which test catches it, then undo.
 
 ---
 
@@ -612,14 +612,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  reporter: isCI ? 'github' : 'list',
+  reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
   },
-  // Tests always run against the production build, never the dev server
+  // Tests always run against the production build, never the dev server.
+  // CI already builds in an earlier workflow step, so skip rebuilding here.
   webServer: {
-    command: 'npm run build && npm run preview',
+    command: isCI ? 'npm run preview' : 'npm run build && npm run preview',
     url: 'http://localhost:4173',
     reuseExistingServer: !isCI,
     timeout: 180_000,
@@ -769,7 +770,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -804,6 +805,17 @@ jobs:
 
       - name: End-to-end tests
         run: npm run e2e
+
+      - name: Upload Playwright results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload site for GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -857,7 +869,8 @@ git commit -m "ci: add check and GitHub Pages deploy workflow"
 - **`on:`** lists when the workflow runs: pushes to `main`, any pull request, or a manual button.
 - **`npm ci` vs `npm install`:** `ci` installs *exactly* the lockfile and fails if it's out of date. That keeps reproducible builds honest.
 - **The deploy job's `if:`** means pull requests are checked but never deployed.
-- **`concurrency: pages`:** two deploys never overlap. The `ci-${{ github.ref }}` group cancels an outdated check run when you push again quickly.
+- **`concurrency: pages`:** two deploys never overlap. The `ci-${{ github.ref }}` group cancels an outdated check run when you push again quickly on a branch or PR — but `cancel-in-progress` is `false` for `refs/heads/main`, so a push to `main` never cancels a run that's already mid-deploy; it queues behind it instead.
+- **`playwright-results` artifact:** the "Upload Playwright results" step always runs (unless the job was cancelled) and uploads `test-results/` (traces, screenshots) and `playwright-report/` (the HTML report) so a failed e2e run can be diagnosed after the fact. Download it from the workflow run's summary page in the Actions tab, under "Artifacts".
 - **Why one file:** the spec listed separate `ci.yml`/`deploy.yml`. One workflow with two jobs gives the same guarantee (deploy only after checks pass) without cross-workflow plumbing, as recorded in spec §17.
 
 **Check (owner):** open `.github/workflows/ci.yml` and find the `needs: check` line. That's the guarantee.
