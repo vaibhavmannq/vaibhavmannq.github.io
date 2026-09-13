@@ -1,14 +1,28 @@
 import { expect, test } from '@playwright/test';
+import { collectConsoleErrors, waitForMoonlit } from './helpers';
 
-test('home page loads with its heading and no console errors', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
-  });
-  page.on('pageerror', (error) => errors.push(error.message));
+test('title screen loads without console errors and the world renders', async ({ page }) => {
+  // Two long waits below (shader compile, then first frames) can each take up to 90 s on a CPU-rendered CI browser
+  test.setTimeout(200_000);
+  const errors = collectConsoleErrors(page);
+  await page.goto('/?time=4');
 
-  await page.goto('/');
+  await expect(page.locator('.gate__name')).toHaveText('Vaibhav Mann');
+  await waitForMoonlit(page);
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Vaibhav Mann' })).toBeVisible();
+  const backend = await page.evaluate(() => window.__moonlit?.backend);
+  expect(['webgpu', 'webgl2', 'stills']).toContain(backend);
+  if (backend !== 'stills') {
+    await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 10, undefined, { timeout: 90_000 });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('stills mode keeps the page usable', async ({ page }) => {
+  const errors = collectConsoleErrors(page);
+  await page.goto('/?stills');
+  await waitForMoonlit(page);
+  expect(await page.evaluate(() => window.__moonlit?.backend)).toBe('stills');
+  await expect(page.getByRole('button', { name: 'Click to enter' })).toBeEnabled();
   expect(errors).toEqual([]);
 });
