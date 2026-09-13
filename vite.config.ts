@@ -6,5 +6,7 @@ export default defineConfig({
   build: {
     target: 'es2023',
     sourcemap: true,
+    // Three.js with the WebGPU renderer is ~900 KB minified (~254 KB gzip). That's expected and budgeted in .size-limit.json.
+    chunkSizeWarningLimit: 1100,
   },
 });

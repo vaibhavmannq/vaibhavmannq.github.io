@@ -2,7 +2,7 @@
   {
     "name": "JavaScript (all chunks, gzip)",
     "path": "dist/assets/*.js",
-    "limit": "250 KB",
+    "limit": "270 KB",
     "gzip": true
   }
 ]
