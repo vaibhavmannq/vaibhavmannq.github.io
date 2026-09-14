@@ -8,6 +8,8 @@ export interface DebugParams {
   time?: number;
   /** `?moon=`: 0..1 override for the lunar phase (0 = new, 0.5 = full). Undefined falls back to tonight's real phase. */
   moon?: number;
+  /** `?hold=ms`: the opening's minimum hold, for tests. Undefined uses the default 2.2 s. */
+  hold?: number;
   hud: boolean;
   gui: boolean;
   forceWebGL: boolean;
@@ -31,6 +33,7 @@ export function readDebugParams(search: string): DebugParams {
       : undefined;
   const progress = number('p');
   const moonValue = number('moon');
+  const holdValue = number('hold');
 
   return {
     tier,
@@ -39,6 +42,7 @@ export function readDebugParams(search: string): DebugParams {
     // Non-numeric or blank falls back to `undefined` (real date, via resolveMoonPhase);
     // a numeric but out-of-range value is clamped rather than thrown away.
     moon: moonValue === undefined ? undefined : clamp01(moonValue),
+    hold: holdValue === undefined || holdValue < 0 ? undefined : holdValue,
     hud: query.has('hud'),
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),

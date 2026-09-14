@@ -4,6 +4,7 @@ import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
 import { createMotionToggle } from '../overlay/motionToggle';
+import { createOpening } from '../overlay/opening';
 import { createSections } from '../overlay/sections';
 import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
@@ -31,7 +32,9 @@ export async function boot(): Promise<void> {
   byId('journey-track').style.setProperty('--journey-length', String(totalLength(journey)));
 
   // ---- HTML layer: works even if 3D never starts ----
-  const gate = createGate(byId('gate'), byId<HTMLButtonElement>('gate-enter'), byId('gate-status'));
+  const openingElement = byId('opening');
+  const gate = createGate(openingElement, byId('load-status'));
+  const opening = createOpening(openingElement, { minHoldMs: params.hold });
   // Phase 1 has one region, so its anchors are the page's sections.
   const anchors = (journey[0] as RegionSegment).sections;
   const sections = createSections(byId('content'), anchors);
@@ -47,16 +50,31 @@ export async function boot(): Promise<void> {
 
   gate.onEnter(() => {
     scroll.setLocked(false);
-    byId('intro-title').focus({ preventScroll: true });
   });
   byId<HTMLAnchorElement>('skip-intro').addEventListener('click', (event) => {
     event.preventDefault();
     gate.enter();
+    opening.dismiss();
     scroll.scrollToProgress(progressForSection(journey, 'about'), true);
     byId('about-title').focus({ preventScroll: true });
   });
-  // Test hook: ?p=… jumps straight into the journey
-  if (params.p !== undefined) gate.enter();
+  // Test hook: ?p=… jumps straight into the journey, past the opening
+  if (params.p !== undefined) {
+    gate.enter();
+    opening.dismiss();
+  }
+
+  // The opening leaves by itself once the page is ready (spec §5.8). A key that starts it moves focus
+  // to the intro heading for keyboard users; an automatic or pointer start moves no focus, so no
+  // focus ring appears around the name.
+  const openWhenReady = () =>
+    opening.begin({
+      reducedMotion: () => ctx.reducedMotion,
+      onStart: (how) => {
+        gate.enter();
+        if (how === 'key') byId('intro-title').focus({ preventScroll: true });
+      },
+    });
 
   let stillsStarted = false;
   const startStills = () => {
@@ -72,6 +90,7 @@ export async function boot(): Promise<void> {
       reducedMotion: () => ctx.reducedMotion,
     });
     gate.setReady();
+    openWhenReady();
     const step = (nowMs: number) => {
       scroll.raf(nowMs);
       p = params.p ?? scroll.progress();
@@ -144,7 +163,7 @@ export async function boot(): Promise<void> {
     }, 150);
   });
 
-  // Compile shaders behind the title screen so the first scroll never stutters. This is where
+  // Compile shaders behind the opening so the first scroll never stutters. This is where
   // WGSL compile errors on WebGPU would surface (spec §17 S2) — guard it the same way renderer
   // creation is guarded above, so a failure here still leaves a usable page.
   try {
@@ -160,6 +179,7 @@ export async function boot(): Promise<void> {
   // on a now-dead device.
   if (contextLost) return;
   gate.setReady();
+  openWhenReady();
 
   let enteredAt = gate.state === 'entered' ? performance.now() : Number.POSITIVE_INFINITY;
   gate.onEnter(() => {

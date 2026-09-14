@@ -15,7 +15,7 @@
     <noscript>
       <style>
         html.is-gated { overflow: auto; }
-        .gate { display: none; }
+        .opening { display: none; }
         .content { position: static; pointer-events: auto; }
         .section { position: static; opacity: 1; margin: 2rem 0; }
       </style>
@@ -37,14 +37,14 @@
 
     <div class="world" id="world" aria-hidden="true"></div>
 
-    <header class="gate" id="gate" data-state="loading">
-      <svg class="gate__glyph" aria-hidden="true" focusable="false"><use href="#glyph" /></svg>
-      <p class="gate__name">Vaibhav Mann</p>
-      <p class="gate__status" id="gate-status" role="status">Tuning the tide…</p>
-      <button class="gate__enter" id="gate-enter" type="button" disabled>Click to enter</button>
-    </header>
+    <div class="opening" id="opening" data-state="loading" aria-hidden="true">
+      <svg class="opening__glyph" aria-hidden="true" focusable="false"><use href="#glyph" /></svg>
+      <p class="opening__hello">Hello, voyager</p>
+      <p class="opening__line">A moonlit journey across the sea.</p>
+    </div>
 
     <main class="content" id="content">
+      <p class="visually-hidden" id="load-status" role="status">Loading the scene…</p>
       <section class="section" id="intro" data-section="intro" aria-labelledby="intro-title">
         <div class="section__panel">
           <h1 id="intro-title" tabindex="-1">Vaibhav Mann</h1>

@@ -18,7 +18,7 @@ import { moonLight, resolveMoonPhase } from './moonPhase';
 import { createSea, type SeaUniforms } from './sea';
 
 export interface MoonsinkRegion extends Region {
-  /** False while the title screen is up: the camera bobs on the open sea instead of following the scroll. */
+  /** False while the opening is up: the camera bobs on the open sea instead of following the scroll. */
   setEntered(entered: boolean): void;
   readonly seaUniforms: SeaUniforms;
 }

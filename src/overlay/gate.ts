@@ -7,8 +7,12 @@ export interface Gate {
   onEnter(listener: () => void): void;
 }
 
-/** The title screen. It never hides content from screen readers: sections stay in the DOM underneath. */
-export function createGate(root: HTMLElement, button: HTMLButtonElement, status: HTMLElement): Gate {
+/**
+ * The journey's entry state: loading → ready → entered. It has no visuals of its own. The opening
+ * layer shows it through `data-state` on `root`, and `status` is a screen-reader-only message.
+ * Content is never hidden from screen readers: sections stay in the DOM underneath.
+ */
+export function createGate(root: HTMLElement, status: HTMLElement): Gate {
   const listeners: Array<() => void> = [];
   let state: GateState = 'loading';
 
@@ -25,12 +29,11 @@ export function createGate(root: HTMLElement, button: HTMLButtonElement, status:
       if (state !== 'loading') return;
       setState('ready');
       status.textContent = '';
-      button.disabled = false;
     },
     enter() {
       if (state === 'entered') return;
       setState('entered');
-      button.disabled = true;
+      status.textContent = '';
       document.documentElement.classList.remove('is-gated');
       for (const listener of listeners) listener();
     },
@@ -38,7 +41,5 @@ export function createGate(root: HTMLElement, button: HTMLButtonElement, status:
       listeners.push(listener);
     },
   };
-
-  button.addEventListener('click', () => gate.enter());
   return gate;
 }
