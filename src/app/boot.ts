@@ -3,7 +3,6 @@ import { journey, journeyWithLength } from '../journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
-import { createMoonDial } from '../overlay/moonDial';
 import { createMotionToggle } from '../overlay/motionToggle';
 import { createOpening } from '../overlay/opening';
 import { createSections, HANDOVER_FADE, HANDOVER_GAP } from '../overlay/sections';
@@ -153,8 +152,6 @@ export async function boot(): Promise<void> {
   );
 
   const region = createMoonsink(ctx, params.moon);
-  // The moon dial starts on tonight's phase (or `?moon=`); stills mode hides it (overlay.css).
-  createMoonDial(byId<HTMLInputElement>('moon-phase'), region.moonPhase, (phase) => region.setMoonPhase(phase));
   gate.onEnter(() => region.setEntered(true));
   if (gate.state === 'entered') region.setEntered(true);
   moonlit.setView(region.scene, region.camera);
@@ -248,7 +245,6 @@ export async function boot(): Promise<void> {
 
   exposeDebug({
     backend: moonlit.backend,
-    moonPhase: () => region.moonPhase,
     tier: () => tier,
     frames: () => frames,
     progress: () => p,
