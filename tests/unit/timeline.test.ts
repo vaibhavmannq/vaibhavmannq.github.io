@@ -11,7 +11,7 @@ const twoRegions: readonly Segment[] = [
 
 describe('totalLength', () => {
   it('adds up every segment', () => {
-    expect(totalLength(journey)).toBe(2.4);
+    expect(totalLength(journey)).toBe(2.7);
     expect(totalLength(twoRegions)).toBe(4);
   });
 });

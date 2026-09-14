@@ -116,8 +116,9 @@ export function approachPose(current: CameraPose, target: CameraPose, dtSeconds:
 }
 
 /** Time constant of the journey camera's follow, in ms: long enough to hide scroll-event jitter,
- *  short enough not to be felt (journey-flow design §5.2). */
-export const FOLLOW_TIME_CONSTANT_MS = 70;
+ *  short enough not to be felt (journey-flow design §5.2). Raised from 70 when the owner asked for
+ *  the scroll to be a touch smoother (2026-09-14). */
+export const FOLLOW_TIME_CONSTANT_MS = 110;
 
 /**
  * The journey camera: follows the scroll-driven target with exponential smoothing. There is no

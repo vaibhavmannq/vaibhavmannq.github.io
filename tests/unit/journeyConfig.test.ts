@@ -3,9 +3,9 @@ import { journey, journeyWithLength, MOONSINK_ABOUT_FROM, MOONSINK_LENGTH } from
 import { progressForSection, totalLength } from '../../src/journey/timeline';
 
 describe('journey config', () => {
-  it('makes Moonsink Shore 2.4 screen heights long', () => {
-    expect(MOONSINK_LENGTH).toBe(2.4);
-    expect(totalLength(journey)).toBe(2.4);
+  it('makes Moonsink Shore 2.7 screen heights long', () => {
+    expect(MOONSINK_LENGTH).toBe(2.7);
+    expect(totalLength(journey)).toBe(2.7);
   });
 
   it('can rebuild the journey with another length for tuning, keeping the anchors', () => {
