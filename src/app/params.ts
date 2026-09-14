@@ -10,6 +10,8 @@ export interface DebugParams {
   moon?: number;
   /** `?hold=ms`: the opening's minimum hold, for tests. Undefined uses the default 2.2 s. */
   hold?: number;
+  /** `?length=`: Moonsink's scroll length in screen heights, for tuning by feel (clamped 1.5–4). */
+  length?: number;
   hud: boolean;
   gui: boolean;
   forceWebGL: boolean;
@@ -34,6 +36,7 @@ export function readDebugParams(search: string): DebugParams {
   const progress = number('p');
   const moonValue = number('moon');
   const holdValue = number('hold');
+  const lengthValue = number('length');
 
   return {
     tier,
@@ -43,6 +46,7 @@ export function readDebugParams(search: string): DebugParams {
     // a numeric but out-of-range value is clamped rather than thrown away.
     moon: moonValue === undefined ? undefined : clamp01(moonValue),
     hold: holdValue === undefined || holdValue < 0 ? undefined : holdValue,
+    length: lengthValue === undefined ? undefined : Math.min(4, Math.max(1.5, lengthValue)),
     hud: query.has('hud'),
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),

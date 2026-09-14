@@ -9,6 +9,7 @@ describe('readDebugParams', () => {
       time: undefined,
       moon: undefined,
       hold: undefined,
+      length: undefined,
       hud: false,
       gui: false,
       forceWebGL: false,
@@ -43,6 +44,13 @@ describe('readDebugParams', () => {
     expect(readDebugParams('?hold=0').hold).toBe(0);
     expect(readDebugParams('?hold=-5').hold).toBeUndefined();
     expect(readDebugParams('?hold=abc').hold).toBeUndefined();
+  });
+
+  it('reads a journey length and clamps it to 1.5–4 screen heights', () => {
+    expect(readDebugParams('?length=2.8').length).toBe(2.8);
+    expect(readDebugParams('?length=9').length).toBe(4);
+    expect(readDebugParams('?length=0.5').length).toBe(1.5);
+    expect(readDebugParams('?length=abc').length).toBeUndefined();
   });
 
   it('treats presence-only flags as true', () => {
