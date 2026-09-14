@@ -133,6 +133,13 @@ html.is-stills .world {
   inset: 0;
   z-index: 10;
   pointer-events: none;
+  opacity: 1;
+  /* Held at 0 by html.is-gated below; on enter() the gate and this delay start at the same
+     instant (gate.ts flips data-state and removes is-gated in the same synchronous call), so
+     this transition is deliberately delayed 1.2s — exactly the gate's own `opacity 1.2s ease`
+     duration (see .gate below) — so the fade-in only begins once the gate has visually reached
+     opacity 0. That guarantees a genuine hand-over, never a frame with both names on screen. */
+  transition: opacity 0.9s ease 1.2s;
 }
 
 html.is-gated .content {
@@ -255,8 +262,15 @@ html.is-gated .content {
   .gate {
     transition: none;
   }
+  .content {
+    transition: none;
+  }
 }
 
 html.is-reduced-motion .gate {
+  transition: none;
+}
+
+html.is-reduced-motion .content {
   transition: none;
 }
