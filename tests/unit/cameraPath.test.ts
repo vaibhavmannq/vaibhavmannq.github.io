@@ -38,7 +38,7 @@ describe('poseAt', () => {
   it('eases halfway between two keys', () => {
     const pose = poseAt(MOONSINK_PATH, 0.125);
     expect(pose.x).toBeCloseTo(-1, 10);
-    expect(pose.yaw).toBeCloseTo(-0.04, 10);
+    expect(pose.y).toBeCloseTo(4.6, 10);
   });
 
   it('spaces the keyframes evenly so each stretch gets the same scroll distance', () => {
@@ -50,6 +50,23 @@ describe('poseAt', () => {
       const from = MOONSINK_PATH[i - 1] as CameraKey;
       const to = MOONSINK_PATH[i] as CameraKey;
       expect(to.z).toBeLessThanOrEqual(from.z);
+    }
+  });
+});
+
+describe('the view never turns, so the moon and the sky hold still (owner, 2026-09-14)', () => {
+  it('gives every keyframe the same yaw and pitch', () => {
+    for (const key of MOONSINK_PATH) {
+      expect(key.yaw).toBe(first?.yaw);
+      expect(key.pitch).toBe(first?.pitch);
+    }
+  });
+
+  it('keeps the idle bob behind the opening from turning the view', () => {
+    for (const t of [0, 3.1, 7.7, 20]) {
+      const { yaw, pitch } = idlePose(t, false);
+      expect(yaw).toBe(first?.yaw);
+      expect(pitch).toBe(first?.pitch);
     }
   });
 });

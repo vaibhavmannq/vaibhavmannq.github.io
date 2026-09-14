@@ -17,8 +17,13 @@ html.is-gated {
 /* ---------- 3D world ---------- */
 .world {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   z-index: 0;
+  width: 100%;
+  /* The large viewport never changes as a phone's toolbar shows or hides. Android only resizes the
+     page once a scroll ends, so a viewport-sized scene jumped at the end of every swipe. */
+  height: 100lvh;
 }
 
 .world canvas {
@@ -133,8 +138,13 @@ html.is-stills .world {
 /* ---------- sections ---------- */
 .content {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   z-index: 10;
+  width: 100%;
+  /* The small viewport: text placed from its bottom stays above a phone's toolbar, and does not
+     jump when the toolbar hides (see .world). */
+  height: 100svh;
   pointer-events: none;
   opacity: 1;
   /* Held at 0 by html.is-gated below. When the opening starts to leave, its greeting fades in 0.7 s,
@@ -150,9 +160,10 @@ html.is-gated .content {
   content: "";
   position: absolute;
   right: 0;
-  bottom: 0;
+  /* Reach the bottom of the screen even while the toolbar is hidden (100lvh is below 100svh). */
+  bottom: calc(100svh - 100lvh);
   left: 0;
-  height: 62svh;
+  height: calc(62svh + 100lvh - 100svh);
   background: linear-gradient(to top, rgba(2, 4, 6, 0.82) 12%, rgba(2, 4, 6, 0.45) 46%, rgba(2, 4, 6, 0) 100%);
   pointer-events: none;
 }
@@ -271,6 +282,7 @@ html.is-broken {
 
 html.is-broken .content {
   position: static;
+  height: auto;
   pointer-events: auto;
   opacity: 1;
 }

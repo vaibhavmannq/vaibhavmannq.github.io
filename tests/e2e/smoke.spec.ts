@@ -5,7 +5,8 @@ test('the page loads without console errors and the world renders', async ({ pag
   // Two long waits below (shader compile, then first frames) can each take up to 90 s on a CPU-rendered CI browser
   test.setTimeout(200_000);
   const errors = collectConsoleErrors(page);
-  await page.goto('/?time=4');
+  // `hold` keeps the greeting up for the whole test, so checking that it is visible never races its exit.
+  await page.goto('/?time=4&hold=600000');
 
   await expect(page.locator('.opening__hello')).toBeVisible();
   await expect(page.locator('.opening__hello')).toHaveText('Hello, voyager');

@@ -44,7 +44,11 @@ test.describe('accessibility', () => {
         const page = await context.newPage();
         await page.goto(`/?p=${progress}&moon=0.5&tier=3&time=12`);
         await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 20, undefined, { timeout: 150_000 });
-        await expect.poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+        // A cold software-GPU start can starve the page for several seconds (the first test of a run once
+        // needed more than the default 5 s here), so give the text layer room to appear.
+        await expect
+          .poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity), { timeout: 30_000 })
+          .toBe('1');
 
         const lines = await measureTextContrast(page);
         expect(lines.length).toBeGreaterThanOrEqual(minLines);

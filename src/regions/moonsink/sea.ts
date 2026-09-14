@@ -65,7 +65,6 @@ const WAVE_ITERATIONS = 6;
 export function createSea() {
   const uniforms = {
     time: uniform(0),
-    yaw: uniform(0),
     marchSteps: uniform(80, 'int'),
     // Tonight's real lunar phase (0 = new, 0.5 = full) and the illumination it produces after
     // the floor is applied (spec §5.4b). Set once at construction in index.ts; never mutated
@@ -369,15 +368,13 @@ export function createSea() {
       col.assign(mix(col, fogColor, exp(tHit.mul(-0.022)).oneMinus()));
     });
 
-    // Drifting motes in screen space, with parallax from yaw and camera height
+    // Drifting motes in screen space. They drift with time only, never with the camera, so the sky
+    // holds still while the visitor scrolls (owner, 2026-09-14).
     const uv = screenCoordinate.sub(screenSize.mul(0.5)).div(screenSize.y).toVar();
     const motes = float(0).toVar();
     Loop({ start: int(0), end: int(3), type: 'int', condition: '<' }, ({ i }) => {
       const fi = float(i);
-      const drift = vec2(
-        uniforms.yaw.mul(fi.add(1.5)).mul(2),
-        time.mul(fi.mul(0.02).add(0.04)).negate().add(cameraPosition.y.mul(0.15)),
-      );
+      const drift = vec2(0, time.mul(fi.mul(0.02).add(0.04)).negate());
       const g = uv.mul(fi.mul(4).add(5)).add(drift);
       const id = floor(g);
       const fr = fract(g).sub(0.5);

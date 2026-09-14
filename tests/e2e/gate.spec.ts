@@ -5,7 +5,8 @@ import { expect, test } from '@playwright/test';
 
 test('the opening greets, then leaves by itself once the page is ready', async ({ page }) => {
   await page.goto('/?stills');
-  await expect(page.locator('.opening__hello')).toBeVisible();
+  // No visibility check here: the greeting leaves by itself 2.2 s after navigation starts, and a slow
+  // load event can arrive after that. The held test below checks that it is visible.
   await expect(page.locator('.opening__hello')).toHaveText('Hello, voyager');
   await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
   await expect(page.locator('#opening')).toHaveAttribute('data-state', 'entered');
@@ -17,6 +18,7 @@ test('the opening greets, then leaves by itself once the page is ready', async (
 test('a key press starts the journey and moves focus to the intro heading', async ({ page }) => {
   await page.goto('/?stills&hold=600000');
   await expect(page.locator('#opening')).toHaveAttribute('data-state', 'ready');
+  await expect(page.locator('.opening__hello')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.locator('#opening')).toHaveAttribute('data-state', 'entered');
   await expect(page.locator('#intro-title')).toBeFocused();
