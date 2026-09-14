@@ -24,11 +24,17 @@ export interface CameraKey extends CameraPose {
   at: number;
 }
 
+// Yaw is front-loaded: by local ≈ 0.45 (MOONSINK_ABOUT_FROM, journey.config.ts) the camera has
+// already turned almost the full circle, so the moon and its path on the water are back in the
+// upper part of the frame for the whole About reading window (spec §3.4 rule 5). The last two
+// keyframes are then a near-flat "gentle settle" rather than a continued spin. See
+// tests/unit/cameraPath.test.ts ("keeps the moon in the horizontal field of view through the
+// About window") for the derivation and the property this pins.
 export const MOONSINK_PATH: readonly CameraKey[] = [
   { at: 0, x: 0, y: 3.2, z: 34, yaw: 0, pitch: -0.06 },
-  { at: 0.28, x: -2, y: 6, z: 26, yaw: Math.PI * 0.9, pitch: -0.17 },
-  { at: 0.55, x: 1, y: 1.8, z: 8, yaw: Math.PI, pitch: -0.07 },
-  { at: 0.78, x: 2.5, y: 1.55, z: -1.8, yaw: Math.PI * 1.5, pitch: -0.05 },
+  { at: 0.28, x: -2, y: 6, z: 26, yaw: Math.PI * 1.94, pitch: -0.17 },
+  { at: 0.55, x: 1, y: 1.8, z: 8, yaw: Math.PI * 1.999, pitch: -0.1 },
+  { at: 0.78, x: 2.5, y: 1.55, z: -1.8, yaw: Math.PI * 1.9998, pitch: -0.08 },
   { at: 1, x: 0, y: 1.45, z: -5.5, yaw: Math.PI * 2, pitch: -0.11 },
 ];
 
