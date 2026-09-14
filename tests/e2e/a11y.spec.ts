@@ -7,9 +7,9 @@ import { measureTextContrast } from './helpers';
 test.describe('accessibility', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'axe results are browser-independent; run once');
 
-  test('title screen has no axe violations', async ({ page }) => {
-    await page.goto('/?stills');
-    await expect(page.getByRole('button', { name: 'Click to enter' })).toBeEnabled();
+  test('the opening has no axe violations', async ({ page }) => {
+    await page.goto('/?stills&hold=600000');
+    await expect(page.locator('#opening')).toHaveAttribute('data-state', 'ready');
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });

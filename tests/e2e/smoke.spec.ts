@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { collectConsoleErrors, waitForMoonlit } from './helpers';
 
-test('title screen loads without console errors and the world renders', async ({ page }) => {
+test('the page loads without console errors and the world renders', async ({ page }) => {
   // Two long waits below (shader compile, then first frames) can each take up to 90 s on a CPU-rendered CI browser
   test.setTimeout(200_000);
   const errors = collectConsoleErrors(page);
   await page.goto('/?time=4');
 
-  await expect(page.locator('.gate__name')).toHaveText('Vaibhav Mann');
+  await expect(page.locator('.opening__hello')).toHaveText('Hello, voyager');
   await waitForMoonlit(page);
 
   const backend = await page.evaluate(() => window.__moonlit?.backend);
@@ -23,6 +23,7 @@ test('stills mode keeps the page usable', async ({ page }) => {
   await page.goto('/?stills');
   await waitForMoonlit(page);
   expect(await page.evaluate(() => window.__moonlit?.backend)).toBe('stills');
-  await expect(page.getByRole('button', { name: 'Click to enter' })).toBeEnabled();
+  await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('#intro')).toHaveClass(/is-active/);
   expect(errors).toEqual([]);
 });

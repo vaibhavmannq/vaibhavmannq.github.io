@@ -61,7 +61,8 @@ Taps, scrolls and keys before the scene is ready do nothing, because there is no
 
 - **An automatic or pointer start moves no focus.** The browser would otherwise draw a focus ring around the name for every visitor. The demos proved this: after the fix, `document.activeElement` is `body` and nothing matches `:focus-visible`.
 - **A key press that starts the opening moves focus to the intro heading**, as entering does today.
-- **"Skip intro"** stays the first focusable element. It starts the opening straight away, scrolls to About and focuses the About heading.
+- **"Skip intro"** stays the first focusable element. It removes the opening at once, scrolls to About and focuses the About heading.
+- **Keys that don't start the opening:** Tab and Shift, and any key pressed on a link or button. They keep their normal job, so "Skip intro" and "Reduce motion" stay usable while the greeting is up.
 - A visually hidden `role="status"` element outside the opening layer says "Loading the scene…" and is emptied once ready. The opening layer itself is `aria-hidden`: the real content stays in the DOM underneath.
 
 ### 3.4 Fallbacks
@@ -70,6 +71,7 @@ Taps, scrolls and keys before the scene is ready do nothing, because there is no
 - **Stills mode** (no WebGL): the same opening. It leaves once stills mode is ready.
 - **No JavaScript:** the opening is hidden by the `<noscript>` styles, and the content is static, as today.
 - **Test hook `?p=`** jumps into the journey and removes the opening at once, so browser tests stay fast.
+- **Test hook `?hold=ms`** keeps the greeting up at least that long, so a browser test can act before it leaves on its own.
 
 ## 4. Type
 
@@ -157,7 +159,7 @@ So the text overlay contributes but is not the main cause: the phone showed 160 
 | `src/regions/moonsink/cameraPath.ts` | `followPose(current, target, dtSeconds, timeConstantMs)` for the journey; `approachPose` stays for the bob; keyframes re-spaced |
 | `src/quality/governor.ts` | `sample(frameMs, nowMs, canChange)` |
 | `src/app/boot.ts` | Wires the opening; tracks "scrolling"; passes `canChange`; applies `?length` |
-| `src/app/params.ts` | `length?: number`, clamped 1.5–4 |
+| `src/app/params.ts` | `length?: number`, clamped 1.5–4; `hold?: number`, a test hook in ms |
 | `src/dev/hud.ts` | `record(frameMs, scrolling)`, the new lines, and a tier-change counter |
 | `src/styles/base.css`, `overlay.css` | Font tokens, opening styles, the lighter text shadow, `will-change` on sections; the scratch blocks are removed |
 | `src/journey/journey.config.ts` | Length 2.4 |
