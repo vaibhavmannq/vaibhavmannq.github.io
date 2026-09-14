@@ -5,6 +5,14 @@ const MIN_TRAVEL = 0.01;
 /** Browsers without `scrollend` treat this long without scroll events as the end of momentum. */
 const SETTLE_MS = 140;
 
+/** How long a snap glide takes: longer for a longer trip, never abrupt, never sluggish. Pure. */
+export function glideDurationMs(fromProgress: number, toProgress: number): number {
+  return Math.min(1200, 500 + 1200 * Math.abs(toProgress - fromProgress));
+}
+
+/** Gentle ease in and out, 0..1 → 0..1. Pure. */
+export const easeInOutSine = (t: number): number => 0.5 - 0.5 * Math.cos(Math.PI * t);
+
 /**
  * Where a touch scroll that came to rest at `p` should glide to, or null to stay put. Pure.
  *

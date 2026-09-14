@@ -164,7 +164,9 @@ html.is-gated .content {
   bottom: calc(100svh - 100lvh);
   left: 0;
   height: calc(62svh + 100lvh - 100svh);
-  background: linear-gradient(to top, rgba(2, 4, 6, 0.82) 12%, rgba(2, 4, 6, 0.45) 46%, rgba(2, 4, 6, 0) 100%);
+  /* Darker since the moon rose to ~6°: its bright path on the water moved down behind the first About
+     line on a phone (3.12:1 at full moon). These stops measure 5.30:1 there (spec §17 S28). */
+  background: linear-gradient(to top, rgba(2, 4, 6, 0.9) 12%, rgba(2, 4, 6, 0.72) 50%, rgba(2, 4, 6, 0) 100%);
   pointer-events: none;
 }
 

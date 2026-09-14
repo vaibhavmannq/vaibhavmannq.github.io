@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { touchSnapTarget } from '../../src/scroll/touchSnap';
+import { easeInOutSine, glideDurationMs, touchSnapTarget } from '../../src/scroll/touchSnap';
+
+describe('the snap glide', () => {
+  it('takes longer for a longer trip, within 0.5 to 1.2 s', () => {
+    expect(glideDurationMs(0.1, 0.1)).toBe(500);
+    expect(glideDurationMs(0.098, 0.6)).toBeGreaterThan(glideDurationMs(0.4, 0.6));
+    expect(glideDurationMs(0.6, 0)).toBe(1200);
+  });
+
+  it('eases in and out between exactly 0 and 1', () => {
+    expect(easeInOutSine(0)).toBe(0);
+    expect(easeInOutSine(0.5)).toBeCloseTo(0.5, 10);
+    expect(easeInOutSine(1)).toBe(1);
+    expect(easeInOutSine(0.1)).toBeLessThan(0.1);
+  });
+});
 
 const SHOWN = 0.59;
 

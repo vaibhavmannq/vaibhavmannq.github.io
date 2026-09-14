@@ -1,5 +1,6 @@
 import {
   abs,
+  asin,
   atan,
   Break,
   cameraFar,
@@ -7,6 +8,7 @@ import {
   cameraPosition,
   cameraProjectionMatrixInverse,
   cameraWorldMatrix,
+  clamp,
   cos,
   dot,
   exp,
@@ -42,6 +44,8 @@ import {
 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { Mesh, MeshBasicNodeMaterial, PlaneGeometry } from 'three/webgpu';
+import { MOON_DIRECTION, MOON_RIGHT_AXIS, MOON_UP_AXIS } from './moonDirection';
+import { FIGURE_LINES, FIGURE_MAGNITUDES, FIGURE_STARS, MILKY_BAND_NORMAL, NEBULA_CENTRE, toSkyMap } from './nightSky';
 
 type F = Node<'float'>;
 type I = Node<'int'>;
@@ -76,20 +80,21 @@ export function createSea() {
   // The prototype used a left-handed camera; Three.js is right-handed. Mirroring X into
   // "sea space" lets every constant below stay identical to the prototype.
   const toSea = (v: V3) => vec3(v.x.negate(), v.y, v.z);
-  const MOON = vec3(0.148, 0.0691, 0.9866);
+  const MOON = vec3(MOON_DIRECTION[0], MOON_DIRECTION[1], MOON_DIRECTION[2]);
 
-  // Fixed local axes across the moon's disc, perpendicular to the (fixed) MOON direction.
-  // Derived once offline as normalize(cross(worldUp, MOON)) and normalize(cross(MOON, right)) —
-  // written as constants so the terminator below costs two dot()s, not two cross()+normalize()s
-  // per pixel. MOON_DISC_R is the angular radius (in the same dot-product units) where the
-  // disc's existing soft edge (smoothstep(0.9993, 0.99965, md) below) reaches 0, i.e.
-  // sqrt(1 - 0.9993^2) — the terminator is normalized to that same radius so the two edges agree.
-  const MOON_RIGHT = vec3(0.988935, 0, -0.14835);
-  const MOON_UP = vec3(-0.010251, 0.99761, -0.068333);
+  // Fixed local axes across the moon's disc, perpendicular to the (fixed) MOON direction. They are
+  // computed once in moonDirection.ts and baked in as constants, so the terminator below costs two
+  // dot()s, not two cross()+normalize()s per pixel. MOON_DISC_R is the angular radius (in the same
+  // dot-product units) where the disc's existing soft edge (smoothstep(0.9993, 0.99965, md) below)
+  // reaches 0, i.e. sqrt(1 - 0.9993^2) — the terminator is normalized to that same radius so the two
+  // edges agree.
+  const MOON_RIGHT = vec3(MOON_RIGHT_AXIS[0], MOON_RIGHT_AXIS[1], MOON_RIGHT_AXIS[2]);
+  const MOON_UP = vec3(MOON_UP_AXIS[0], MOON_UP_AXIS[1], MOON_UP_AXIS[2]);
   const MOON_DISC_R = 0.03741;
-  // The unlit limb isn't pure black (a stylised hint of earthshine), just far dimmer than the
-  // lit side (2.5x below) — this is a look-dev choice, not a physical one.
-  const MOON_DARK_SIDE = vec3(0.07, 0.07, 0.085);
+  // Earthshine: the unlit part of the disc is a faint ghost just above the sky behind it. It used to
+  // be a flat grey (0.07) added on top, which read as a grey disc (spec §14, night sky).
+  const EARTHSHINE = vec3(0.02, 0.024, 0.03);
+  const MILKY_BAND = vec3(MILKY_BAND_NORMAL[0], MILKY_BAND_NORMAL[1], MILKY_BAND_NORMAL[2]);
 
   // Pure (§17 S2): phase comes in as a parameter, never read from the uniform directly.
   // The lit region is the disc intersected with a half-plane whose boundary bows into an
@@ -184,55 +189,208 @@ export function createSea() {
     ],
   });
 
-  const sky = Fn(([rd, stars, time, phase, light]: [V3, F, F, F, F]) => {
+  // ---- Night sky (owner request, 2026-09-14; spec §17 S28) ----
+  // Every detail is tied to a world direction and the camera's view never turns (§17 S27), so the sky
+  // holds still on screen; stars only twinkle in place. It is the same at every tier (§5.6).
+
+  const fbm = Fn(([p]: [V2]) => {
+    const sum = float(0).toVar();
+    const q = vec2(p).toVar();
+    const amp = float(0.5).toVar();
+    Loop({ start: int(0), end: int(4), type: 'int', condition: '<' }, () => {
+      sum.addAssign(amp.mul(noise2(q)));
+      q.assign(q.mul(2.03).add(vec2(1.7, 9.2)));
+      amp.mulAssign(0.5);
+    });
+    return sum;
+  }).setLayout({ name: 'fbm', type: 'float', inputs: [{ name: 'p', type: 'vec2' }] });
+
+  // One layer of stars on a grid over the sky map: mostly faint, a few bright. A star is never drawn
+  // thinner than a pixel (pxCells is one pixel in grid cells), so it cannot shimmer at low render scales.
+  const starLayer = Fn(([sp, density, size, brightness, pxCells, time]: [V2, F, F, F, F, F]) => {
+    const cell = floor(sp);
+    const h = hash21(cell);
+    const offset = vec2(hash21(cell.add(5.3)), hash21(cell.add(9.1)))
+      .sub(0.5)
+      .mul(0.7);
+    const d = length(fract(sp).sub(0.5).sub(offset));
+    const r = max(size, pxCells.mul(0.8));
+    const core = exp(d.mul(d).div(r.mul(r)).negate()).mul(size.mul(size).div(r.mul(r)));
+    const magnitude = pow(hash21(cell.add(1.7)), 3)
+      .mul(0.85)
+      .add(0.15);
+    const twinkle = sin(time.mul(hash21(cell.add(3.3)).mul(2).add(0.8)).add(h.mul(80)))
+      .mul(0.2)
+      .add(0.8);
+    const tint = mix(vec3(0.72, 0.84, 1.0), vec3(1.0, 0.9, 0.76), hash21(cell.add(7.7)));
+    return tint.mul(step(h, density).mul(core).mul(magnitude).mul(brightness).mul(twinkle));
+  }).setLayout({
+    name: 'starLayer',
+    type: 'vec3',
+    inputs: [
+      { name: 'sp', type: 'vec2' },
+      { name: 'density', type: 'float' },
+      { name: 'size', type: 'float' },
+      { name: 'brightness', type: 'float' },
+      { name: 'pxCells', type: 'float' },
+      { name: 'time', type: 'float' },
+    ],
+  });
+
+  // A faint constellation line from a to b, with a small gap where it meets a star, as on a star chart.
+  const segmentLine = Fn(([pp, a, b, px]: [V2, V2, V2, F]) => {
+    const pa = pp.sub(a);
+    const ba = b.sub(a);
+    const h = clamp(dot(pa, ba).div(dot(ba, ba)), 0, 1);
+    const d = length(pa.sub(ba.mul(h)));
+    const gap = smoothstep(0.009, 0.016, min(length(pa), length(pp.sub(b))));
+    return smoothstep(float(0), px.mul(1.4), d).oneMinus().mul(gap);
+  }).setLayout({
+    name: 'segmentLine',
+    type: 'float',
+    inputs: [
+      { name: 'pp', type: 'vec2' },
+      { name: 'a', type: 'vec2' },
+      { name: 'b', type: 'vec2' },
+      { name: 'px', type: 'float' },
+    ],
+  });
+
+  const figureStar = Fn(([pp, s, px, magnitude]: [V2, V2, F, F]) => {
+    const d = length(pp.sub(s));
+    const r = max(float(0.0022), px.mul(1.1));
+    return exp(d.mul(d).div(r.mul(r)).negate()).mul(magnitude);
+  }).setLayout({
+    name: 'figureStar',
+    type: 'float',
+    inputs: [
+      { name: 'pp', type: 'vec2' },
+      { name: 's', type: 'vec2' },
+      { name: 'px', type: 'float' },
+      { name: 'magnitude', type: 'float' },
+    ],
+  });
+
+  const nightSky = Fn(([rd, time, phase, pxAngle]: [V3, F, F, F]) => {
+    const c = vec3(0).toVar();
+    const azimuth = atan(rd.x, rd.z);
+    const elevation = asin(clamp(rd.y, -1, 1));
+    const p = vec2(azimuth, elevation).toVar();
+    const sp = vec2(azimuth.mul(cos(elevation)), elevation).toVar();
+    const md = max(dot(rd, MOON), 0);
+    // Darker nights show more: 0 at full moon, 1 at new moon.
+    const dark = cos(phase.mul(Math.PI * 2))
+      .mul(0.5)
+      .add(0.5);
+    const haze = smoothstep(0.01, 0.12, elevation);
+    const nearMoon = smoothstep(0.97, 0.9985, md).mul(0.9).oneMinus();
+
+    // Milky band: a soft great circle left of the moon, with dark dust lanes.
+    const bandDistance = dot(rd, MILKY_BAND);
+    const band = exp(bandDistance.mul(bandDistance).div(0.01).negate()).toVar();
+    If(band.greaterThan(0.01), () => {
+      const body = fbm(p.mul(7).add(2)).mul(0.5).add(0.5);
+      const dust = smoothstep(0.48, 0.72, fbm(p.mul(16).add(vec2(3.1, 7.4))));
+      const bandGain = band
+        .mul(body)
+        .mul(dust.mul(0.7).oneMinus())
+        .mul(haze)
+        .mul(mix(float(0.6), float(1.3), dark));
+      c.addAssign(vec3(0.03, 0.045, 0.06).mul(bandGain));
+    });
+
+    // Nebula: a faint, domain-warped cloud above and left of the moon.
+    const q = p.sub(vec2(NEBULA_CENTRE[0], NEBULA_CENTRE[1])).mul(vec2(1, 1.25));
+    const falloff = exp(dot(q, q).div(0.028).negate()).toVar();
+    If(falloff.greaterThan(0.02), () => {
+      const warp = vec2(fbm(p.mul(6)), fbm(p.mul(6).add(5.2)));
+      const cloud = fbm(p.mul(5).add(warp.mul(1.6)));
+      const tint = mix(
+        vec3(0.02, 0.075, 0.085),
+        vec3(0.07, 0.035, 0.09),
+        smoothstep(0.35, 0.75, fbm(p.mul(3).add(11))),
+      );
+      c.addAssign(
+        tint.mul(
+          falloff
+            .mul(smoothstep(0.38, 0.9, cloud))
+            .mul(haze)
+            .mul(mix(float(0.55), float(1.25), dark)),
+        ),
+      );
+    });
+
+    // Three layers of stars; the faintest layer thickens inside the band.
+    const starGain = mix(float(0.65), float(1.3), dark).mul(haze).mul(nearMoon);
+    const stars = starLayer(sp.mul(70), float(0.06), float(0.07), float(2.0), pxAngle.mul(70), time)
+      .add(starLayer(sp.mul(160).add(13), float(0.11), float(0.06), float(0.85), pxAngle.mul(160), time))
+      .add(starLayer(sp.mul(360).add(41), band.mul(0.4).add(0.22), float(0.05), float(0.4), pxAngle.mul(360), time));
+    c.addAssign(stars.mul(starGain));
+
+    // Original constellations, kept well below the moon's brightness (spec §3.4 rule 1).
+    If(elevation.greaterThan(0.05), () => {
+      const lines = float(0).toVar();
+      for (const [from, to] of FIGURE_LINES) {
+        const a = toSkyMap(FIGURE_STARS[from] ?? [0, 0]);
+        const b = toSkyMap(FIGURE_STARS[to] ?? [0, 0]);
+        lines.assign(max(lines, segmentLine(sp, vec2(a[0], a[1]), vec2(b[0], b[1]), pxAngle)));
+      }
+      const points = float(0).toVar();
+      FIGURE_STARS.forEach((star, i) => {
+        const s = toSkyMap(star);
+        points.addAssign(figureStar(sp, vec2(s[0], s[1]), pxAngle, float(FIGURE_MAGNITUDES[i] ?? 0.7)));
+      });
+      const figureGain = haze.mul(mix(float(0.7), float(1.1), dark));
+      c.addAssign(
+        vec3(0.55, 0.82, 0.86)
+          .mul(lines.mul(0.045))
+          .add(vec3(0.9, 0.95, 1.0).mul(points.mul(0.8)))
+          .mul(figureGain),
+      );
+    });
+    return c;
+  }).setLayout({
+    name: 'nightSky',
+    type: 'vec3',
+    inputs: [
+      { name: 'rd', type: 'vec3' },
+      { name: 'time', type: 'float' },
+      { name: 'phase', type: 'float' },
+      { name: 'pxAngle', type: 'float' },
+    ],
+  });
+
+  const sky = Fn(([rd, detail, time, phase, light, pxAngle]: [V3, F, F, F, F, F]) => {
     const y = max(rd.y, 0);
     const facing = dot(normalize(rd.xz.add(1e-4)), normalize(MOON.xz));
     const hor = mix(vec3(0.004, 0.007, 0.01), vec3(0.035, 0.06, 0.07), smoothstep(-0.7, 1.0, facing));
     const c = mix(hor, vec3(0.0005, 0.001, 0.003), pow(y, 0.3)).toVar();
     const md = max(dot(rd, MOON), 0);
-    const discShape = smoothstep(0.9993, 0.99965, md);
-    const lit = moonLit(rd, phase);
-    // The moon disc's own shape/brightness follows the terminator, not `light` — the lit
-    // limb reflects at full brightness regardless of phase; only the *amount* of disc that's
-    // lit changes (spec §5.4b: phase drives the lit fraction of the disc separately from the
-    // moonlight term).
-    c.addAssign(mix(MOON_DARK_SIDE, vec3(1.0, 0.97, 0.88).mul(2.5), lit).mul(discShape));
     // Sky glow near the moon: scales with moonLight (spec §5.4b Step 5), not with the stars.
     c.addAssign(vec3(0.35, 0.6, 0.66).mul(pow(md, 40).mul(0.3)).mul(light));
     c.addAssign(vec3(0.1, 0.25, 0.3).mul(pow(md, 6).mul(0.05)).mul(light));
-    const sp = vec2(atan(rd.x, rd.z), rd.y).mul(90);
-    const cell = floor(sp);
-    const st = hash21(cell);
-    const offset = vec2(hash21(cell.add(5.3)), hash21(cell.add(9.1)))
-      .sub(0.5)
-      .mul(0.6);
-    const sd = length(fract(sp).sub(0.5).sub(offset));
-    const twinkle = sin(time.mul(1.7).add(st.mul(90)))
-      .mul(0.5)
-      .add(0.5);
-    const starAmount = stars
-      .mul(step(0.985, st))
-      .mul(fall(0.0, 0.09, sd))
-      .mul(smoothstep(0.04, 0.35, rd.y))
-      .mul(twinkle)
-      .mul(1.5);
-    c.addAssign(vec3(0.7, 0.9, 1.0).mul(starAmount));
-    const band = noise2(vec2(rd.x.mul(2.5).add(time.mul(0.015)), rd.y.mul(7).sub(time.mul(0.01))));
-    const bandAmount = pow(band, 5)
-      .mul(smoothstep(0.06, 0.35, y))
-      .mul(fall(0.35, 0.85, y))
-      .mul(0.7);
-    c.addAssign(vec3(0.04, 0.22, 0.25).mul(bandAmount));
+    // Reflections and fog pass detail 0: they show only the glow, and the GPU skips the sky's detail.
+    If(detail.greaterThan(0.5), () => {
+      c.addAssign(nightSky(rd, time, phase, pxAngle));
+    });
+    // The moon disc covers whatever is behind it. Its lit part follows the terminator, not `light`:
+    // the lit limb is always full brightness and only the lit *amount* changes with phase (§5.4b).
+    const discShape = smoothstep(0.9993, 0.99965, md);
+    const lit = moonLit(rd, phase);
+    const unlitSide = c.mul(0.85).add(EARTHSHINE);
+    const litSide = vec3(1.0, 0.97, 0.88).mul(2.5).add(c.mul(0.25));
+    c.assign(mix(c, mix(unlitSide, litSide, lit), discShape));
     return c;
   }).setLayout({
     name: 'sky',
     type: 'vec3',
     inputs: [
       { name: 'rd', type: 'vec3' },
-      { name: 'stars', type: 'float' },
+      { name: 'detail', type: 'float' },
       { name: 'time', type: 'float' },
       { name: 'phase', type: 'float' },
       { name: 'light', type: 'float' },
+      { name: 'pxAngle', type: 'float' },
     ],
   });
 
@@ -298,6 +456,12 @@ export function createSea() {
   const ndc = vec2(screenUV.x.mul(2).sub(1), screenUV.y.mul(2).sub(1).negate());
   const viewPos = cameraProjectionMatrixInverse.mul(vec4(ndc, 0.5, 1));
   const dirView = normalize(viewPos.xyz.div(viewPos.w)).toVar('seaDirView');
+  // Angle covered by one pixel, so stars are never drawn thinner than a pixel. Measured against the
+  // next pixel's ray here, because derivatives (fwidth) are not allowed inside the branch that draws
+  // the sky: that branch depends on the ray march.
+  const ndcNext = vec2(ndc.x, ndc.y.add(float(2).div(screenSize.y)));
+  const viewPosNext = cameraProjectionMatrixInverse.mul(vec4(ndcNext, 0.5, 1));
+  const pxAngle = length(normalize(viewPosNext.xyz.div(viewPosNext.w)).sub(dirView)).toVar('seaPxAngle');
   const dirWorld = normalize(cameraWorldMatrix.mul(vec4(dirView, 0)).xyz);
   const ro = toSea(cameraPosition).toVar('seaRo');
   const rd = toSea(dirWorld).toVar('seaRd');
@@ -306,7 +470,7 @@ export function createSea() {
   const color = Fn(() => {
     const col = vec3(0).toVar();
     If(tHit.lessThan(0), () => {
-      col.assign(sky(rd, float(1), time, moonPhaseVar, moonLightVar));
+      col.assign(sky(rd, float(1), time, moonPhaseVar, moonLightVar, pxAngle));
     }).Else(() => {
       const detail = int(WAVE_ITERATIONS);
       const p = ro.add(rd.mul(tHit)).toVar();
@@ -326,7 +490,7 @@ export function createSea() {
       const fres = pow(max(dot(n, rd.negate()), 0).oneMinus(), 5)
         .mul(0.97)
         .add(0.03);
-      const skyR = sky(R, float(0), time, moonPhaseVar, moonLightVar).toVar();
+      const skyR = sky(R, float(0), time, moonPhaseVar, moonLightVar, pxAngle).toVar();
 
       // Water: deep colour + faint crest scatter, mirrored sky, moon glitter, shoreline foam
       const crest = smoothstep(-0.05, 0.35, p.y);
@@ -364,7 +528,7 @@ export function createSea() {
       sand.addAssign(vec3(0.75, 0.95, 1.0).mul(glint).mul(moonLightVar));
 
       col.assign(select(isWater, water, sand));
-      const fogColor = sky(normalize(vec3(rd.x, 0.015, rd.z)), float(0), time, moonPhaseVar, moonLightVar);
+      const fogColor = sky(normalize(vec3(rd.x, 0.015, rd.z)), float(0), time, moonPhaseVar, moonLightVar, pxAngle);
       col.assign(mix(col, fogColor, exp(tHit.mul(-0.022)).oneMinus()));
     });
 

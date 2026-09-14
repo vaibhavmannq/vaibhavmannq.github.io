@@ -14,6 +14,7 @@ import {
   SEA_FOV,
   toThreeCamera,
 } from '../../src/regions/moonsink/cameraPath';
+import { MOON_DIRECTION } from '../../src/regions/moonsink/moonDirection';
 
 const first = MOONSINK_PATH[0];
 const last = MOONSINK_PATH[MOONSINK_PATH.length - 1];
@@ -120,7 +121,7 @@ describe('the moon stays in frame for the whole journey', () => {
   // Text is on screen from the first frame (the intro), not only from MOONSINK_ABOUT_FROM, so the
   // whole path is checked. The checks below compare angles against the frame's half-angles. That
   // is exact on the axes and very close for the small offsets used here.
-  const MOON = { x: 0.148, y: 0.0691, z: 0.9866 };
+  const MOON = { x: MOON_DIRECTION[0], y: MOON_DIRECTION[1], z: MOON_DIRECTION[2] };
   const moonAzimuth = Math.atan2(MOON.x, MOON.z);
   const moonElevation = Math.atan2(MOON.y, Math.hypot(MOON.x, MOON.z));
 
