@@ -47,11 +47,13 @@ describe('crossfadeOpacity', () => {
     expect(backwardOut).toEqual([...forwardOut].reverse());
   });
 
-  it('reduced motion is a hard switch at the band midpoint, never a gradient', () => {
-    expect(crossfadeOpacity('outgoing', 0.49, true)).toBe(1);
-    expect(crossfadeOpacity('incoming', 0.49, true)).toBe(0);
-    expect(crossfadeOpacity('outgoing', 0.5, true)).toBe(0);
-    expect(crossfadeOpacity('incoming', 0.5, true)).toBe(1);
+  it('reduced motion is a hard switch at the next anchor, never a gradient', () => {
+    expect(crossfadeOpacity('outgoing', 0.5, true)).toBe(1);
+    expect(crossfadeOpacity('incoming', 0.5, true)).toBe(0);
+    expect(crossfadeOpacity('outgoing', 0.99, true)).toBe(1);
+    expect(crossfadeOpacity('incoming', 0.99, true)).toBe(0);
+    expect(crossfadeOpacity('outgoing', 1, true)).toBe(0);
+    expect(crossfadeOpacity('incoming', 1, true)).toBe(1);
     for (const mix of [0, 0.1, 0.3, 0.49, 0.5, 0.7, 1]) {
       const value = crossfadeOpacity('outgoing', mix, true);
       expect(value === 0 || value === 1).toBe(true);
