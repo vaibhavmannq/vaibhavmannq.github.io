@@ -4,7 +4,8 @@
   --ink-dim: rgba(230, 238, 240, 0.78);
   --glow: #9fe6ee;
   --night: #020406;
-  --font-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --font-display: Gelasio, Georgia, "Times New Roman", serif;
+  --font-accent: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
   --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
 }
 
