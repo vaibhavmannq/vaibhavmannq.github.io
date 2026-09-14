@@ -1,7 +1,7 @@
 import { createHud } from '../dev/hud';
 import { journey } from '../journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
-import type { JourneyState } from '../journey/types';
+import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
 import { createMotionToggle } from '../overlay/motionToggle';
 import { createSections } from '../overlay/sections';
@@ -31,7 +31,9 @@ export async function boot(): Promise<void> {
 
   // ---- HTML layer: works even if 3D never starts ----
   const gate = createGate(byId('gate'), byId<HTMLButtonElement>('gate-enter'), byId('gate-status'));
-  const sections = createSections(byId('content'));
+  // Phase 1 has one region, so its anchors are the page's sections.
+  const anchors = (journey[0] as RegionSegment).sections;
+  const sections = createSections(byId('content'), anchors);
   createMotionToggle(byId<HTMLButtonElement>('motion-toggle'), (reduced) => {
     ctx.reducedMotion = reduced;
   });
@@ -40,7 +42,7 @@ export async function boot(): Promise<void> {
 
   let p = params.p ?? 0;
   let state: JourneyState = resolve(p, journey);
-  sections.show(state.section, state.sectionMix, ctx.reducedMotion);
+  sections.show(state.a.local, ctx.reducedMotion);
 
   gate.onEnter(() => {
     scroll.setLocked(false);
@@ -73,7 +75,7 @@ export async function boot(): Promise<void> {
       scroll.raf(nowMs);
       p = params.p ?? scroll.progress();
       state = resolve(p, journey);
-      sections.show(state.section, state.sectionMix, ctx.reducedMotion);
+      sections.show(state.a.local, ctx.reducedMotion);
       window.requestAnimationFrame(step);
     };
     window.requestAnimationFrame(step);
@@ -173,7 +175,7 @@ export async function boot(): Promise<void> {
     const timeSeconds = params.time ?? nowMs / 1000;
 
     region.update(state.a.local, timeSeconds, dtSeconds);
-    sections.show(state.section, state.sectionMix, ctx.reducedMotion);
+    sections.show(state.a.local, ctx.reducedMotion);
     moonlit.render();
     frames += 1;
 

@@ -1,85 +1,89 @@
 import { describe, expect, it } from 'vitest';
-import { CROSSFADE_BAND, crossfadeOffset, crossfadeOpacity } from '../../src/overlay/sections';
+import type { SectionAnchor } from '../../src/journey/types';
+import { HANDOVER_FADE, HANDOVER_GAP, sectionOffset, sectionOpacity } from '../../src/overlay/sections';
 
-describe('crossfadeOpacity', () => {
-  it('is fully current and fully hidden-next before the crossfade band starts', () => {
-    expect(crossfadeOpacity('outgoing', 0, false)).toBe(1);
-    expect(crossfadeOpacity('incoming', 0, false)).toBe(0);
-    // still true right up to the edge of the band
-    expect(crossfadeOpacity('outgoing', 1 - CROSSFADE_BAND, false)).toBe(1);
-    expect(crossfadeOpacity('incoming', 1 - CROSSFADE_BAND, false)).toBe(0);
+const ABOUT = 0.45;
+const anchors: readonly SectionAnchor[] = [
+  { id: 'intro', from: 0 },
+  { id: 'about', from: ABOUT },
+];
+const outEnd = ABOUT - HANDOVER_GAP / 2;
+const outStart = outEnd - HANDOVER_FADE;
+const inStart = ABOUT + HANDOVER_GAP / 2;
+const inEnd = inStart + HANDOVER_FADE;
+const everyPosition = Array.from({ length: 1001 }, (_, i) => i / 1000);
+
+describe('sectionOpacity', () => {
+  it('shows the intro fully until its fade begins, and About fully once its fade ends', () => {
+    expect(sectionOpacity(0, anchors, 0, false)).toBe(1);
+    expect(sectionOpacity(outStart, anchors, 0, false)).toBe(1);
+    expect(sectionOpacity(inEnd, anchors, 1, false)).toBe(1);
+    expect(sectionOpacity(1, anchors, 1, false)).toBe(1);
   });
 
-  it('reaches the handover exactly at mix 1: current gone, next fully in', () => {
-    expect(crossfadeOpacity('outgoing', 1, false)).toBe(0);
-    expect(crossfadeOpacity('incoming', 1, false)).toBe(1);
-  });
-
-  it('overlaps inside the band: both strictly between 0 and 1, and they sum to 1', () => {
-    const mix = 1 - CROSSFADE_BAND / 2; // dead centre of the band
-    const outgoing = crossfadeOpacity('outgoing', mix, false);
-    const incoming = crossfadeOpacity('incoming', mix, false);
-    expect(outgoing).toBeGreaterThan(0);
-    expect(outgoing).toBeLessThan(1);
-    expect(incoming).toBeGreaterThan(0);
-    expect(incoming).toBeLessThan(1);
-    expect(outgoing + incoming).toBeCloseTo(1, 10);
-  });
-
-  it('is monotonic across the band (no flicker)', () => {
-    const samples = [0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1];
-    let previous = -Infinity;
-    for (const mix of samples) {
-      const value = crossfadeOpacity('incoming', mix, false);
-      expect(value).toBeGreaterThanOrEqual(previous);
-      previous = value;
+  it('never shows two sections at the same scroll position', () => {
+    for (const local of everyPosition) {
+      const intro = sectionOpacity(local, anchors, 0, false);
+      const about = sectionOpacity(local, anchors, 1, false);
+      expect(Math.min(intro, about), `local ${local}`).toBe(0);
     }
   });
 
-  it('scrolling backwards produces exactly the mirrored values (pure function, no hysteresis)', () => {
-    const steps = [0.7, 0.8, 0.9, 1];
-    const forward = steps.map((mix) => crossfadeOpacity('incoming', mix, false));
-    const backward = [...steps].reverse().map((mix) => crossfadeOpacity('incoming', mix, false));
-    expect(backward).toEqual([...forward].reverse());
-    // and the outgoing side mirrors too
-    const forwardOut = steps.map((mix) => crossfadeOpacity('outgoing', mix, false));
-    const backwardOut = [...steps].reverse().map((mix) => crossfadeOpacity('outgoing', mix, false));
-    expect(backwardOut).toEqual([...forwardOut].reverse());
+  it('leaves a quiet gap around the anchor where only the scene shows', () => {
+    for (const local of [outEnd, ABOUT, inStart]) {
+      expect(sectionOpacity(local, anchors, 0, false)).toBe(0);
+      expect(sectionOpacity(local, anchors, 1, false)).toBe(0);
+    }
   });
 
-  it('reduced motion is a hard switch at the next anchor, never a gradient', () => {
-    expect(crossfadeOpacity('outgoing', 0.5, true)).toBe(1);
-    expect(crossfadeOpacity('incoming', 0.5, true)).toBe(0);
-    expect(crossfadeOpacity('outgoing', 0.99, true)).toBe(1);
-    expect(crossfadeOpacity('incoming', 0.99, true)).toBe(0);
-    expect(crossfadeOpacity('outgoing', 1, true)).toBe(0);
-    expect(crossfadeOpacity('incoming', 1, true)).toBe(1);
-    for (const mix of [0, 0.1, 0.3, 0.49, 0.5, 0.7, 1]) {
-      const value = crossfadeOpacity('outgoing', mix, true);
+  it('is half faded exactly midway through each fade', () => {
+    expect(sectionOpacity((outStart + outEnd) / 2, anchors, 0, false)).toBeCloseTo(0.5, 10);
+    expect(sectionOpacity((inStart + inEnd) / 2, anchors, 1, false)).toBeCloseTo(0.5, 10);
+  });
+
+  it('runs backwards exactly: the value depends only on position, not on the direction of travel', () => {
+    const forward = everyPosition.map((local) => sectionOpacity(local, anchors, 0, false));
+    const backward = [...everyPosition]
+      .reverse()
+      .map((local) => sectionOpacity(local, anchors, 0, false))
+      .reverse();
+    expect(backward).toEqual(forward);
+  });
+
+  it('under reduced motion switches exactly at the anchor, with no in-between values', () => {
+    expect(sectionOpacity(ABOUT - 1e-6, anchors, 0, true)).toBe(1);
+    expect(sectionOpacity(ABOUT - 1e-6, anchors, 1, true)).toBe(0);
+    expect(sectionOpacity(ABOUT, anchors, 0, true)).toBe(0);
+    expect(sectionOpacity(ABOUT, anchors, 1, true)).toBe(1);
+    for (const local of everyPosition) {
+      const value = sectionOpacity(local, anchors, 0, true);
       expect(value === 0 || value === 1).toBe(true);
     }
   });
+
+  it('would reject the old overlapping crossfade (proves the no-overlap test bites)', () => {
+    // The Phase 1R handover at local 0.4: t = smoothstep(0.7, 1, local / ABOUT); intro = 1 − t, About = t.
+    const smooth = (x: number) => {
+      const t = Math.min(1, Math.max(0, x));
+      return t * t * (3 - 2 * t);
+    };
+    const t = smooth((0.4 / ABOUT - 0.7) / 0.3);
+    expect(Math.min(1 - t, t)).toBeGreaterThan(0);
+  });
 });
 
-describe('crossfadeOffset', () => {
-  it('is at rest (0) before the band starts, and settles back to rest once the handover completes', () => {
-    // outgoing hasn't started exiting yet
-    expect(crossfadeOffset('outgoing', 0, false)).toBe(0);
-    expect(crossfadeOffset('outgoing', 1 - CROSSFADE_BAND, false)).toBe(0);
-    // incoming has fully arrived and settled back to no offset
-    expect(crossfadeOffset('incoming', 1, false)).toBe(0);
+describe('sectionOffset', () => {
+  it('drifts the outgoing text up and brings the incoming text up from below', () => {
+    expect(sectionOffset(outStart, anchors, 0, false)).toBe(0);
+    expect(sectionOffset(outEnd, anchors, 0, false)).toBe(-12);
+    expect(sectionOffset(inStart, anchors, 1, false)).toBe(16);
+    expect(sectionOffset(inEnd, anchors, 1, false)).toBe(0);
   });
 
-  it('the incoming section starts displaced and settles to 0 as it becomes current', () => {
-    const early = Math.abs(crossfadeOffset('incoming', 1 - CROSSFADE_BAND + 0.001, false));
-    const late = Math.abs(crossfadeOffset('incoming', 1 - CROSSFADE_BAND / 4, false));
-    expect(early).toBeGreaterThan(late);
-  });
-
-  it('reduced motion drops the offset entirely, at every point in the band', () => {
-    for (const mix of [0, 0.3, 0.7, 0.85, 1]) {
-      expect(crossfadeOffset('outgoing', mix, true)).toBe(0);
-      expect(crossfadeOffset('incoming', mix, true)).toBe(0);
+  it('never offsets under reduced motion', () => {
+    for (const local of everyPosition) {
+      expect(sectionOffset(local, anchors, 0, true)).toBe(0);
+      expect(sectionOffset(local, anchors, 1, true)).toBe(0);
     }
   });
 });
