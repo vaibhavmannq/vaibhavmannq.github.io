@@ -8,6 +8,7 @@ describe('readDebugParams', () => {
       p: undefined,
       time: undefined,
       moon: undefined,
+      hold: undefined,
       hud: false,
       gui: false,
       forceWebGL: false,
@@ -35,6 +36,13 @@ describe('readDebugParams', () => {
     expect(readDebugParams('?moon=-0.4').moon).toBe(0);
     expect(readDebugParams('?moon=abc').moon).toBeUndefined();
     expect(readDebugParams('').moon).toBeUndefined();
+  });
+
+  it('reads a hold in milliseconds and ignores negative or junk values', () => {
+    expect(readDebugParams('?hold=600000').hold).toBe(600000);
+    expect(readDebugParams('?hold=0').hold).toBe(0);
+    expect(readDebugParams('?hold=-5').hold).toBeUndefined();
+    expect(readDebugParams('?hold=abc').hold).toBeUndefined();
   });
 
   it('treats presence-only flags as true', () => {

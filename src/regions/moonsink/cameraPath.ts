@@ -135,7 +135,7 @@ export function followPose(
   return current;
 }
 
-/** Behind the title screen: a slow bob on the open sea (perfectly still with reduced motion).
+/** Behind the opening: a slow bob on the open sea (perfectly still with reduced motion).
  *  Returns a scratch object — see the note above poseAtScratch. */
 export function idlePose(timeSeconds: number, reducedMotion: boolean): CameraPose {
   const start = poseAt(MOONSINK_PATH, 0);
