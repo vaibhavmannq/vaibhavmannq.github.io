@@ -14,3 +14,99 @@ export function collectConsoleErrors(page: Page): string[] {
 export async function waitForMoonlit(page: Page): Promise<void> {
   await page.waitForFunction(() => window.__moonlit !== undefined, undefined, { timeout: 90_000 });
 }
+
+export interface LineContrast {
+  text: string;
+  /** WCAG AA: 4.5:1 for normal text, 3:1 for large text. */
+  required: number;
+  ratio: number;
+}
+
+interface LineBox {
+  text: string;
+  rgba: [number, number, number, number];
+  large: boolean;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Contrast of every visible text line against the pixels actually rendered behind it.
+ *
+ * How it works: read each line's box and its text colour. Then hide the glyphs (the scene, the
+ * floor gradient and the text shadows all stay) and take a screenshot. Each line's background is
+ * the 95th-percentile brightest pixel in its box: that ignores a few single-pixel glints, but not
+ * a bright moon path. Leaves the page with its text hidden, so measure last.
+ */
+export async function measureTextContrast(page: Page): Promise<LineContrast[]> {
+  const lines = await page.evaluate(() => {
+    const out: LineBox[] = [];
+    const selector = '.section.is-active :is(h1, h2, p):not([aria-hidden="true"])';
+    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+      const style = getComputedStyle(element);
+      const size = Number.parseFloat(style.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+      const [r = 0, g = 0, b = 0, a = 1] = (style.color.match(/[\d.]+/g) ?? []).map(Number);
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      for (const box of range.getClientRects()) {
+        if (box.width < 4 || box.height < 4) continue;
+        const text = (element.textContent ?? '').trim().slice(0, 40);
+        out.push({ text, rgba: [r, g, b, a], large, x: box.left, y: box.top, w: box.width, h: box.height });
+      }
+    }
+    return out;
+  });
+
+  await page.addStyleTag({
+    content: '.section :is(h1, h2, p) { color: transparent !important } :focus-visible { outline: none !important }',
+  });
+  const screenshot = await page.screenshot({ animations: 'disabled' });
+
+  // Decode the PNG in a blank page with a 2D canvas, so no image library is needed.
+  const decoder = await page.context().newPage();
+  try {
+    return await decoder.evaluate(
+      async ({ base64, boxes }) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${base64}`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('2D canvas unavailable');
+        context.drawImage(image, 0, 0);
+
+        const linear = (value: number) => {
+          const c = value / 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        const luminance = (p: number[]) =>
+          0.2126 * linear(p[0] ?? 0) + 0.7152 * linear(p[1] ?? 0) + 0.0722 * linear(p[2] ?? 0);
+
+        return boxes.map((box) => {
+          const width = Math.max(1, Math.floor(box.w));
+          const height = Math.max(1, Math.floor(box.h));
+          const data = context.getImageData(Math.floor(box.x), Math.floor(box.y), width, height).data;
+          const pixels: number[][] = [];
+          for (let i = 0; i < data.length; i += 4) pixels.push([data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0]);
+          pixels.sort((p, q) => luminance(p) - luminance(q));
+          const background = pixels[Math.floor(0.95 * (pixels.length - 1))] ?? [0, 0, 0];
+
+          // A translucent text colour is blended over what is behind it, as the browser does.
+          const [r, g, b, a] = box.rgba;
+          const foreground = [r, g, b].map((channel, i) => channel * a + (background[i] ?? 0) * (1 - a));
+          const lighter = Math.max(luminance(foreground), luminance(background));
+          const darker = Math.min(luminance(foreground), luminance(background));
+          return { text: box.text, required: box.large ? 3 : 4.5, ratio: (lighter + 0.05) / (darker + 0.05) };
+        });
+      },
+      { base64: screenshot.toString('base64'), boxes: lines },
+    );
+  } finally {
+    await decoder.close();
+  }
+}

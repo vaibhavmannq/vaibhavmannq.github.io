@@ -348,9 +348,14 @@ git commit -m "fix: keep the moonlit water in frame through the About section"
 
 Assert that at a scroll position inside the crossfade band **both** sections have an opacity strictly between 0 and 1, and that scrolling back reverses it. The old test asserted a discrete switch and will now be wrong.
 
-- [ ] **Step 2: Accessibility at the darkest moon**
+- [ ] **Step 2: Text contrast over the brightest moon**
 
-Add an axe run at `?moon=0&stills` — the floor exists precisely so this passes. Keep the existing cases.
+*Corrected 2026-09-14, see spec §17 S23.* This step first said to add an axe run at `?moon=0&stills`.
+That checks nothing: stills mode has no moon, and axe cannot see WebGL pixels. It also had the
+direction backwards. The text is light, so the **full** moon is the worst case. Instead, add
+`measureTextContrast` to `tests/e2e/helpers.ts` and a Chromium-only test that measures every text
+line against the rendered pixels behind it on a phone at `?p=0.9&moon=0.5`, with reduced motion so
+the camera sits exactly on its About viewpoint. Keep the existing axe cases.
 
 - [ ] **Step 3: Note the supersession**
 
