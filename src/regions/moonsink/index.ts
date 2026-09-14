@@ -5,6 +5,7 @@ import type { Region, RegionContext } from '../region';
 import {
   approachPose,
   type CameraPose,
+  followPose,
   fovForAspect,
   idlePose,
   MOONSINK_PATH,
@@ -77,7 +78,11 @@ export function createMoonsink(ctx: RegionContext, moonOverride?: number): Moons
         current.z = target.z;
         current.yaw = target.yaw;
         current.pitch = target.pitch;
+      } else if (entered) {
+        // The journey camera moves with the scroll (journey-flow design §5.2).
+        followPose(current, target, dtSeconds);
       } else {
+        // The idle bob behind the opening keeps its gentle, capped easing.
         approachPose(current, target, dtSeconds);
       }
       applyPose(current);

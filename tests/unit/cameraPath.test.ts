@@ -3,6 +3,8 @@ import { MOONSINK_ABOUT_FROM } from '../../src/journey/journey.config';
 import {
   approachPose,
   type CameraKey,
+  FOLLOW_TIME_CONSTANT_MS,
+  followPose,
   fovForAspect,
   idlePose,
   MAX_YAW_SPEED,
@@ -34,9 +36,13 @@ describe('poseAt', () => {
   });
 
   it('eases halfway between two keys', () => {
-    const pose = poseAt(MOONSINK_PATH, 0.14);
+    const pose = poseAt(MOONSINK_PATH, 0.125);
     expect(pose.x).toBeCloseTo(-1, 10);
     expect(pose.yaw).toBeCloseTo(-0.04, 10);
+  });
+
+  it('spaces the keyframes evenly so each stretch gets the same scroll distance', () => {
+    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([0, 0.25, 0.5, 0.75, 1]);
   });
 
   it('travels from the open sea toward the shore without ever backing up', () => {
@@ -173,6 +179,34 @@ describe('approachPose', () => {
     const current = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
     const target = { x: 0, y: 0, z: 0, yaw: 3, pitch: 0 };
     expect(approachPose(current, target, 0.1).yaw).toBeCloseTo(MAX_YAW_SPEED * 0.1, 10);
+  });
+});
+
+describe('followPose', () => {
+  it('covers 1 − 1/e of the distance after one time constant', () => {
+    const current = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
+    const target = { x: 10, y: 4, z: -10, yaw: 0.5, pitch: -0.2 };
+    followPose(current, target, FOLLOW_TIME_CONSTANT_MS / 1000);
+    const k = 1 - Math.exp(-1);
+    expect(current.x).toBeCloseTo(10 * k, 10);
+    expect(current.y).toBeCloseTo(4 * k, 10);
+    expect(current.z).toBeCloseTo(-10 * k, 10);
+    expect(current.yaw).toBeCloseTo(0.5 * k, 10);
+    expect(current.pitch).toBeCloseTo(-0.2 * k, 10);
+  });
+
+  it('is within 1% of the target after five time constants, so the camera does not trail the finger', () => {
+    const current = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
+    const target = { x: 10, y: 0, z: 0, yaw: 0, pitch: 0 };
+    const frame = 1 / 60;
+    for (let t = 0; t < (5 * FOLLOW_TIME_CONSTANT_MS) / 1000; t += frame) followPose(current, target, frame);
+    expect(Math.abs(10 - current.x)).toBeLessThan(0.1);
+  });
+
+  it('has no turn-speed cap, unlike approachPose', () => {
+    const current = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
+    const target = { x: 0, y: 0, z: 0, yaw: 3, pitch: 0 };
+    expect(followPose(current, target, 0.1).yaw).toBeGreaterThan(MAX_YAW_SPEED * 0.1);
   });
 });
 

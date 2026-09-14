@@ -36,9 +36,9 @@ export interface CameraKey extends CameraPose {
 // behind the scroll. The properties are pinned in tests/unit/cameraPath.test.ts.
 export const MOONSINK_PATH: readonly CameraKey[] = [
   { at: 0, x: 0, y: 3.2, z: 34, yaw: 0, pitch: -0.06 },
-  { at: 0.28, x: -2, y: 6, z: 26, yaw: -0.08, pitch: -0.17 },
-  { at: 0.55, x: 1, y: 1.8, z: 8, yaw: 0.02, pitch: -0.1 },
-  { at: 0.78, x: 2.5, y: 1.55, z: -1.8, yaw: -0.05, pitch: -0.08 },
+  { at: 0.25, x: -2, y: 6, z: 26, yaw: -0.08, pitch: -0.17 },
+  { at: 0.5, x: 1, y: 1.8, z: 8, yaw: 0.02, pitch: -0.1 },
+  { at: 0.75, x: 2.5, y: 1.55, z: -1.8, yaw: -0.05, pitch: -0.08 },
   { at: 1, x: 0, y: 1.45, z: -5.5, yaw: -0.03, pitch: -0.11 },
 ];
 
@@ -89,7 +89,7 @@ export function poseAt(path: readonly CameraKey[], s: number): CameraPose {
 }
 
 /**
- * Smoothly follow a moving target, with turning speed capped for comfort. Mutates and returns
+ * The idle bob behind the opening: follow a slowly moving target, with turning speed capped for comfort. Mutates and returns
  * `current` in place instead of allocating a new pose — the caller already owns `current` as its
  * persistent camera state (moonsink/index.ts), so writing the eased values back into it is both
  * the cheapest option and the natural one: there is nothing else that still needs its old value.
@@ -108,6 +108,30 @@ export function approachPose(current: CameraPose, target: CameraPose, dtSeconds:
   current.z = z;
   current.yaw = yaw;
   current.pitch = pitch;
+  return current;
+}
+
+/** Time constant of the journey camera's follow, in ms: long enough to hide scroll-event jitter,
+ *  short enough not to be felt (journey-flow design §5.2). */
+export const FOLLOW_TIME_CONSTANT_MS = 70;
+
+/**
+ * The journey camera: follows the scroll-driven target with exponential smoothing. There is no
+ * turn-speed cap here, because the whole path turns less than 1 rad (§17 S22 tests pin that).
+ * Mutates and returns `current`, like approachPose.
+ */
+export function followPose(
+  current: CameraPose,
+  target: CameraPose,
+  dtSeconds: number,
+  timeConstantMs = FOLLOW_TIME_CONSTANT_MS,
+): CameraPose {
+  const lambda = 1000 / timeConstantMs;
+  current.x = damp(current.x, target.x, lambda, dtSeconds);
+  current.y = damp(current.y, target.y, lambda, dtSeconds);
+  current.z = damp(current.z, target.z, lambda, dtSeconds);
+  current.yaw = damp(current.yaw, target.yaw, lambda, dtSeconds);
+  current.pitch = damp(current.pitch, target.pitch, lambda, dtSeconds);
   return current;
 }
 
