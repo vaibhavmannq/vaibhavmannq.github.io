@@ -45,7 +45,7 @@ import {
 import type { Node } from 'three/webgpu';
 import { Mesh, MeshBasicNodeMaterial, PlaneGeometry } from 'three/webgpu';
 import { MOON_DIRECTION, MOON_RIGHT_AXIS, MOON_UP_AXIS } from './moonDirection';
-import { FIGURE_LINES, FIGURE_MAGNITUDES, FIGURE_STARS, MILKY_BAND_NORMAL, NEBULA_CENTRE, toSkyMap } from './nightSky';
+import { MILKY_BAND_NORMAL, NEBULA_CENTRE } from './nightSky';
 
 type F = Node<'float'>;
 type I = Node<'int'>;
@@ -237,40 +237,6 @@ export function createSea() {
     ],
   });
 
-  // A faint constellation line from a to b, with a small gap where it meets a star, as on a star chart.
-  const segmentLine = Fn(([pp, a, b, px]: [V2, V2, V2, F]) => {
-    const pa = pp.sub(a);
-    const ba = b.sub(a);
-    const h = clamp(dot(pa, ba).div(dot(ba, ba)), 0, 1);
-    const d = length(pa.sub(ba.mul(h)));
-    const gap = smoothstep(0.009, 0.016, min(length(pa), length(pp.sub(b))));
-    return smoothstep(float(0), px.mul(1.4), d).oneMinus().mul(gap);
-  }).setLayout({
-    name: 'segmentLine',
-    type: 'float',
-    inputs: [
-      { name: 'pp', type: 'vec2' },
-      { name: 'a', type: 'vec2' },
-      { name: 'b', type: 'vec2' },
-      { name: 'px', type: 'float' },
-    ],
-  });
-
-  const figureStar = Fn(([pp, s, px, magnitude]: [V2, V2, F, F]) => {
-    const d = length(pp.sub(s));
-    const r = max(float(0.0022), px.mul(1.1));
-    return exp(d.mul(d).div(r.mul(r)).negate()).mul(magnitude);
-  }).setLayout({
-    name: 'figureStar',
-    type: 'float',
-    inputs: [
-      { name: 'pp', type: 'vec2' },
-      { name: 's', type: 'vec2' },
-      { name: 'px', type: 'float' },
-      { name: 'magnitude', type: 'float' },
-    ],
-  });
-
   const nightSky = Fn(([rd, time, phase, pxAngle]: [V3, F, F, F]) => {
     const c = vec3(0).toVar();
     const azimuth = atan(rd.x, rd.z);
@@ -320,34 +286,13 @@ export function createSea() {
       );
     });
 
-    // Three layers of stars; the faintest layer thickens inside the band.
+    // Three layers of stars at the owner's pick, "many" (the look-demo values); the faintest layer
+    // thickens inside the band.
     const starGain = mix(float(0.65), float(1.3), dark).mul(haze).mul(nearMoon);
-    const stars = starLayer(sp.mul(70), float(0.06), float(0.07), float(2.0), pxAngle.mul(70), time)
-      .add(starLayer(sp.mul(160).add(13), float(0.11), float(0.06), float(0.85), pxAngle.mul(160), time))
-      .add(starLayer(sp.mul(360).add(41), band.mul(0.4).add(0.22), float(0.05), float(0.4), pxAngle.mul(360), time));
+    const stars = starLayer(sp.mul(70), float(0.07), float(0.07), float(2.2), pxAngle.mul(70), time)
+      .add(starLayer(sp.mul(160).add(13), float(0.13), float(0.06), float(0.9), pxAngle.mul(160), time))
+      .add(starLayer(sp.mul(360).add(41), band.mul(0.4).add(0.28), float(0.05), float(0.4), pxAngle.mul(360), time));
     c.addAssign(stars.mul(starGain));
-
-    // Original constellations, kept well below the moon's brightness (spec §3.4 rule 1).
-    If(elevation.greaterThan(0.05), () => {
-      const lines = float(0).toVar();
-      for (const [from, to] of FIGURE_LINES) {
-        const a = toSkyMap(FIGURE_STARS[from] ?? [0, 0]);
-        const b = toSkyMap(FIGURE_STARS[to] ?? [0, 0]);
-        lines.assign(max(lines, segmentLine(sp, vec2(a[0], a[1]), vec2(b[0], b[1]), pxAngle)));
-      }
-      const points = float(0).toVar();
-      FIGURE_STARS.forEach((star, i) => {
-        const s = toSkyMap(star);
-        points.addAssign(figureStar(sp, vec2(s[0], s[1]), pxAngle, float(FIGURE_MAGNITUDES[i] ?? 0.7)));
-      });
-      const figureGain = haze.mul(mix(float(0.7), float(1.1), dark));
-      c.addAssign(
-        vec3(0.55, 0.82, 0.86)
-          .mul(lines.mul(0.045))
-          .add(vec3(0.9, 0.95, 1.0).mul(points.mul(0.8)))
-          .mul(figureGain),
-      );
-    });
     return c;
   }).setLayout({
     name: 'nightSky',
