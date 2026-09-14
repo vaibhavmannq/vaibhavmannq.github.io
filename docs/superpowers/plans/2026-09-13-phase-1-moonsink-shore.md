@@ -2,6 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Partly superseded (2026-09-14).** This plan was executed in full. The owner then reviewed the
+> result on desktop and phone and rejected the composition as cluttered. Plan
+> `2026-09-14-phase-1r-composition-and-moon.md` revises it before merge:
+> - Task 8 (the broken ring and shards) is removed.
+> - Task 10's text card and Task 11's title-screen layout are replaced by the type-led look (spec §3.4).
+> - The section fade in Task 10 is replaced by scroll-driven opacity (§5.4a).
+> - `waveDetail` stops being a tier knob, and the tiers are retuned (§5.4, §5.6, §17 S17 and S21).
+> - The camera keyframes are re-aimed (§17 S22).
+>
+> The history below is kept as it was written.
+
 **Goal:** The first real region. A title screen over demo 1's moonlit sea (ported to TSL), the broken resonance ring, a scroll-driven camera path through Moonsink Shore, and the Intro and About text. Quality adapts to the device, reduced motion is respected, and it's steady at 60 fps on a budget Android phone.
 
 **Architecture:**
