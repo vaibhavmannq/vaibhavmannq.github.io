@@ -62,6 +62,10 @@ const fall = (a: number, b: number, x: F) => smoothstep(a, b, x).oneMinus();
 // sub-pixel at every render scale we ship, so they alias rather than resolve.
 const WAVE_ITERATIONS = 6;
 
+// A height below every possible surface: the lowest wave trough is about −0.18 and the shore never
+// goes below the water, so a ray point at this height is always under the sea.
+const BELOW_LOWEST_WAVE = -0.3;
+
 // Rule for this file: functions with setLayout() are compiled into real shader functions and
 // must be PURE. They never read uniforms directly; time and step counts come in as parameters.
 // (Reading a uniform inside a layout function breaks WGSL compilation: "struct member not found".)
@@ -71,8 +75,8 @@ export function createSea() {
     time: uniform(0),
     marchSteps: uniform(80, 'int'),
     // Tonight's real lunar phase (0 = new, 0.5 = full) and the illumination it produces after
-    // the floor is applied (spec §5.4b). Set once at construction in index.ts; never mutated
-    // per-frame, so a fixed date/`?moon=` value stays fixed for the whole visit.
+    // the floor is applied (spec §5.4b). Set at construction in index.ts and changed only by the
+    // visitor's moon dial, never per frame, so a date/`?moon=` value holds until the dial moves.
     moonPhase: uniform(0),
     moonLight: uniform(1),
   };
@@ -365,6 +369,14 @@ export function createSea() {
       If(t.greaterThan(240), () => {
         Break();
       });
+    });
+    // A ray still heading down when the steps run out has not reached the water yet. Near the shore the
+    // camera is low, and rays skimming the sea creep toward it in ever smaller steps, so every tier ran
+    // out and the sky showed through as a streak below the horizon (spec §17 S29). Treat the point where
+    // the ray passes below the lowest wave as an overshoot, so the bisection below finds the surface.
+    If(hit.lessThan(0).and(overshot.lessThan(0.5)).and(rd.y.lessThan(0)), () => {
+      t.assign(max(t, ro.y.sub(BELOW_LOWEST_WAVE).div(rd.y.negate())));
+      overshot.assign(1);
     });
     If(overshot.greaterThan(0.5), () => {
       const a = tPrev.toVar();

@@ -242,6 +242,9 @@ html.is-gated .content {
   bottom: max(1rem, env(safe-area-inset-bottom));
   /* Above the opening, so motion can be reduced before the journey starts */
   z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .controls__button {
@@ -257,6 +260,40 @@ html.is-gated .content {
 
 .controls__button[aria-pressed="true"] {
   border-color: var(--glow);
+}
+
+/* The moon-phase dial (owner request, 2026-09-14): scrubs the moon through a whole cycle. */
+.moon-dial {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(159, 230, 238, 0.3);
+  border-radius: 999px;
+  background: rgba(2, 4, 6, 0.7);
+  color: var(--ink);
+  font-size: 0.8rem;
+  /* Revealed with the text (.content), once the opening has gone. */
+  transition:
+    opacity 0.9s ease 1.2s,
+    visibility 0s linear 1.2s;
+}
+
+.moon-dial__input {
+  width: clamp(5.5rem, 24vw, 9rem);
+  margin: 0;
+  accent-color: var(--glow);
+  cursor: pointer;
+}
+
+/* Nothing to scrub behind the black opening, and no moon at all without the 3D scene. */
+html.is-gated .moon-dial {
+  opacity: 0;
+  visibility: hidden;
+}
+
+html.is-stills .moon-dial {
+  display: none;
 }
 
 /* ---------- dev HUD (?hud) ---------- */
@@ -302,13 +339,15 @@ html.is-broken .section {
 @media (prefers-reduced-motion: reduce) {
   .opening,
   .opening > *,
-  .content {
+  .content,
+  .moon-dial {
     transition: none;
   }
 }
 
 html.is-reduced-motion .opening,
 html.is-reduced-motion .opening > *,
-html.is-reduced-motion .content {
+html.is-reduced-motion .content,
+html.is-reduced-motion .moon-dial {
   transition: none;
 }
