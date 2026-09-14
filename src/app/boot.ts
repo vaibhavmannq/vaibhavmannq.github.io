@@ -9,6 +9,7 @@ import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
 import { createMoonsink } from '../regions/moonsink';
 import { createRenderer, type MoonlitRenderer } from '../render/renderer';
+import { createScrollActivity } from '../scroll/activity';
 import { createScroll } from '../scroll/scroll';
 import { detectCapabilities } from './capabilities';
 import { exposeDebug } from './debug';
@@ -166,12 +167,14 @@ export async function boot(): Promise<void> {
   });
 
   const hud = params.hud ? createHud(document.body) : null;
+  const activity = createScrollActivity();
   let frames = 0;
 
   loop = createLoop((nowMs, dtSeconds) => {
     scroll.raf(nowMs);
     p = params.p ?? scroll.progress();
     state = resolve(p, journey);
+    const scrolling = activity.update(p, nowMs);
     const timeSeconds = params.time ?? nowMs / 1000;
 
     region.update(state.a.local, timeSeconds, dtSeconds);
@@ -183,14 +186,19 @@ export async function boot(): Promise<void> {
     // healthy device sits at ~16.7 ms here. The governor's thresholds are tuned against
     // that budget (see governor.ts).
     const frameIntervalMs = dtSeconds * 1000;
-    hud?.record(frameIntervalMs);
-    hud?.paint(nowMs, { backend: moonlit.backend, tier, renderScale: TIERS[tier].renderScale, progress: p });
+    hud?.record(frameIntervalMs, scrolling);
+    hud?.paint(nowMs, { backend: moonlit.backend, tier, renderScale: TIERS[tier].renderScale, progress: p, scrolling });
 
     // Let the governor judge only real, warmed-up, non-idle frames
     const warmedUp = nowMs - enteredAt > 1500;
     if (params.tier === undefined && warmedUp && !loop?.isIdle(nowMs)) {
-      const next = governor.sample(frameIntervalMs, nowMs);
-      if (next !== null) applyTier(next);
+      // Keep measuring while the visitor scrolls, but change tier only once they stop: a tier change
+      // resizes render buffers, which hitches exactly when motion is most visible (spec §5.6).
+      const next = governor.sample(frameIntervalMs, nowMs, !scrolling);
+      if (next !== null) {
+        hud?.tierChanged(scrolling);
+        applyTier(next);
+      }
     }
   });
 

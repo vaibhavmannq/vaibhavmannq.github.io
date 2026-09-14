@@ -5,10 +5,13 @@ export interface HudInfo {
   tier: number;
   renderScale: number;
   progress: number;
+  scrolling: boolean;
 }
 
 export interface Hud {
-  record(frameMs: number): void;
+  record(frameMs: number, scrolling: boolean): void;
+  /** Call when the governor changes tier, so a change during a scroll shows up as a regression. */
+  tierChanged(scrolling: boolean): void;
   paint(nowMs: number, info: HudInfo): void;
 }
 
@@ -21,13 +24,21 @@ export function createHud(parent: HTMLElement): Hud {
 
   const frames: number[] = [];
   let dropped = 0;
+  let droppedInScroll = 0;
+  let tierChangesInScroll = 0;
   let lastPaint = 0;
 
   return {
-    record(frameMs) {
+    record(frameMs, scrolling) {
       frames.push(frameMs);
       if (frames.length > 240) frames.shift();
-      if (frameMs > 25) dropped += 1;
+      if (frameMs > 25) {
+        dropped += 1;
+        if (scrolling) droppedInScroll += 1;
+      }
+    },
+    tierChanged(scrolling) {
+      if (scrolling) tierChangesInScroll += 1;
     },
     paint(nowMs, info) {
       if (nowMs - lastPaint < 500 || frames.length === 0) return;
@@ -40,6 +51,9 @@ export function createHud(parent: HTMLElement): Hud {
         `fps       ${Math.round(1000 / median)}`,
         `frame ms  p50 ${median.toFixed(1)}  p95 ${slow.toFixed(1)}`,
         `dropped   ${dropped}  (frames > 25 ms)`,
+        `scroll    ${info.scrolling ? 'moving' : 'still'}`,
+        `in scroll ${droppedInScroll} long frames (> 25 ms)`,
+        `tier changes in scroll ${tierChangesInScroll}`,
         `progress  ${info.progress.toFixed(3)}`,
       ].join('\n');
     },

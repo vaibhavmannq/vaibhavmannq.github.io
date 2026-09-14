@@ -58,8 +58,13 @@ export class Governor {
     return this.tier;
   }
 
-  /** Record one rendered frame. Returns the new tier when it changes, otherwise null. */
-  sample(frameMs: number, nowMs: number): Tier | null {
+  /**
+   * Record one rendered frame. Returns the new tier when it changes, otherwise null.
+   * While `canChange` is false (the visitor is scrolling) the tier never changes, but windows are
+   * still measured: a slow window's verdict waits for the first window after scrolling stops, and
+   * fast windows keep counting toward a step up (spec §5.6, never mid-scroll).
+   */
+  sample(frameMs: number, nowMs: number, canChange = true): Tier | null {
     if (this.windowStart === null) this.windowStart = nowMs;
     this.samples.push(frameMs);
     if (nowMs - this.windowStart < this.options.windowMs) return null;
@@ -74,11 +79,11 @@ export class Governor {
     }
     if (slowFrames > this.options.downThresholdMs) {
       this.fastWindows = 0;
-      return this.changeTo(this.tier - 1, nowMs);
+      return canChange ? this.changeTo(this.tier - 1, nowMs) : null;
     }
     if (slowFrames < this.options.upThresholdMs) {
       this.fastWindows += 1;
-      if (this.fastWindows >= this.options.upWindowsRequired) {
+      if (this.fastWindows >= this.options.upWindowsRequired && canChange) {
         this.fastWindows = 0;
         return this.changeTo(this.tier + 1, nowMs);
       }
