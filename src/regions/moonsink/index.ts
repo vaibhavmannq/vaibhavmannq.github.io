@@ -21,6 +21,10 @@ export interface MoonsinkRegion extends Region {
   /** False while the opening is up: the camera bobs on the open sea instead of following the scroll. */
   setEntered(entered: boolean): void;
   readonly seaUniforms: SeaUniforms;
+  /** The moon's current phase (0 = new, 0.5 = full): tonight's, until the visitor moves the dial. */
+  readonly moonPhase: number;
+  /** Moves the moon to another phase: its lit shape, its light on the water and the stars follow. */
+  setMoonPhase(phase: number): void;
 }
 
 /**
@@ -34,9 +38,13 @@ export function createMoonsink(ctx: RegionContext, moonOverride?: number): Moons
   const sea = createSea();
   scene.add(sea.mesh);
 
-  const phase = resolveMoonPhase(new Date(), moonOverride);
-  sea.uniforms.moonPhase.value = phase;
-  sea.uniforms.moonLight.value = moonLight(phase);
+  let phase = 0;
+  const setMoonPhase = (value: number) => {
+    phase = value;
+    sea.uniforms.moonPhase.value = value;
+    sea.uniforms.moonLight.value = moonLight(value);
+  };
+  setMoonPhase(resolveMoonPhase(new Date(), moonOverride));
 
   let entered = false;
   // `current` is the camera's own persistent pose, mutated in place every frame from here on.
@@ -57,6 +65,10 @@ export function createMoonsink(ctx: RegionContext, moonOverride?: number): Moons
     scene,
     camera,
     seaUniforms: sea.uniforms,
+    get moonPhase() {
+      return phase;
+    },
+    setMoonPhase,
     setEntered(value) {
       entered = value;
     },

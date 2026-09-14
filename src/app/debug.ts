@@ -5,6 +5,8 @@ export interface MoonlitDebug {
   progress(): number;
   section(): string;
   reducedMotion(): boolean;
+  /** The moon's phase in the 3D scene; absent in stills mode, which has no moon to move. */
+  moonPhase?(): number;
 }
 
 declare global {
