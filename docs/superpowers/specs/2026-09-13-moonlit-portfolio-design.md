@@ -61,7 +61,7 @@ The owner has no projects yet. The site itself is the first showcase piece.
 | Stop | Region | Accent | On screen | Scene & camera | Scroll length* |
 |---|---|---|---|---|---|
 | 0 · Title screen | Moonsink Shore | cold teal, moon | Glyph, name, "click to enter", load progress | Dark sea, low moon, gentle drift | (fixed overlay) |
-| 1 · Intro + About | **Moonsink Shore** | cold teal, black sand, moon path | Intro line, about text | Open sea → shoreline; broken resonance ring on the horizon, floating shards | 3 |
+| 1 · Intro + About | **Moonsink Shore** | cold teal, black sand, moon path | Intro line, about text | Open sea → shoreline. The moon and its path on the water carry the frame; no structures (see §3.4) | 3 |
 | transition | resonance ripple | cyan | "resonance shifting" caption (decorative) | Ripple dissolve from Moonsink to Lumenreach | 1 |
 | 2 · Projects | **Lumenreach** | warm lanterns in the dark | Project entries (or a "still being lit" empty state) | Climb through a terraced lantern city toward a ring gate | 4 |
 | transition | bell toll | pale gold / silver | none | A shockwave ring from the bell; brief chromatic offset, flash-safe | 1 |
@@ -80,13 +80,43 @@ The owner has no projects yet. The site itself is the first showcase piece.
 - **Reference build:** `my-portfolio/.superpowers/brainstorm/1915-1789294650/content/experience-demos.html` (mode A). The sea shader, moon, motes and palette there are the baseline for Moonsink Shore.
 - **Glyph:** the original SVG mark from the prototypes (circle, moon dot, two wave strokes, vertical line). It's the logo and favicon.
 - **Typography:** Cormorant Garamond (display) + Manrope (UI/body) are candidates and **not yet final**. Decide during phase 1 with the real scene behind the text.
-- **Glow sources:** only the moon, lanterns, the resonance ring and the transition effects. No bright hazy skies.
+- **Glow sources:** only the moon, lanterns, the transition effects and — in Lumenreach only — the ring gate. No bright hazy skies. Moonsink Shore's only light is the moon.
 
 | Region | Palette | Landmarks (procedural first, hand-made in phase 5) |
 |---|---|---|
-| Moonsink Shore | near-black ink water, teal horizon mist, white-gold moon | black-sand shore with foam, leaning monoliths, broken resonance ring, floating shards, echo crystal with water ripples |
+| Moonsink Shore | near-black ink water, teal horizon mist, white-gold moon | black-sand shore with foam. **Nothing else** — see §3.4. (Monoliths, ring and shards were built in phase 1 and removed on review.) |
 | Lumenreach | deep indigo night, warm amber windows and lanterns | terraced city on valley slopes, ring gate with hanging lanterns, tiered tower, river reflecting lights, rising lantern motes |
 | Lastlight Isle | cold navy, silver stone, starfield | pale stone island city, arches, bell tower, canals reflecting stars, the moon overhead |
+
+### 3.4 Composition rules (binding)
+
+Added 2026-09-14 after the owner reviewed the built phase 1 and called it cluttered. The
+first build satisfied every other section of this spec and was still wrong, because the
+spec described *what to include* and never *what to leave out*. These rules are binding on
+every region and every screen; a reviewer must reject work that breaks one.
+
+1. **One focal point per screen.** At any scroll position exactly one thing commands the
+   eye: the moon, or a landmark, or the type — never several competing. Count the elements
+   claiming attention at 390 px wide; if the answer is more than two, the screen is wrong.
+2. **Emptiness is the composition, not a gap to fill.** The sea and the sky are the
+   negative space. Nothing may be added "because the frame looks empty".
+3. **No panels behind text.** No cards, no rounded boxes, no borders, no `backdrop-filter`
+   glass. Text sits directly on the scene; legibility comes from a soft scene-wide gradient
+   and a text shadow, never from a container. (Contrast requirements in §10.4 still apply
+   and are met this way.)
+4. **Type is a primary element, not a label.** Display type is sized to carry a screen
+   (roughly 8–13 vw for the name), with tight tracking. Wide letter-spacing on large type
+   is not used — it forces wrapping on phones and reads as decoration.
+5. **Type and scene occupy different regions of the frame.** Text is placed where the
+   scene is quiet; it never crosses the moon or the moon's path on the water.
+6. **Content never repeats on screen.** The visitor's name appears once at a time — the
+   title screen and the intro text may not both show it.
+7. **Phones get more space, not less.** Nothing overlaps at 390 px. Any element that would
+   collide is moved or dropped, never shrunk into a gap.
+
+**Reference for the type-led treatment:** the owner's chosen look from the 2026-09-14
+review (`?look=2` in that session) — glyph, then the name at ~13 vw bottom-left, then a
+thin underlined "click to enter", over an otherwise empty moonlit sea.
 
 ---
 
@@ -164,7 +194,7 @@ my-portfolio/
 │  ├─ render/     renderer.ts · postprocessing.ts
 │  ├─ transitions/ resonanceRipple.ts · bellToll.ts           (TSL node functions)
 │  ├─ regions/    region.ts
-│  │   ├─ moonsink/   index.ts · sea.ts · sky.ts · ring.ts · shards.ts
+│  │   ├─ moonsink/   index.ts · sea.ts · sky.ts · moonPhase.ts
 │  │   ├─ lumenreach/ index.ts · city.ts · gate.ts · lanterns.ts
 │  │   └─ lastlight/  index.ts · tower.ts · canals.ts · stars.ts
 │  ├─ shared/     tsl/ (noise, sky gradient) · objects/ (motes, ripples)
@@ -226,6 +256,9 @@ function resolve(p: number, journey: readonly Segment[]): JourneyState;  // pure
 - Inside a transition: `a` is the previous region at `local = 1`, `b` is the next region at `local = 0`, and `mix` is the eased position. Both regions keep animating over time, so neither freezes.
 - `section` comes from per-region anchors defined in `journey.config.ts`.
 - `p` is clamped to [0, 1].
+- **`sectionMix` (added 2026-09-14):** alongside the discrete `section`, `resolve` returns a
+  0..1 value giving the position *between* the current anchor and the next. Section opacity
+  is driven from this, never from a timer — see §5.4.
 
 ### 5.3 Frame sequence (`loop.ts`)
 1. `lenis.raf(now)`, then `p = scroll.progress()` (falls back to `scrollY` if Lenis isn't loaded).
@@ -244,10 +277,48 @@ function resolve(p: number, journey: readonly Segment[]): JourneyState;  // pure
 - **Camera:** rays are built from the Three.js camera's `projectionMatrixInverse` and `matrixWorld`, so the sea and meshes always line up.
 - **Cost controls by tier:**
   - march steps: 48 at tier 0, up to 120 at tier 4
-  - wave iterations: 4 up to 9
-  - normal detail
   - star density
+  - **Wave iterations are NOT a tier knob.** Amended 2026-09-14: they were, and changing
+    them re-shapes the water surface, so every governor tier change made the sea visibly
+    jump while the horizon stayed put — the owner reported it as "the ocean resets". Wave
+    iteration count is now a single constant shared by the ray-march and the shading
+    normals. The top layers contribute under 1% of wave height (amplitude decays 0.74× per
+    layer), so nothing visible is lost. See §5.6's invariant and §17 S17.
 - **Known risk:** porting GLSL to TSL is the biggest unknown (§15). Phase 1 exists to retire that risk first.
+
+### 5.4a Text sections follow the scroll
+
+Amended 2026-09-14. Section text was chosen by a hard threshold and then faded by a fixed
+900 ms animation, so the text ignored scroll speed, could not be scrubbed backwards, and
+read as abrupt and disconnected.
+
+- Section opacity and offset are **pure functions of scroll position**, computed each frame
+  from `sectionMix` (§5.2). No `element.animate()`, no timers, no CSS transitions on the
+  scroll-driven properties.
+- Scrolling backwards reverses the fade exactly; holding still holds the frame.
+- The crossfade band is wide enough that the outgoing and incoming text overlap briefly —
+  one fades out as the other fades in — rather than switching at a point.
+- **Reduced motion:** the offset is dropped and opacity switches at the anchor's midpoint;
+  it still never animates on its own clock.
+
+### 5.4b Lunar phase
+
+Added 2026-09-14 at the owner's request.
+
+- The moon shows **tonight's real phase**, computed from the visitor's local date — so the
+  site genuinely differs night to night and across a month.
+- Phase is a single 0..1 value (0 = new, 0.5 = full) derived from a known new-moon epoch
+  and the synodic month (29.530588853 days). No network call, no dependency, and it is
+  deterministic for a given date, so it can be tested and pinned via a `?moon=` debug
+  parameter.
+- The phase drives: the lit fraction of the moon disc (a terminator, not a flat circle),
+  the brightness of the moon's path on the water, and the strength of the moonlight term
+  in the water shading.
+- **Floor (owner's decision):** illumination never falls below a set minimum, so a
+  new-moon night is still a readable, lit scene rather than a black page. Astronomical
+  truthfulness yields to never showing a visitor a dead screen.
+- The phase must not break §10.4 contrast at any value; the darkest phase is the case to
+  test.
 
 ### 5.5 Transitions
 - Both are TSL functions that take (`texA`, `texB`, `mix`, `time`, `aspect`, `intensity`) and return a colour.
@@ -284,6 +355,11 @@ function resolve(p: number, journey: readonly Segment[]): JourneyState;  // pure
 - After any change, wait 2 s before changing again (hysteresis).
 - Never exceed tier 3 on WebGL2. Tier 4 requires WebGPU.
 - **Invariant:** tiers never change camera paths, composition, content, timing or palette.
+- **Invariant (sharpened 2026-09-14):** a tier change must be *invisible except as sharpness
+  and post-processing*. Specifically it may not alter the shape of any surface. Wave
+  iteration count is therefore a constant, not a tier knob (§5.4, §17 S17). The test a
+  reviewer applies: if a screenshot at tier 0 and tier 4 differ anywhere other than
+  resolution, aliasing and bloom, the tier system is wrong.
 
 **Battery:**
 - Hidden tab: stop rendering.
@@ -586,3 +662,7 @@ During planning, the demo-1 sea was ported to TSL and run in a throwaway build (
 | S14 | Plans dry-run (2026-09-13): every code block of the phase 0 and phase 1 plans was extracted and run. Biome clean, `tsc` 0 errors, 65/65 unit tests, build 256.7 KB gzip, 9/9 Chromium e2e including axe. Firefox/WebKit e2e not run locally (CI runs them). Playwright test timeout set to 120 s; axe and reduced-motion tests run in `?stills` mode | Software-rendered WebGL in headless browsers takes ~20 s to compile the sea, so HTML-only tests would otherwise time out |
 | S15 | Minimum Safari is **16.4** (§9), not 15. The build keeps `target: 'es2023'` | Owner decision (2026-09-13) after the Phase 0 final review found `es2023` output and `lib` APIs (e.g. class static blocks, `toSorted`) can't run on Safari 15.x–16.3; 16.4 matches Vite 8's own baseline and Safari 15 has a negligible share in 2026 |
 | S16 | Governor thresholds (§5.6) are **> 20 ms** to step down and **< 17.5 ms** to step up, not 15/11 | The loop caps rendering at 60 fps, so `boot.ts` can only ever feed the governor the interval between rendered frames (~16.7 ms on a healthy device), never a true per-frame cost. The old 15/11 ms thresholds sat below that floor, so every device ratcheted down to tier 0 within seconds of entering and could never recover (final whole-branch review, C1, 2026-09-14). Measuring CPU time inside the frame callback instead was considered and rejected: this scene's cost is almost entirely GPU-side and `render()` returns before the GPU finishes, so CPU time reads ~2 ms on every device and would climb to the top tier on a budget phone — the opposite failure |
+| S17 | Wave iteration count is a **constant**, not a tier knob (§5.4, §5.6) | Tiers drove `waveDetail` 4→9, and each layer displaces the water surface, so every governor step visibly re-shaped the sea. The ray-march used a hardcoded 5 layers while shading used the tier's count, so the horizon held still while the ripples and glitter jumped — the owner described it as "I can feel the ocean reset" while sitting still (owner review, 2026-09-14). Layer 9 contributes 0.74^8 ≈ 0.9% of wave height, so pinning the count costs nothing visible |
+| S18 | Section text opacity is a pure function of scroll position (§5.4a) | `sectionAt()` picked a section by hard threshold and `sections.ts` then ran a fixed 900 ms Web-Animations fade. The text therefore ignored scroll speed, could not be scrubbed backwards, and popped at one exact point — the owner reported it as "so abrupt that it feels unnatural" (owner review, 2026-09-14) |
+| S19 | The spec needed **composition rules** (§3.4), not just content lists | Phase 1 passed every task review, a whole-branch review and an accessibility audit, and the owner's first reaction to the built result was "honestly I am not liking this design at all… cluttery". Nothing in the spec had said how much may appear on one screen, so reviewers had no rule to reject clutter against. Root cause of the ring, the shards, the text card and the duplicated name |
+| S20 | Moon shows tonight's **real** phase, with an illumination floor (§5.4b) | Owner request, 2026-09-14. Real phase makes the site differ night to night at near-zero cost; the floor exists so a new-moon night is never a black page |
