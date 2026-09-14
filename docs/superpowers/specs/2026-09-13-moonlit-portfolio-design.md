@@ -315,6 +315,11 @@ Added 2026-09-14 at the owner's request.
   and the synodic month (29.530588853 days). No network call, no dependency, and it is
   deterministic for a given date, so it can be tested and pinned via a `?moon=` debug
   parameter.
+- **Accuracy, stated honestly:** this is the *mean* synodic approximation. The real lunar
+  orbit is elliptical, so the computed phase can differ from the true phase by up to
+  roughly half a day. That is invisible for a mood effect and costs nothing, but the site
+  must never claim ephemeris accuracy, and no test may assert agreement with a published
+  almanac to better than ±0.05 in phase.
 - The phase drives: the lit fraction of the moon disc (a terminator, not a flat circle),
   the brightness of the moon's path on the water, and the strength of the moonlight term
   in the water shading.
