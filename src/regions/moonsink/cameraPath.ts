@@ -143,7 +143,7 @@ export function toThreeCamera(pose: CameraPose): {
 
 /**
  * On screens narrower than the reference aspect, widen the vertical FOV so the horizontal view stays the same,
- * keeping the moon and ring in frame on phones. Capped so tall screens don't turn fish-eye.
+ * keeping the moon in frame on phones. Capped so tall screens don't turn fish-eye.
  */
 export function fovForAspect(baseVerticalFov: number, aspect: number, referenceAspect = 16 / 9, maxFov = 70): number {
   if (aspect >= referenceAspect) return baseVerticalFov;
