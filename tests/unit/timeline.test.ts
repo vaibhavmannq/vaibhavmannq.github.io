@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { journey } from '../../src/journey/journey.config';
+import { journey, MOONSINK_ABOUT_FROM } from '../../src/journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../../src/journey/timeline';
 import type { Segment } from '../../src/journey/types';
 
@@ -62,6 +62,74 @@ describe('resolve (with a transition)', () => {
   it('rejects a journey that does not start with a region', () => {
     const broken: readonly Segment[] = [{ kind: 'transition', effect: 'bellToll', length: 1 }];
     expect(() => resolve(0, broken)).toThrow('journey must start with a region');
+  });
+});
+
+describe('resolve: sectionMix', () => {
+  const twoAnchors: readonly Segment[] = [
+    {
+      kind: 'region',
+      region: 'moonsink',
+      length: 1,
+      sections: [
+        { id: 'intro', from: 0 },
+        { id: 'about', from: 0.5 },
+      ],
+    },
+  ];
+  const oneAnchor: readonly Segment[] = [
+    { kind: 'region', region: 'moonsink', length: 1, sections: [{ id: 'intro', from: 0 }] },
+  ];
+
+  it('is 0 exactly on a non-terminal anchor', () => {
+    expect(resolve(0, twoAnchors).sectionMix).toBe(0);
+  });
+
+  it('is 0.5 midway between two anchors', () => {
+    expect(resolve(0.25, twoAnchors).sectionMix).toBeCloseTo(0.5, 10);
+  });
+
+  it('is 1 past the last anchor', () => {
+    expect(resolve(0.5, twoAnchors).sectionMix).toBe(1);
+    expect(resolve(0.9, twoAnchors).sectionMix).toBe(1);
+    expect(resolve(1, twoAnchors).sectionMix).toBe(1);
+  });
+
+  it('stays 1 throughout a region with a single anchor', () => {
+    expect(resolve(0, oneAnchor).sectionMix).toBe(1);
+    expect(resolve(0.5, oneAnchor).sectionMix).toBe(1);
+    expect(resolve(1, oneAnchor).sectionMix).toBe(1);
+  });
+});
+
+describe('resolve: no allocation, and the scratch-object trap', () => {
+  it('always returns the very same object, but its fields genuinely track scroll position', () => {
+    const first = resolve(0.1, journey);
+    const second = resolve(0.9, journey);
+    // The no-allocation guarantee: `resolve` writes into one reusable object rather than
+    // returning a fresh one each call.
+    expect(first).toBe(second);
+
+    // The trap: because `first`/`second` are the SAME object, comparing them (or comparing
+    // either to a later `resolve()` result) always passes regardless of the maths — it would
+    // compare the scratch object to itself. Snapshot with a spread *before* the next call
+    // mutates the shared object, so the comparison actually discriminates.
+    const atStart = { ...resolve(0, journey) }; // exactly on intro's own anchor
+    const atMid = { ...resolve(MOONSINK_ABOUT_FROM / 2, journey) }; // halfway to About
+    const atAbout = { ...resolve(progressForSection(journey, 'about'), journey) }; // About is terminal: mix pinned to 1
+
+    expect(atStart.section).toBe('intro');
+    expect(atStart.sectionMix).toBe(0);
+    expect(atMid.section).toBe('intro');
+    expect(atMid.sectionMix).toBeCloseTo(0.5, 10);
+    expect(atAbout.section).toBe('about');
+    expect(atAbout.sectionMix).toBe(1);
+
+    // A broken implementation that always reported the same section/mix would satisfy any one
+    // of the equality checks above by coincidence; these cross-checks would not survive that.
+    expect(atStart).not.toEqual(atMid);
+    expect(atMid).not.toEqual(atAbout);
+    expect(atStart).not.toEqual(atAbout);
   });
 });
 

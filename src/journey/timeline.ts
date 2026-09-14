@@ -12,14 +12,22 @@ export function totalLength(journey: readonly Segment[]): number {
   return sum;
 }
 
-function sectionAt(segment: RegionSegment, local: number): SectionId {
-  const first = segment.sections[0];
+/** Finds the anchor covering `local` and how far local sits between it and the next anchor's
+ *  `from` (1 when there is no next anchor — the section holds at fully "arrived"). Writes both
+ *  into `out` instead of returning a fresh object: `resolve` calls this every frame and `out` is
+ *  always its own reusable `stateScratch` (frame-loop contract — no allocation). */
+function sectionAt(segment: RegionSegment, local: number, out: JourneyState): void {
+  const sections = segment.sections;
+  const first = sections[0];
   if (first === undefined) throw new Error(`region ${segment.region} has no sections`);
-  let current = first.id;
-  for (const anchor of segment.sections) {
-    if (local + EPSILON >= anchor.from) current = anchor.id;
+  let index = 0;
+  for (let i = 0; i < sections.length; i++) {
+    if (local + EPSILON >= (sections[i] as { from: number }).from) index = i;
   }
-  return current;
+  const anchor = sections[index] as { id: SectionId; from: number };
+  const next = sections[index + 1];
+  out.section = anchor.id;
+  out.sectionMix = next === undefined ? 1 : clamp01((local - anchor.from) / (next.from - anchor.from));
 }
 
 // `resolve` is called every frame from the loop, so it writes into this one reusable object
@@ -28,7 +36,12 @@ function sectionAt(segment: RegionSegment, local: number): SectionId {
 // next `resolve` call — see boot.ts. `b` starts undefined and only ever gets its own scratch
 // object the first time a transition is actually resolved (phase 1's journey has none, so in
 // production this never allocates at all).
-const stateScratch: JourneyState = { a: { region: 'moonsink', local: 0 }, mix: 0, section: 'intro' };
+const stateScratch: JourneyState = {
+  a: { region: 'moonsink', local: 0 },
+  mix: 0,
+  section: 'intro',
+  sectionMix: 0,
+};
 
 /** Turn scroll progress p (0..1) into "where are we in the journey". No DOM, no time — but, like
  *  the loop it feeds, it hands back the same object every call rather than a fresh one. */
@@ -54,7 +67,7 @@ export function resolve(p: number, journey: readonly Segment[]): JourneyState {
         stateScratch.b = undefined;
         stateScratch.mix = 0;
         stateScratch.effect = undefined;
-        stateScratch.section = sectionAt(segment, local);
+        sectionAt(segment, local, stateScratch);
         return stateScratch;
       }
 
@@ -69,7 +82,8 @@ export function resolve(p: number, journey: readonly Segment[]): JourneyState {
       }
       stateScratch.mix = smoothstep(0, 1, local);
       stateScratch.effect = segment.effect;
-      stateScratch.section = local < 0.5 ? sectionAt(previousRegion, 1) : sectionAt(next, 0);
+      if (local < 0.5) sectionAt(previousRegion, 1, stateScratch);
+      else sectionAt(next, 0, stateScratch);
       return stateScratch;
     }
 

@@ -33,4 +33,7 @@ export interface JourneyState {
   mix: number;
   effect?: TransitionEffect;
   section: SectionId;
+  /** 0 = right on `section`'s own anchor, 1 = at (or past) the next anchor's `from`. Drives
+   *  section text opacity as a pure function of scroll position — see overlay/sections.ts. */
+  sectionMix: number;
 }
