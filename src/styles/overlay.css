@@ -63,11 +63,10 @@ html.is-stills .world {
   inset: 0;
   z-index: 30;
   display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 0.9rem;
-  padding: 1.5rem;
-  text-align: center;
+  place-content: end start;
+  justify-items: start;
+  padding: 0 max(1.5rem, env(safe-area-inset-left)) 12svh;
+  text-align: left;
   transition:
     opacity 1.2s ease,
     visibility 0s linear 1.2s;
@@ -82,20 +81,21 @@ html.is-stills .world {
 }
 
 .gate__glyph {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 1.25rem;
   color: var(--ink);
-  filter: drop-shadow(0 0 14px rgba(159, 230, 238, 0.5));
+  opacity: 0.75;
 }
 
 .gate__name {
   margin: 0;
-  padding-left: 0.42em;
   font-family: var(--font-display);
   font-weight: 300;
-  font-size: clamp(2rem, 6vw, 4.4rem);
-  letter-spacing: 0.42em;
-  text-shadow: 0 0 30px rgba(159, 230, 238, 0.35);
+  font-size: clamp(2.75rem, 13vw, 8rem);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 30px rgba(2, 4, 6, 0.75);
 }
 
 .gate__status {
@@ -108,11 +108,12 @@ html.is-stills .world {
 }
 
 .gate__enter {
-  margin-top: 1.5rem;
-  padding: 0.85rem 1.6rem;
-  border: 1px solid rgba(159, 230, 238, 0.45);
-  border-radius: 999px;
-  background: rgba(2, 4, 6, 0.35);
+  margin-top: 0.75rem;
+  padding: 0.35rem 0;
+  border: none;
+  border-bottom: 1px solid rgba(159, 230, 238, 0.5);
+  border-radius: 0;
+  background: none;
   color: var(--ink);
   font: inherit;
   font-size: 0.85rem;
@@ -126,25 +127,26 @@ html.is-stills .world {
   cursor: progress;
 }
 
-.gate[data-state="ready"] .gate__enter {
-  animation: breathe 2.8s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    box-shadow: 0 0 0 rgba(159, 230, 238, 0);
-  }
-  50% {
-    box-shadow: 0 0 24px rgba(159, 230, 238, 0.35);
-  }
-}
-
 /* ---------- sections ---------- */
 .content {
   position: fixed;
   inset: 0;
   z-index: 10;
+  pointer-events: none;
+}
+
+html.is-gated .content {
+  opacity: 0;
+}
+
+.content::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 62svh;
+  background: linear-gradient(to top, rgba(2, 4, 6, 0.82) 12%, rgba(2, 4, 6, 0.45) 46%, rgba(2, 4, 6, 0) 100%);
   pointer-events: none;
 }
 
@@ -162,12 +164,7 @@ html.is-stills .world {
 }
 
 .section__panel {
-  max-width: 36rem;
-  padding: 1.5rem 1.75rem;
-  border-radius: 1rem;
-  /* A soft backdrop keeps text at 4.5:1 contrast even over the bright moon path (spec §10.4) */
-  background: rgba(2, 4, 6, 0.6);
-  backdrop-filter: blur(6px);
+  max-width: 40rem;
 }
 
 .section h1,
@@ -175,16 +172,17 @@ html.is-stills .world {
   margin: 0 0 0.75rem;
   font-family: var(--font-display);
   font-weight: 300;
-  line-height: 1.05;
+  line-height: 0.95;
+  text-shadow: 0 2px 18px rgba(2, 4, 6, 0.9);
 }
 
 .section h1 {
-  font-size: clamp(2.4rem, 6vw, 4.5rem);
-  letter-spacing: 0.06em;
+  font-size: clamp(2.75rem, 13vw, 8rem);
+  letter-spacing: -0.01em;
 }
 
 .section h2 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(2.5rem, 11vw, 6rem);
 }
 
 .section p {
@@ -192,6 +190,7 @@ html.is-stills .world {
   color: var(--ink-dim);
   font-size: clamp(1rem, 1.4vw, 1.1rem);
   line-height: 1.7;
+  text-shadow: 0 2px 18px rgba(2, 4, 6, 0.9);
 }
 
 .section .section__lede {
@@ -256,15 +255,8 @@ html.is-stills .world {
   .gate {
     transition: none;
   }
-  .gate[data-state="ready"] .gate__enter {
-    animation: none;
-  }
 }
 
 html.is-reduced-motion .gate {
   transition: none;
-}
-
-html.is-reduced-motion .gate[data-state="ready"] .gate__enter {
-  animation: none;
 }

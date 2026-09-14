@@ -13,7 +13,6 @@ import {
   SEA_FOV,
   toThreeCamera,
 } from './cameraPath';
-import { createRing } from './ring';
 import { createSea, type SeaUniforms } from './sea';
 
 export interface MoonsinkRegion extends Region {
@@ -26,8 +25,7 @@ export function createMoonsink(ctx: RegionContext): MoonsinkRegion {
   const scene = new Scene();
   const camera = new PerspectiveCamera(SEA_FOV, window.innerWidth / window.innerHeight, 0.1, 400);
   const sea = createSea();
-  const ring = createRing();
-  scene.add(sea.mesh, ring.group);
+  scene.add(sea.mesh);
 
   let entered = false;
   // `current` is the camera's own persistent pose, mutated in place every frame from here on.
@@ -73,7 +71,6 @@ export function createMoonsink(ctx: RegionContext): MoonsinkRegion {
         approachPose(current, target, dtSeconds);
       }
       applyPose(current);
-      ring.update(timeSeconds, ctx.reducedMotion);
     },
     resize(width, height) {
       camera.aspect = width / height;
