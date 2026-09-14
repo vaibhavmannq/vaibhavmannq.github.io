@@ -7,6 +7,7 @@ describe('readDebugParams', () => {
       tier: undefined,
       p: undefined,
       time: undefined,
+      moon: undefined,
       hud: false,
       gui: false,
       forceWebGL: false,
@@ -26,6 +27,14 @@ describe('readDebugParams', () => {
     expect(readDebugParams('?p=0.6').p).toBe(0.6);
     expect(readDebugParams('?time=0').time).toBe(0);
     expect(readDebugParams('?time=').time).toBeUndefined();
+  });
+
+  it('clamps a moon override and falls back to undefined for junk input', () => {
+    expect(readDebugParams('?moon=0.3').moon).toBe(0.3);
+    expect(readDebugParams('?moon=1.7').moon).toBe(1);
+    expect(readDebugParams('?moon=-0.4').moon).toBe(0);
+    expect(readDebugParams('?moon=abc').moon).toBeUndefined();
+    expect(readDebugParams('').moon).toBeUndefined();
   });
 
   it('treats presence-only flags as true', () => {

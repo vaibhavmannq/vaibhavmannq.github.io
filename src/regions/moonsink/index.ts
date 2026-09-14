@@ -13,6 +13,7 @@ import {
   SEA_FOV,
   toThreeCamera,
 } from './cameraPath';
+import { moonLight, resolveMoonPhase } from './moonPhase';
 import { createSea, type SeaUniforms } from './sea';
 
 export interface MoonsinkRegion extends Region {
@@ -21,11 +22,20 @@ export interface MoonsinkRegion extends Region {
   readonly seaUniforms: SeaUniforms;
 }
 
-export function createMoonsink(ctx: RegionContext): MoonsinkRegion {
+/**
+ * @param moonOverride `?moon=` debug override (0..1, already clamped by readDebugParams), or
+ *   undefined to use tonight's real phase. Set once here, from `new Date()`, and never mutated
+ *   per-frame — see spec §5.4b.
+ */
+export function createMoonsink(ctx: RegionContext, moonOverride?: number): MoonsinkRegion {
   const scene = new Scene();
   const camera = new PerspectiveCamera(SEA_FOV, window.innerWidth / window.innerHeight, 0.1, 400);
   const sea = createSea();
   scene.add(sea.mesh);
+
+  const phase = resolveMoonPhase(new Date(), moonOverride);
+  sea.uniforms.moonPhase.value = phase;
+  sea.uniforms.moonLight.value = moonLight(phase);
 
   let entered = false;
   // `current` is the camera's own persistent pose, mutated in place every frame from here on.
