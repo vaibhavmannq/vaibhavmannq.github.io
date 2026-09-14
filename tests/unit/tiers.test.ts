@@ -67,4 +67,11 @@ describe('TIERS', () => {
       expect(actualKeys).toEqual(expectedKeys.sort());
     }
   });
+
+  it('keeps march steps above the threshold where the sea stops resolving (§17 S21)', () => {
+    const tiers: Tier[] = [0, 1, 2, 3, 4];
+    for (const tier of tiers) {
+      expect(TIERS[tier].marchSteps).toBeGreaterThanOrEqual(80);
+    }
+  });
 });

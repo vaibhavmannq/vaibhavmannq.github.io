@@ -51,8 +51,9 @@ type V3 = Node<'vec3'>;
 const fall = (a: number, b: number, x: F) => smoothstep(a, b, x).oneMinus();
 
 // Wave iteration count: pinned constant for ray-march and shading consistency (spec §5.4, §17 S17).
-// Amplitude decays 0.74× per layer, so layer 7+ contributes under 1% of wave height.
-// This value (6) keeps the ripple character of old tier 4 at cost between old tiers 2 and 3.
+// Amplitude decays 0.74× per layer, so layer 7 alone is 16.4% of layer 1 and pinning at 6
+// discards 10.5% of total wave amplitude. Layers 7–9 run at 1.55–2.61 cycles/unit and are
+// sub-pixel at every render scale we ship, so they alias rather than resolve.
 const WAVE_ITERATIONS = 6;
 
 // Rule for this file: functions with setLayout() are compiled into real shader functions and
