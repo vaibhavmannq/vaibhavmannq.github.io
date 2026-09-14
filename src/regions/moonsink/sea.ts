@@ -29,8 +29,10 @@ import {
   screenSize,
   screenUV,
   select,
+  sign,
   sin,
   smoothstep,
+  sqrt,
   step,
   uniform,
   vec2,
@@ -65,12 +67,57 @@ export function createSea() {
     time: uniform(0),
     yaw: uniform(0),
     marchSteps: uniform(80, 'int'),
+    // Tonight's real lunar phase (0 = new, 0.5 = full) and the illumination it produces after
+    // the floor is applied (spec §5.4b). Set once at construction in index.ts; never mutated
+    // per-frame, so a fixed date/`?moon=` value stays fixed for the whole visit.
+    moonPhase: uniform(0),
+    moonLight: uniform(1),
   };
 
   // The prototype used a left-handed camera; Three.js is right-handed. Mirroring X into
   // "sea space" lets every constant below stay identical to the prototype.
   const toSea = (v: V3) => vec3(v.x.negate(), v.y, v.z);
   const MOON = vec3(0.148, 0.0691, 0.9866);
+
+  // Fixed local axes across the moon's disc, perpendicular to the (fixed) MOON direction.
+  // Derived once offline as normalize(cross(worldUp, MOON)) and normalize(cross(MOON, right)) —
+  // written as constants so the terminator below costs two dot()s, not two cross()+normalize()s
+  // per pixel. MOON_DISC_R is the angular radius (in the same dot-product units) where the
+  // disc's existing soft edge (smoothstep(0.9993, 0.99965, md) below) reaches 0, i.e.
+  // sqrt(1 - 0.9993^2) — the terminator is normalized to that same radius so the two edges agree.
+  const MOON_RIGHT = vec3(0.988935, 0, -0.14835);
+  const MOON_UP = vec3(-0.010251, 0.99761, -0.068333);
+  const MOON_DISC_R = 0.03741;
+  // The unlit limb isn't pure black (a stylised hint of earthshine), just far dimmer than the
+  // lit side (2.5x below) — this is a look-dev choice, not a physical one.
+  const MOON_DARK_SIDE = vec3(0.07, 0.07, 0.085);
+
+  // Pure (§17 S2): phase comes in as a parameter, never read from the uniform directly.
+  // The lit region is the disc intersected with a half-plane whose boundary bows into an
+  // ellipse — semi-minor axis k = cos(2*pi*phase) of the disc radius, matching
+  // illuminatedFraction's use of the same cosine so the disc's shape and the water's
+  // brightness stay in lockstep. cos alone is symmetric about phase 0.5 (a 30% waxing crescent
+  // and a 30%-from-full waning gibbous share the same k), so sign(sin(2*pi*phase)) breaks that
+  // tie: positive for waxing (0, 0.5) — lights the trailing (+x) limb — negative for waning
+  // (0.5, 1) — lights the leading (-x) limb.
+  const moonLit = Fn(([rd, phase]: [V3, F]) => {
+    const xn = dot(rd, MOON_RIGHT).div(MOON_DISC_R);
+    const yn = dot(rd, MOON_UP).div(MOON_DISC_R);
+    const k = cos(phase.mul(Math.PI * 2));
+    const s = sign(sin(phase.mul(Math.PI * 2)));
+    const halfWidth = sqrt(max(float(1).sub(yn.mul(yn)), 0));
+    const d = xn.mul(s).sub(k.mul(halfWidth));
+    // Ascending edges (-0.08 < 0.08): ok under §17 S3. Soft terminator line, similar softness
+    // to the disc's own edge below.
+    return smoothstep(-0.08, 0.08, d);
+  }).setLayout({
+    name: 'moonLit',
+    type: 'float',
+    inputs: [
+      { name: 'rd', type: 'vec3' },
+      { name: 'phase', type: 'float' },
+    ],
+  });
 
   const hash21 = Fn(([p]: [V2]) => {
     const q = fract(p.mul(vec2(123.34, 456.21))).toVar();
@@ -138,15 +185,22 @@ export function createSea() {
     ],
   });
 
-  const sky = Fn(([rd, stars, time]: [V3, F, F]) => {
+  const sky = Fn(([rd, stars, time, phase, light]: [V3, F, F, F, F]) => {
     const y = max(rd.y, 0);
     const facing = dot(normalize(rd.xz.add(1e-4)), normalize(MOON.xz));
     const hor = mix(vec3(0.004, 0.007, 0.01), vec3(0.035, 0.06, 0.07), smoothstep(-0.7, 1.0, facing));
     const c = mix(hor, vec3(0.0005, 0.001, 0.003), pow(y, 0.3)).toVar();
     const md = max(dot(rd, MOON), 0);
-    c.addAssign(vec3(1.0, 0.97, 0.88).mul(smoothstep(0.9993, 0.99965, md).mul(2.5)));
-    c.addAssign(vec3(0.35, 0.6, 0.66).mul(pow(md, 40).mul(0.3)));
-    c.addAssign(vec3(0.1, 0.25, 0.3).mul(pow(md, 6).mul(0.05)));
+    const discShape = smoothstep(0.9993, 0.99965, md);
+    const lit = moonLit(rd, phase);
+    // The moon disc's own shape/brightness follows the terminator, not `light` — the lit
+    // limb reflects at full brightness regardless of phase; only the *amount* of disc that's
+    // lit changes (spec §5.4b: phase drives the lit fraction of the disc separately from the
+    // moonlight term).
+    c.addAssign(mix(MOON_DARK_SIDE, vec3(1.0, 0.97, 0.88).mul(2.5), lit).mul(discShape));
+    // Sky glow near the moon: scales with moonLight (spec §5.4b Step 5), not with the stars.
+    c.addAssign(vec3(0.35, 0.6, 0.66).mul(pow(md, 40).mul(0.3)).mul(light));
+    c.addAssign(vec3(0.1, 0.25, 0.3).mul(pow(md, 6).mul(0.05)).mul(light));
     const sp = vec2(atan(rd.x, rd.z), rd.y).mul(90);
     const cell = floor(sp);
     const st = hash21(cell);
@@ -178,6 +232,8 @@ export function createSea() {
       { name: 'rd', type: 'vec3' },
       { name: 'stars', type: 'float' },
       { name: 'time', type: 'float' },
+      { name: 'phase', type: 'float' },
+      { name: 'light', type: 'float' },
     ],
   });
 
@@ -236,6 +292,8 @@ export function createSea() {
 
   // Uniforms are read ONLY here, in the main shader body, then passed into the pure functions.
   const time = uniforms.time.toVar('seaTime');
+  const moonPhaseVar = uniforms.moonPhase.toVar('seaMoonPhase');
+  const moonLightVar = uniforms.moonLight.toVar('seaMoonLight');
 
   // Camera ray for this pixel, built from the real Three.js camera (screenUV origin is top-left)
   const ndc = vec2(screenUV.x.mul(2).sub(1), screenUV.y.mul(2).sub(1).negate());
@@ -249,7 +307,7 @@ export function createSea() {
   const color = Fn(() => {
     const col = vec3(0).toVar();
     If(tHit.lessThan(0), () => {
-      col.assign(sky(rd, float(1), time));
+      col.assign(sky(rd, float(1), time, moonPhaseVar, moonLightVar));
     }).Else(() => {
       const detail = int(WAVE_ITERATIONS);
       const p = ro.add(rd.mul(tHit)).toVar();
@@ -269,13 +327,18 @@ export function createSea() {
       const fres = pow(max(dot(n, rd.negate()), 0).oneMinus(), 5)
         .mul(0.97)
         .add(0.03);
-      const skyR = sky(R, float(0), time).toVar();
+      const skyR = sky(R, float(0), time, moonPhaseVar, moonLightVar).toVar();
 
       // Water: deep colour + faint crest scatter, mirrored sky, moon glitter, shoreline foam
       const crest = smoothstep(-0.05, 0.35, p.y);
       const scatter = crest.mul(max(dot(MOON.xz, rd.xz.negate()), 0).mul(0.6).add(0.4));
       const water = mix(vec3(0.001, 0.006, 0.01).add(vec3(0.002, 0.025, 0.028).mul(scatter)), skyR, fres).toVar();
-      water.addAssign(vec3(1.0, 0.96, 0.88).mul(pow(max(dot(R, MOON), 0), 300).mul(2.2)));
+      // Specular moon path: scales with moonLight (spec §5.4b Step 5).
+      water.addAssign(
+        vec3(1.0, 0.96, 0.88)
+          .mul(pow(max(dot(R, MOON), 0), 300).mul(2.2))
+          .mul(moonLightVar),
+      );
       const foamNoise = noise2(p.xz.mul(vec2(2.5, 5.0)).add(vec2(0, time.mul(0.5))));
       const foam = fall(0.0, 0.14, wH.sub(sH)).mul(foamNoise.mul(0.55).add(0.45));
       water.assign(mix(water, vec3(0.3, 0.4, 0.42), foam.mul(0.7)));
@@ -298,10 +361,11 @@ export function createSea() {
         )
         .mul(fall(2.0, 25.0, tHit))
         .mul(1.4);
-      sand.addAssign(vec3(0.75, 0.95, 1.0).mul(glint));
+      // Glitter: scales with moonLight (spec §5.4b Step 5).
+      sand.addAssign(vec3(0.75, 0.95, 1.0).mul(glint).mul(moonLightVar));
 
       col.assign(select(isWater, water, sand));
-      const fogColor = sky(normalize(vec3(rd.x, 0.015, rd.z)), float(0), time);
+      const fogColor = sky(normalize(vec3(rd.x, 0.015, rd.z)), float(0), time, moonPhaseVar, moonLightVar);
       col.assign(mix(col, fogColor, exp(tHit.mul(-0.022)).oneMinus()));
     });
 

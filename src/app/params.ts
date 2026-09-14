@@ -6,6 +6,8 @@ export interface DebugParams {
   tier?: Tier;
   p?: number;
   time?: number;
+  /** `?moon=`: 0..1 override for the lunar phase (0 = new, 0.5 = full). Undefined falls back to tonight's real phase. */
+  moon?: number;
   hud: boolean;
   gui: boolean;
   forceWebGL: boolean;
@@ -28,11 +30,15 @@ export function readDebugParams(search: string): DebugParams {
       ? (tierValue as Tier)
       : undefined;
   const progress = number('p');
+  const moonValue = number('moon');
 
   return {
     tier,
     p: progress === undefined ? undefined : clamp01(progress),
     time: number('time'),
+    // Non-numeric or blank falls back to `undefined` (real date, via resolveMoonPhase);
+    // a numeric but out-of-range value is clamped rather than thrown away.
+    moon: moonValue === undefined ? undefined : clamp01(moonValue),
     hud: query.has('hud'),
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),

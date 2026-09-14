@@ -116,7 +116,7 @@ export async function boot(): Promise<void> {
     handleContextLoss(info),
   );
 
-  const region = createMoonsink(ctx);
+  const region = createMoonsink(ctx, params.moon);
   gate.onEnter(() => region.setEntered(true));
   if (gate.state === 'entered') region.setEntered(true);
   moonlit.setView(region.scene, region.camera);
