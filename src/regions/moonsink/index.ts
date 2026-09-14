@@ -49,7 +49,6 @@ export function createMoonsink(ctx: RegionContext, moonOverride?: number): Moons
     const { position, rotation } = toThreeCamera(pose);
     camera.position.set(position[0], position[1], position[2]);
     camera.rotation.set(rotation[0], rotation[1], rotation[2], 'YXZ');
-    sea.uniforms.yaw.value = pose.yaw;
   };
   applyPose(current);
 

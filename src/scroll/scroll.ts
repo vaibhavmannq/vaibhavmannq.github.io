@@ -8,6 +8,8 @@ export interface ScrollController {
   /** Advance Lenis's smoothing; called once per frame by the loop. */
   raf(nowMs: number): void;
   scrollToProgress(p: number, immediate: boolean): void;
+  /** A native browser scroll, so the visitor's next touch interrupts it like any other. */
+  glideToProgress(p: number, smooth: boolean): void;
   setLocked(locked: boolean): void;
   destroy(): void;
 }
@@ -21,6 +23,8 @@ export function createScroll(): ScrollController {
     progress: () => progressFrom(lenis.scroll, lenis.limit),
     raf: (nowMs) => lenis.raf(nowMs),
     scrollToProgress: (p, immediate) => lenis.scrollTo(clamp01(p) * lenis.limit, { immediate, force: true }),
+    glideToProgress: (p, smooth) =>
+      window.scrollTo({ top: clamp01(p) * lenis.limit, behavior: smooth ? 'smooth' : 'auto' }),
     setLocked: (locked) => {
       if (locked) lenis.stop();
       else lenis.start();

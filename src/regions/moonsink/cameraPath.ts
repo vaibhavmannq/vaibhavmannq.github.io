@@ -25,22 +25,25 @@ export interface CameraKey extends CameraPose {
   at: number;
 }
 
-// The journey's sense of travel comes from translation: rising off the water, then drifting in
-// to the black-sand shore (z 34 → −5.5). It does not come from spinning. Yaw stays in a narrow
-// band just below the moon's azimuth (≈0.149 rad), so the moon sits right of centre, away from
-// the left-aligned text, and stays in frame on a portrait phone for the whole journey. Text is
-// on screen from the very first frame, so this matters everywhere, not only during About
+// The journey's sense of travel comes from translation only: rising off the water, then drifting
+// in to the black-sand shore (z 34 → −5.5). The view never turns. The moon and the sky are
+// infinitely far away, so with one fixed yaw and pitch they hold still on screen and only the sea
+// moves (owner, 2026-09-14). That yaw sits just below the moon's azimuth (≈0.149 rad), so the moon
+// stays right of centre, away from the left-aligned text, and inside a portrait phone's frame
 // (spec §3.4 rules 1 and 5).
 //
 // An earlier version turned a full 2π. That pointed away from the moon for most of the About
 // text, and because approachPose damps raw yaw at MAX_YAW_SPEED, it also made the camera lag
 // behind the scroll. The properties are pinned in tests/unit/cameraPath.test.ts.
+const VIEW_YAW = 0;
+const VIEW_PITCH = -0.06;
+
 export const MOONSINK_PATH: readonly CameraKey[] = [
-  { at: 0, x: 0, y: 3.2, z: 34, yaw: 0, pitch: -0.06 },
-  { at: 0.25, x: -2, y: 6, z: 26, yaw: -0.08, pitch: -0.17 },
-  { at: 0.5, x: 1, y: 1.8, z: 8, yaw: 0.02, pitch: -0.1 },
-  { at: 0.75, x: 2.5, y: 1.55, z: -1.8, yaw: -0.05, pitch: -0.08 },
-  { at: 1, x: 0, y: 1.45, z: -5.5, yaw: -0.03, pitch: -0.11 },
+  { at: 0, x: 0, y: 3.2, z: 34, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 0.25, x: -2, y: 6, z: 26, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 0.5, x: 1, y: 1.8, z: 8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 0.75, x: 2.5, y: 1.55, z: -1.8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 1, x: 0, y: 1.45, z: -5.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
 ];
 
 const writePose = (out: CameraPose, pose: CameraPose): CameraPose => {
@@ -136,15 +139,16 @@ export function followPose(
   return current;
 }
 
-/** Behind the opening: a slow bob on the open sea (perfectly still with reduced motion).
- *  Returns a scratch object — see the note above poseAtScratch. */
+/** Behind the opening: a slow bob on the open sea, rising and falling without turning, so the
+ *  moon holds still (perfectly still with reduced motion). Returns a scratch object — see the note
+ *  above poseAtScratch. */
 export function idlePose(timeSeconds: number, reducedMotion: boolean): CameraPose {
   const start = poseAt(MOONSINK_PATH, 0);
   if (reducedMotion) return start;
   idleScratch.x = start.x;
   idleScratch.y = start.y + Math.sin(timeSeconds * 0.35) * 0.25;
   idleScratch.z = start.z;
-  idleScratch.yaw = start.yaw + Math.sin(timeSeconds * 0.12) * 0.04;
+  idleScratch.yaw = start.yaw;
   idleScratch.pitch = start.pitch;
   return idleScratch;
 }

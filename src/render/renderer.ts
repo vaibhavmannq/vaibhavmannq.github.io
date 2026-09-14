@@ -20,7 +20,8 @@ export async function createRenderer(container: HTMLElement, forceWebGL: boolean
   await renderer.init();
   // The sea shader applies the prototype's own tone curve; the pipeline only converts to sRGB.
   renderer.toneMapping = NoToneMapping;
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  // The container is sized to the large viewport (overlay.css), which a phone's toolbar never changes.
+  renderer.setSize(container.clientWidth, container.clientHeight);
   container.append(renderer.domElement);
 
   const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend === true ? 'webgpu' : 'webgl2';

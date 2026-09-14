@@ -12,6 +12,7 @@ import { createMoonsink } from '../regions/moonsink';
 import { createRenderer, type MoonlitRenderer } from '../render/renderer';
 import { createScrollActivity } from '../scroll/activity';
 import { createScroll } from '../scroll/scroll';
+import { createTouchSnap } from '../scroll/touchSnap';
 import { detectCapabilities } from './capabilities';
 import { exposeDebug } from './debug';
 import { createLoop, type Loop } from './loop';
@@ -45,6 +46,16 @@ export async function boot(): Promise<void> {
   });
   const scroll = createScroll();
   scroll.setLocked(true);
+  // Where About is fully shown: past the quiet handover gap around its anchor (review I1), plus a hair
+  // (0.01 of the region, ~2% of a screen) so a scroll position rounded to whole pixels still lands on
+  // full opacity rather than 0.9998 of it.
+  const aboutShown = progressForSection(activeJourney, 'about', HANDOVER_GAP / 2 + HANDOVER_FADE + 0.01);
+  createTouchSnap({
+    progress: () => scroll.progress(),
+    glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
+    shownFrom: aboutShown,
+    enabled: () => gate.state === 'entered' && params.p === undefined,
+  });
 
   let p = params.p ?? 0;
   let state: JourneyState = resolve(p, activeJourney);
@@ -57,8 +68,7 @@ export async function boot(): Promise<void> {
     event.preventDefault();
     gate.enter();
     opening.dismiss();
-    // Land where About is fully shown, past the quiet handover gap around its anchor (review I1).
-    scroll.scrollToProgress(progressForSection(activeJourney, 'about', HANDOVER_GAP / 2 + HANDOVER_FADE), true);
+    scroll.scrollToProgress(aboutShown, true);
     byId('about-title').focus({ preventScroll: true });
   });
   // Test hook: ?p=… jumps straight into the journey, past the opening
@@ -145,7 +155,12 @@ export async function boot(): Promise<void> {
   gate.onEnter(() => region.setEntered(true));
   if (gate.state === 'entered') region.setEntered(true);
   moonlit.setView(region.scene, region.camera);
-  region.resize(window.innerWidth, window.innerHeight);
+  // Size from the stage, not the window: the stage is the large viewport, which a phone's toolbar
+  // never changes, so swiping never resizes the render buffers (overlay.css .world).
+  const world = byId('world');
+  let stageWidth = world.clientWidth;
+  let stageHeight = world.clientHeight;
+  region.resize(stageWidth, stageHeight);
 
   const webgpu = moonlit.backend === 'webgpu';
   let tier: Tier = params.tier !== undefined ? clampTier(params.tier, webgpu) : bootTier({ ...caps, webgpu });
@@ -161,8 +176,11 @@ export async function boot(): Promise<void> {
   window.addEventListener('resize', () => {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
-      moonlit.resize(window.innerWidth, window.innerHeight);
-      region.resize(window.innerWidth, window.innerHeight);
+      if (world.clientWidth === stageWidth && world.clientHeight === stageHeight) return;
+      stageWidth = world.clientWidth;
+      stageHeight = world.clientHeight;
+      moonlit.resize(stageWidth, stageHeight);
+      region.resize(stageWidth, stageHeight);
     }, 150);
   });
 

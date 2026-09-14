@@ -108,6 +108,9 @@ Still true from §5.4a: no timers, no `element.animate()`, no CSS transitions on
 - The `MAX_YAW_SPEED` clamp no longer applies during the journey. The path's total turn is under 1 rad, and no leg needs more than 0.5 s at the old cap (§17 S22 tests), so there is nothing uncomfortable left to clamp.
 - The title-screen bob keeps `approachPose` and its clamp, since that motion is ambient. When the journey starts, the camera moves from the bob to the path within about 0.2 s, while the black layer is still lifting.
 - Mouse wheels keep Lenis's smoothing (`lerp: 0.1`) as the one smoothing layer; touch keeps native momentum.
+- **The view never turns** (owner, 2026-09-14). Every keyframe shares one yaw (0) and pitch (−0.06), and the idle bob only rises and falls. The moon and the sky are infinitely far away, so they hold still on screen and only the sea moves. The motes drift with time only, not with the camera.
+- **Touch snap** (owner phone, 2026-09-14). A touch scroll that comes to rest between the intro (0) and the point where About is fully shown glides on in the swipe's direction, using a native smooth scroll the next touch can interrupt. Past that point scrolling is free. Wheels and keys never snap.
+- **A stage that ignores the phone toolbar.** The scene is fixed at `100lvh` and sized from that element, and the text layer is `100svh`. Android resizes the page for its toolbar only when a scroll ends, so a viewport-sized stage jumped at the end of each swipe.
 
 ### 5.3 Stutter
 
