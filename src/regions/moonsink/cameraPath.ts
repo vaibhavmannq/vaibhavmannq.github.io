@@ -1,4 +1,5 @@
 import { MOONSINK_ABOUT_FROM } from '../../journey/journey.config';
+import { ANCHOR_EPSILON } from '../../journey/timeline';
 import { damp, lerp, smoothstep } from '../../shared/math';
 
 /** Prototype focal length 1.6 on a unit-height screen gives a vertical field of view of 2·atan(0.5/1.6) degrees. */
@@ -150,7 +151,7 @@ export function idlePose(timeSeconds: number, reducedMotion: boolean): CameraPos
 
 /** Reduced motion: no flight, just the intro viewpoint or the About viewpoint. */
 export function reducedMotionTarget(local: number): CameraPose {
-  return poseAt(MOONSINK_PATH, local < MOONSINK_ABOUT_FROM ? 0 : 1);
+  return poseAt(MOONSINK_PATH, local + ANCHOR_EPSILON < MOONSINK_ABOUT_FROM ? 0 : 1);
 }
 
 // Called once per frame from applyPose() (moonsink/index.ts), which destructures the result

@@ -45,6 +45,8 @@ export class Governor {
   private windowStart: number | null = null;
   private fastWindows = 0;
   private lastChange = Number.NEGATIVE_INFINITY;
+  /** A slow window closed while the visitor was scrolling: step down as soon as a change is allowed. */
+  private pendingDown = false;
 
   constructor(tier: Tier, webgpu: boolean, options: GovernorOptions = DEFAULT_GOVERNOR) {
     this.tier = tier;
@@ -60,11 +62,26 @@ export class Governor {
 
   /**
    * Record one rendered frame. Returns the new tier when it changes, otherwise null.
-   * While `canChange` is false (the visitor is scrolling) the tier never changes, but windows are
-   * still measured: a slow window's verdict waits for the first window after scrolling stops, and
-   * fast windows keep counting toward a step up (spec §5.6, never mid-scroll).
+   * While `canChange` is false (the visitor is scrolling) the tier never changes. Windows are still
+   * measured, and a slow window that closes mid-scroll is remembered: its step-down is applied on the
+   * first sample after scrolling stops (spec §5.6, never mid-scroll). Fast windows keep counting
+   * toward a step up.
    */
   sample(frameMs: number, nowMs: number, canChange = true): Tier | null {
+    // A window left open across the idle 30 fps mode or a hidden tab is stale, and this frame's
+    // interval spans the gap. Start again rather than judge it (journey-flow review I4).
+    if (this.windowStart !== null && nowMs - this.windowStart > 2 * this.options.windowMs) {
+      this.samples = [];
+      this.windowStart = null;
+      return null;
+    }
+    if (this.pendingDown && canChange && nowMs - this.lastChange >= this.options.cooldownMs) {
+      this.pendingDown = false;
+      this.fastWindows = 0;
+      this.samples = [];
+      this.windowStart = nowMs;
+      return this.changeTo(this.tier - 1, nowMs);
+    }
     if (this.windowStart === null) this.windowStart = nowMs;
     this.samples.push(frameMs);
     if (nowMs - this.windowStart < this.options.windowMs) return null;
@@ -79,7 +96,9 @@ export class Governor {
     }
     if (slowFrames > this.options.downThresholdMs) {
       this.fastWindows = 0;
-      return canChange ? this.changeTo(this.tier - 1, nowMs) : null;
+      if (canChange) return this.changeTo(this.tier - 1, nowMs);
+      this.pendingDown = true;
+      return null;
     }
     if (slowFrames < this.options.upThresholdMs) {
       this.fastWindows += 1;

@@ -1,3 +1,4 @@
+import { ANCHOR_EPSILON } from '../journey/timeline';
 import type { SectionAnchor } from '../journey/types';
 import { smoothstep } from '../shared/math';
 
@@ -14,9 +15,6 @@ export const HANDOVER_GAP = 0.08;
 /** Pixel drift while a section leaves (up) and arrives (from below). Dropped under reduced motion. */
 const EXIT_OFFSET_PX = -12;
 const ENTER_OFFSET_PX = 16;
-
-/** Same slack as journey/timeline.ts, so a position exactly on an anchor counts as "reached". */
-const ANCHOR_EPSILON = 1e-9;
 
 /** 0..1 progress of a section's outgoing fade (0 before it starts, 1 once gone). */
 function leaving(local: number, next: SectionAnchor | undefined): number {
