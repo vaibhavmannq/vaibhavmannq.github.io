@@ -494,7 +494,7 @@ A unit test checks that slugs are unique, required fields are present, and every
 
 ### 10.2 Keyboard
 - **"Skip intro"** is the first focusable element. It ends the opening and moves focus to About.
-- The opening moves focus to the intro heading only when a key started it. An automatic or pointer start leaves focus alone, so no focus ring appears around the name.
+- The opening moves focus to the intro heading only when a key started it. An automatic or pointer start leaves focus alone, so no focus ring appears around the name. Tab, Shift and keys pressed on a link or button never start it.
 - Native keyboard scrolling works.
 - Rail items are buttons with `aria-current`.
 - Visible focus ring on every interactive element.
@@ -546,6 +546,7 @@ A unit test checks that slugs are unique, required fields are present, and every
 - `?tier=0..4`: force a tier
 - `?stills`: force stills mode
 - `?length=2.4`: override the journey length in screen heights, for tuning (clamped to 1.5–4)
+- `?hold=600000`: keep the opening's greeting up at least this many milliseconds (tests)
 
 ### 12.3 Tests
 
