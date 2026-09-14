@@ -50,6 +50,11 @@ type V3 = Node<'vec3'>;
 // which WGSL does not define, so we write the falling edge explicitly.
 const fall = (a: number, b: number, x: F) => smoothstep(a, b, x).oneMinus();
 
+// Wave iteration count: pinned constant for ray-march and shading consistency (spec §5.4, §17 S17).
+// Amplitude decays 0.74× per layer, so layer 7+ contributes under 1% of wave height.
+// This value (6) keeps the ripple character of old tier 4 at cost between old tiers 2 and 3.
+const WAVE_ITERATIONS = 6;
+
 // Rule for this file: functions with setLayout() are compiled into real shader functions and
 // must be PURE. They never read uniforms directly; time and step counts come in as parameters.
 // (Reading a uniform inside a layout function breaks WGSL compilation: "struct member not found".)
@@ -59,7 +64,6 @@ export function createSea() {
     time: uniform(0),
     yaw: uniform(0),
     marchSteps: uniform(80, 'int'),
-    waveDetail: uniform(9, 'int'),
   };
 
   // The prototype used a left-handed camera; Three.js is right-handed. Mirroring X into
@@ -124,7 +128,7 @@ export function createSea() {
     return min(s, 2.2);
   }).setLayout({ name: 'sandH', type: 'float', inputs: [{ name: 'p', type: 'vec2' }] });
 
-  const heightAt = Fn(([p, time]: [V2, F]) => max(waterH(p, int(5), time), sandH(p))).setLayout({
+  const heightAt = Fn(([p, time]: [V2, F]) => max(waterH(p, int(WAVE_ITERATIONS), time), sandH(p))).setLayout({
     name: 'heightAt',
     type: 'float',
     inputs: [
@@ -246,7 +250,7 @@ export function createSea() {
     If(tHit.lessThan(0), () => {
       col.assign(sky(rd, float(1), time));
     }).Else(() => {
-      const detail = uniforms.waveDetail;
+      const detail = int(WAVE_ITERATIONS);
       const p = ro.add(rd.mul(tHit)).toVar();
       const wH = waterH(p.xz, detail, time).toVar();
       const sH = sandH(p.xz).toVar();
