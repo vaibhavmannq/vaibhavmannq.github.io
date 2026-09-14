@@ -1,5 +1,5 @@
 import { createHud } from '../dev/hud';
-import { journey } from '../journey/journey.config';
+import { journey, journeyWithLength } from '../journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
@@ -25,18 +25,20 @@ function byId<T extends HTMLElement>(id: string): T {
 
 export async function boot(): Promise<void> {
   const params = readDebugParams(window.location.search);
+  // `?length` lets the owner tune the journey's length by feel; everything below reads this.
+  const activeJourney = params.length === undefined ? journey : journeyWithLength(params.length);
   const caps = detectCapabilities();
   const ctx = { reducedMotion: caps.reducedMotion };
   const root = document.documentElement;
 
-  byId('journey-track').style.setProperty('--journey-length', String(totalLength(journey)));
+  byId('journey-track').style.setProperty('--journey-length', String(totalLength(activeJourney)));
 
   // ---- HTML layer: works even if 3D never starts ----
   const openingElement = byId('opening');
   const gate = createGate(openingElement, byId('load-status'));
   const opening = createOpening(openingElement, { minHoldMs: params.hold });
   // Phase 1 has one region, so its anchors are the page's sections.
-  const anchors = (journey[0] as RegionSegment).sections;
+  const anchors = (activeJourney[0] as RegionSegment).sections;
   const sections = createSections(byId('content'), anchors);
   createMotionToggle(byId<HTMLButtonElement>('motion-toggle'), (reduced) => {
     ctx.reducedMotion = reduced;
@@ -45,7 +47,7 @@ export async function boot(): Promise<void> {
   scroll.setLocked(true);
 
   let p = params.p ?? 0;
-  let state: JourneyState = resolve(p, journey);
+  let state: JourneyState = resolve(p, activeJourney);
   sections.show(state.a.local, ctx.reducedMotion);
 
   gate.onEnter(() => {
@@ -55,7 +57,7 @@ export async function boot(): Promise<void> {
     event.preventDefault();
     gate.enter();
     opening.dismiss();
-    scroll.scrollToProgress(progressForSection(journey, 'about'), true);
+    scroll.scrollToProgress(progressForSection(activeJourney, 'about'), true);
     byId('about-title').focus({ preventScroll: true });
   });
   // Test hook: ?p=… jumps straight into the journey, past the opening
@@ -94,7 +96,7 @@ export async function boot(): Promise<void> {
     const step = (nowMs: number) => {
       scroll.raf(nowMs);
       p = params.p ?? scroll.progress();
-      state = resolve(p, journey);
+      state = resolve(p, activeJourney);
       sections.show(state.a.local, ctx.reducedMotion);
       window.requestAnimationFrame(step);
     };
@@ -193,7 +195,7 @@ export async function boot(): Promise<void> {
   loop = createLoop((nowMs, dtSeconds) => {
     scroll.raf(nowMs);
     p = params.p ?? scroll.progress();
-    state = resolve(p, journey);
+    state = resolve(p, activeJourney);
     const scrolling = activity.update(p, nowMs);
     const timeSeconds = params.time ?? nowMs / 1000;
 
