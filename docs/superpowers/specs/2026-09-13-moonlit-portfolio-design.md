@@ -282,8 +282,12 @@ function resolve(p: number, journey: readonly Segment[]): JourneyState;  // pure
     them re-shapes the water surface, so every governor tier change made the sea visibly
     jump while the horizon stayed put — the owner reported it as "the ocean resets". Wave
     iteration count is now a single constant shared by the ray-march and the shading
-    normals. The top layers contribute under 1% of wave height (amplitude decays 0.74× per
-    layer), so nothing visible is lost. See §5.6's invariant and §17 S17.
+    normals. **Corrected 2026-09-14:** an earlier draft of this line claimed the dropped
+    layers contribute "under 1% of wave height". That was wrong by roughly 10×. Amplitude
+    decays 0.74× per layer, so layer 7 alone is 16.4% of layer 1 and pinning at 6 discards
+    **10.5%** of total wave amplitude. The real justification is frequency, not amplitude:
+    layers 7–9 run at 1.55–2.61 cycles/unit and are largely sub-pixel at every render scale
+    we ship, so they alias rather than resolve. See §5.6's invariant and §17 S17.
 - **Known risk:** porting GLSL to TSL is the biggest unknown (§15). Phase 1 exists to retire that risk first.
 
 ### 5.4a Text sections follow the scroll
@@ -337,8 +341,9 @@ Added 2026-09-14 at the owner's request.
 
 | Knob | Tier 0 | 1 | 2 | 3 | 4 (extras) |
 |---|---|---|---|---|---|
-| Render scale × min(devicePixelRatio, 2) | 0.5 | 0.6 | 0.75 | 0.9 | 1.0 |
-| Sea march steps / wave iterations | 48 / 4 | 64 / 5 | 80 / 6 | 100 / 8 | 120 / 9 |
+| Render scale × min(devicePixelRatio, 2) | 0.4 | 0.5 | 0.65 | 0.8 | 1.0 |
+| Sea march steps | 80 | 88 | 96 | 104 | 112 |
+| Sea wave iterations (constant, never a tier knob — §5.4) | 6 | 6 | 6 | 6 | 6 |
 | Motes | 150 | 250 | 400 | 700 | 700 + GPU particles (WebGPU only) |
 | Bloom | off | off | half-res | full-res | full-res |
 | Light shafts / volumetric fog | off | off | off | light | full |
@@ -662,7 +667,8 @@ During planning, the demo-1 sea was ported to TSL and run in a throwaway build (
 | S14 | Plans dry-run (2026-09-13): every code block of the phase 0 and phase 1 plans was extracted and run. Biome clean, `tsc` 0 errors, 65/65 unit tests, build 256.7 KB gzip, 9/9 Chromium e2e including axe. Firefox/WebKit e2e not run locally (CI runs them). Playwright test timeout set to 120 s; axe and reduced-motion tests run in `?stills` mode | Software-rendered WebGL in headless browsers takes ~20 s to compile the sea, so HTML-only tests would otherwise time out |
 | S15 | Minimum Safari is **16.4** (§9), not 15. The build keeps `target: 'es2023'` | Owner decision (2026-09-13) after the Phase 0 final review found `es2023` output and `lib` APIs (e.g. class static blocks, `toSorted`) can't run on Safari 15.x–16.3; 16.4 matches Vite 8's own baseline and Safari 15 has a negligible share in 2026 |
 | S16 | Governor thresholds (§5.6) are **> 20 ms** to step down and **< 17.5 ms** to step up, not 15/11 | The loop caps rendering at 60 fps, so `boot.ts` can only ever feed the governor the interval between rendered frames (~16.7 ms on a healthy device), never a true per-frame cost. The old 15/11 ms thresholds sat below that floor, so every device ratcheted down to tier 0 within seconds of entering and could never recover (final whole-branch review, C1, 2026-09-14). Measuring CPU time inside the frame callback instead was considered and rejected: this scene's cost is almost entirely GPU-side and `render()` returns before the GPU finishes, so CPU time reads ~2 ms on every device and would climb to the top tier on a budget phone — the opposite failure |
-| S17 | Wave iteration count is a **constant**, not a tier knob (§5.4, §5.6) | Tiers drove `waveDetail` 4→9, and each layer displaces the water surface, so every governor step visibly re-shaped the sea. The ray-march used a hardcoded 5 layers while shading used the tier's count, so the horizon held still while the ripples and glitter jumped — the owner described it as "I can feel the ocean reset" while sitting still (owner review, 2026-09-14). Layer 9 contributes 0.74^8 ≈ 0.9% of wave height, so pinning the count costs nothing visible |
+| S17 | Wave iteration count is a **constant**, not a tier knob (§5.4, §5.6) | Tiers drove `waveDetail` 4→9, and each layer displaces the water surface, so every governor step visibly re-shaped the sea. The ray-march used a hardcoded 5 layers while shading used the tier's count, so the horizon held still while the ripples and glitter jumped — the owner described it as "I can feel the ocean reset" while sitting still (owner review, 2026-09-14). Corrected 2026-09-14: the original justification here ("layer 9 contributes ≈0.9%") was wrong by ~10×; 0.74^8 ≈ 9.0%, and pinning 9→6 discards 10.5% of total wave amplitude. The honest reason 6 is enough is frequency, not amplitude — layers 7–9 run at 1.55–2.61 cycles/unit and are sub-pixel at every render scale we ship |
 | S18 | Section text opacity is a pure function of scroll position (§5.4a) | `sectionAt()` picked a section by hard threshold and `sections.ts` then ran a fixed 900 ms Web-Animations fade. The text therefore ignored scroll speed, could not be scrubbed backwards, and popped at one exact point — the owner reported it as "so abrupt that it feels unnatural" (owner review, 2026-09-14) |
 | S19 | The spec needed **composition rules** (§3.4), not just content lists | Phase 1 passed every task review, a whole-branch review and an accessibility audit, and the owner's first reaction to the built result was "honestly I am not liking this design at all… cluttery". Nothing in the spec had said how much may appear on one screen, so reviewers had no rule to reject clutter against. Root cause of the ring, the shards, the text card and the duplicated name |
 | S20 | Moon shows tonight's **real** phase, with an illumination floor (§5.4b) | Owner request, 2026-09-14. Real phase makes the site differ night to night at near-zero cost; the floor exists so a new-moon night is never a black page |
+| S21 | `marchSteps` is also a shape knob; tiers retuned to renderScale 0.4/0.5/0.65/0.8/1.0 with marchSteps 80/88/96/104/112 (§5.6) | Pinning wave iterations (S17) removed only one cause of the owner's "ocean reset". Rendering tier 0 against tier 3 at a pinned shader clock showed the sea is **flat — no wave structure at all** at 48 steps: grazing-angle rays (normal for this camera's shallow pitch) exhaust the step budget before converging and fall back to sky/fog instead of resolving the height field. Cost proxy renderScale²×marchSteps: shipped tier 0 (0.5/48) = 12.0 flat; (0.5/80) = 20.0 waves; **(0.4/80) = 12.8 waves, +7%**; tier 3 (0.9/100) = 81.0. So the composition break is fixable for ~7% by trading render scale — a knob §5.6 permits a tier to change — for march steps, which it does not. Owner chose this trade on 2026-09-14 |
