@@ -90,7 +90,7 @@ html.is-stills .world {
   /* Balances the trailing letter-spacing so the line stays optically centred. */
   padding-left: 0.3em;
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 8vw, 4.5rem);
+  font-size: clamp(1.5rem, 7.5vw, 4.5rem);
   font-weight: 400;
   letter-spacing: 0.3em;
 }
@@ -262,6 +262,26 @@ html.is-gated .content {
     monospace;
   white-space: pre;
   pointer-events: none;
+}
+
+/* ---------- boot failure (main.ts): the no-JavaScript layout ---------- */
+html.is-broken {
+  overflow: auto;
+}
+
+html.is-broken .content {
+  position: static;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+html.is-broken .content::before {
+  display: none;
+}
+
+html.is-broken .section {
+  position: static;
+  margin: 2rem 0;
 }
 
 /* ---------- reduced motion ---------- */

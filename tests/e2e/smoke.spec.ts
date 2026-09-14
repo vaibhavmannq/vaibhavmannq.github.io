@@ -7,6 +7,7 @@ test('the page loads without console errors and the world renders', async ({ pag
   const errors = collectConsoleErrors(page);
   await page.goto('/?time=4');
 
+  await expect(page.locator('.opening__hello')).toBeVisible();
   await expect(page.locator('.opening__hello')).toHaveText('Hello, voyager');
   await waitForMoonlit(page);
 
@@ -26,4 +27,11 @@ test('stills mode keeps the page usable', async ({ page }) => {
   await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
   await expect(page.locator('#intro')).toHaveClass(/is-active/);
   expect(errors).toEqual([]);
+});
+
+test('?length sets how far the journey scrolls, and the default is 2.4 screen heights', async ({ page }) => {
+  await page.goto('/?stills&length=3');
+  await expect(page.locator('#journey-track')).toHaveAttribute('style', /--journey-length:\s*3\b/);
+  await page.goto('/?stills');
+  await expect(page.locator('#journey-track')).toHaveAttribute('style', /--journey-length:\s*2\.4\b/);
 });
