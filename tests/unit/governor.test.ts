@@ -3,12 +3,17 @@ import { Governor, percentile } from '../../src/quality/governor';
 import type { Tier } from '../../src/quality/tiers';
 
 /** Feed ~1 s of frames (62 samples at 60 Hz). Returns the tier change reported during that window, if any. */
-function runWindow(governor: Governor, frameMs: number, startMs: number): { change: Tier | null; endMs: number } {
+function runWindow(
+  governor: Governor,
+  frameMs: number,
+  startMs: number,
+  canChange = true,
+): { change: Tier | null; endMs: number } {
   let change: Tier | null = null;
   let t = startMs;
   for (let i = 0; i < 62; i++) {
     t = startMs + i * (1000 / 60);
-    const result = governor.sample(frameMs, t);
+    const result = governor.sample(frameMs, t, canChange);
     if (result !== null) change = result;
   }
   return { change, endMs: t + 1000 / 60 };
@@ -102,5 +107,31 @@ describe('Governor', () => {
       t = runWindow(governor, 16.7, t).endMs;
     }
     expect(governor.current).toBe(3);
+  });
+
+  it('never changes tier while the visitor is scrolling, however slow the frames', () => {
+    const governor = new Governor(2, true);
+    let t = 0;
+    for (let i = 0; i < 5; i++) {
+      const window = runWindow(governor, 33, t, false);
+      expect(window.change).toBeNull();
+      t = window.endMs;
+    }
+    expect(governor.current).toBe(2);
+  });
+
+  it('applies a slow verdict on the first window after scrolling stops', () => {
+    const governor = new Governor(2, true);
+    const scrolling = runWindow(governor, 33, 0, false);
+    const settled = runWindow(governor, 33, scrolling.endMs, true);
+    expect(settled.change).toBe(1);
+  });
+
+  it('keeps counting fast windows while scrolling, then steps up once it may', () => {
+    const governor = new Governor(1, true);
+    let t = 0;
+    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false).endMs;
+    expect(governor.current).toBe(1);
+    expect(runWindow(governor, 16.7, t, true).change).toBe(2);
   });
 });
