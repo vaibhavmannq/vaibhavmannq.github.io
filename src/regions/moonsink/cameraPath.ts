@@ -24,18 +24,22 @@ export interface CameraKey extends CameraPose {
   at: number;
 }
 
-// Yaw is front-loaded: by local ≈ 0.45 (MOONSINK_ABOUT_FROM, journey.config.ts) the camera has
-// already turned almost the full circle, so the moon and its path on the water are back in the
-// upper part of the frame for the whole About reading window (spec §3.4 rule 5). The last two
-// keyframes are then a near-flat "gentle settle" rather than a continued spin. See
-// tests/unit/cameraPath.test.ts ("keeps the moon in the horizontal field of view through the
-// About window") for the derivation and the property this pins.
+// The journey's sense of travel comes from translation: rising off the water, then drifting in
+// to the black-sand shore (z 34 → −5.5). It does not come from spinning. Yaw stays in a narrow
+// band just below the moon's azimuth (≈0.149 rad), so the moon sits right of centre, away from
+// the left-aligned text, and stays in frame on a portrait phone for the whole journey. Text is
+// on screen from the very first frame, so this matters everywhere, not only during About
+// (spec §3.4 rules 1 and 5).
+//
+// An earlier version turned a full 2π. That pointed away from the moon for most of the About
+// text, and because approachPose damps raw yaw at MAX_YAW_SPEED, it also made the camera lag
+// behind the scroll. The properties are pinned in tests/unit/cameraPath.test.ts.
 export const MOONSINK_PATH: readonly CameraKey[] = [
   { at: 0, x: 0, y: 3.2, z: 34, yaw: 0, pitch: -0.06 },
-  { at: 0.28, x: -2, y: 6, z: 26, yaw: Math.PI * 1.94, pitch: -0.17 },
-  { at: 0.55, x: 1, y: 1.8, z: 8, yaw: Math.PI * 1.999, pitch: -0.1 },
-  { at: 0.78, x: 2.5, y: 1.55, z: -1.8, yaw: Math.PI * 1.9998, pitch: -0.08 },
-  { at: 1, x: 0, y: 1.45, z: -5.5, yaw: Math.PI * 2, pitch: -0.11 },
+  { at: 0.28, x: -2, y: 6, z: 26, yaw: -0.08, pitch: -0.17 },
+  { at: 0.55, x: 1, y: 1.8, z: 8, yaw: 0.02, pitch: -0.1 },
+  { at: 0.78, x: 2.5, y: 1.55, z: -1.8, yaw: -0.05, pitch: -0.08 },
+  { at: 1, x: 0, y: 1.45, z: -5.5, yaw: -0.03, pitch: -0.11 },
 ];
 
 const writePose = (out: CameraPose, pose: CameraPose): CameraPose => {
