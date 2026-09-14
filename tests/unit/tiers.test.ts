@@ -50,7 +50,6 @@ describe('TIERS', () => {
       const higher = TIERS[tiers[i] as Tier];
       expect(higher.renderScale).toBeGreaterThanOrEqual(lower.renderScale);
       expect(higher.marchSteps).toBeGreaterThan(lower.marchSteps);
-      expect(higher.waveDetail).toBeGreaterThanOrEqual(lower.waveDetail);
     }
   });
 
@@ -58,5 +57,14 @@ describe('TIERS', () => {
     expect(TIERS[0].bloom).toBe(false);
     expect(TIERS[1].bloom).toBe(false);
     expect(TIERS[2].bloom).toBe(true);
+  });
+
+  it('pins the invariant: tier settings affect cost only, never surface shape', () => {
+    const expectedKeys = ['renderScale', 'marchSteps', 'bloom'];
+    const tiers: Tier[] = [0, 1, 2, 3, 4];
+    for (const tier of tiers) {
+      const actualKeys = Object.keys(TIERS[tier]).sort();
+      expect(actualKeys).toEqual(expectedKeys.sort());
+    }
   });
 });

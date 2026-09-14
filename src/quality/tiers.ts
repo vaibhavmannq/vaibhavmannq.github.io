@@ -5,18 +5,16 @@ export interface TierSettings {
   renderScale: number;
   /** Maximum ray-march steps for the sea. */
   marchSteps: number;
-  /** Number of wave layers used for shading. */
-  waveDetail: number;
   bloom: boolean;
 }
 
-/** Cost only. Tiers never change composition, camera path, content, timing or palette (spec §5.6). */
+/** Cost only. Tiers never change composition, camera path, content, timing, surface shape or palette (spec §5.6). */
 export const TIERS: Readonly<Record<Tier, TierSettings>> = {
-  0: { renderScale: 0.5, marchSteps: 48, waveDetail: 4, bloom: false },
-  1: { renderScale: 0.6, marchSteps: 64, waveDetail: 5, bloom: false },
-  2: { renderScale: 0.75, marchSteps: 80, waveDetail: 6, bloom: true },
-  3: { renderScale: 0.9, marchSteps: 100, waveDetail: 8, bloom: true },
-  4: { renderScale: 1, marchSteps: 120, waveDetail: 9, bloom: true },
+  0: { renderScale: 0.5, marchSteps: 48, bloom: false },
+  1: { renderScale: 0.6, marchSteps: 64, bloom: false },
+  2: { renderScale: 0.75, marchSteps: 80, bloom: true },
+  3: { renderScale: 0.9, marchSteps: 100, bloom: true },
+  4: { renderScale: 1, marchSteps: 120, bloom: true },
 };
 
 export interface DeviceHints {

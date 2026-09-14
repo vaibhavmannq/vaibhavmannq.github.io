@@ -79,7 +79,6 @@ export function createMoonsink(ctx: RegionContext): MoonsinkRegion {
     },
     applyTier(settings: TierSettings) {
       sea.uniforms.marchSteps.value = settings.marchSteps;
-      sea.uniforms.waveDetail.value = settings.waveDetail;
     },
     dispose() {
       disposeObject(scene);
