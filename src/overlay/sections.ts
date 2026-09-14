@@ -28,13 +28,15 @@ function crossfadeT(mix: number): number {
 
 /**
  * Opacity for one side of a section crossfade, as a pure function of scroll position (§5.4a).
- * `mix` is `JourneyState.sectionMix`. Reduced motion collapses the band to a hard switch at its
- * midpoint (still driven by `mix`, never an independent clock). Exported and side-effect free so
- * it can be unit-tested directly; the DOM writes live in `createSections` below.
+ * `mix` is `JourneyState.sectionMix`. Reduced motion is a hard switch exactly at the next anchor:
+ * the text changes in the same frame as the section id and the reduced-motion camera cut, so the
+ * visitor sees one cut, not two (§5.4a, §17 S24). It is still driven by `mix`, never by a clock.
+ * Exported and side-effect free so it can be unit-tested directly; the DOM writes live in
+ * `createSections` below.
  */
 export function crossfadeOpacity(role: CrossfadeRole, mix: number, reducedMotion: boolean): number {
   if (reducedMotion) {
-    const past = mix >= 0.5;
+    const past = mix >= 1;
     return role === 'outgoing' ? (past ? 0 : 1) : past ? 1 : 0;
   }
   const t = crossfadeT(mix);

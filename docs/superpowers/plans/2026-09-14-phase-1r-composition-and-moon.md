@@ -208,7 +208,7 @@ Replace the `element.animate()` fade entirely. Each frame, for each section elem
 
 Rules: no `element.animate()`, no `setTimeout`, no CSS `transition` on opacity or transform. Writing the same value twice must be cheap — cache the last value written per element and skip the DOM write when unchanged (avoids per-frame style invalidation). Keep `is-active` toggling for `pointer-events`.
 
-**Reduced motion:** no translate offset, and opacity switches at the band's midpoint — still no independent animation.
+**Reduced motion:** no translate offset, and the text switches at the next anchor, together with the camera cut (corrected 2026-09-14: this first said "at the band's midpoint"; see spec §17 S24) — still no independent animation.
 
 - [ ] **Step 4: Unit-test the crossfade**
 
