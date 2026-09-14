@@ -23,32 +23,37 @@ test.describe('accessibility', () => {
     expect(results.violations).toEqual([]);
   });
 
-  test('text stays legible over the brightest moon on a phone', async ({ browser }) => {
-    // axe cannot check this: the scene is a WebGL canvas, so axe never sees the moon or the water.
-    // Full moon is the worst case. The text is light, so the brightest moon path behind it gives
-    // the lowest contrast; a new moon only makes the background darker. A phone is the worst screen
-    // because the text runs the full width, across the moon's path. Reduced motion places the
-    // camera exactly on its About viewpoint instead of easing toward it.
-    test.setTimeout(200_000);
-    const context = await browser.newContext({
-      viewport: { width: 390, height: 844 },
-      isMobile: true,
-      hasTouch: true,
-      reducedMotion: 'reduce',
-    });
-    try {
-      const page = await context.newPage();
-      await page.goto('/?p=0.9&moon=0.5&tier=3&time=12');
-      await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 20, undefined, { timeout: 150_000 });
-      await expect.poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+  // axe cannot check this: the scene is a WebGL canvas, so axe never sees the moon or the water. Full
+  // moon is the worst case: the text is light, so the brightest moon path behind it gives the lowest
+  // contrast. A phone is the worst screen because the text runs the full width, across the moon's path.
+  // Reduced motion places the camera exactly on each viewpoint. The intro run covers the name and the
+  // thin italic tagline; the About run covers the body text (journey-flow review I2).
+  for (const [where, progress, minLines] of [
+    ['Intro', 0.1, 2],
+    ['About', 0.9, 3],
+  ] as const) {
+    test(`${where} text stays legible over the brightest moon on a phone`, async ({ browser }) => {
+      test.setTimeout(200_000);
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        reducedMotion: 'reduce',
+      });
+      try {
+        const page = await context.newPage();
+        await page.goto(`/?p=${progress}&moon=0.5&tier=3&time=12`);
+        await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 20, undefined, { timeout: 150_000 });
+        await expect.poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
 
-      const lines = await measureTextContrast(page);
-      expect(lines.length).toBeGreaterThan(3);
-      for (const line of lines) {
-        expect(line.ratio, `"${line.text}"`).toBeGreaterThanOrEqual(line.required);
+        const lines = await measureTextContrast(page);
+        expect(lines.length).toBeGreaterThanOrEqual(minLines);
+        for (const line of lines) {
+          expect(line.ratio, `"${line.text}"`).toBeGreaterThanOrEqual(line.required);
+        }
+      } finally {
+        await context.close();
       }
-    } finally {
-      await context.close();
-    }
-  });
+    });
+  }
 });

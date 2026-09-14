@@ -5,7 +5,7 @@ import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
 import { createMotionToggle } from '../overlay/motionToggle';
 import { createOpening } from '../overlay/opening';
-import { createSections } from '../overlay/sections';
+import { createSections, HANDOVER_FADE, HANDOVER_GAP } from '../overlay/sections';
 import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
 import { createMoonsink } from '../regions/moonsink';
@@ -57,7 +57,8 @@ export async function boot(): Promise<void> {
     event.preventDefault();
     gate.enter();
     opening.dismiss();
-    scroll.scrollToProgress(progressForSection(activeJourney, 'about'), true);
+    // Land where About is fully shown, past the quiet handover gap around its anchor (review I1).
+    scroll.scrollToProgress(progressForSection(activeJourney, 'about', HANDOVER_GAP / 2 + HANDOVER_FADE), true);
     byId('about-title').focus({ preventScroll: true });
   });
   // Test hook: ?p=… jumps straight into the journey, past the opening

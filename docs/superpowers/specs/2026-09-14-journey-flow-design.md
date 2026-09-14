@@ -1,7 +1,7 @@
 # Journey flow: the opening, the type pairing and the scroll
 
 - **Date:** 2026-09-14
-- **Status:** Awaiting owner review
+- **Status:** Approved by the owner; implemented on branch `journey-flow`
 - **Amends:** `2026-09-13-moonlit-portfolio-design.md` §3.1, §3.3, §3.4 rule 4, §5.4a, §5.6, §5.8, §10.1, §10.2, §12.2, §14, §15, §17 S25
 - **Next after this:** the night sky (§14 roadmap)
 
@@ -50,7 +50,7 @@ The opening has three states:
 | State | Starts | What happens |
 |---|---|---|
 | `greeting` | First paint | The scene loads and compiles behind the black layer |
-| `leaving` | When the scene is ready **and** 2.2 s have passed since first paint. Or, once the scene is ready, at the first tap, scroll or key | The greeting and subtitle fade over 0.7 s. The black layer fades over 1.8 s, starting 0.5 s in. Taps pass through the layer while it leaves |
+| `leaving` | When the scene is ready **and** 2.2 s have passed since navigation start. Or, once the scene is ready, at the first tap, scroll or key | The greeting and subtitle fade over 0.7 s. The black layer fades over 1.8 s, starting 0.5 s in. Taps pass through the layer while it leaves |
 | `gone` | When the layer's own transition ends | The layer is hidden |
 
 Leaving the greeting unlocks scrolling and starts the camera, as entering does today. The intro text keeps its existing reveal: it fades in over 0.9 s after a 1.2 s delay, so the greeting has already faded before the name appears.
@@ -61,8 +61,8 @@ Taps, scrolls and keys before the scene is ready do nothing, because there is no
 
 - **An automatic or pointer start moves no focus.** The browser would otherwise draw a focus ring around the name for every visitor. The demos proved this: after the fix, `document.activeElement` is `body` and nothing matches `:focus-visible`.
 - **A key press that starts the opening moves focus to the intro heading**, as entering does today.
-- **"Skip intro"** stays the first focusable element. It removes the opening at once, scrolls to About and focuses the About heading.
-- **Keys that don't start the opening:** Tab and Shift, and any key pressed on a link or button. They keep their normal job, so "Skip intro" and "Reduce motion" stay usable while the greeting is up.
+- **"Skip intro"** stays the first focusable element. It removes the opening at once, scrolls to where About is fully shown (past the handover gap around its anchor) and focuses the About heading.
+- **Keys that don't start the opening:** Tab, Shift, CapsLock, shortcuts using Ctrl, Alt or Meta (such as Alt+Tab or Ctrl+L), and any key pressed on a link or button. They keep their normal job, so "Skip intro" and "Reduce motion" stay usable while the greeting is up.
 - A visually hidden `role="status"` element outside the opening layer says "Loading the scene…" and is emptied once ready. The opening layer itself is `aria-hidden`: the real content stays in the DOM underneath.
 
 ### 3.4 Fallbacks
@@ -153,7 +153,7 @@ So the text overlay contributes but is not the main cause: the phone showed 160 
 | File | Change |
 |---|---|
 | `index.html` | Opening markup replaces the title screen's name and "Click to enter"; a visually hidden status element is added; the font request changes; the scratch demo scripts are removed |
-| `src/overlay/opening.ts` (new) | `createOpening(element, status)`, with `begin({ camera, enter, reducedMotion })` and a pure, exported `holdRemaining(nowMs, minHoldMs)`. It replaces the scratch `src/dev/opening.ts` |
+| `src/overlay/opening.ts` (new) | `createOpening(element, { minHoldMs })`, with `begin({ reducedMotion, onStart })`, `dismiss()` and a pure, exported `holdRemaining(nowMs, minHoldMs)`. It replaces the scratch `src/dev/opening.ts` |
 | `src/overlay/gate.ts` | Keeps its state machine (`loading` → `ready` → `entered`), `setReady`, `enter` and `onEnter`; the button is removed |
 | `src/overlay/sections.ts` | `sectionOpacity(local, anchors, index, reducedMotion)` and `sectionOffset(...)`, both pure and exported |
 | `src/regions/moonsink/cameraPath.ts` | `followPose(current, target, dtSeconds, timeConstantMs)` for the journey; `approachPose` stays for the bob; keyframes re-spaced |
@@ -179,7 +179,7 @@ So the text overlay contributes but is not the main cause: the phone showed 160 
 - The opening appears, then hides by itself (stills mode).
 - A key press moves focus to the intro heading; a pointer start leaves nothing matching `:focus-visible`.
 - `sections.spec`: at a handover position, the two sections are never both visible, and a gap position shows neither.
-- The full-moon contrast test is re-run and covers the italic tagline.
+- The full-moon contrast test measures both the intro (the name and the italic tagline) and About.
 - axe finds no violations on the opening.
 - Every spec that clicked "Click to enter" is rewritten to wait for the opening instead.
 

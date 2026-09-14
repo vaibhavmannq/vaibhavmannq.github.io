@@ -5,11 +5,13 @@ import { expect, test } from '@playwright/test';
 
 test('the opening greets, then leaves by itself once the page is ready', async ({ page }) => {
   await page.goto('/?stills');
+  await expect(page.locator('.opening__hello')).toBeVisible();
   await expect(page.locator('.opening__hello')).toHaveText('Hello, voyager');
   await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
   await expect(page.locator('#opening')).toHaveAttribute('data-state', 'entered');
   // An automatic start moves no focus, so nothing draws a focus ring.
   expect(await page.evaluate(() => document.querySelector(':focus-visible')?.id ?? null)).toBeNull();
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
 });
 
 test('a key press starts the journey and moves focus to the intro heading', async ({ page }) => {
@@ -26,6 +28,8 @@ test('a tap starts the journey without leaving a focus ring on the name', async 
   await page.mouse.click(40, 40);
   await expect(page.locator('#opening')).toHaveAttribute('data-state', 'entered');
   expect(await page.evaluate(() => document.querySelector(':focus-visible')?.id ?? null)).toBeNull();
+  // Chromium never matches :focus-visible for script focus after a click, so check focus did not move.
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
 });
 
 test('Skip intro is the first Tab stop and lands on About', async ({ page, browserName }) => {
@@ -40,4 +44,6 @@ test('Skip intro is the first Tab stop and lands on About', async ({ page, brows
   await expect(page.locator('#about-title')).toBeFocused();
   await expect(page.locator('#opening')).toBeHidden();
   await expect(page.locator('#about')).toHaveClass(/is-active/);
+  // Skip intro must land where About is actually visible, not in the handover gap (review I1).
+  await expect.poll(() => page.locator('#about').evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
 });

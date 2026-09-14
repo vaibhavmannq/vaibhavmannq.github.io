@@ -118,7 +118,7 @@ npm run build
 npx playwright test tests/e2e/a11y.spec.ts --project=chromium
 ```
 
-Expected: everything passes, including "text stays legible over the brightest moon on a phone". That test reads each line's real computed colour, so the italic tagline is covered.
+Expected: everything passes, including "text stays legible over the brightest moon on a phone". That test reads each line's real computed colour. *(As written it only measured About; the final review caught the gap, and the fix wave added the intro and its italic tagline.)*
 
 - [ ] **Step 6: Commit**
 
