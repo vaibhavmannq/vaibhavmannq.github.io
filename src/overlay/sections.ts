@@ -1,57 +1,73 @@
-import type { SectionId } from '../journey/types';
+import type { SectionAnchor } from '../journey/types';
 import { smoothstep } from '../shared/math';
 
 export interface Sections {
-  /** Called every frame with the resolved journey state. `mix` is `JourneyState.sectionMix` —
-   *  a pure 0..1 position between this section's own anchor and the next one's. */
-  show(id: SectionId, mix: number, reducedMotion: boolean): void;
+  /** Called every frame with the region-local scroll position (0..1). */
+  show(local: number, reducedMotion: boolean): void;
 }
 
-/** Fraction of the gap between two section anchors, right before the next anchor's `from`, over
- *  which the outgoing and incoming section text crossfade. Keeping this well under 1 confines
- *  the handover to a brief moment near the boundary rather than smearing it across the whole
- *  time a section is on screen (owner check, brief step 6: "a brief moment where both are
- *  partly visible"). */
-export const CROSSFADE_BAND = 0.3;
+/** How much of the region (0..1) each text fade takes. Tuned by feel (journey-flow design §5.1). */
+export const HANDOVER_FADE = 0.1;
+/** The quiet stretch around an anchor where no text shows, only the scene. */
+export const HANDOVER_GAP = 0.08;
 
-/** Pixel offset applied to text while it crossfades; dropped entirely under reduced motion. */
+/** Pixel drift while a section leaves (up) and arrives (from below). Dropped under reduced motion. */
 const EXIT_OFFSET_PX = -12;
 const ENTER_OFFSET_PX = 16;
 
-export type CrossfadeRole = 'outgoing' | 'incoming';
+/** Same slack as journey/timeline.ts, so a position exactly on an anchor counts as "reached". */
+const ANCHOR_EPSILON = 1e-9;
 
-/** How far into the crossfade band `mix` sits: 0 before the band starts, 1 exactly at the next
- *  anchor. Pure — no DOM, no clock, no allocation. */
-function crossfadeT(mix: number): number {
-  return smoothstep(1 - CROSSFADE_BAND, 1, mix);
+/** 0..1 progress of a section's outgoing fade (0 before it starts, 1 once gone). */
+function leaving(local: number, next: SectionAnchor | undefined): number {
+  if (next === undefined) return 0;
+  const end = next.from - HANDOVER_GAP / 2;
+  return smoothstep(end - HANDOVER_FADE, end, local);
+}
+
+/** 0..1 progress of a section's incoming fade (0 before it starts, 1 once fully in). */
+function arriving(local: number, anchor: SectionAnchor, index: number): number {
+  if (index === 0) return 1;
+  const start = anchor.from + HANDOVER_GAP / 2;
+  return smoothstep(start, start + HANDOVER_FADE, local);
 }
 
 /**
- * Opacity for one side of a section crossfade, as a pure function of scroll position (§5.4a).
- * `mix` is `JourneyState.sectionMix`. Reduced motion is a hard switch exactly at the next anchor:
- * the text changes in the same frame as the section id and the reduced-motion camera cut, so the
- * visitor sees one cut, not two (§5.4a, §17 S24). It is still driven by `mix`, never by a clock.
- * Exported and side-effect free so it can be unit-tested directly; the DOM writes live in
- * `createSections` below.
+ * Opacity of one section as a pure function of scroll position. The outgoing text is fully gone
+ * before the incoming text starts, so two texts never share the screen (spec §5.4a, amended).
+ * Under reduced motion it is a hard switch exactly at the anchor, matching the camera cut (§17 S24).
  */
-export function crossfadeOpacity(role: CrossfadeRole, mix: number, reducedMotion: boolean): number {
+export function sectionOpacity(
+  local: number,
+  anchors: readonly SectionAnchor[],
+  index: number,
+  reducedMotion: boolean,
+): number {
+  const anchor = anchors[index];
+  if (anchor === undefined) return 0;
+  const next = anchors[index + 1];
   if (reducedMotion) {
-    const past = mix >= 1;
-    return role === 'outgoing' ? (past ? 0 : 1) : past ? 1 : 0;
+    const started = local + ANCHOR_EPSILON >= anchor.from;
+    const ended = next !== undefined && local + ANCHOR_EPSILON >= next.from;
+    return started && !ended ? 1 : 0;
   }
-  const t = crossfadeT(mix);
-  return role === 'outgoing' ? 1 - t : t;
+  return arriving(local, anchor, index) * (1 - leaving(local, next));
 }
 
-/** Companion translateY offset (px) for the same crossfade; always 0 under reduced motion
- *  (§5.4a: "no translate offset"). Pure, same shape as `crossfadeOpacity`. */
-export function crossfadeOffset(role: CrossfadeRole, mix: number, reducedMotion: boolean): number {
-  if (reducedMotion) return 0;
-  const t = crossfadeT(mix);
-  // `+ 0` normalizes away -0 (e.g. EXIT_OFFSET_PX * 0), which would otherwise round-trip into
-  // an unnecessary `translateY(-0px)` string instead of the plain 'none' used for "no offset".
-  const value = role === 'outgoing' ? EXIT_OFFSET_PX * t : ENTER_OFFSET_PX * (1 - t);
-  return value + 0;
+/** Companion translateY in px for the same handover; always 0 under reduced motion. Pure. */
+export function sectionOffset(
+  local: number,
+  anchors: readonly SectionAnchor[],
+  index: number,
+  reducedMotion: boolean,
+): number {
+  const anchor = anchors[index];
+  if (reducedMotion || anchor === undefined) return 0;
+  const out = leaving(local, anchors[index + 1]);
+  // `+ 0` turns -0 into 0, so an unchanged offset is written as 'none', not 'translateY(-0px)'.
+  if (out > 0) return EXIT_OFFSET_PX * out + 0;
+  if (index === 0) return 0;
+  return ENTER_OFFSET_PX * (1 - arriving(local, anchor, index)) + 0;
 }
 
 interface Tracked {
@@ -62,21 +78,14 @@ interface Tracked {
 }
 
 /**
- * Renders section text as a pure function of scroll position (§5.4a). No `element.animate()`,
- * no `setTimeout`, no CSS transition on the properties written here — opacity and transform are
- * assigned directly every frame, and the last value written per element is cached so an
- * unchanged value is never re-applied (avoids per-frame style invalidation).
+ * Writes the handover to the DOM every frame. No timers, no `element.animate()`, no CSS transition
+ * on these properties. The last value per element is cached so an unchanged value is never re-applied.
  */
-export function createSections(root: HTMLElement): Sections {
-  const ids: SectionId[] = [];
+export function createSections(root: HTMLElement, anchors: readonly SectionAnchor[]): Sections {
   const tracked: Tracked[] = [];
-  const indexById = new Map<SectionId, number>();
-
-  for (const element of root.querySelectorAll<HTMLElement>('[data-section]')) {
-    const id = element.dataset.section as SectionId | undefined;
-    if (!id) continue;
-    indexById.set(id, ids.length);
-    ids.push(id);
+  for (const anchor of anchors) {
+    const element = root.querySelector<HTMLElement>(`[data-section="${anchor.id}"]`);
+    if (element === null) throw new Error(`section ${anchor.id} is missing from index.html`);
     tracked.push({ element, lastOpacity: undefined, lastOffset: undefined, lastActive: undefined });
   }
 
@@ -96,31 +105,18 @@ export function createSections(root: HTMLElement): Sections {
   };
 
   return {
-    show(id, mix, reducedMotion) {
-      const currentIndex = indexById.get(id);
-      if (currentIndex === undefined) return;
-      // Only the DOM-adjacent next section is a crossfade partner. When `id` is the last one,
-      // there is nothing to hand off to — `mix` is pinned at 1 forever in that case (§5.2), so
-      // it must be ignored rather than fed into the crossfade maths (that would fade the last
-      // section to 0 and leave it there).
-      const hasNext = currentIndex + 1 < tracked.length;
-
+    show(local, reducedMotion) {
       for (let i = 0; i < tracked.length; i++) {
-        const entry = tracked[i] as Tracked;
-        if (i === currentIndex) {
-          const opacity = hasNext ? crossfadeOpacity('outgoing', mix, reducedMotion) : 1;
-          const offset = hasNext ? crossfadeOffset('outgoing', mix, reducedMotion) : 0;
-          write(entry, opacity, offset, true);
-        } else if (hasNext && i === currentIndex + 1) {
-          write(
-            entry,
-            crossfadeOpacity('incoming', mix, reducedMotion),
-            crossfadeOffset('incoming', mix, reducedMotion),
-            false,
-          );
-        } else {
-          write(entry, 0, 0, false);
-        }
+        const next = anchors[i + 1];
+        const active =
+          local + ANCHOR_EPSILON >= (anchors[i] as SectionAnchor).from &&
+          (next === undefined || local + ANCHOR_EPSILON < next.from);
+        write(
+          tracked[i] as Tracked,
+          sectionOpacity(local, anchors, i, reducedMotion),
+          sectionOffset(local, anchors, i, reducedMotion),
+          active,
+        );
       }
     },
   };
