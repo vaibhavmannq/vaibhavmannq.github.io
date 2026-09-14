@@ -1,8 +1,9 @@
 import { clamp01, smoothstep } from '../shared/math';
 import type { JourneyState, RegionSegment, SectionId, Segment } from './types';
 
-/** Floating-point slack so a value that lands exactly on an anchor counts as "reached". */
-const EPSILON = 1e-9;
+/** Floating-point slack so a value that lands exactly on an anchor counts as "reached". Shared by
+ *  section text (overlay/sections.ts) and the reduced-motion camera cut, so all three agree. */
+export const ANCHOR_EPSILON = 1e-9;
 
 /** Plain loop instead of `.reduce()`: `resolve` calls this every frame, and `.reduce()` would
  *  allocate a fresh closure each time. */
@@ -22,7 +23,7 @@ function sectionAt(segment: RegionSegment, local: number, out: JourneyState): vo
   if (first === undefined) throw new Error(`region ${segment.region} has no sections`);
   let index = 0;
   for (let i = 0; i < sections.length; i++) {
-    if (local + EPSILON >= (sections[i] as { from: number }).from) index = i;
+    if (local + ANCHOR_EPSILON >= (sections[i] as { from: number }).from) index = i;
   }
   const anchor = sections[index] as { id: SectionId; from: number };
   const next = sections[index + 1];
@@ -94,14 +95,18 @@ export function resolve(p: number, journey: readonly Segment[]): JourneyState {
   throw new Error('journey is empty');
 }
 
-/** Global progress (0..1) where a text section begins, used by "Skip intro" and later by the region rail. */
-export function progressForSection(journey: readonly Segment[], id: SectionId): number {
+/**
+ * Global progress (0..1) where a text section begins, used by "Skip intro" and later by the region
+ * rail. `offset` aims past the anchor, in region-local units: Skip intro uses it to land where the
+ * section is fully shown rather than in the handover gap (journey-flow review I1).
+ */
+export function progressForSection(journey: readonly Segment[], id: SectionId, offset = 0): number {
   const total = totalLength(journey);
   let start = 0;
   for (const segment of journey) {
     if (segment.kind === 'region') {
       const anchor = segment.sections.find((candidate) => candidate.id === id);
-      if (anchor) return (start + anchor.from * segment.length) / total;
+      if (anchor) return (start + (anchor.from + offset) * segment.length) / total;
     }
     start += segment.length;
   }

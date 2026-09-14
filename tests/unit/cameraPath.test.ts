@@ -223,6 +223,10 @@ describe('idlePose and reducedMotionTarget', () => {
     expect({ ...reducedMotionTarget(0.2) }).toEqual({ ...poseAt(MOONSINK_PATH, 0) });
     expect({ ...reducedMotionTarget(0.9) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
+
+  it('cuts at the About anchor with the same slack as the text and resolve (review M6)', () => {
+    expect({ ...reducedMotionTarget(MOONSINK_ABOUT_FROM - 5e-10) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
+  });
 });
 
 describe('toThreeCamera', () => {

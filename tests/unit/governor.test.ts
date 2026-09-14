@@ -134,4 +134,33 @@ describe('Governor', () => {
     expect(governor.current).toBe(1);
     expect(runWindow(governor, 16.7, t, true).change).toBe(2);
   });
+
+  it('ignores a stale window left over from idle, so resuming never steps down on its own (review I4)', () => {
+    const governor = new Governor(2, true);
+    let t = 0;
+    for (let i = 0; i < 18; i++) {
+      t = i * (1000 / 60);
+      expect(governor.sample(16.7, t)).toBeNull();
+    }
+    // Idle for 9 s (the loop stops feeding the governor); the first frame back spans the gap.
+    expect(governor.sample(33, t + 9000)).toBeNull();
+    expect(governor.current).toBe(2);
+  });
+
+  it('remembers a slow window closed while scrolling and steps down as soon as it may (review M10)', () => {
+    const governor = new Governor(2, true);
+    const scrolling = runWindow(governor, 33, 0, false);
+    expect(scrolling.change).toBeNull();
+    // Scrolling has stopped and frames are smooth at rest: the verdict from the scroll still applies.
+    expect(governor.sample(16.7, scrolling.endMs, true)).toBe(1);
+  });
+
+  it('keeps a remembered step-down waiting while the visitor is still scrolling', () => {
+    const governor = new Governor(2, true);
+    const first = runWindow(governor, 33, 0, false);
+    const stillScrolling = runWindow(governor, 16.7, first.endMs, false);
+    expect(stillScrolling.change).toBeNull();
+    expect(governor.current).toBe(2);
+    expect(governor.sample(16.7, stillScrolling.endMs, true)).toBe(1);
+  });
 });

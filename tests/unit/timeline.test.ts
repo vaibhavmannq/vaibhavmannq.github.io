@@ -139,6 +139,11 @@ describe('progressForSection', () => {
     expect(progressForSection(twoRegions, 'projects')).toBeCloseTo(0.75, 10);
   });
 
+  it('can aim a little past a section anchor, in region-local units (review I1)', () => {
+    expect(progressForSection(journey, 'about', 0.14)).toBeCloseTo(0.59, 10);
+    expect(progressForSection(twoRegions, 'projects', 0.5)).toBeCloseTo(0.875, 10);
+  });
+
   it('round-trips through resolve', () => {
     expect(resolve(progressForSection(journey, 'about'), journey).section).toBe('about');
   });
