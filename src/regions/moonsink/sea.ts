@@ -75,8 +75,8 @@ export function createSea() {
     time: uniform(0),
     marchSteps: uniform(80, 'int'),
     // Tonight's real lunar phase (0 = new, 0.5 = full) and the illumination it produces after
-    // the floor is applied (spec §5.4b). Set at construction in index.ts and changed only by the
-    // visitor's moon dial, never per frame, so a date/`?moon=` value holds until the dial moves.
+    // the floor is applied (spec §5.4b). Set once at construction in index.ts; never mutated
+    // per-frame, so a fixed date/`?moon=` value stays fixed for the whole visit.
     moonPhase: uniform(0),
     moonLight: uniform(1),
   };
