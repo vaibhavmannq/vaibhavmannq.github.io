@@ -94,7 +94,7 @@ git commit -m "refactor: strip Moonsink to moon, sea and type"
 
 In `sea.ts`, define `const WAVE_ITERATIONS = 6;` at module scope with a comment citing §5.4 and §17 S17. Use it for the shading call (`waterH(p.xz, int(WAVE_ITERATIONS), time)` and the four neighbour samples) **and** for `heightAt`'s hardcoded `int(5)`, so the ray-marched surface and the shaded normals finally agree. Delete the `waveDetail` uniform from `SeaUniforms`.
 
-Why 6: amplitude decays 0.74× per layer, so layer 7+ contributes under 1% of wave height. 6 keeps the ripple character of the old high tiers at a cost between the old tiers 2 and 3.
+Why 6 (corrected 2026-09-14): NOT because the dropped layers are negligible in amplitude — that earlier claim was wrong by ~10× (layer 7 alone is 16.4%; 9→6 discards 10.5% of total wave amplitude). The real reason is frequency: layers 7–9 run at 1.55–2.61 cycles/unit and are sub-pixel at every render scale we ship. 6 keeps the ripple character of the old high tiers at a cost between the old tiers 2 and 3.
 
 - [ ] **Step 2: Remove the tier knob**
 
@@ -118,6 +118,67 @@ git commit -m "fix: pin wave detail so quality tiers stop re-shaping the sea"
 **Walkthrough (for the owner):** this is the "ocean reset" you felt. The quality system was changing how many wave layers the water has, so every time it decided your phone could handle more, the sea's surface changed shape under you. Now the water is the same everywhere and only its sharpness changes.
 
 **Check (owner):** sit on the title screen for a minute. The water's pattern never jumps, even as the HUD's tier climbs.
+
+---
+
+### Task 2b: Retune the tiers so march steps stop flattening the sea
+
+**Files:**
+- Modify: `src/quality/tiers.ts` (all five rows)
+- Modify: `src/regions/moonsink/sea.ts` (correct the wrong comment on `WAVE_ITERATIONS`)
+- Test: `tests/unit/tiers.test.ts`
+
+**Why:** pinning wave iterations (Task 2) removed only one cause of the owner's "ocean reset".
+Rendering tier 0 against tier 3 at a pinned shader clock showed the sea is **flat — no wave
+structure at all** at 48 march steps: grazing-angle rays exhaust the step budget before
+converging and fall back to sky/fog instead of resolving the height field. `marchSteps` is
+therefore a shape knob too, which §5.6 forbids. Owner chose the fix on 2026-09-14.
+
+**Cost proxy** (`renderScale² × marchSteps`), measured by the controller:
+
+| tier 0 setting | proxy | sea |
+|---|---|---|
+| 0.5 / 48 (shipped) | 12.0 | flat, no waves |
+| 0.5 / 80 | 20.0 (+67%) | waves present |
+| **0.4 / 80 (chosen)** | **12.8 (+7%)** | waves present, softer |
+| 0.9 / 100 (tier 3) | 81.0 | reference |
+
+- [ ] **Step 1: Retune `TIERS`**
+
+Render scale becomes `0.4 / 0.5 / 0.65 / 0.8 / 1.0` and march steps `80 / 88 / 96 / 104 / 112`
+across tiers 0–4. Bloom rows are unchanged. Update the doc comment: render scale is the primary
+cost lever *because* it is the one knob §5.6 permits a tier to change; march steps stay in a
+narrow band that always resolves the water.
+
+- [ ] **Step 2: Correct the wrong comment in `sea.ts`**
+
+The `WAVE_ITERATIONS` comment claims the dropped layers "contribute under 1% of wave height".
+That is wrong by roughly 10×: amplitude decays 0.74× per layer, so layer 7 alone is 16.4% of
+layer 1 and pinning at 6 discards 10.5% of total wave amplitude. Replace it with the real
+reason — layers 7–9 run at 1.55–2.61 cycles/unit and are sub-pixel at every render scale we
+ship, so they alias rather than resolve. Do not change the value 6.
+
+- [ ] **Step 3: Update the tier tests**
+
+Existing assertions pin the old numbers; update them. Keep the key-shape invariant test from
+Task 2 untouched. **Add** a test asserting `marchSteps` never falls below 80 at any tier — the
+floor below which the sea stops resolving — so a future "optimisation" that re-flattens the
+water fails here with a message naming §17 S21.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/quality/tiers.ts src/regions/moonsink/sea.ts tests/unit/tiers.test.ts
+git commit -m "fix: retune quality tiers so march steps stop flattening the sea"
+```
+
+**Walkthrough (for the owner):** the quality system had two knobs that changed the water's
+shape, not just its sharpness. Task 2 fixed one. This fixes the other by keeping the ray-march
+high enough everywhere to actually find the waves, and paying for it by rendering low-end
+devices at a slightly smaller size — which only makes the picture softer, never different.
+
+**Check (owner):** force `?tier=0` and `?tier=3` and compare. Same sea, same waves, same
+moon path; tier 0 is just softer.
 
 ---
 
