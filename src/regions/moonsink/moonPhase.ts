@@ -35,6 +35,22 @@ export function illuminatedFraction(phase: number): number {
   return (1 - Math.cos(2 * Math.PI * phase)) / 2;
 }
 
+/**
+ * The everyday name of a phase (wraps, so 1 is a new moon again). The new and full moon and both
+ * quarters each take a band of ±3% of a cycle around their exact moment. Pure.
+ */
+export function phaseName(phase: number): string {
+  const p = phase - Math.floor(phase);
+  if (p < 0.03 || p >= 0.97) return 'New moon';
+  if (p < 0.22) return 'Waxing crescent';
+  if (p < 0.28) return 'First quarter';
+  if (p < 0.47) return 'Waxing gibbous';
+  if (p < 0.53) return 'Full moon';
+  if (p < 0.72) return 'Waning gibbous';
+  if (p < 0.78) return 'Last quarter';
+  return 'Waning crescent';
+}
+
 /** Illumination after the floor is applied: never below MIN_MOON_LIGHT, never above 1. */
 export function moonLight(phase: number): number {
   return MIN_MOON_LIGHT + (1 - MIN_MOON_LIGHT) * illuminatedFraction(phase);

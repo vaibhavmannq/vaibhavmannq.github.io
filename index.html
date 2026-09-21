@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300&family=Gelasio:wght@400;500&family=Manrope:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..500&family=Hanken+Grotesk:wght@400;500;600&family=Space+Mono&display=swap"
     />
     <noscript>
       <style>
@@ -45,56 +45,76 @@
 
     <main class="content" id="content">
       <p class="visually-hidden" id="load-status" role="status">Loading the scene…</p>
+      <p class="voyage-log" id="voyage-log">
+        <span>Log</span>
+        <span data-log-when></span>
+        <span class="voyage-log__moon" data-log-moon></span>
+      </p>
+
       <section class="section" id="intro" data-section="intro" aria-labelledby="intro-title">
         <div class="section__panel">
-          <h1 id="intro-title" tabindex="-1">Vaibhav Mann</h1>
-          <p class="section__lede">Creative developer in the making. I build quiet, moonlit things for the web.</p>
-          <p class="section__hint" aria-hidden="true">scroll to drift ashore</p>
+          <p class="section__kicker">
+            <span class="visually-hidden">Chapter one: Adrift</span>
+            <span aria-hidden="true" data-kicker="I · Adrift">I · Adrift</span>
+          </p>
+          <h1 id="intro-title" tabindex="-1" data-reveal="block">Vaibhav Mann</h1>
+          <p class="section__lede" data-reveal="lines">I build quiet, moonlit things for the web.</p>
+          <p class="section__hint" aria-hidden="true">Scroll to drift ashore</p>
         </div>
       </section>
 
       <section class="section" id="about" data-section="about" aria-labelledby="about-title">
         <div class="section__panel">
-          <p class="section__region">Moonsink Shore</p>
-          <h2 id="about-title" tabindex="-1">About</h2>
-          <p>
-            I'm learning to shape light, water and code into places you can scroll through. This site is my first
-            project: a walk along a moonlit shore, built from scratch with Three.js and hand-written shaders.
+          <h2 class="section__kicker" id="about-title" tabindex="-1">
+            <span class="visually-hidden">About</span>
+            <span aria-hidden="true" data-kicker="II · The shore">II · The shore</span>
+          </h2>
+          <p data-reveal="lines">
+            I'm learning to shape light, water and code into places you can wander through. Everything here is made
+            by hand: <em>the sea is a shader, and the moon is tonight's.</em>
           </p>
         </div>
       </section>
 
       <section class="section" id="projects" data-section="projects" aria-labelledby="projects-title">
         <div class="section__panel">
-          <p class="section__region">Along the shore</p>
-          <h2 id="projects-title" tabindex="-1">Projects</h2>
-          <ul class="project-list" id="project-list"></ul>
+          <p class="section__kicker">
+            <span class="visually-hidden">Chapter three: What washed ashore</span>
+            <span aria-hidden="true" data-kicker="III · What washed ashore">III · What washed ashore</span>
+          </p>
+          <h2 id="projects-title" tabindex="-1" data-reveal="lines">Projects</h2>
+          <ul class="project-list" id="project-list" data-reveal="block"></ul>
         </div>
       </section>
 
       <section class="section" id="contact" data-section="contact" aria-labelledby="contact-title">
         <div class="section__panel">
-          <p class="section__region">At the water's edge</p>
-          <h2 id="contact-title" tabindex="-1">Contact</h2>
-          <ul class="contact-list">
+          <p class="section__kicker">
+            <span class="visually-hidden">Chapter four: The water's edge</span>
+            <span aria-hidden="true" data-kicker="IV · The water's edge">IV · The water's edge</span>
+          </p>
+          <h2 id="contact-title" tabindex="-1" data-reveal="lines">Say hello</h2>
+          <ul class="contact-list" data-reveal="block">
             <li>
               <span class="contact-list__label">Email</span>
-              <a href="mailto:vaibhavmann.03@gmail.com">vaibhavmann.03@gmail.com</a>
+              <a href="mailto:vaibhavmann.03@gmail.com" data-pull>vaibhavmann.03@gmail.com</a>
             </li>
             <li>
               <span class="contact-list__label">GitHub</span>
-              <a href="https://github.com/vaibhavmannq" target="_blank" rel="me noopener"
+              <a href="https://github.com/vaibhavmannq" target="_blank" rel="me noopener" data-pull
                 >vaibhavmannq<span class="visually-hidden"> on GitHub (opens in a new tab)</span></a
               >
             </li>
             <li>
               <span class="contact-list__label">LinkedIn</span>
-              <a href="https://www.linkedin.com/in/vaibhav-mann-635542282" target="_blank" rel="me noopener"
+              <a href="https://www.linkedin.com/in/vaibhav-mann-635542282" target="_blank" rel="me noopener" data-pull
                 >Vaibhav Mann<span class="visually-hidden"> on LinkedIn (opens in a new tab)</span></a
               >
             </li>
           </ul>
-          <p class="contact-return"><a id="return-to-shore" href="#intro">Return to the shore</a></p>
+          <p class="contact-return" data-reveal="block">
+            <a id="return-to-shore" href="#intro" data-pull>Return to the shore</a>
+          </p>
         </div>
       </section>
     </main>

@@ -4,9 +4,12 @@
   --ink-dim: rgba(230, 238, 240, 0.78);
   --glow: #9fe6ee;
   --night: #020406;
-  --font-display: Gelasio, Georgia, "Times New Roman", serif;
-  --font-accent: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
-  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  /* Redesign 2026-09-22: Fraunces for the name, headings and italic lines; Hanken Grotesk for reading;
+     Space Mono for the log voice (chapter titles, the voyage log). */
+  --font-display: Fraunces, Georgia, "Times New Roman", serif;
+  --font-accent: Fraunces, Georgia, serif;
+  --font-body: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Space Mono", "Cascadia Mono", ui-monospace, monospace;
 }
 
 *,

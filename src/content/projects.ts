@@ -6,6 +6,8 @@ export interface Project {
   /** Unique and kebab-case; the deep link is #/projects/<slug>. */
   slug: string;
   title: string;
+  /** A few words set in italics beside the title. */
+  aside?: string;
   year: number;
   role: string;
   tools: readonly string[];
@@ -21,6 +23,7 @@ export const projects: readonly Project[] = [
   {
     slug: 'moonlit',
     title: 'Moonlit',
+    aside: 'you’re standing in it',
     year: 2026,
     role: 'Design and code',
     tools: ['TypeScript', 'Three.js', 'WebGPU and WebGL2', 'Lenis', 'Vite'],

@@ -17,6 +17,7 @@
     "size": "size-limit"
   },
   "dependencies": {
+    "gsap": "3.15.0",
     "lenis": "1.3.26",
     "three": "0.186.0"
   },
