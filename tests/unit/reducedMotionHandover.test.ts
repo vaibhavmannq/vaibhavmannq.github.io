@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   journey,
   MOONSINK_ABOUT_FROM,
+  MOONSINK_CONTACT_FROM,
   MOONSINK_PROJECTS_FROM,
   MOONSINK_SHORE_AT,
+  MOONSINK_WALK_END,
 } from '../../src/journey/journey.config';
 import { resolve } from '../../src/journey/timeline';
 import type { RegionSegment } from '../../src/journey/types';
@@ -40,6 +42,14 @@ describe('reduced-motion handovers', () => {
     expect(section).toBe('projects');
     expect(sectionOpacity(MOONSINK_PROJECTS_FROM, anchors, 1, true)).toBe(0);
     expect(sectionOpacity(MOONSINK_PROJECTS_FROM, anchors, 2, true)).toBe(1);
-    expect({ ...reducedMotionTarget(MOONSINK_PROJECTS_FROM) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
+    expect({ ...reducedMotionTarget(MOONSINK_PROJECTS_FROM) }).toEqual({ ...poseAt(MOONSINK_PATH, MOONSINK_WALK_END) });
+  });
+
+  it('switches the text and the viewpoint together at the Contact anchor', () => {
+    const { section } = resolve(MOONSINK_CONTACT_FROM, journey);
+    expect(section).toBe('contact');
+    expect(sectionOpacity(MOONSINK_CONTACT_FROM, anchors, 2, true)).toBe(0);
+    expect(sectionOpacity(MOONSINK_CONTACT_FROM, anchors, 3, true)).toBe(1);
+    expect({ ...reducedMotionTarget(MOONSINK_CONTACT_FROM) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
 });

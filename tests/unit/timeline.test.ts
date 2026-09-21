@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { journey, MOONSINK_ABOUT_FROM, MOONSINK_PROJECTS_FROM } from '../../src/journey/journey.config';
+import {
+  journey,
+  MOONSINK_ABOUT_FROM,
+  MOONSINK_CONTACT_FROM,
+  MOONSINK_PROJECTS_FROM,
+} from '../../src/journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../../src/journey/timeline';
 import type { Segment } from '../../src/journey/types';
 
@@ -11,7 +16,7 @@ const twoRegions: readonly Segment[] = [
 
 describe('totalLength', () => {
   it('adds up every segment', () => {
-    expect(totalLength(journey)).toBe(4.2);
+    expect(totalLength(journey)).toBe(5.6);
     expect(totalLength(twoRegions)).toBe(4);
   });
 });
@@ -25,11 +30,13 @@ describe('resolve (the one-region journey)', () => {
     expect(state.section).toBe('intro');
   });
 
-  it('switches to About, then Projects, at their anchors', () => {
+  it('switches to About, Projects and Contact at their anchors', () => {
     expect(resolve(MOONSINK_ABOUT_FROM - 0.01, journey).section).toBe('intro');
     expect(resolve(MOONSINK_ABOUT_FROM + 0.01, journey).section).toBe('about');
     expect(resolve(MOONSINK_PROJECTS_FROM - 0.01, journey).section).toBe('about');
     expect(resolve(MOONSINK_PROJECTS_FROM + 0.01, journey).section).toBe('projects');
+    expect(resolve(MOONSINK_CONTACT_FROM - 0.01, journey).section).toBe('projects');
+    expect(resolve(MOONSINK_CONTACT_FROM + 0.01, journey).section).toBe('contact');
     expect(resolve(0.5, journey).a.local).toBeCloseTo(0.5, 10);
   });
 
@@ -118,20 +125,20 @@ describe('resolve: no allocation, and the scratch-object trap', () => {
     // mutates the shared object, so the comparison actually discriminates.
     const atStart = { ...resolve(0, journey) }; // exactly on intro's own anchor
     const atMid = { ...resolve(MOONSINK_ABOUT_FROM / 2, journey) }; // halfway to About
-    const atProjects = { ...resolve(progressForSection(journey, 'projects'), journey) }; // terminal: mix pinned to 1
+    const atContact = { ...resolve(progressForSection(journey, 'contact'), journey) }; // terminal: mix pinned to 1
 
     expect(atStart.section).toBe('intro');
     expect(atStart.sectionMix).toBe(0);
     expect(atMid.section).toBe('intro');
     expect(atMid.sectionMix).toBeCloseTo(0.5, 10);
-    expect(atProjects.section).toBe('projects');
-    expect(atProjects.sectionMix).toBe(1);
+    expect(atContact.section).toBe('contact');
+    expect(atContact.sectionMix).toBe(1);
 
     // A broken implementation that always reported the same section/mix would satisfy any one
     // of the equality checks above by coincidence; these cross-checks would not survive that.
     expect(atStart).not.toEqual(atMid);
-    expect(atMid).not.toEqual(atProjects);
-    expect(atStart).not.toEqual(atProjects);
+    expect(atMid).not.toEqual(atContact);
+    expect(atStart).not.toEqual(atContact);
   });
 });
 
@@ -139,6 +146,7 @@ describe('progressForSection', () => {
   it('finds where a section starts in global progress', () => {
     expect(progressForSection(journey, 'about')).toBeCloseTo(MOONSINK_ABOUT_FROM, 10);
     expect(progressForSection(journey, 'projects')).toBeCloseTo(MOONSINK_PROJECTS_FROM, 10);
+    expect(progressForSection(journey, 'contact')).toBeCloseTo(MOONSINK_CONTACT_FROM, 10);
     expect(progressForSection(twoRegions, 'projects')).toBeCloseTo(0.75, 10);
   });
 
@@ -150,9 +158,10 @@ describe('progressForSection', () => {
   it('round-trips through resolve', () => {
     expect(resolve(progressForSection(journey, 'about'), journey).section).toBe('about');
     expect(resolve(progressForSection(journey, 'projects'), journey).section).toBe('projects');
+    expect(resolve(progressForSection(journey, 'contact'), journey).section).toBe('contact');
   });
 
   it('throws for a section that is not in the journey', () => {
-    expect(() => progressForSection(journey, 'contact')).toThrow('section contact is not in the journey');
+    expect(() => progressForSection(twoRegions, 'intro')).toThrow('section intro is not in the journey');
   });
 });

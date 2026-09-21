@@ -15,8 +15,9 @@ test.describe('accessibility', () => {
   });
 
   for (const [name, progress] of [
-    ['About', 0.48],
-    ['Projects', 0.9],
+    ['About', 0.36],
+    ['Projects', 0.65],
+    ['Contact', 0.92],
   ] as const) {
     test(`${name} section has no axe violations`, async ({ page }) => {
       await page.goto(`/?p=${progress}&stills`);
@@ -42,8 +43,9 @@ test.describe('accessibility', () => {
   // thin italic tagline; the About run covers the body text (journey-flow review I2).
   for (const [where, progress, minLines] of [
     ['Intro', 0.1, 2],
-    ['About', 0.48, 3],
-    ['Projects', 0.9, 3],
+    ['About', 0.36, 3],
+    ['Projects', 0.65, 3],
+    ['Contact', 0.92, 3],
   ] as const) {
     test(`${where} text stays legible over the brightest moon on a phone`, async ({ browser }) => {
       test.setTimeout(200_000);

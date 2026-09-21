@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 // Stills mode runs the same Projects page, dialog and deep links as the 3D page.
 
 test('the Projects page lists this site and opens its dialog, which Esc closes', async ({ page }) => {
-  await page.goto('/?stills&p=0.9');
+  await page.goto('/?stills&p=0.65');
   const open = page.getByRole('button', { name: 'Moonlit' });
   await expect(open).toBeVisible();
   await open.click();
@@ -36,7 +36,7 @@ test('a deep link opens the project straight away, and closing it clears the lin
 });
 
 test('Back closes an open project, and an unknown project link is ignored', async ({ page }) => {
-  await page.goto('/?stills&p=0.9');
+  await page.goto('/?stills&p=0.65');
   await page.getByRole('button', { name: 'Moonlit' }).click();
   await expect(page.getByRole('dialog', { name: 'Moonlit' })).toBeVisible();
   await page.goBack();
