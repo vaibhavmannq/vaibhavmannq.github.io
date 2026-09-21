@@ -167,11 +167,28 @@ export async function boot(): Promise<void> {
     });
     gate.setReady();
     openWhenReady();
+    // Renders of each page's scenery stand in for the 3D scene (overlay.css .world__still). They are
+    // created only here, so visitors with the 3D scene never download them.
+    const stage = byId('world');
+    const stills = new Map<string, HTMLElement>();
+    for (const page of ['intro', 'about', 'projects', 'contact']) {
+      const layer = document.createElement('div');
+      layer.className = 'world__still';
+      layer.dataset.page = page;
+      stage.append(layer);
+      stills.set(page, layer);
+    }
+    let shownStill = '';
     const step = (nowMs: number) => {
       scroll.raf(nowMs);
       p = params.p ?? scroll.progress();
       state = resolve(p, activeJourney);
       sections.show(state.a.local, ctx.reducedMotion);
+      if (state.section !== shownStill) {
+        stills.get(shownStill)?.classList.remove('is-shown');
+        stills.get(state.section)?.classList.add('is-shown');
+        shownStill = state.section;
+      }
       window.requestAnimationFrame(step);
     };
     window.requestAnimationFrame(step);
@@ -262,6 +279,8 @@ export async function boot(): Promise<void> {
   // we were waiting, handleContextLoss already switched to stills — don't also start the 3D loop
   // on a now-dead device.
   if (contextLost) return;
+  // Pay the first-frame shader cost now, while the black opening still covers the canvas.
+  moonlit.warmUp();
   gate.setReady();
   openWhenReady();
 

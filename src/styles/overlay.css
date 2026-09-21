@@ -38,6 +38,55 @@ html.is-stills .world {
     linear-gradient(180deg, #03080b 0%, #061318 55%, #010203 100%);
 }
 
+/* Stills mode (no 3D): renders of each page's scenery, captured from the site itself, cross-fade as the
+   journey moves on. The layers only exist in stills mode (boot.ts), so 3D visitors never load them. */
+.world__still {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.world__still.is-shown {
+  opacity: 1;
+}
+
+.world__still[data-page="intro"] {
+  background-image: url("/stills/intro-landscape.jpg");
+}
+
+.world__still[data-page="about"] {
+  background-image: url("/stills/about-landscape.jpg");
+}
+
+.world__still[data-page="projects"] {
+  background-image: url("/stills/projects-landscape.jpg");
+}
+
+.world__still[data-page="contact"] {
+  background-image: url("/stills/contact-landscape.jpg");
+}
+
+@media (orientation: portrait) {
+  .world__still[data-page="intro"] {
+    background-image: url("/stills/intro-portrait.jpg");
+  }
+
+  .world__still[data-page="about"] {
+    background-image: url("/stills/about-portrait.jpg");
+  }
+
+  .world__still[data-page="projects"] {
+    background-image: url("/stills/projects-portrait.jpg");
+  }
+
+  .world__still[data-page="contact"] {
+    background-image: url("/stills/contact-portrait.jpg");
+  }
+}
+
 .journey-track {
   height: calc(var(--journey-length, 3) * 100svh);
 }
@@ -485,13 +534,15 @@ html.is-broken .section {
 @media (prefers-reduced-motion: reduce) {
   .opening,
   .opening > *,
-  .content {
+  .content,
+  .world__still {
     transition: none;
   }
 }
 
 html.is-reduced-motion .opening,
 html.is-reduced-motion .opening > *,
-html.is-reduced-motion .content {
+html.is-reduced-motion .content,
+html.is-reduced-motion .world__still {
   transition: none;
 }
