@@ -94,10 +94,11 @@ export async function boot(): Promise<void> {
   // touch snap all land there, never in a handover gap.
   const aboutShown = progressForSection(activeJourney, 'about', SHOWN_OFFSET);
   const projectsShown = progressForSection(activeJourney, 'projects', SHOWN_OFFSET);
+  const contactShown = progressForSection(activeJourney, 'contact', SHOWN_OFFSET);
   createTouchSnap({
     progress: () => scroll.progress(),
     glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
-    stops: [0, aboutShown, projectsShown],
+    stops: [0, aboutShown, projectsShown, contactShown],
     enabled: () => gate.state === 'entered' && params.p === undefined && !dialog.isOpen,
   });
 
@@ -114,6 +115,12 @@ export async function boot(): Promise<void> {
     opening.dismiss();
     scroll.scrollToProgress(aboutShown, true);
     byId('about-title').focus({ preventScroll: true });
+  });
+  // "Return to the shore" (spec §3.2) glides back to the top and hands keyboard focus to the name.
+  byId<HTMLAnchorElement>('return-to-shore').addEventListener('click', (event) => {
+    event.preventDefault();
+    scroll.glideToProgress(0, !ctx.reducedMotion);
+    byId('intro-title').focus({ preventScroll: true });
   });
   // Test hook: ?p=… jumps straight into the journey, past the opening
   if (params.p !== undefined) {

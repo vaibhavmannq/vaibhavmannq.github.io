@@ -284,6 +284,57 @@ html.is-gated .content {
   transform: translateX(0.25rem);
 }
 
+/* ---------- contact (page 4) ---------- */
+.contact-list {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.25rem 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.contact-list li {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.contact-list__label {
+  color: var(--glow);
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(2, 4, 6, 0.8);
+}
+
+.contact-list a {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 5.5vw, 2rem);
+  line-height: 1.2;
+  text-decoration: none;
+  text-shadow: 0 1px 2px rgba(2, 4, 6, 0.8);
+  overflow-wrap: anywhere;
+}
+
+.contact-list a:hover,
+.contact-list a:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.section .contact-return {
+  margin: 0;
+}
+
+.contact-return a {
+  color: var(--glow);
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-underline-offset: 0.3em;
+}
+
 /* ---------- project dialog ---------- */
 .project-dialog {
   width: min(36rem, calc(100vw - 2rem));

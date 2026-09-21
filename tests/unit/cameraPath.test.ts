@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MOONSINK_ABOUT_FROM, MOONSINK_PROJECTS_FROM, MOONSINK_SHORE_AT } from '../../src/journey/journey.config';
+import {
+  MOONSINK_ABOUT_FROM,
+  MOONSINK_CONTACT_FROM,
+  MOONSINK_PROJECTS_FROM,
+  MOONSINK_SHORE_AT,
+  MOONSINK_WALK_END,
+} from '../../src/journey/journey.config';
 import {
   approachPose,
   type CameraKey,
@@ -44,18 +50,36 @@ describe('poseAt', () => {
 
   it('keeps the drift to the shore evenly spaced, then walks the shoreline to the end', () => {
     const shore = MOONSINK_SHORE_AT;
-    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([0, 0.25 * shore, 0.5 * shore, 0.75 * shore, shore, 1]);
+    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([
+      0,
+      0.25 * shore,
+      0.5 * shore,
+      0.75 * shore,
+      shore,
+      MOONSINK_WALK_END,
+      1,
+    ]);
   });
 
   it('walks along the waterline for Projects: only x changes, so the foam stays at the same distance', () => {
     const landed = { ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT) };
-    const end = { ...poseAt(MOONSINK_PATH, 1) };
+    const end = { ...poseAt(MOONSINK_PATH, MOONSINK_WALK_END) };
     expect(end.x).not.toBe(landed.x);
     expect({ ...end, x: 0 }).toEqual({ ...landed, x: 0 });
   });
 
-  it('travels from the open sea toward the shore without ever backing up', () => {
-    for (let i = 1; i < MOONSINK_PATH.length; i++) {
+  it('steps toward the sea for Contact and stops short of the foam line', () => {
+    const walked = { ...poseAt(MOONSINK_PATH, MOONSINK_WALK_END) };
+    const edge = { ...poseAt(MOONSINK_PATH, 1) };
+    expect(edge.x).toBe(walked.x);
+    expect(edge.z).toBeGreaterThan(walked.z);
+    expect(edge.y).toBeLessThan(walked.y);
+    // The sand meets the water where −0.07·z − 0.12 = 0, at z ≈ −1.7 (sea.ts sandH): the camera stays on the beach.
+    expect(edge.z).toBeLessThan(-1.7);
+  });
+
+  it('travels from the open sea toward the shore without ever backing up, until the step to the water', () => {
+    for (let i = 1; i < MOONSINK_PATH.length - 1; i++) {
       const from = MOONSINK_PATH[i - 1] as CameraKey;
       const to = MOONSINK_PATH[i] as CameraKey;
       expect(to.z).toBeLessThanOrEqual(from.z);
@@ -245,9 +269,10 @@ describe('idlePose and reducedMotionTarget', () => {
     expect(idlePose(4, false).y).not.toBe(first?.y);
   });
 
-  it('cuts between three viewpoints instead of flying: sea, shore, end of the walk', () => {
-    expect({ ...reducedMotionTarget(0.2) }).toEqual({ ...poseAt(MOONSINK_PATH, 0) });
-    expect({ ...reducedMotionTarget(0.5) }).toEqual({ ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT) });
+  it("cuts between four viewpoints instead of flying: sea, shore, end of the walk, water's edge", () => {
+    expect({ ...reducedMotionTarget(0.1) }).toEqual({ ...poseAt(MOONSINK_PATH, 0) });
+    expect({ ...reducedMotionTarget(0.4) }).toEqual({ ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT) });
+    expect({ ...reducedMotionTarget(0.6) }).toEqual({ ...poseAt(MOONSINK_PATH, MOONSINK_WALK_END) });
     expect({ ...reducedMotionTarget(0.9) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
 
@@ -255,7 +280,10 @@ describe('idlePose and reducedMotionTarget', () => {
     expect({ ...reducedMotionTarget(MOONSINK_ABOUT_FROM - 5e-10) }).toEqual({
       ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT),
     });
-    expect({ ...reducedMotionTarget(MOONSINK_PROJECTS_FROM - 5e-10) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
+    expect({ ...reducedMotionTarget(MOONSINK_PROJECTS_FROM - 5e-10) }).toEqual({
+      ...poseAt(MOONSINK_PATH, MOONSINK_WALK_END),
+    });
+    expect({ ...reducedMotionTarget(MOONSINK_CONTACT_FROM - 5e-10) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
 });
 

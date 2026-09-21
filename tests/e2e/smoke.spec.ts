@@ -30,9 +30,9 @@ test('stills mode keeps the page usable', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('?length sets how far the journey scrolls, and the default is 4.2 screen heights', async ({ page }) => {
+test('?length sets how far the journey scrolls, and the default is 5.6 screen heights', async ({ page }) => {
   await page.goto('/?stills&length=3');
   await expect(page.locator('#journey-track')).toHaveAttribute('style', /--journey-length:\s*3\b/);
   await page.goto('/?stills');
-  await expect(page.locator('#journey-track')).toHaveAttribute('style', /--journey-length:\s*4\.2\b/);
+  await expect(page.locator('#journey-track')).toHaveAttribute('style', /--journey-length:\s*5\.6\b/);
 });
