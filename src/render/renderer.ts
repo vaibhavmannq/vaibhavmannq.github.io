@@ -12,6 +12,13 @@ export interface MoonlitRenderer {
   applyTier(settings: TierSettings, devicePixelRatio: number): void;
   resize(width: number, height: number): void;
   render(): void;
+  /**
+   * Renders one hidden frame through each output, plain and with bloom, so their shaders compile now
+   * rather than on the first visible frame (or the first tier change). Call while the opening covers
+   * the canvas: the first bloom frame blocked the page for ~385 ms in a local measurement, freezing the
+   * opening's fade on desktop (owner, 2026-09-22).
+   */
+  warmUp(): void;
 }
 
 /** Throws if neither WebGPU nor WebGL2 is available; boot.ts catches that and shows stills. */
@@ -58,6 +65,16 @@ export async function createRenderer(container: HTMLElement, forceWebGL: boolean
     },
     resize(width, height) {
       renderer.setSize(width, height);
+    },
+    warmUp() {
+      const wanted = bloomEnabled;
+      for (const bloom of [false, true]) {
+        bloomEnabled = bloom;
+        selectOutput();
+        pipeline.render();
+      }
+      bloomEnabled = wanted;
+      selectOutput();
     },
     render() {
       pipeline.render();
