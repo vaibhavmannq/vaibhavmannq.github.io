@@ -5,14 +5,19 @@ import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
 import { createMotionToggle } from '../overlay/motionToggle';
+import { createNameMotion } from '../overlay/nameMotion';
 import { createOpening } from '../overlay/opening';
+import { createPointerTouch } from '../overlay/pointerTouch';
 import { createProjectDialog } from '../overlay/projectDialog';
 import { renderProjectList } from '../overlay/projectList';
 import { parseRoute, projectHash } from '../overlay/router';
+import { createSectionMotion } from '../overlay/sectionMotion';
 import { createSections, SHOWN_OFFSET } from '../overlay/sections';
+import { createVoyageLog } from '../overlay/voyageLog';
 import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
 import { createMoonsink } from '../regions/moonsink';
+import { resolveMoonPhase } from '../regions/moonsink/moonPhase';
 import { createRenderer, type MoonlitRenderer } from '../render/renderer';
 import { createScrollActivity } from '../scroll/activity';
 import { createScroll } from '../scroll/scroll';
@@ -44,7 +49,12 @@ export async function boot(): Promise<void> {
   const opening = createOpening(openingElement, { minHoldMs: params.hold });
   // Phase 1 has one region, so its anchors are the page's sections.
   const anchors = (activeJourney[0] as RegionSegment).sections;
-  const sections = createSections(byId('content'), anchors);
+  // Each chapter's text motion follows the same handover as its opacity (overlay/sectionMotion.ts).
+  const motions = new Map(anchors.map((anchor) => [anchor.id, createSectionMotion(byId(anchor.id))] as const));
+  const sections = createSections(byId('content'), anchors, motions);
+  // The voyage log shows the same moon as the scene, including a `?moon=` override.
+  createVoyageLog(byId('voyage-log'), (now) => resolveMoonPhase(now, params.moon));
+  const name = createNameMotion(byId('intro-title'));
   createMotionToggle(byId<HTMLButtonElement>('motion-toggle'), (reduced) => {
     ctx.reducedMotion = reduced;
   });
@@ -106,8 +116,17 @@ export async function boot(): Promise<void> {
   let state: JourneyState = resolve(p, activeJourney);
   sections.show(state.a.local, ctx.reducedMotion);
 
+  // The page answers a mouse or trackpad: the name swells near it, links lean toward it.
+  createPointerTouch({
+    chars: name.chars,
+    pulled: [...document.querySelectorAll<HTMLElement>('[data-pull]')],
+    swellActive: () => !ctx.reducedMotion && gate.state === 'entered' && state.section === 'intro',
+    pullActive: () => !ctx.reducedMotion,
+  });
+
   gate.onEnter(() => {
     scroll.setLocked(false);
+    name.rise(ctx.reducedMotion);
   });
   byId<HTMLAnchorElement>('skip-intro').addEventListener('click', (event) => {
     event.preventDefault();

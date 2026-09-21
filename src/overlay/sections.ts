@@ -1,6 +1,6 @@
 import { MOONSINK_LENGTH } from '../journey/journey.config';
 import { ANCHOR_EPSILON } from '../journey/timeline';
-import type { SectionAnchor } from '../journey/types';
+import type { SectionAnchor, SectionId } from '../journey/types';
 import { smoothstep } from '../shared/math';
 
 export interface Sections {
@@ -90,7 +90,17 @@ interface Tracked {
  * Writes the handover to the DOM every frame. No timers, no `element.animate()`, no CSS transition
  * on these properties. The last value per element is cached so an unchanged value is never re-applied.
  */
-export function createSections(root: HTMLElement, anchors: readonly SectionAnchor[]): Sections {
+/** A chapter's text motion (overlay/sectionMotion.ts), driven by the same handover as its opacity. */
+export interface SectionMotionHook {
+  /** arrive: 0..1 of the incoming handover; leave: 0..1 of the outgoing one. */
+  set(arrive: number, leave: number): void;
+}
+
+export function createSections(
+  root: HTMLElement,
+  anchors: readonly SectionAnchor[],
+  motions: ReadonlyMap<SectionId, SectionMotionHook> = new Map(),
+): Sections {
   const tracked: Tracked[] = [];
   for (const anchor of anchors) {
     const element = root.querySelector<HTMLElement>(`[data-section="${anchor.id}"]`);
@@ -126,6 +136,11 @@ export function createSections(root: HTMLElement, anchors: readonly SectionAncho
           sectionOffset(local, anchors, i, reducedMotion),
           active,
         );
+        const anchor = anchors[i] as SectionAnchor;
+        // Under reduced motion the text stays still: fully arrived, never leaving (it switches instead).
+        motions
+          .get(anchor.id)
+          ?.set(reducedMotion ? 1 : arriving(local, anchor, i), reducedMotion ? 0 : leaving(local, next));
       }
     },
   };

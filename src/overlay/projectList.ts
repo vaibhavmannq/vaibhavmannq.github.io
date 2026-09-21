@@ -22,13 +22,24 @@ export function renderProjectList(
       open.className = 'project__open';
       open.textContent = project.title;
       open.setAttribute('aria-haspopup', 'dialog');
+      open.dataset.pull = '';
       open.addEventListener('click', () => onOpen(project.slug, open));
 
       const summary = document.createElement('p');
       summary.className = 'project__summary';
       summary.textContent = project.summary;
 
-      item.append(meta, open, summary);
+      const head = document.createElement('div');
+      head.className = 'project__head';
+      head.append(open);
+      if (project.aside) {
+        const aside = document.createElement('span');
+        aside.className = 'project__aside';
+        aside.textContent = project.aside;
+        head.append(aside);
+      }
+
+      item.append(meta, head, summary);
       return item;
     }),
   );

@@ -51,12 +51,18 @@ export async function measureTextContrast(page: Page): Promise<LineContrast[]> {
       const size = Number.parseFloat(style.fontSize);
       const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
       const [r = 0, g = 0, b = 0, a = 1] = (style.color.match(/[\d.]+/g) ?? []).map(Number);
-      const range = document.createRange();
-      range.selectNodeContents(element);
-      for (const box of range.getClientRects()) {
-        if (box.width < 4 || box.height < 4) continue;
-        const text = (element.textContent ?? '').trim().slice(0, 40);
-        out.push({ text, rgba: [r, g, b, a], large, x: box.left, y: box.top, w: box.width, h: box.height });
+      // Measure only text a reader can see: a visually hidden copy for screen readers is squeezed into a
+      // 1-pixel box, so its words stack down the page over whatever is there, unseen.
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        if (node.parentElement?.closest('.visually-hidden') || !node.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const box of range.getClientRects()) {
+          if (box.width < 4 || box.height < 4) continue;
+          const text = node.textContent.trim().slice(0, 40);
+          out.push({ text, rgba: [r, g, b, a], large, x: box.left, y: box.top, w: box.width, h: box.height });
+        }
       }
     }
     return out;
