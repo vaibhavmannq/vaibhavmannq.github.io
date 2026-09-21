@@ -235,6 +235,138 @@ html.is-gated .content {
   color: var(--glow);
 }
 
+/* ---------- projects (page 3) ---------- */
+.project-list {
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-list li {
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(159, 230, 238, 0.25);
+}
+
+.section .project__meta {
+  margin: 0 0 0.3rem;
+  color: var(--glow);
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.project__open {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 7vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1.05;
+  text-shadow: 0 1px 2px rgba(2, 4, 6, 0.8);
+  cursor: pointer;
+}
+
+.project__open::after {
+  content: "→";
+  color: var(--glow);
+  font-size: 0.6em;
+  transition: transform 0.2s ease;
+}
+
+.project__open:hover::after,
+.project__open:focus-visible::after {
+  transform: translateX(0.25rem);
+}
+
+/* ---------- project dialog ---------- */
+.project-dialog {
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100svh - 2rem);
+  padding: 0;
+  border: 1px solid rgba(159, 230, 238, 0.3);
+  border-radius: 1rem;
+  /* Solid, so the page text behind never ghosts through the dialog's own text. */
+  background: var(--night);
+  color: var(--ink);
+  overflow: auto;
+}
+
+.project-dialog::backdrop {
+  background: rgba(2, 4, 6, 0.75);
+}
+
+.project-dialog__body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.5rem;
+}
+
+.project-dialog__close {
+  justify-self: end;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(159, 230, 238, 0.3);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.project-dialog__meta {
+  margin: 0;
+  color: var(--glow);
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.project-dialog__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 9vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.project-dialog__text p {
+  margin: 0 0 0.8rem;
+  color: var(--ink-dim);
+  line-height: 1.7;
+}
+
+.project-dialog__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-dialog__tools li {
+  padding: 0.25rem 0.65rem;
+  border: 1px solid rgba(159, 230, 238, 0.25);
+  border-radius: 999px;
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+}
+
+.project-dialog__links {
+  margin: 0.25rem 0 0;
+}
+
+.project-dialog__links a {
+  color: var(--glow);
+  text-underline-offset: 0.2em;
+}
+
 /* ---------- controls ---------- */
 .controls {
   position: fixed;

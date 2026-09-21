@@ -16,28 +16,40 @@ export const easeInOutSine = (t: number): number => 0.5 - 0.5 * Math.cos(Math.PI
 /**
  * Where a touch scroll that came to rest at `p` should glide to, or null to stay put. Pure.
  *
- * The stops are the intro (0) and the point where About is fully shown (`shownFrom`). A phone flick
- * ends wherever its momentum runs out, which can be the empty handover gap, so resting between the
- * stops continues in the direction of the swipe. Past `shownFrom` scrolling is free, so About can
- * be read while the camera drifts ashore.
+ * `stops` (ascending, starting at 0) are where each page is fully shown: the intro, About, Projects.
+ * A phone flick ends wherever its momentum runs out, which can be an empty handover gap, so resting
+ * between two stops continues in the direction of the swipe. Past the last stop scrolling is free, so
+ * the last page can be read while the camera moves on.
  */
-export function touchSnapTarget(p: number, startP: number, shownFrom: number): number | null {
-  if (p <= STOP_SLACK || p >= shownFrom - STOP_SLACK) return null;
+export function touchSnapTarget(p: number, startP: number, stops: readonly number[]): number | null {
+  const last = stops[stops.length - 1];
+  if (last === undefined || p >= last - STOP_SLACK) return null;
+  let below = stops[0] ?? 0;
+  let above = last;
+  for (const stop of stops) {
+    if (Math.abs(p - stop) <= STOP_SLACK) return null;
+    if (stop < p) below = stop;
+    else {
+      above = stop;
+      break;
+    }
+  }
   const moved = p - startP;
-  if (Math.abs(moved) < MIN_TRAVEL) return p < shownFrom / 2 ? 0 : shownFrom;
-  return moved > 0 ? shownFrom : 0;
+  if (Math.abs(moved) < MIN_TRAVEL) return p - below < above - p ? below : above;
+  return moved > 0 ? above : below;
 }
 
 export interface TouchSnapOptions {
   progress: () => number;
   glideTo: (p: number) => void;
-  shownFrom: number;
-  /** False while the opening is up (the page is locked) and under test hooks that pin progress. */
+  /** Where each page is fully shown, ascending, starting at 0. */
+  stops: readonly number[];
+  /** False while the opening is up (the page is locked), while a dialog is open, and under test hooks. */
   enabled: () => boolean;
 }
 
 /** Wires touchSnapTarget to touch and scroll events. Mouse wheels and keys never snap. */
-export function createTouchSnap({ progress, glideTo, shownFrom, enabled }: TouchSnapOptions): void {
+export function createTouchSnap({ progress, glideTo, stops, enabled }: TouchSnapOptions): void {
   let startP = 0;
   let touching = false;
   // A touch has happened since the last settle, so the next rest is the end of a swipe.
@@ -49,7 +61,7 @@ export function createTouchSnap({ progress, glideTo, shownFrom, enabled }: Touch
     if (touching || !pending) return;
     pending = false;
     if (!enabled()) return;
-    const target = touchSnapTarget(progress(), startP, shownFrom);
+    const target = touchSnapTarget(progress(), startP, stops);
     if (target !== null) glideTo(target);
   };
   const settleSoon = () => {

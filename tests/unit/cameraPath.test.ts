@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MOONSINK_ABOUT_FROM } from '../../src/journey/journey.config';
+import { MOONSINK_ABOUT_FROM, MOONSINK_PROJECTS_FROM, MOONSINK_SHORE_AT } from '../../src/journey/journey.config';
 import {
   approachPose,
   type CameraKey,
@@ -37,13 +37,21 @@ describe('poseAt', () => {
   });
 
   it('eases halfway between two keys', () => {
-    const pose = poseAt(MOONSINK_PATH, 0.125);
+    const pose = poseAt(MOONSINK_PATH, (MOONSINK_PATH[1] as CameraKey).at / 2);
     expect(pose.x).toBeCloseTo(-1, 10);
     expect(pose.y).toBeCloseTo(4.6, 10);
   });
 
-  it('spaces the keyframes evenly so each stretch gets the same scroll distance', () => {
-    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([0, 0.25, 0.5, 0.75, 1]);
+  it('keeps the drift to the shore evenly spaced, then walks the shoreline to the end', () => {
+    const shore = MOONSINK_SHORE_AT;
+    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([0, 0.25 * shore, 0.5 * shore, 0.75 * shore, shore, 1]);
+  });
+
+  it('walks along the waterline for Projects: only x changes, so the foam stays at the same distance', () => {
+    const landed = { ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT) };
+    const end = { ...poseAt(MOONSINK_PATH, 1) };
+    expect(end.x).not.toBe(landed.x);
+    expect({ ...end, x: 0 }).toEqual({ ...landed, x: 0 });
   });
 
   it('travels from the open sea toward the shore without ever backing up', () => {
@@ -237,13 +245,17 @@ describe('idlePose and reducedMotionTarget', () => {
     expect(idlePose(4, false).y).not.toBe(first?.y);
   });
 
-  it('cuts between two viewpoints instead of flying', () => {
+  it('cuts between three viewpoints instead of flying: sea, shore, end of the walk', () => {
     expect({ ...reducedMotionTarget(0.2) }).toEqual({ ...poseAt(MOONSINK_PATH, 0) });
+    expect({ ...reducedMotionTarget(0.5) }).toEqual({ ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT) });
     expect({ ...reducedMotionTarget(0.9) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
 
-  it('cuts at the About anchor with the same slack as the text and resolve (review M6)', () => {
-    expect({ ...reducedMotionTarget(MOONSINK_ABOUT_FROM - 5e-10) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
+  it('cuts at each anchor with the same slack as the text and resolve (review M6)', () => {
+    expect({ ...reducedMotionTarget(MOONSINK_ABOUT_FROM - 5e-10) }).toEqual({
+      ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT),
+    });
+    expect({ ...reducedMotionTarget(MOONSINK_PROJECTS_FROM - 5e-10) }).toEqual({ ...poseAt(MOONSINK_PATH, 1) });
   });
 });
 

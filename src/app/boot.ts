@@ -1,3 +1,4 @@
+import { projects } from '../content/projects';
 import { createHud } from '../dev/hud';
 import { journey, journeyWithLength } from '../journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
@@ -5,7 +6,10 @@ import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
 import { createMotionToggle } from '../overlay/motionToggle';
 import { createOpening } from '../overlay/opening';
-import { createSections, HANDOVER_FADE, HANDOVER_GAP } from '../overlay/sections';
+import { createProjectDialog } from '../overlay/projectDialog';
+import { renderProjectList } from '../overlay/projectList';
+import { parseRoute, projectHash } from '../overlay/router';
+import { createSections, SHOWN_OFFSET } from '../overlay/sections';
 import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
 import { createMoonsink } from '../regions/moonsink';
@@ -46,15 +50,55 @@ export async function boot(): Promise<void> {
   });
   const scroll = createScroll();
   scroll.setLocked(true);
-  // Where About is fully shown: past the quiet handover gap around its anchor (review I1), plus a hair
-  // (0.01 of the region, ~2% of a screen) so a scroll position rounded to whole pixels still lands on
-  // full opacity rather than 0.9998 of it.
-  const aboutShown = progressForSection(activeJourney, 'about', HANDOVER_GAP / 2 + HANDOVER_FADE + 0.01);
+
+  // ---- Projects: the list, its dialog and #/projects/<slug> deep links (spec §3.2) ----
+  let opener: HTMLElement | null = null;
+  let pushedRoute = false;
+  const clearRoute = () =>
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+  const dialog = createProjectDialog(byId<HTMLDialogElement>('project-dialog'), projects, () => {
+    if (gate.state === 'entered') scroll.setLocked(false);
+    // Closing with Esc, the button or the backdrop also leaves the deep link: step back if this visit
+    // opened it, so Back does not reopen it; otherwise just drop it from the address.
+    if (parseRoute(window.location.hash).kind === 'project') {
+      if (pushedRoute) window.history.back();
+      else clearRoute();
+    }
+    pushedRoute = false;
+    (opener ?? byId('projects-title')).focus({ preventScroll: true });
+    opener = null;
+  });
+  const showProject = (slug: string): boolean => {
+    if (!dialog.open(slug)) return false;
+    scroll.setLocked(true);
+    return true;
+  };
+  renderProjectList(byId('project-list'), projects, (slug, button) => {
+    opener = button;
+    window.history.pushState(window.history.state, '', projectHash(slug));
+    pushedRoute = true;
+    showProject(slug);
+  });
+  // Back, Forward and edited addresses: the hash decides whether a project is open.
+  window.addEventListener('hashchange', () => {
+    const route = parseRoute(window.location.hash);
+    if (route.kind === 'project') {
+      if (!dialog.isOpen && !showProject(route.slug)) clearRoute();
+    } else if (dialog.isOpen) {
+      pushedRoute = false;
+      dialog.close();
+    }
+  });
+
+  // Where each page is fully shown (overlay/sections.ts SHOWN_OFFSET). Skip intro, deep links and the
+  // touch snap all land there, never in a handover gap.
+  const aboutShown = progressForSection(activeJourney, 'about', SHOWN_OFFSET);
+  const projectsShown = progressForSection(activeJourney, 'projects', SHOWN_OFFSET);
   createTouchSnap({
     progress: () => scroll.progress(),
     glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
-    shownFrom: aboutShown,
-    enabled: () => gate.state === 'entered' && params.p === undefined,
+    stops: [0, aboutShown, projectsShown],
+    enabled: () => gate.state === 'entered' && params.p === undefined && !dialog.isOpen,
   });
 
   let p = params.p ?? 0;
@@ -75,6 +119,18 @@ export async function boot(): Promise<void> {
   if (params.p !== undefined) {
     gate.enter();
     opening.dismiss();
+  }
+  // A deep link opens its project straight away, over the Projects page, with the opening skipped.
+  const initialRoute = parseRoute(window.location.hash);
+  if (initialRoute.kind === 'project') {
+    if (projects.some((project) => project.slug === initialRoute.slug)) {
+      gate.enter();
+      opening.dismiss();
+      scroll.scrollToProgress(projectsShown, true);
+      showProject(initialRoute.slug);
+    } else {
+      clearRoute();
+    }
   }
 
   // The opening leaves by itself once the page is ready (spec §5.8). A key that starts it moves focus

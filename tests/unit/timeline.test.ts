@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { journey, MOONSINK_ABOUT_FROM } from '../../src/journey/journey.config';
+import { journey, MOONSINK_ABOUT_FROM, MOONSINK_PROJECTS_FROM } from '../../src/journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../../src/journey/timeline';
 import type { Segment } from '../../src/journey/types';
 
@@ -11,12 +11,12 @@ const twoRegions: readonly Segment[] = [
 
 describe('totalLength', () => {
   it('adds up every segment', () => {
-    expect(totalLength(journey)).toBe(2.7);
+    expect(totalLength(journey)).toBe(4.2);
     expect(totalLength(twoRegions)).toBe(4);
   });
 });
 
-describe('resolve (Phase 1 journey)', () => {
+describe('resolve (the one-region journey)', () => {
   it('starts at the beginning of Moonsink with the intro', () => {
     const state = resolve(0, journey);
     expect(state.a).toEqual({ region: 'moonsink', local: 0 });
@@ -25,9 +25,11 @@ describe('resolve (Phase 1 journey)', () => {
     expect(state.section).toBe('intro');
   });
 
-  it('switches to About at its anchor', () => {
-    expect(resolve(0.44, journey).section).toBe('intro');
-    expect(resolve(0.5, journey).section).toBe('about');
+  it('switches to About, then Projects, at their anchors', () => {
+    expect(resolve(MOONSINK_ABOUT_FROM - 0.01, journey).section).toBe('intro');
+    expect(resolve(MOONSINK_ABOUT_FROM + 0.01, journey).section).toBe('about');
+    expect(resolve(MOONSINK_PROJECTS_FROM - 0.01, journey).section).toBe('about');
+    expect(resolve(MOONSINK_PROJECTS_FROM + 0.01, journey).section).toBe('projects');
     expect(resolve(0.5, journey).a.local).toBeCloseTo(0.5, 10);
   });
 
@@ -116,36 +118,38 @@ describe('resolve: no allocation, and the scratch-object trap', () => {
     // mutates the shared object, so the comparison actually discriminates.
     const atStart = { ...resolve(0, journey) }; // exactly on intro's own anchor
     const atMid = { ...resolve(MOONSINK_ABOUT_FROM / 2, journey) }; // halfway to About
-    const atAbout = { ...resolve(progressForSection(journey, 'about'), journey) }; // About is terminal: mix pinned to 1
+    const atProjects = { ...resolve(progressForSection(journey, 'projects'), journey) }; // terminal: mix pinned to 1
 
     expect(atStart.section).toBe('intro');
     expect(atStart.sectionMix).toBe(0);
     expect(atMid.section).toBe('intro');
     expect(atMid.sectionMix).toBeCloseTo(0.5, 10);
-    expect(atAbout.section).toBe('about');
-    expect(atAbout.sectionMix).toBe(1);
+    expect(atProjects.section).toBe('projects');
+    expect(atProjects.sectionMix).toBe(1);
 
     // A broken implementation that always reported the same section/mix would satisfy any one
     // of the equality checks above by coincidence; these cross-checks would not survive that.
     expect(atStart).not.toEqual(atMid);
-    expect(atMid).not.toEqual(atAbout);
-    expect(atStart).not.toEqual(atAbout);
+    expect(atMid).not.toEqual(atProjects);
+    expect(atStart).not.toEqual(atProjects);
   });
 });
 
 describe('progressForSection', () => {
   it('finds where a section starts in global progress', () => {
-    expect(progressForSection(journey, 'about')).toBeCloseTo(0.45, 10);
+    expect(progressForSection(journey, 'about')).toBeCloseTo(MOONSINK_ABOUT_FROM, 10);
+    expect(progressForSection(journey, 'projects')).toBeCloseTo(MOONSINK_PROJECTS_FROM, 10);
     expect(progressForSection(twoRegions, 'projects')).toBeCloseTo(0.75, 10);
   });
 
   it('can aim a little past a section anchor, in region-local units (review I1)', () => {
-    expect(progressForSection(journey, 'about', 0.14)).toBeCloseTo(0.59, 10);
+    expect(progressForSection(journey, 'about', 0.14)).toBeCloseTo(MOONSINK_ABOUT_FROM + 0.14, 10);
     expect(progressForSection(twoRegions, 'projects', 0.5)).toBeCloseTo(0.875, 10);
   });
 
   it('round-trips through resolve', () => {
     expect(resolve(progressForSection(journey, 'about'), journey).section).toBe('about');
+    expect(resolve(progressForSection(journey, 'projects'), journey).section).toBe('projects');
   });
 
   it('throws for a section that is not in the journey', () => {

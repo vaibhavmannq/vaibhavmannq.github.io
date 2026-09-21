@@ -59,12 +59,30 @@
           <h2 id="about-title" tabindex="-1">About</h2>
           <p>
             I'm learning to shape light, water and code into places you can scroll through. This site is my first
-            project: a journey across three moonlit regions, built from scratch with Three.js and hand-written shaders.
+            project: a walk along a moonlit shore, built from scratch with Three.js and hand-written shaders.
           </p>
-          <p>More regions, and the projects that live in them, are on their way.</p>
+        </div>
+      </section>
+
+      <section class="section" id="projects" data-section="projects" aria-labelledby="projects-title">
+        <div class="section__panel">
+          <p class="section__region">Along the shore</p>
+          <h2 id="projects-title" tabindex="-1">Projects</h2>
+          <ul class="project-list" id="project-list"></ul>
         </div>
       </section>
     </main>
+
+    <dialog class="project-dialog" id="project-dialog" aria-labelledby="project-dialog-title">
+      <div class="project-dialog__body">
+        <button class="project-dialog__close" type="button" data-project-close>Close</button>
+        <p class="project-dialog__meta" data-project-meta></p>
+        <h2 class="project-dialog__title" id="project-dialog-title" data-project-title>Project</h2>
+        <div class="project-dialog__text" data-project-text></div>
+        <ul class="project-dialog__tools" aria-label="Built with" data-project-tools></ul>
+        <p class="project-dialog__links" data-project-links></p>
+      </div>
+    </dialog>
 
     <nav class="controls" aria-label="Site controls">
       <button class="controls__button" id="motion-toggle" type="button" aria-pressed="false">Reduce motion</button>

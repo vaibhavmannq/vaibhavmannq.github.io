@@ -14,12 +14,24 @@ test.describe('accessibility', () => {
     expect(results.violations).toEqual([]);
   });
 
-  test('About section has no axe violations', async ({ page }) => {
-    await page.goto('/?p=0.7&stills');
-    await expect(page.locator('#about')).toHaveClass(/is-active/);
-    // Let the fade-in finish so axe measures the final colours
-    await page.waitForTimeout(1200);
-    const results = await new AxeBuilder({ page }).analyze();
+  for (const [name, progress] of [
+    ['About', 0.48],
+    ['Projects', 0.9],
+  ] as const) {
+    test(`${name} section has no axe violations`, async ({ page }) => {
+      await page.goto(`/?p=${progress}&stills`);
+      await expect(page.locator(`#${name.toLowerCase()}`)).toHaveClass(/is-active/);
+      // Let the fade-in finish so axe measures the final colours
+      await page.waitForTimeout(1200);
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(results.violations).toEqual([]);
+    });
+  }
+
+  test('the open project dialog has no axe violations', async ({ page }) => {
+    await page.goto('/?stills#/projects/moonlit');
+    await expect(page.getByRole('dialog', { name: 'Moonlit' })).toBeVisible();
+    const results = await new AxeBuilder({ page }).include('#project-dialog').analyze();
     expect(results.violations).toEqual([]);
   });
 
@@ -30,7 +42,8 @@ test.describe('accessibility', () => {
   // thin italic tagline; the About run covers the body text (journey-flow review I2).
   for (const [where, progress, minLines] of [
     ['Intro', 0.1, 2],
-    ['About', 0.9, 3],
+    ['About', 0.48, 3],
+    ['Projects', 0.9, 3],
   ] as const) {
     test(`${where} text stays legible over the brightest moon on a phone`, async ({ browser }) => {
       test.setTimeout(200_000);
