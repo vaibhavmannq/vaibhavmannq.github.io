@@ -72,6 +72,29 @@ describe('sectionOpacity', () => {
   });
 });
 
+describe('three pages: intro, About, Projects', () => {
+  const three: readonly SectionAnchor[] = [
+    { id: 'intro', from: 0 },
+    { id: 'about', from: 0.3 },
+    { id: 'projects', from: 0.65 },
+  ];
+
+  it('never shows two sections at the same scroll position', () => {
+    for (const local of everyPosition) {
+      const shown = [0, 1, 2].filter((index) => sectionOpacity(local, three, index, false) > 0);
+      expect(shown.length, `local ${local}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('holds About fully between its arrival and the Projects handover, then Projects to the end', () => {
+    expect(sectionOpacity(0.3 + HANDOVER_GAP / 2 + HANDOVER_FADE, three, 1, false)).toBe(1);
+    expect(sectionOpacity(0.65 - HANDOVER_GAP / 2 - HANDOVER_FADE, three, 1, false)).toBe(1);
+    expect(sectionOpacity(0.65, three, 1, false)).toBe(0);
+    expect(sectionOpacity(0.65, three, 2, false)).toBe(0);
+    expect(sectionOpacity(1, three, 2, false)).toBe(1);
+  });
+});
+
 describe('sectionOffset', () => {
   it('drifts the outgoing text up and brings the incoming text up from below', () => {
     expect(sectionOffset(outStart, anchors, 0, false)).toBe(0);

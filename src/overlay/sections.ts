@@ -1,3 +1,4 @@
+import { MOONSINK_LENGTH } from '../journey/journey.config';
 import { ANCHOR_EPSILON } from '../journey/timeline';
 import type { SectionAnchor } from '../journey/types';
 import { smoothstep } from '../shared/math';
@@ -7,10 +8,20 @@ export interface Sections {
   show(local: number, reducedMotion: boolean): void;
 }
 
-/** How much of the region (0..1) each text fade takes. Tuned by feel (journey-flow design §5.1). */
-export const HANDOVER_FADE = 0.1;
-/** The quiet stretch around an anchor where no text shows, only the scene. */
-export const HANDOVER_GAP = 0.08;
+/**
+ * How much of the region (0..1) each text fade takes: 0.27 of a screen height of scroll. That is the
+ * 0.1 of the 2.7-screen journey the owner tuned by feel (journey-flow design §5.1), kept in screens so
+ * pages 1 and 2 feel the same now that the Projects page makes the journey longer.
+ */
+export const HANDOVER_FADE = 0.27 / MOONSINK_LENGTH;
+/** The quiet stretch around an anchor where no text shows, only the scene: 0.216 of a screen. */
+export const HANDOVER_GAP = 0.216 / MOONSINK_LENGTH;
+/**
+ * From a section's anchor to where it is fully shown, plus a hair (0.027 of a screen) so a scroll
+ * position rounded to whole pixels still lands on full opacity. Skip intro, deep links and the touch
+ * snap all aim here, never at a handover gap (journey-flow review I1).
+ */
+export const SHOWN_OFFSET = HANDOVER_GAP / 2 + HANDOVER_FADE + 0.027 / MOONSINK_LENGTH;
 
 /** Pixel drift while a section leaves (up) and arrives (from below). Dropped under reduced motion. */
 const EXIT_OFFSET_PX = -12;

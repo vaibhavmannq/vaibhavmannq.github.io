@@ -16,31 +16,40 @@ describe('the snap glide', () => {
   });
 });
 
-const SHOWN = 0.59;
+// The two-page journey the snap was built for, and today's three pages (intro, About, Projects).
+const TWO = [0, 0.59];
+const THREE = [0, 0.386, 0.763];
 
 describe('touchSnapTarget', () => {
   it('stays put when resting on a stop', () => {
-    expect(touchSnapTarget(0, 0.3, SHOWN)).toBeNull();
-    expect(touchSnapTarget(SHOWN, 0.2, SHOWN)).toBeNull();
+    expect(touchSnapTarget(0, 0.3, TWO)).toBeNull();
+    expect(touchSnapTarget(0.59, 0.2, TWO)).toBeNull();
+    expect(touchSnapTarget(0.386, 0.5, THREE)).toBeNull();
   });
 
-  it('leaves scrolling free past the point where About is fully shown', () => {
-    expect(touchSnapTarget(0.8, 0.7, SHOWN)).toBeNull();
-    expect(touchSnapTarget(1, 0.9, SHOWN)).toBeNull();
+  it("leaves scrolling free past the last page's stop", () => {
+    expect(touchSnapTarget(0.8, 0.7, TWO)).toBeNull();
+    expect(touchSnapTarget(0.9, 0.8, THREE)).toBeNull();
+    expect(touchSnapTarget(1, 0.9, THREE)).toBeNull();
   });
 
-  it('continues to About when a small swipe down stops short, even in the empty gap (owner phone, 2026-09-14)', () => {
-    expect(touchSnapTarget(0.098, 0, SHOWN)).toBe(SHOWN);
-    expect(touchSnapTarget(0.4, 0.098, SHOWN)).toBe(SHOWN);
+  it('continues to the next page when a small swipe down stops short, even in the empty gap (owner phone, 2026-09-14)', () => {
+    expect(touchSnapTarget(0.098, 0, TWO)).toBe(0.59);
+    expect(touchSnapTarget(0.4, 0.098, TWO)).toBe(0.59);
+    expect(touchSnapTarget(0.2, 0, THREE)).toBe(0.386);
+    expect(touchSnapTarget(0.5, 0.386, THREE)).toBe(0.763);
   });
 
-  it('returns to the intro when a swipe up stops between the stops', () => {
-    expect(touchSnapTarget(0.5, SHOWN, SHOWN)).toBe(0);
-    expect(touchSnapTarget(0.3, 0.9, SHOWN)).toBe(0);
+  it('returns to the page above when a swipe up stops between two stops', () => {
+    expect(touchSnapTarget(0.5, 0.59, TWO)).toBe(0);
+    expect(touchSnapTarget(0.3, 0.9, TWO)).toBe(0);
+    expect(touchSnapTarget(0.6, 0.763, THREE)).toBe(0.386);
+    expect(touchSnapTarget(0.3, 0.386, THREE)).toBe(0);
   });
 
   it('treats a jitter as no swipe and settles on the nearest stop', () => {
-    expect(touchSnapTarget(0.005, 0, SHOWN)).toBe(0);
-    expect(touchSnapTarget(0.585, 0.588, SHOWN)).toBe(SHOWN);
+    expect(touchSnapTarget(0.005, 0, TWO)).toBe(0);
+    expect(touchSnapTarget(0.585, 0.588, TWO)).toBe(0.59);
+    expect(touchSnapTarget(0.7, 0.705, THREE)).toBe(0.763);
   });
 });

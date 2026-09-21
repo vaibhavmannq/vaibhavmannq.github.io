@@ -1,4 +1,4 @@
-import { MOONSINK_ABOUT_FROM } from '../../journey/journey.config';
+import { MOONSINK_ABOUT_FROM, MOONSINK_PROJECTS_FROM, MOONSINK_SHORE_AT } from '../../journey/journey.config';
 import { ANCHOR_EPSILON } from '../../journey/timeline';
 import { damp, lerp, smoothstep } from '../../shared/math';
 
@@ -38,12 +38,18 @@ export interface CameraKey extends CameraPose {
 const VIEW_YAW = 0;
 const VIEW_PITCH = -0.06;
 
+// Pages 1 and 2 keep their drift from the open sea to the shore, keys spread evenly up to the moment
+// the camera lands (MOONSINK_SHORE_AT). Page 3, Projects, is a walk sideways along the waterline
+// (owner, 2026-09-21): only x changes, so the foam line stays at the same distance.
+const SHORE = MOONSINK_SHORE_AT;
+
 export const MOONSINK_PATH: readonly CameraKey[] = [
   { at: 0, x: 0, y: 3.2, z: 34, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 0.25, x: -2, y: 6, z: 26, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 0.5, x: 1, y: 1.8, z: 8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 0.75, x: 2.5, y: 1.55, z: -1.8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 1, x: 0, y: 1.45, z: -5.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 0.25 * SHORE, x: -2, y: 6, z: 26, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 0.5 * SHORE, x: 1, y: 1.8, z: 8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 0.75 * SHORE, x: 2.5, y: 1.55, z: -1.8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: SHORE, x: 0, y: 1.45, z: -5.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 1, x: -8, y: 1.45, z: -5.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
 ];
 
 const writePose = (out: CameraPose, pose: CameraPose): CameraPose => {
@@ -154,9 +160,12 @@ export function idlePose(timeSeconds: number, reducedMotion: boolean): CameraPos
   return idleScratch;
 }
 
-/** Reduced motion: no flight, just the intro viewpoint or the About viewpoint. */
+/** Reduced motion: no flight, just three viewpoints that cut at the anchors, with the text: the open
+ *  sea for the intro, the shore for About, and the end of the walk for Projects. */
 export function reducedMotionTarget(local: number): CameraPose {
-  return poseAt(MOONSINK_PATH, local + ANCHOR_EPSILON < MOONSINK_ABOUT_FROM ? 0 : 1);
+  const at = local + ANCHOR_EPSILON;
+  const viewpoint = at < MOONSINK_ABOUT_FROM ? 0 : at < MOONSINK_PROJECTS_FROM ? MOONSINK_SHORE_AT : 1;
+  return poseAt(MOONSINK_PATH, viewpoint);
 }
 
 // Called once per frame from applyPose() (moonsink/index.ts), which destructures the result

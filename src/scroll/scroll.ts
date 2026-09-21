@@ -34,7 +34,17 @@ export function createScroll(): ScrollController {
   return {
     progress: () => progressFrom(lenis.scroll, lenis.limit),
     raf: (nowMs) => lenis.raf(nowMs),
-    scrollToProgress: (p, immediate) => lenis.scrollTo(clamp01(p) * lenis.limit, { immediate, force: true }),
+    scrollToProgress: (p, immediate) => {
+      const go = () => {
+        lenis.resize();
+        lenis.scrollTo(clamp01(p) * lenis.limit, { immediate, force: true });
+      };
+      go();
+      // Before the page has loaded, WebKit can run this module before the stylesheet has given the
+      // journey track its height, so the page is one screen tall and the target lands at the top (a
+      // deep link opened over the intro). Go again once everything is laid out.
+      if (document.readyState !== 'complete') window.addEventListener('load', go, { once: true });
+    },
     glideToProgress: (p, smooth) => {
       stopGlide();
       const from = window.scrollY;
