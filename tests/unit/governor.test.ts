@@ -189,6 +189,23 @@ describe('Governor', () => {
     expect(governor.sample(16.7, scrolling.endMs, true)).toBe(1);
   });
 
+  // Spec 2026-09-25 §4.1: on a 90 Hz screen the pacer renders every second vsync, 22.2 ms apart. That is
+  // healthy, not slow.
+  it('judges frames against the target interval it is given', () => {
+    const governor = new Governor(3, false);
+    governor.setTargetInterval(2000 / 90);
+    let t = 0;
+    for (let i = 0; i < 10; i++) t = runWindow(governor, 2000 / 90, t).endMs;
+    expect(governor.current).toBe(3);
+    expect(runWindow(governor, 30, t + 2100).change).toBe(2);
+  });
+
+  it('keeps S16 exactly at 60 Hz: slow above 20 ms, fast below 17.5 ms', () => {
+    const governor = new Governor(2, true);
+    expect(runWindow(governor, 19.9, 0).change).toBeNull();
+    expect(runWindow(governor, 20.1, 2100).change).toBe(1);
+  });
+
   it('keeps a remembered step-down waiting while the visitor is still scrolling', () => {
     const governor = new Governor(2, true);
     const first = runWindow(governor, 33, 0, false);
