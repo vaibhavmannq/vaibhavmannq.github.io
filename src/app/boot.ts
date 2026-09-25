@@ -5,6 +5,7 @@ import { journeyPhase, reducedMotionPhase } from '../journey/journeyMoon';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment, SectionId } from '../journey/types';
 import { createChapterRail, moonGlyphPath } from '../overlay/chapterRail';
+import { createFocusGlide } from '../overlay/focusGlide';
 import { applyFrameFit } from '../overlay/frame';
 import { bindGoLinks } from '../overlay/header';
 import { createNameMotion } from '../overlay/nameMotion';
@@ -133,11 +134,17 @@ export async function boot(): Promise<void> {
   }
   const rail = createChapterRail(byId('chapter-rail'), { go });
   bindGoLinks(document, { go });
+  createFocusGlide({
+    sectionOf: (element) => (element.closest<HTMLElement>('[data-section]')?.dataset.section as SectionId) ?? null,
+    isShown: (id) => state.section === id,
+    glideTo: (id) => scroll.glideToProgress(shownAt[id], !ctx.reducedMotion),
+  });
   createTouchSnap({
     progress: () => scroll.progress(),
     glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
     stops: [0, aboutShown, projectsShown, contactShown],
     enabled: () => params.p === undefined && !dialog.isOpen,
+    wheel: params.snap === 'wheel',
   });
 
   let p = params.p ?? 0;

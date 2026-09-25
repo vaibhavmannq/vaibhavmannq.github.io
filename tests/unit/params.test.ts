@@ -13,6 +13,7 @@ describe('readDebugParams', () => {
       march: undefined,
       glints: undefined,
       frame: undefined,
+      snap: undefined,
       hud: false,
       gui: false,
       forceWebGL: false,
@@ -54,6 +55,11 @@ describe('readDebugParams', () => {
     expect([params.pace, params.march, params.glints, params.frame]).toEqual(['full', 'old', 'old', 'old']);
     const junk = readDebugParams('?pace=fast&march=new&glints=1&frame');
     expect([junk.pace, junk.march, junk.glints, junk.frame]).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it('reads the wheel-snap switch', () => {
+    expect(readDebugParams('?snap=wheel').snap).toBe('wheel');
+    expect(readDebugParams('?snap=on').snap).toBeUndefined();
   });
 
   it('treats presence-only flags as true', () => {
