@@ -10,6 +10,10 @@ describe('readDebugParams', () => {
       moon: undefined,
       hold: undefined,
       length: undefined,
+      pace: undefined,
+      march: undefined,
+      glints: undefined,
+      frame: undefined,
       hud: false,
       gui: false,
       forceWebGL: false,
@@ -51,6 +55,13 @@ describe('readDebugParams', () => {
     expect(readDebugParams('?length=9').length).toBe(4);
     expect(readDebugParams('?length=0.5').length).toBe(1.5);
     expect(readDebugParams('?length=abc').length).toBeUndefined();
+  });
+
+  it('reads the owner-review switches, and only their one alternative value', () => {
+    const params = readDebugParams('?pace=full&march=old&glints=old&frame=old');
+    expect([params.pace, params.march, params.glints, params.frame]).toEqual(['full', 'old', 'old', 'old']);
+    const junk = readDebugParams('?pace=fast&march=new&glints=1&frame');
+    expect([junk.pace, junk.march, junk.glints, junk.frame]).toEqual([undefined, undefined, undefined, undefined]);
   });
 
   it('treats presence-only flags as true', () => {

@@ -25,6 +25,7 @@ import { detectCapabilities } from './capabilities';
 import { exposeDebug } from './debug';
 import { createLoop, type Loop } from './loop';
 import { readDebugParams } from './params';
+import { createPacer } from './refresh';
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -320,7 +321,7 @@ export async function boot(): Promise<void> {
   const activity = createScrollActivity();
   let frames = 0;
 
-  loop = createLoop((nowMs, dtSeconds) => {
+  const onFrame = (nowMs: number, dtSeconds: number) => {
     scroll.raf(nowMs);
     p = params.p ?? scroll.progress();
     state = resolve(p, activeJourney);
@@ -339,11 +340,25 @@ export async function boot(): Promise<void> {
     // that budget (see governor.ts).
     const frameIntervalMs = dtSeconds * 1000;
     hud?.record(frameIntervalMs, scrolling);
-    hud?.paint(nowMs, { backend: moonlit.backend, tier, renderScale: TIERS[tier].renderScale, progress: p, scrolling });
+    const refreshHz = loop?.pacer.refreshHz ?? null;
+    hud?.paint(nowMs, {
+      backend: moonlit.backend,
+      tier,
+      renderScale: TIERS[tier].renderScale,
+      progress: p,
+      scrolling,
+      refresh:
+        refreshHz === null
+          ? 'measuring'
+          : `${Math.round(refreshHz)} Hz → ${Math.round(1000 / (loop?.pacer.targetIntervalMs ?? 1000 / 60))} fps`,
+    });
 
-    // Let the governor judge only real, warmed-up, non-idle frames
+    // Let the governor judge only real, warmed-up, non-idle frames, and only once the pacer knows the screen:
+    // while it measures (the first ~0.4 s, and after a resize) frames follow a time-based cap that is uneven on
+    // 75 or 144 Hz screens and would read as slow (plan 1, Task 2 ruling).
     const warmedUp = nowMs - enteredAt > 1500;
-    if (params.tier === undefined && warmedUp && !loop?.isIdle(nowMs)) {
+    if (params.tier === undefined && warmedUp && !loop?.isIdle(nowMs) && refreshHz !== null) {
+      governor.setTargetInterval(loop?.pacer.targetIntervalMs ?? 1000 / 60);
       // Keep measuring while the visitor scrolls, but change tier only once they stop: a tier change
       // resizes render buffers, which hitches exactly when motion is most visible (spec §5.6).
       const next = governor.sample(frameIntervalMs, nowMs, !scrolling);
@@ -352,7 +367,9 @@ export async function boot(): Promise<void> {
         applyTier(next);
       }
     }
-  });
+  };
+  // `?pace=full` renders every vsync, for the owner to compare on a 90 Hz screen (spec 2026-09-25 §7).
+  loop = createLoop(onFrame, createPacer({ full: params.pace === 'full' }));
 
   exposeDebug({
     backend: moonlit.backend,
