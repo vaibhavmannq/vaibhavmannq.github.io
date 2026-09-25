@@ -3,16 +3,13 @@ import { clampTier, type Tier } from './tiers';
 export interface GovernorOptions {
   windowMs: number;
   /**
-   * Step down when the 95th-percentile interval between rendered frames is above this.
-   * The loop caps rendering at 60 fps (loop.ts), so this is measured against that ~16.7 ms
-   * budget, not against how long a frame costs to produce.
+   * Step down when the 95th-percentile interval between rendered frames is above this many target intervals.
+   * The target is what the pacer renders at (app/refresh.ts): 16.7 ms on a 60 Hz screen, 22.2 ms on a 90 Hz
+   * screen that renders every second vsync. At 60 Hz, 1.2 × 16.7 = 20 ms: S16's threshold, unchanged.
    */
-  downThresholdMs: number;
-  /**
-   * Count a window as "fast" when the 95th-percentile interval between rendered frames is
-   * below this. Same vsync-interval signal as downThresholdMs, just the recovery side.
-   */
-  upThresholdMs: number;
+  downRatio: number;
+  /** Count a window as fast below this many target intervals: 1.05 × 16.7 = 17.5 ms at 60 Hz, as S16. */
+  upRatio: number;
   upWindowsRequired: number;
   cooldownMs: number;
   /**
@@ -27,12 +24,10 @@ export interface GovernorOptions {
 
 export const DEFAULT_GOVERNOR: GovernorOptions = {
   windowMs: 1000,
-  // A healthy 60 fps device is pinned at ~16.7 ms between frames, so the down threshold sits
-  // above that (frames are only "slow" once a vsync is actually being missed, ~20 ms+).
-  downThresholdMs: 20,
-  // The up threshold sits just under the 60 fps budget, with slack for jitter, so a device
-  // that is comfortably keeping the cap can actually be recognised as fast.
-  upThresholdMs: 17.5,
+  // A healthy device renders exactly on its target interval, so the down ratio sits above it (frames are only
+  // "slow" once a vsync is actually being missed) and the up ratio just above it, with slack for jitter.
+  downRatio: 1.2,
+  upRatio: 1.05,
   upWindowsRequired: 3,
   cooldownMs: 2000,
   settleMs: 20_000,
@@ -65,6 +60,8 @@ export class Governor {
   private ceiling: Tier;
   /** When the journey started, for the settle window. Set from the first sample. */
   private startedAt: number | null = null;
+  /** The interval between rendered frames on a healthy device (app/refresh.ts). */
+  private targetMs = 1000 / 60;
 
   constructor(tier: Tier, webgpu: boolean, options: GovernorOptions = DEFAULT_GOVERNOR) {
     this.tier = tier;
@@ -77,6 +74,11 @@ export class Governor {
   // read it directly to assert the governor's internal state (M1).
   get current(): Tier {
     return this.tier;
+  }
+
+  /** Tell the governor what "on time" is: the pacer's target interval. Called every frame; cheap. */
+  setTargetInterval(ms: number): void {
+    this.targetMs = ms;
   }
 
   /**
@@ -114,13 +116,13 @@ export class Governor {
       this.fastWindows = 0;
       return null;
     }
-    if (slowFrames > this.options.downThresholdMs) {
+    if (slowFrames > this.options.downRatio * this.targetMs) {
       this.fastWindows = 0;
       if (canChange) return this.changeTo(this.tier - 1, nowMs);
       this.pendingDown = true;
       return null;
     }
-    if (slowFrames < this.options.upThresholdMs) {
+    if (slowFrames < this.options.upRatio * this.targetMs) {
       this.fastWindows += 1;
       if (this.fastWindows >= this.options.upWindowsRequired && canChange && this.mayStepUp(nowMs)) {
         this.fastWindows = 0;
