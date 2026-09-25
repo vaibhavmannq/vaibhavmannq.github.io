@@ -20,11 +20,12 @@ export function createNameMotion(name: HTMLElement): NameMotion {
     rise(reducedMotion) {
       if (risen || reducedMotion) return;
       risen = true;
-      // The text layer fades in 1.2 s after the opening starts to leave (overlay.css .content).
+      // The text layer fades in 2 s after the opening starts to leave, once the black has gone
+      // (overlay.css .content). The name rises with the rest of the page, never before it.
       gsap.fromTo(
         chars,
         { yPercent: 115, rotate: 6 },
-        { yPercent: 0, rotate: 0, duration: 1.1, ease: 'expo.out', stagger: 0.045, delay: 1.1 },
+        { yPercent: 0, rotate: 0, duration: 1.1, ease: 'expo.out', stagger: 0.045, delay: 2 },
       );
     },
   };

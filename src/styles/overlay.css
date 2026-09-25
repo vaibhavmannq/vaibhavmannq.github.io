@@ -124,8 +124,11 @@ html.is-stills .world {
   padding-inline: max(1.5rem, env(safe-area-inset-left)) max(1.5rem, env(safe-area-inset-right));
   text-align: center;
   background: var(--night);
-  /* Leaving: the black lifts over 1.8 s, starting once the greeting has begun to fade. */
-  transition: opacity 1.8s ease 0.5s;
+  /* Leaving: the black lifts over 1.6 s, starting once the greeting has begun to fade. The journey's text
+     waits for it (see .content): the owner chose this ordering on a phone, from four running side by side
+     (2026-09-25). Measured before: the text arrived 900 ms before the black had finished lifting, which is
+     what showed up as half-faded words on the black. */
+  transition: opacity 1.6s ease 0.4s;
 }
 
 .opening > * {
@@ -196,9 +199,10 @@ html.is-stills .world {
   height: 100svh;
   pointer-events: none;
   opacity: 1;
-  /* Held at 0 by html.is-gated below. When the opening starts to leave, its greeting fades in 0.7 s,
-     so this reveal waits 1.2 s: the name never appears while the greeting is still on screen. */
-  transition: opacity 0.9s ease 1.2s;
+  /* Held at 0 by html.is-gated below. Nothing of the journey shows until the black has gone completely:
+     the black is clear at 2 s (see .opening), and this reveal starts exactly there. Anything earlier puts
+     the text on the black. */
+  transition: opacity 0.8s ease 2s;
 }
 
 html.is-gated .content {

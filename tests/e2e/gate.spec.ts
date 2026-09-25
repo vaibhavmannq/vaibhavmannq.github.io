@@ -15,6 +15,30 @@ test('the opening greets, then leaves by itself once the page is ready', async (
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
 });
 
+// The owner's review, 2026-09-25: the journey's text used to start fading in 900 ms before the black had
+// finished lifting, so half-faded words appeared on the black. Read the timings rather than race them:
+// whatever the frame rate, the reveal may not begin before the black is clear.
+test('nothing of the journey appears until the black has gone', async ({ page }) => {
+  await page.goto('/?stills&hold=600000');
+  await expect(page.locator('#opening')).toHaveAttribute('data-state', 'ready');
+
+  const timings = await page.evaluate(() => {
+    const ms = (value: string) =>
+      value.trim().endsWith('ms') ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+    const span = (element: Element) => {
+      const style = getComputedStyle(element);
+      const start = ms(style.transitionDelay);
+      return { start, end: start + ms(style.transitionDuration) };
+    };
+    const opening = document.getElementById('opening');
+    const content = document.querySelector('.content');
+    if (opening === null || content === null) throw new Error('opening or content missing');
+    return { black: span(opening), text: span(content) };
+  });
+
+  expect(timings.text.start).toBeGreaterThanOrEqual(timings.black.end);
+});
+
 test('a key press starts the journey and moves focus to the intro heading', async ({ page }) => {
   await page.goto('/?stills&hold=600000');
   await expect(page.locator('#opening')).toHaveAttribute('data-state', 'ready');
