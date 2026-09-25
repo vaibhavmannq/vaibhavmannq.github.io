@@ -23,11 +23,24 @@
 
     <main class="content" id="content">
       <p class="scene-status" id="scene-status" role="status">The sea is waking…</p>
+      <!-- Each page shades only where its text is, as in the storyboard, and fades with its page (sections.ts). -->
+      <div class="scrim" data-follows="intro" aria-hidden="true"></div>
+      <div class="scrim" data-follows="about" aria-hidden="true"></div>
+      <div class="scrim" data-follows="projects" aria-hidden="true"></div>
+      <div class="scrim" data-follows="contact" aria-hidden="true"></div>
+      <div class="journey-hint" data-follows="intro" aria-hidden="true">
+        <p class="welcome-arrives">
+          <span class="journey-hint__fine">Scroll to drift ashore · the moon fills as you go</span>
+          <span class="journey-hint__touch">Swipe to drift ashore</span>
+        </p>
+      </div>
       <header class="site-header welcome-arrives" id="site-header">
         <p class="voyage-log" id="voyage-log">
-          <span>Log</span>
-          <span data-log-when></span>
-          <span class="voyage-log__moon" data-log-moon></span>
+          <span class="voyage-log__long">Log</span>
+          <span class="voyage-log__long" data-log-when></span>
+          <span class="voyage-log__long voyage-log__moon" data-log-moon></span>
+          <span class="voyage-log__short" data-log-time></span>
+          <span class="voyage-log__short voyage-log__moon" data-log-moon-short></span>
         </p>
         <nav class="site-nav" aria-label="Main">
           <a href="#projects" data-go="projects">Work</a>
@@ -54,7 +67,6 @@
             <a class="section__cta" href="#projects" data-go="projects">See the work <span aria-hidden="true">→</span></a>
             <a class="section__email" href="mailto:vaibhavmann.03@gmail.com">vaibhavmann.03@gmail.com</a>
           </p>
-          <p class="section__hint" aria-hidden="true">Scroll to drift ashore</p>
         </div>
       </section>
 
@@ -110,7 +122,11 @@
             </li>
           </ul>
           <p class="contact-return" data-reveal="block">
-            <a id="return-to-shore" href="#intro">Return to the shore</a>
+            <a id="return-to-shore" href="#intro"
+              >Return to the shore<span class="contact-return__more" aria-hidden="true">
+                · the moon wanes on the way back</span
+              ></a
+            >
           </p>
         </div>
       </section>
@@ -118,17 +134,29 @@
 
     <dialog class="project-dialog" id="project-dialog" aria-labelledby="project-dialog-title" data-lenis-prevent>
       <div class="project-dialog__body">
-        <button class="project-dialog__close" type="button" data-project-close>Close</button>
-        <img class="project-dialog__cover" data-project-cover alt="" />
+        <div class="project-dialog__bar">
+          <p class="project-dialog__crumb">Projects / <span data-project-crumb></span></p>
+          <button class="project-dialog__close" type="button" data-project-close>Close</button>
+        </div>
+        <div class="project-dialog__media">
+          <figure class="project-dialog__figure">
+            <img class="project-dialog__cover" data-project-cover alt="" />
+            <figcaption class="project-dialog__caption" data-project-caption></figcaption>
+          </figure>
+          <div class="project-dialog__extras" data-project-extras></div>
+        </div>
         <div class="project-dialog__text-col">
-          <p class="project-dialog__meta" data-project-meta></p>
-          <h2 class="project-dialog__title" id="project-dialog-title" data-project-title>Project</h2>
+          <div class="project-dialog__heading">
+            <p class="project-dialog__meta" data-project-meta></p>
+            <h2 class="project-dialog__title" id="project-dialog-title" data-project-title>Project</h2>
+            <p class="project-dialog__aside" data-project-aside></p>
+          </div>
+          <dl class="project-dialog__facts" data-project-facts></dl>
           <h3 class="project-dialog__label">What it is</h3>
           <div class="project-dialog__text" data-project-text></div>
           <h3 class="project-dialog__label">The hard part</h3>
           <p class="project-dialog__hard" data-project-hard></p>
           <p class="project-dialog__metric" data-project-metric></p>
-          <ul class="project-dialog__tools" aria-label="Built with" data-project-tools></ul>
           <p class="project-dialog__links" data-project-links></p>
         </div>
       </div>

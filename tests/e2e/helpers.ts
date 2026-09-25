@@ -45,7 +45,7 @@ export async function measureTextContrast(page: Page): Promise<LineContrast[]> {
     const out: LineBox[] = [];
     // Links and small labels count too: the Contact page is mostly links (a link inside a paragraph is
     // measured with its own colour).
-    const selector = '.section.is-active :is(h1, h2, p, a, .contact-list__label):not([aria-hidden="true"])';
+    const selector = '.section.is-active :is(h1, h2, h3, p, a, button, .contact-list__label):not([aria-hidden="true"])';
     for (const element of document.querySelectorAll<HTMLElement>(selector)) {
       // Measure only text a reader can see: a visually hidden copy for screen readers is squeezed into a
       // 1-pixel box, so its words stack down the page over whatever is there, unseen.
@@ -72,7 +72,7 @@ export async function measureTextContrast(page: Page): Promise<LineContrast[]> {
 
   await page.addStyleTag({
     content:
-      '.section :is(h1, h2, p, a, .contact-list__label), .section :is(h1, h2, p) * { color: transparent !important; text-decoration-color: transparent !important } :focus-visible { outline: none !important }',
+      '.section :is(h1, h2, h3, p, a, button, .contact-list__label), .section :is(h1, h2, h3, p, button) * { color: transparent !important; text-decoration-color: transparent !important } :focus-visible { outline: none !important }',
   });
   const screenshot = await page.screenshot({ animations: 'disabled' });
 

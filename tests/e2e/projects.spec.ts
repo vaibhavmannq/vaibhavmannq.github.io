@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 
 test('the Projects page lists this site and opens its dialog, which Esc closes', async ({ page }) => {
   await page.goto('/?stills&p=0.65');
-  const open = page.getByRole('button', { name: 'Moonlit' });
+  const open = page.getByRole('button', { name: 'Read the case study: Moonlit' });
   await expect(open).toBeVisible();
   await open.click();
 
@@ -37,7 +37,7 @@ test('a deep link opens the project straight away, and closing it clears the lin
 
 test('Back closes an open project, and an unknown project link is ignored', async ({ page }) => {
   await page.goto('/?stills&p=0.65');
-  await page.getByRole('button', { name: 'Moonlit' }).click();
+  await page.getByRole('button', { name: 'Read the case study: Moonlit' }).click();
   await expect(page.getByRole('dialog', { name: 'Moonlit' })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('dialog')).toBeHidden();
@@ -50,18 +50,19 @@ test('Back closes an open project, and an unknown project link is ignored', asyn
 test('the card shows a cover, and the case study shows the hard part and its number', async ({ page }) => {
   await page.goto('/?stills&p=0.65');
   await expect(page.locator('#projects .project__cover')).toHaveAttribute('src', '/projects/moonlit-cover.jpg');
-  await page.getByRole('button', { name: 'Moonlit' }).click();
+  await page.getByRole('button', { name: 'Read the case study: Moonlit' }).click();
   const dialog = page.getByRole('dialog', { name: 'Moonlit' });
   await expect(dialog.getByRole('heading', { name: 'The hard part' })).toBeVisible();
   await expect(dialog.locator('[data-project-metric]')).toContainText('fps');
-  await expect(dialog.getByRole('img')).toHaveAttribute('alt', /rendered by the site/);
+  await expect(dialog.locator('[data-project-cover]')).toHaveAttribute('alt', /rendered by the site/);
 });
 
 // Owner, on a phone (2026-09-26): the case study opened but would not scroll, so the rest of it was out of reach.
 test('the case study scrolls on a phone', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  // A small phone: on a 390 × 844 screen the storyboard's case study fits without scrolling.
+  await page.setViewportSize({ width: 375, height: 667 });
   await page.goto('/?stills&p=0.65');
-  await page.getByRole('button', { name: 'Moonlit' }).click();
+  await page.getByRole('button', { name: 'Read the case study: Moonlit' }).click();
   const dialog = page.getByRole('dialog', { name: 'Moonlit' });
   await expect(dialog).toBeVisible();
   const fits = await dialog.evaluate((el) => el.scrollHeight <= el.clientHeight);

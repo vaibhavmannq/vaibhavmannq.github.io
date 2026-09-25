@@ -7,7 +7,7 @@ import type { JourneyState, RegionSegment, SectionId } from '../journey/types';
 import { createChapterRail, moonGlyphPath } from '../overlay/chapterRail';
 import { createFocusGlide } from '../overlay/focusGlide';
 import { applyFrameFit } from '../overlay/frame';
-import { bindGoLinks } from '../overlay/header';
+import { bindGoLinks, createHeaderNav } from '../overlay/header';
 import { createNameMotion } from '../overlay/nameMotion';
 import { createPointerTouch } from '../overlay/pointerTouch';
 import { createProjectDialog } from '../overlay/projectDialog';
@@ -135,6 +135,7 @@ export async function boot(): Promise<void> {
   }
   const rail = createChapterRail(byId('chapter-rail'), { go });
   bindGoLinks(document, { go });
+  const headerNav = createHeaderNav(byId('site-header'));
   createFocusGlide({
     sectionOf: (element) => (element.closest<HTMLElement>('[data-section]')?.dataset.section as SectionId) ?? null,
     isShown: (id) => fullyShown(state.a.local, anchors, id, ctx.reducedMotion),
@@ -188,6 +189,7 @@ export async function boot(): Promise<void> {
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
     log.show(phaseFor(state.a.local));
     rail.show(state.section);
+    headerNav.show(state.section);
   };
   /** Frame time for loops that run on requestAnimationFrame: 0 on their first frame, so the text lands at once. */
   const frameClock = () => {
@@ -354,6 +356,7 @@ export async function boot(): Promise<void> {
     // the scroll before this loop began (the waking loop's first frame), as the camera does on its first frame.
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
     rail.show(state.section);
+    headerNav.show(state.section);
     moonlit.render();
     frames += 1;
 
