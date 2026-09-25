@@ -29,3 +29,19 @@ describe('projects content (spec §5.7)', () => {
     }
   });
 });
+
+describe('the case study (spec 2026-09-25 §4.8, storyboard F)', () => {
+  it('gives every project a cover, the hard part, and only a measured number', () => {
+    for (const project of projects) {
+      expect(project.cover.src, project.slug).toMatch(/^\/projects\/.+\.jpg$/);
+      expect(project.hardPart.trim(), project.slug).not.toBe('');
+      if (project.metric) expect(project.metric.value, project.slug).toMatch(/\d/);
+    }
+  });
+
+  it('no longer promises tonight’s real moon', () => {
+    for (const project of projects) {
+      expect([project.summary, ...project.details].join(' '), project.slug).not.toMatch(/tonight/i);
+    }
+  });
+});

@@ -27,6 +27,9 @@ export function createProjectDialog(
   const text = part('[data-project-text]');
   const tools = part('[data-project-tools]');
   const links = part('[data-project-links]');
+  const cover = part<HTMLImageElement>('[data-project-cover]');
+  const hard = part('[data-project-hard]');
+  const metric = part('[data-project-metric]');
 
   part<HTMLButtonElement>('[data-project-close]').addEventListener('click', () => dialog.close());
   // The body fills the dialog, so a click that lands on the dialog element itself is on the backdrop.
@@ -51,6 +54,11 @@ export function createProjectDialog(
   const fill = (project: Project) => {
     meta.textContent = `${project.year} · ${project.role}`;
     title.textContent = project.title;
+    cover.src = project.cover.src;
+    cover.alt = project.cover.alt;
+    hard.textContent = project.hardPart;
+    metric.textContent = project.metric ? `${project.metric.value} — ${project.metric.label}` : '';
+    metric.hidden = project.metric === undefined;
     text.replaceChildren(
       ...project.details.map((paragraph) => {
         const element = document.createElement('p');
