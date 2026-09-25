@@ -4,7 +4,6 @@ import { journey, journeyWithLength } from '../journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { createGate } from '../overlay/gate';
-import { createMotionToggle } from '../overlay/motionToggle';
 import { createNameMotion } from '../overlay/nameMotion';
 import { createOpening } from '../overlay/opening';
 import { createPointerTouch } from '../overlay/pointerTouch';
@@ -55,9 +54,15 @@ export async function boot(): Promise<void> {
   // The voyage log shows the same moon as the scene, including a `?moon=` override.
   createVoyageLog(byId('voyage-log'), (now) => resolveMoonPhase(now, params.moon));
   const name = createNameMotion(byId('intro-title'));
-  createMotionToggle(byId<HTMLButtonElement>('motion-toggle'), (reduced) => {
-    ctx.reducedMotion = reduced;
-  });
+  // Motion follows the system setting alone: the owner asked for the on-page "Reduce motion" button to go
+  // (2026-09-25). Followed live, so turning the setting on mid-visit still quiets the page.
+  const systemMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const applyMotion = () => {
+    ctx.reducedMotion = systemMotion.matches;
+    root.classList.toggle('is-reduced-motion', systemMotion.matches);
+  };
+  applyMotion();
+  systemMotion.addEventListener('change', applyMotion);
   const scroll = createScroll();
   scroll.setLocked(true);
 
