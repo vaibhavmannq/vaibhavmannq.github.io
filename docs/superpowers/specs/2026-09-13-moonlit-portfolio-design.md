@@ -61,23 +61,37 @@ The owner has no projects yet. The site itself is the first showcase piece.
 | Stop | Region | Accent | On screen | Scene & camera | Scroll length* |
 |---|---|---|---|---|---|
 | 0 · Opening | Moonsink Shore | black, then the moon | Glyph, "Hello, voyager", *A moonlit journey across the sea.* It leaves by itself once the scene is ready; see the journey-flow design (`2026-09-14-journey-flow-design.md`) | Black, then the sea is revealed | (fixed overlay) |
-| 1 · Intro + About | **Moonsink Shore** | cold teal, black sand, moon path | Intro line, about text | Open sea → shoreline. The moon and its path on the water carry the frame; no structures (see §3.4) | 2.4, tuned by feel |
-| 2 · Projects | **Moonsink Shore**, along the waterline | the same sea, sky and moon | "Along the shore", Projects, the project list (this site is project #1); each entry opens a dialog | The camera walks sideways along the waterline; the moon and sky hold still. Same text handover as intro → About. See the projects-page design (`2026-09-21-projects-page-design.md`) | 1.5 (journey 4.2) |
-| 3 · Contact | **Moonsink Shore**, at the water's edge | the same sea, sky and moon | "At the water's edge", Contact: email, GitHub, LinkedIn, and "Return to the shore" | After the shoreline walk the camera steps toward the sea and stops at the water's edge. See the contact-page design (`2026-09-21-contact-page-design.md`) | 1.4 (journey 5.6) |
+| 1 · Intro + About | **Moonsink Shore** | cold teal, black sand, moon path | Intro line, about text | Open sea → shoreline. The moon and its path on the water carry the frame; no structures (see §3.4) | 1.4 + 1.4 |
+| 2 · Projects | **Moonsink Shore**, along the waterline | the same sea, sky and moon | "Along the shore", Projects, the project list (this site is project #1); each entry opens a dialog | The camera walks sideways along the waterline; the moon and sky hold still. Same text handover as intro → About. See the projects-page design (`2026-09-21-projects-page-design.md`) | 1.4 |
+| 3 · Contact | **Moonsink Shore**, at the water's edge | the same sea, sky and moon | "At the water's edge", Contact: email, GitHub, LinkedIn, and "Return to the shore" | After the shoreline walk the camera steps toward the sea and stops at the water's edge. See the contact-page design (`2026-09-21-contact-page-design.md`) | 1.4 |
 
-\*Measured in screen heights of scroll, and configurable in `journey.config.ts`.
+\*Measured in screen heights of scroll, and configurable in `journey.config.ts`. **Every page is worth the
+same scrolling (2026-09-25):** 1.4 screens each, 5.6 in total. They used to run 1.215, 1.585, 1.5 and 1.3,
+so the journey sped up and slowed down for no reason a visitor could see (§17 S35).
 
 ### 3.2 Behaviour
 - **Real HTML text** is layered over the canvas. It's selectable, indexable and readable by screen readers.
 - **Project details** open in a native `<dialog>` over a dimmed scene. Deep links use `#/projects/:slug`; Back or Esc closes the dialog.
-- **Navigation overlay:** glyph (back to top), region rail (buttons that travel to a region), a motion toggle, and later a sound toggle.
-- **"Return to the shore"** at the end travels back to the top with a ripple.
+- **Navigation overlay:** none. The region rail was never built (one region), and the on-page motion toggle
+  was removed on 2026-09-25 at the owner's request: the system's reduced-motion setting alone decides, and
+  is followed live (§10.1).
+- **"Return to the shore"** at the end glides back to the top and moves focus to the name. The ripple was
+  dropped on 2026-09-22 ("feels fake").
 - **Phones:** the same journey. Text stacks vertically, the camera's field of view widens in portrait so landmarks stay in frame, and touch scrolling is native.
 
 ### 3.3 Visual direction
 - **Reference build:** `my-portfolio/.superpowers/brainstorm/1915-1789294650/content/experience-demos.html` (mode A). The sea shader, moon, motes and palette there are the baseline for Moonsink Shore.
 - **Glyph:** the original SVG mark from the prototypes (circle, moon dot, two wave strokes, vertical line). It's the logo and favicon.
-- **Typography (redesigned 2026-09-22):** Fraunces for display (the greeting, the name, headings, italic lines), Hanken Grotesk for reading, and Space Mono for the log voice (chapter titles and the voyage log). Chosen by the owner from a runnable demo of four pairings; see the redesign design (`2026-09-22-redesign-design.md`). It replaced Gelasio, Cormorant Garamond and Manrope (2026-09-14).
+- **Typography (chosen 2026-09-25):** **Satoshi** carries the journey — headings, reading text, the project
+  title and the contact links — set tight (−0.03em on headings, −0.011em on reading text). **Fraunces** is kept
+  for two things only: the name on page one and the black opening's greeting with its italic second line.
+  **Space Mono** speaks the log's voice: chapter titles, the voyage log, the small labels. Nothing italicises
+  any more; a stressed line goes lighter and tighter instead. Satoshi ships with the site
+  (`public/fonts/satoshi-{300,400,500}.woff2`, 74 kB) rather than coming from a second font CDN. Chosen by
+  the owner from seven faces running on the real journey, after their references — shadergradient.co,
+  dark.design, minimal.gallery — were measured and turned out to be modern grotesks set tight
+  (`2026-09-25-opening-type-and-quality.md`). It replaced Fraunces + Hanken Grotesk (2026-09-22), which
+  replaced Gelasio, Cormorant Garamond and Manrope (2026-09-14).
 - **Glow sources:** only the moon, lanterns, the transition effects and — in Lumenreach only — the ring gate. No bright hazy skies. Moonsink Shore's only light is the moon.
 
 | Region | Palette | Landmarks (procedural first, hand-made in phase 5) |
@@ -305,8 +319,15 @@ read as abrupt and disconnected.
 - **The handover is sequential (amended 2026-09-14):** the outgoing text finishes fading before
   the incoming text starts, with a short gap where only the scene shows. An earlier version
   overlapped them; on a phone both texts sat in the same spot and could not be read (§17 S25).
+- **The text travels toward that position (added 2026-09-25).** The handover is still computed from scroll
+  and nothing else, but the text approaches it with a damped follow (`sections.ts` `CATCH_UP`, the same
+  mechanism the camera has used since 2026-09-14) instead of being written straight to the screen. A snap
+  glide covers a whole page in about a second, and following it exactly made the next chapter appear all at
+  once. After a flick the text now keeps arriving for about a second after the scroll has stopped. It lands
+  exactly on the target once within `SETTLED`, so a page at rest still reads exactly 0 or 1. The first
+  frame, a deep link (`?p=`) and Skip intro pass no frame time and therefore land at once.
 - **Reduced motion:** the offset is dropped and the text switches exactly at the next anchor, in the same frame as the reduced-motion camera cut and the section change (corrected 2026-09-14, §17 S24);
-  it still never animates on its own clock.
+  it still never animates on its own clock, and never travels.
 
 ### 5.4b Lunar phase
 
@@ -370,6 +391,13 @@ Added 2026-09-14 at the owner's request.
 - **Never mid-scroll (2026-09-14):** the governor keeps measuring while the visitor scrolls,
   but applies a tier change only after scrolling has stopped for 300 ms. A tier change
   resizes render buffers, which hitches exactly when motion is most visible (§17 S25).
+- **A latched ceiling (2026-09-25):** a tier that has proved too slow is never returned to for the rest of
+  the visit. Without it the governor flapped forever — scrolling frames are slower than standing-still ones,
+  so every stop stepped down and every three quiet seconds stepped back up (§17 S36).
+- **Step ups only while settling (2026-09-25):** a step up is allowed only in the first 20 s of the visit.
+  Steps down are never time-limited. A tier change is visible (bloom turning on brightens the whole picture;
+  3.1% of pixels change), and it may only happen once the visitor stops — so a late change reads as the page
+  blinking at someone who is reading.
 - Never exceed tier 3 on WebGL2. Tier 4 requires WebGPU.
 - **Invariant:** tiers never change camera paths, composition, content, timing or palette.
 - **Invariant (sharpened 2026-09-14):** a tier change must be *invisible except as sharpness
@@ -608,6 +636,7 @@ One workflow file, **`ci.yml`**, with two jobs (§17 S10):
 | **Next · Night sky** | Owner request, 2026-09-14: a richer sky with stars, constellations and a nebula. Constraints: the moon stays the one focal point (§3.4 rule 1), so sky detail reads as depth and never as a second subject; a tier change may thin or soften the sky but never change its shape (§5.6); it pairs with the real lunar phase (§5.4b), because darker nights can reveal more. Also fix: the unlit part of the crescent currently reads as a grey disc, where a real crescent shows only faint earthshine. Open questions: the visitor's real constellations or original ones; how visible a nebula can be on a phone | Procedural noise, sky rendering, basic astronomy | Owner picks a look from runnable demos before it's built; the moon is still the focal point at 390 px; tiers 0–4 show the same sky |
 | **2 · Projects page** (built 2026-09-21) | Projects as a third page on Moonsink Shore: the same handover, a walk along the shoreline, three touch-snap stops, project data, a dialog with `#/projects/:slug` deep links, this site as project #1. The Lumenreach scene, the resonance ripple, the transition pipeline and lazy region builds were dropped (§17 S31) | Data-driven UI, native dialog, history and hash routing | Owner confirms the page on the phone; axe clean on the dialog; contrast holds on all three pages |
 | **3 · Contact page** (built 2026-09-21) | Contact as page 4 on Moonsink Shore: the step to the water's edge, a fourth snap stop, email, GitHub and LinkedIn, Return to the shore. Lastlight Isle and the bell toll were dropped (§17 S32). Still open from the old phase 3: stills fallback capture, SEO/OG/JSON-LD, and the full accessibility pass with NVDA and VoiceOver | Links, focus management | Owner confirms the page on the phone; axe clean; contrast holds on all four pages |
+| **4 · Review rounds** (2026-09-22 to 2026-09-25) | The redesign (S33), then the opening's hand-over, the type (Satoshi with Fraunces for the name and greeting), equal pages, text that arrives, the end of the link pull, and a scene that stopped blinking (S34–S37) | Options shown running, one at a time | Owner feels each option on their phone before anything is committed |
 | **4 · High-end extras** | GPU particles (WebGPU compute), light shafts / volumetric fog, 120 fps when there's headroom | Compute shaders, adaptive quality | Tier 4 visibly richer; tiers 0–1 unchanged and still smooth |
 | **5 · Hand-made structures** | Blender → glTF → gltf-transform (meshopt, KTX2) pipeline; replace procedural landmarks; LODs per tier | 3D asset pipeline | Asset budgets met; procedural fallback still works |
 | **6 · Music & ambience** | Original or licensed loops, Web Audio, sound toggle, `CREDITS.md` | Web Audio | Off by default, no autoplay, licences recorded |
@@ -702,3 +731,7 @@ During planning, the demo-1 sea was ported to TSL and run in a throwaway build (
 | S31 | Projects on the shore, not in Lumenreach (2026-09-21) | Starting phase 2, the owner pointed out that the lantern city (valley, ring gate, rising lanterns, terraced city) had been scrapped with the shore's structures, and asked for the Projects page to do "what happens on page 1 and 2". The record had only dropped structures from Moonsink; the Lumenreach row had never been revisited, and it now is. Owner choices: this site as project #1 with its dialog and deep link; one sky and one moon for the whole journey; the camera walks along the shoreline for Projects. Pages 1 and 2 stay identical in screen heights (the journey grows 2.7 → 4.2; the fade and gap are kept in screens). Dropped: the Lumenreach scene, the resonance ripple, the transition pipeline, lazy region builds and the "still being lit" state. Contact (phase 3) is expected to follow the same pattern; its look is still to be confirmed with the owner |
 | S32 | Contact at the water's edge (2026-09-21) | Following S31, Contact is page 4 on Moonsink Shore, not Lastlight Isle; the island city and the bell toll are dropped. Owner choices: email vaibhavmann.03@gmail.com, GitHub and LinkedIn; the camera steps from the end of the shoreline walk toward the sea and stops on the sand. Pages 1 to 3 stay identical in screen heights (the journey grows 4.2 → 5.6). The links are plain HTML so they work without JavaScript. Return to the shore glides to the top and focuses the name |
 | S33 | Redesign: chapters, type and touch (2026-09-22) | The owner found the finished journey "just reading the text whenever they pop up" and disliked the fonts, the single bottom-left placement and the sizes. From a runnable demo they chose: a story in chapters with a live voyage log (date, time, tonight's moon), Fraunces + Hanken Grotesk + Space Mono, composed placement, and pull on links; they dropped the water ripple as fake. GSAP 3.15 (SplitText, ScrambleText) is adopted (D7); the JavaScript budget rises 270 → 330 kB. Text motion stays a pure function of scroll: each chapter's timeline is scrubbed by its handover (sections.ts), so the no-timers rule of §5.4a holds; only the name's one-shot rise and the pointer effects run on GSAP's own ticker. Contact stays left: centred, it sat on the moon's path (§3.4 rule 4). Same day: the first 3D frame compiled the bloom shaders on screen (385 ms measured), freezing the opening's fade on desktop; a warm-up render behind the opening fixed it (first visible frame ~25 ms). Devices without 3D now show real renders of each page's scenery |
+| S34 | A rejected sweep, and how options are shown from now on (2026-09-25) | A batch of polish — faster opening, eased text, a swell replacing the link pull, type scaling with the window, `?pos=` placements, a glow behind centred text — was built in one go and shown to the owner as renders. They rejected all of it ("honestly every change you made is awful, please revert"), and it was reverted; `main` never carried it. The cause was the method, not only the changes: the owner judges by feel and in motion, and a screenshot cannot show how a page arrives or answers a pointer. **From now on, every look-and-feel option is put in front of the owner running** — behind a switch on a real build served to their phone — and nothing is committed until they have felt it. Two ideas from that branch were later rebuilt on request: the eased text (S35) and removing the pull (S37) |
+| S35 | Equal pages, and text that arrives (2026-09-25) | The four pages were worth 1.215, 1.585, 1.5 and 1.3 screens of scrolling; they are 1.4 each now (§3.1), so the journey no longer speeds up and slows down for no visible reason. The camera still lands just before the text that follows it: the shore at 2.7 and the walk's end at 4.1, with Projects and Contact text at 2.8 and 4.2. Chapter text now travels toward its scroll position instead of being written straight to the screen (§5.4a): after a flick it keeps arriving for about a second after the scroll stops. Stills mode had to start measuring its own frames, or the text landed instantly there while the 3D page let it travel |
+| S36 | The scene stopped blinking (2026-09-25) | The owner: a few seconds after coming to rest on a page, the scene blinks, then again at the next stop. Measured: a tier change is visible (stepping 1 → 2 turns bloom on and changes 3.1% of the pixels; 2 → 3 changes 1.8%), it may only happen once the visitor stops (§5.6), and the governor was flapping — scrolling frames are slower than standing-still ones, so every stop stepped down and every three quiet seconds stepped back up. Fixed with a latched ceiling (the deferred journey-flow review item M10) and a 20 s settle window for step ups only. Measured over 25 s of standing still: two changes before and no end in sight, one change at 0.7 s and none after |
+| S37 | The pull is gone; the opening holds its ground (2026-09-25) | The link pull (project opener, email, GitHub, LinkedIn, Return to the shore) could push text past the edge of the window, and the owner asked for it to go from every link, including projects added later. Only the name answers the pointer now, by swelling in place. Also: the opening's hand-over was measured and the journey's text used to start fading in 900 ms before the black had finished lifting; from four orderings shown running, the owner chose the one where nothing appears until the black is gone. The greeting keeps Fraunces, italic second line and all. The last page greets in Spanish ("Hola Amigo"), and big headings gained a soft halo so they stay legible where they cross the moon's glitter |
