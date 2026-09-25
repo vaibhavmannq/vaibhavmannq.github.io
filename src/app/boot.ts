@@ -3,6 +3,7 @@ import { createHud } from '../dev/hud';
 import { journey, journeyWithLength } from '../journey/journey.config';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
+import { applyFrameFit } from '../overlay/frame';
 import { createGate } from '../overlay/gate';
 import { createNameMotion } from '../overlay/nameMotion';
 import { createOpening } from '../overlay/opening';
@@ -42,6 +43,9 @@ export async function boot(): Promise<void> {
   const root = document.documentElement;
 
   byId('journey-track').style.setProperty('--journey-length', String(totalLength(activeJourney)));
+  // Text keeps its place in the scene whether the window is full screen or not (spec 2026-09-25 §4.14).
+  // `?frame=old` shows the previous behaviour for the owner to compare.
+  if (params.frame !== 'old') applyFrameFit(root, byId('world'));
 
   // ---- HTML layer: works even if 3D never starts ----
   const openingElement = byId('opening');

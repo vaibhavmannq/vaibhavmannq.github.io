@@ -244,6 +244,15 @@ html.is-gated .content {
   max-width: 40rem;
 }
 
+/* On screens wider than 16:9 the scene is framed by height, so the text is too: each page keeps its 16:9 layout,
+   scaled and moved into the frame (overlay/frame.ts writes the two values; both default to no change). Top pages
+   scale from their top edge and bottom pages from their bottom edge, so each stays at its height in the picture. */
+.section__panel {
+  transform-origin: bottom left;
+  translate: var(--frame-x, 0px) 0;
+  scale: var(--frame-scale, 1);
+}
+
 /* Chapters (type chosen 2026-09-25): Satoshi for headings, reading text and links, set tight the way the
    owner's references do it; Fraunces for the name alone; Space Mono for the log's voice (chapter titles
    and the voyage log). */
@@ -340,6 +349,11 @@ html.is-gated .content {
   #projects {
     top: 16svh;
     bottom: auto;
+  }
+
+  #intro .section__panel,
+  #projects .section__panel {
+    transform-origin: top left;
   }
 }
 
