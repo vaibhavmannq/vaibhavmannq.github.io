@@ -241,15 +241,18 @@ html.is-stills .world {
   letter-spacing: -0.011em;
 }
 
-/* The emphasised phrase used to be italic Fraunces. A grotesk says the same thing by going lighter, brighter and
-   tighter rather than slanting — the way the owner's references handle a stressed line. It stays the size of the
-   sentence around it: 1.12em raised its words 3 px, SplitText then read them as a line of their own, and Firefox
-   and WebKit left "hand:" alone on a line (measured, plan 2 Task 6). */
-.section em {
+/* The stressed line used to be italic Fraunces. A grotesk says the same thing by going lighter, brighter and tighter
+   rather than slanting — the way the owner's references handle a stressed line. It is its own paragraph, following
+   straight on from the first: nested inside a line-split paragraph, SplitText lifted the whole phrase onto a line of
+   its own and left "hand:" alone above it, in all three engines (measured, plan 2 Tasks 6 and 8). */
+.section p:has(+ .section__stress) {
+  margin-bottom: 0.25em;
+}
+
+.section .section__stress {
   color: var(--ink);
   font-family: var(--font-accent);
   font-weight: 300;
-  font-style: normal;
   letter-spacing: -0.02em;
 }
 
@@ -853,4 +856,14 @@ html.is-reduced-motion .world__still {
     height: 12rem;
     min-height: 0;
   }
+}
+
+/* `?bare`: the scene alone, for rendering the stills and the project cover (scripts/capture.mjs). `?p=` pins the
+   position, so nothing needs to scroll, and the scrollbar stays out of the pictures. */
+html.is-bare {
+  overflow: hidden;
+}
+
+html.is-bare .content {
+  display: none;
 }
