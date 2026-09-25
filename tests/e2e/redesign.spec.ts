@@ -61,3 +61,15 @@ for (const [progress, moon] of [
     await expect(page.locator('#voyage-log [data-log-moon]')).toHaveText(moon);
   });
 }
+
+test('the stressed phrase in About flows with its sentence, never leaving "hand:" alone on a line', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/?stills&p=0.36');
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator('#about')).toHaveClass(/is-active/);
+  await page.waitForTimeout(1500);
+  const lines = await page.locator('#about .split-line').allTextContents();
+  expect(lines.map((line) => line.trim())).not.toContain('hand:');
+});

@@ -241,12 +241,13 @@ html.is-stills .world {
   letter-spacing: -0.011em;
 }
 
-/* The emphasised phrase used to be italic Fraunces. A grotesk says the same thing by going lighter and
-   larger rather than slanting — the way the owner's references handle a stressed line. */
+/* The emphasised phrase used to be italic Fraunces. A grotesk says the same thing by going lighter, brighter and
+   tighter rather than slanting — the way the owner's references handle a stressed line. It stays the size of the
+   sentence around it: 1.12em raised its words 3 px, SplitText then read them as a line of their own, and Firefox
+   and WebKit left "hand:" alone on a line (measured, plan 2 Task 6). */
 .section em {
   color: var(--ink);
   font-family: var(--font-accent);
-  font-size: 1.12em;
   font-weight: 300;
   font-style: normal;
   letter-spacing: -0.02em;
