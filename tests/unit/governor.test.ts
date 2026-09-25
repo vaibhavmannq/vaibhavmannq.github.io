@@ -35,6 +35,40 @@ describe('percentile', () => {
 });
 
 describe('Governor', () => {
+  // The owner, 2026-09-25: the scene blinked a few seconds after coming to rest on every page. A tier
+  // change is visible, and scrolling frames are slower than standing-still ones, so the governor stepped
+  // down at each stop and back up during each quiet spell, forever.
+  it('never returns to a tier that has already proved too slow', () => {
+    const governor = new Governor(3, true);
+    let t = 0;
+
+    ({ endMs: t } = runWindow(governor, 40, t));
+    expect(governor.current).toBe(2);
+
+    // However fast it gets from here, tier 3 is shut for this visit.
+    for (let i = 0; i < 8; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
+    expect(governor.current).toBe(2);
+  });
+
+  it('stops stepping up once the journey has settled, but still steps down', () => {
+    const governor = new Governor(1, true);
+    let t = 0;
+
+    ({ endMs: t } = runWindow(governor, 16, t));
+    ({ endMs: t } = runWindow(governor, 16, t));
+    ({ endMs: t } = runWindow(governor, 16, t));
+    expect(governor.current).toBe(2);
+
+    // Well past the settle window: quiet, fast frames no longer change the picture under the visitor.
+    t = 30_000;
+    for (let i = 0; i < 6; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
+    expect(governor.current).toBe(2);
+
+    // A device that starts struggling is still helped, whenever that happens.
+    ({ endMs: t } = runWindow(governor, 40, t + 2100));
+    expect(governor.current).toBe(1);
+  });
+
   it('waits for a full window before deciding', () => {
     const governor = new Governor(2, true);
     expect(governor.sample(40, 0)).toBeNull();
