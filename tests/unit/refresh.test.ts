@@ -116,6 +116,18 @@ describe('createPacer', () => {
     expect(pacer.refreshHz).toBeCloseTo(60, 5);
   });
 
+  // Final review C1: measuring while rendering reads a slow GPU's frame rate as the screen's. Measure quietly.
+  it('renders nothing while it measures, so the GPU cannot skew the reading', () => {
+    const pacer = createPacer();
+    expect(pacer.quiet).toBe(true);
+    for (let n = 0; n <= MEASURE_SAMPLES; n++) expect(pacer.tick(1000 + (n * 1000) / 60, false)).toBe(false);
+    expect(pacer.quiet).toBe(false);
+    expect(pacer.tick(1000 + ((MEASURE_SAMPLES + 1) * 1000) / 60, false)).toBe(true);
+    expect(pacer.resumed).toBe(true);
+    expect(pacer.tick(1000 + ((MEASURE_SAMPLES + 2) * 1000) / 60, false)).toBe(true);
+    expect(pacer.resumed).toBe(false);
+  });
+
   // Review focus 2: a window dragged from a 60 Hz laptop screen to a 144 Hz monitor.
   it('re-measures after remeasure() and adopts the new cadence', () => {
     const pacer = createPacer();

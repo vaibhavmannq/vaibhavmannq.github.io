@@ -9,11 +9,14 @@ export interface ScrollController {
   /** Advance Lenis's smoothing; called once per frame by the loop. */
   raf(nowMs: number): void;
   scrollToProgress(p: number, immediate: boolean): void;
-  /** An eased glide; the visitor's next touch, wheel or key stops it at once. */
+  /** An eased glide; the visitor's next touch, wheel or scrolling key stops it at once. */
   glideToProgress(p: number, smooth: boolean): void;
   setLocked(locked: boolean): void;
   destroy(): void;
 }
+
+/** Keys that move focus or modify another key, never the scroll. */
+const FOCUS_KEYS = new Set(['Tab', 'Shift', 'Control', 'Alt', 'Meta']);
 
 export function createScroll(): ScrollController {
   // Wheel/trackpad are smoothed; touch keeps the phone's native momentum (spec §8). The lerp was 0.1;
@@ -26,10 +29,19 @@ export function createScroll(): ScrollController {
     window.cancelAnimationFrame(glideFrame);
     glideFrame = 0;
   };
-  // The visitor's own input always wins over a glide in progress.
-  for (const type of ['touchstart', 'wheel', 'keydown'] as const) {
+  // The visitor's own input always wins over a glide in progress. Tab and the modifier keys do not scroll: they move
+  // focus, and focus starts its own glide (focusGlide.ts), so stopping here stranded a Tab stop mid-fade (final
+  // review I2).
+  for (const type of ['touchstart', 'wheel'] as const) {
     window.addEventListener(type, stopGlide, { passive: true });
   }
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      if (!FOCUS_KEYS.has(event.key)) stopGlide();
+    },
+    { passive: true },
+  );
 
   return {
     progress: () => progressFrom(lenis.scroll, lenis.limit),

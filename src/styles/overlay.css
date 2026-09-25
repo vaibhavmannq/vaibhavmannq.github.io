@@ -33,6 +33,13 @@ html.is-settled .welcome-arrives {
   opacity: 1;
 }
 
+/* Nothing that has focus is ever invisible (spec 2026-09-25 §4.6): a header link reached by Tab before the page
+   settles shows at once (final review I1). */
+.welcome-arrives:focus-within {
+  opacity: 1;
+  transition: none;
+}
+
 .scene-status {
   position: absolute;
   bottom: max(1.25rem, env(safe-area-inset-bottom));

@@ -15,9 +15,15 @@ const INPUT_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchst
 /**
  * The single animation loop (spec §4.3 rule 1). The pacer renders every Nth vsync, so frames are evenly spaced
  * near 60 fps on any screen; idle halves that; a hidden tab pauses. The refresh is measured again when the tab
- * comes back and when the window is resized, which is how it notices a move to another monitor.
+ * comes back; a faster screen is noticed by the pacer itself, and a resize only re-arms its check for a slower one.
+ * While the pacer measures it renders nothing (final review C1), and `onQuiet` runs instead, so the text keeps
+ * moving. Both share one clock, so the first rendered frame after a quiet spell does not jump.
  */
-export function createLoop(onFrame: (nowMs: number, dtSeconds: number) => void, pacer: Pacer = createPacer()): Loop {
+export function createLoop(
+  onFrame: (nowMs: number, dtSeconds: number) => void,
+  pacer: Pacer = createPacer(),
+  onQuiet: (nowMs: number, dtSeconds: number) => void = () => {},
+): Loop {
   let renderer: WebGPURenderer | null = null;
   let lastFrame = -1;
   let lastInput = performance.now();
@@ -25,10 +31,12 @@ export function createLoop(onFrame: (nowMs: number, dtSeconds: number) => void, 
   const isIdle = (nowMs: number) => nowMs - lastInput > IDLE_AFTER_MS;
 
   const tick = (nowMs: number) => {
-    if (!pacer.tick(nowMs, isIdle(nowMs))) return;
+    const render = pacer.tick(nowMs, isIdle(nowMs));
+    if (!render && !pacer.quiet) return;
     const dtSeconds = lastFrame < 0 ? 1 / 60 : Math.min(0.1, (nowMs - lastFrame) / 1000);
     lastFrame = nowMs;
-    onFrame(nowMs, dtSeconds);
+    if (render) onFrame(nowMs, dtSeconds);
+    else onQuiet(nowMs, dtSeconds);
   };
 
   const run = () => {
@@ -52,7 +60,9 @@ export function createLoop(onFrame: (nowMs: number, dtSeconds: number) => void, 
     pacer.remeasure();
     run();
   });
-  window.addEventListener('resize', () => pacer.remeasure(), { passive: true });
+  // A resize measures nothing (it used to, and froze the sea for half a second on every phone toolbar swipe; final
+  // review M10), but a window moved to a slower screen may need the pacer's check for a slower screen again.
+  window.addEventListener('resize', () => pacer.rearm(), { passive: true });
 
   return {
     start(next) {

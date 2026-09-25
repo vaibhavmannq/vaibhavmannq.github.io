@@ -117,6 +117,21 @@ export function sectionOpacity(
   return opacityFrom(arrive, leave);
 }
 
+/**
+ * True where the scroll shows this page at full opacity. The journey names a page from its anchor on, while it is
+ * still fading in, so "the current section" is not "on screen": focus landing mid-glide was left half transparent
+ * (final review I2). Pure.
+ */
+export function fullyShown(
+  local: number,
+  anchors: readonly SectionAnchor[],
+  id: SectionId,
+  reducedMotion: boolean,
+): boolean {
+  const index = anchors.findIndex((anchor) => anchor.id === id);
+  return index >= 0 && sectionOpacity(local, anchors, index, reducedMotion) >= 0.999;
+}
+
 /** Companion translateY in px for the same handover; always 0 under reduced motion. Pure. */
 export function sectionOffset(
   local: number,
