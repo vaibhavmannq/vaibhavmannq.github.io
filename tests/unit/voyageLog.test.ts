@@ -34,3 +34,11 @@ describe('formatLog', () => {
     expect(formatLog(night, 0).moon).toBe('New moon · 0% lit');
   });
 });
+
+describe('the log follows the journey moon', () => {
+  it('names the crescent and the gibbous moon the journey passes through', () => {
+    const night = new Date(2026, 8, 26, 22, 10);
+    expect(formatLog(night, 0.08).moon).toBe('Waxing crescent · 6% lit');
+    expect(formatLog(night, 0.375).moon).toBe('Waxing gibbous · 85% lit');
+  });
+});

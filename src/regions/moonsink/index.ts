@@ -1,4 +1,6 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu';
+import { journeyPhase, reducedMotionPhase } from '../../journey/journeyMoon';
+import type { SectionAnchor } from '../../journey/types';
 import type { TierSettings } from '../../quality/tiers';
 import { disposeObject } from '../../shared/dispose';
 import type { Region, RegionContext } from '../region';
@@ -14,7 +16,7 @@ import {
   SEA_FOV,
   toThreeCamera,
 } from './cameraPath';
-import { moonLight, resolveMoonPhase } from './moonPhase';
+import { moonLight } from './moonPhase';
 import { createSea, type SeaOptions, type SeaUniforms } from './sea';
 import { surfaceTopAt } from './surfaceTop';
 
@@ -22,22 +24,35 @@ export interface MoonsinkRegion extends Region {
   /** False while the opening is up: the camera bobs on the open sea instead of following the scroll. */
   setEntered(entered: boolean): void;
   readonly seaUniforms: SeaUniforms;
+  /** The phase the moon shows right now, for the voyage log. */
+  readonly phase: number;
 }
 
 /**
- * @param moonOverride `?moon=` debug override (0..1, already clamped by readDebugParams), or
- *   undefined to use tonight's real phase. Set once here, from `new Date()`, and never mutated
- *   per-frame — see spec §5.4b.
+ * @param anchors The journey's section anchors: the moon reaches each chapter's phase where its text is fully shown.
+ * @param moonOverride `?moon=`: pins the phase (0..1, already clamped by readDebugParams) for tests and reviews;
+ *   undefined lets the journey wax it (spec 2026-09-25 §4.3).
  */
-export function createMoonsink(ctx: RegionContext, moonOverride?: number, seaOptions: SeaOptions = {}): MoonsinkRegion {
+export function createMoonsink(
+  ctx: RegionContext,
+  anchors: readonly SectionAnchor[],
+  moonOverride?: number,
+  seaOptions: SeaOptions = {},
+): MoonsinkRegion {
   const scene = new Scene();
   const camera = new PerspectiveCamera(SEA_FOV, window.innerWidth / window.innerHeight, 0.1, 400);
   const sea = createSea(seaOptions);
   scene.add(sea.mesh);
 
-  const phase = resolveMoonPhase(new Date(), moonOverride);
-  sea.uniforms.moonPhase.value = phase;
-  sea.uniforms.moonLight.value = moonLight(phase);
+  // The moon waxes with the scroll (spec 2026-09-25 §4.3), unless `?moon=` pins it for a test or a review.
+  let shownPhase = -1;
+  const setPhase = (phase: number) => {
+    if (phase === shownPhase) return;
+    shownPhase = phase;
+    sea.uniforms.moonPhase.value = phase;
+    sea.uniforms.moonLight.value = moonLight(phase);
+  };
+  setPhase(moonOverride ?? journeyPhase(0, anchors));
 
   let entered = false;
   // `current` is the camera's own persistent pose, mutated in place every frame from here on.
@@ -58,11 +73,15 @@ export function createMoonsink(ctx: RegionContext, moonOverride?: number, seaOpt
     scene,
     camera,
     seaUniforms: sea.uniforms,
+    get phase() {
+      return shownPhase;
+    },
     setEntered(value) {
       entered = value;
     },
     update(local, timeSeconds, dtSeconds) {
       sea.uniforms.time.value = timeSeconds;
+      setPhase(moonOverride ?? (ctx.reducedMotion ? reducedMotionPhase(local, anchors) : journeyPhase(local, anchors)));
 
       let target: CameraPose;
       if (!entered) target = idlePose(timeSeconds, ctx.reducedMotion);
