@@ -263,7 +263,10 @@ export async function boot(): Promise<void> {
     handleContextLoss(info),
   );
 
-  const region = createMoonsink(ctx, params.moon);
+  const region = createMoonsink(ctx, params.moon, {
+    march: params.march === 'old' ? 'old' : 'bounded',
+    glints: params.glints === 'old' ? 'old' : 'fade',
+  });
   gate.onEnter(() => region.setEntered(true));
   if (gate.state === 'entered') region.setEntered(true);
   moonlit.setView(region.scene, region.camera);

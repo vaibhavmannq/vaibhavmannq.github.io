@@ -15,7 +15,8 @@ import {
   toThreeCamera,
 } from './cameraPath';
 import { moonLight, resolveMoonPhase } from './moonPhase';
-import { createSea, type SeaUniforms } from './sea';
+import { createSea, type SeaOptions, type SeaUniforms } from './sea';
+import { surfaceTopAt } from './surfaceTop';
 
 export interface MoonsinkRegion extends Region {
   /** False while the opening is up: the camera bobs on the open sea instead of following the scroll. */
@@ -28,10 +29,10 @@ export interface MoonsinkRegion extends Region {
  *   undefined to use tonight's real phase. Set once here, from `new Date()`, and never mutated
  *   per-frame — see spec §5.4b.
  */
-export function createMoonsink(ctx: RegionContext, moonOverride?: number): MoonsinkRegion {
+export function createMoonsink(ctx: RegionContext, moonOverride?: number, seaOptions: SeaOptions = {}): MoonsinkRegion {
   const scene = new Scene();
   const camera = new PerspectiveCamera(SEA_FOV, window.innerWidth / window.innerHeight, 0.1, 400);
-  const sea = createSea();
+  const sea = createSea(seaOptions);
   scene.add(sea.mesh);
 
   const phase = resolveMoonPhase(new Date(), moonOverride);
@@ -85,6 +86,8 @@ export function createMoonsink(ctx: RegionContext, moonOverride?: number): Moons
         approachPose(current, target, dtSeconds);
       }
       applyPose(current);
+      // Sea space mirrors x only (sea.ts toSea), so the camera's z is the sea's z.
+      sea.uniforms.surfaceTop.value = surfaceTopAt(camera.position.z);
     },
     resize(width, height) {
       camera.aspect = width / height;
