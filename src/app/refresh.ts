@@ -51,7 +51,7 @@ export interface Pacer {
   readonly resumed: boolean;
 }
 
-export function createPacer(options: { full?: boolean; fallbackFps?: number } = {}): Pacer {
+export function createPacer(options: { fallbackFps?: number } = {}): Pacer {
   const fallbackFps = options.fallbackFps ?? 60;
   type Phase = 'measuring' | 'running' | 'checking';
   let phase: Phase = 'measuring';
@@ -68,7 +68,7 @@ export function createPacer(options: { full?: boolean; fallbackFps?: number } = 
 
   const adopt = (hz: number) => {
     vsyncMs = 1000 / hz;
-    divisor = options.full ? 1 : frameDivisor(hz);
+    divisor = frameDivisor(hz);
   };
   const remeasure = () => {
     phase = 'measuring';

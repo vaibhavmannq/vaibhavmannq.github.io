@@ -10,16 +10,6 @@ export interface DebugParams {
   moon?: number;
   /** `?length=`: Moonsink's scroll length in screen heights, for tuning by feel (clamped 1.5–4). */
   length?: number;
-  /** `?pace=full`: render every vsync instead of an even divisor near 60 fps (owner review, spec §7). */
-  pace?: 'full';
-  /** `?march=old`: the sea's ray march as it was before the bounding plane (owner review, spec §7). */
-  march?: 'old';
-  /** `?glints=old`: sand glints strongest at the camera, as before (owner review, spec §7). */
-  glints?: 'old';
-  /** `?frame=old`: text sized by the window, not fitted to the scene's 16:9 frame (owner review, spec §7). */
-  frame?: 'old';
-  /** `?snap=wheel`: mouse and trackpad snap to pages like touch (owner review, spec §7). */
-  snap?: 'wheel';
   hud: boolean;
   gui: boolean;
   forceWebGL: boolean;
@@ -46,8 +36,6 @@ export function readDebugParams(search: string): DebugParams {
   const progress = number('p');
   const moonValue = number('moon');
   const lengthValue = number('length');
-  const only = <T extends string>(key: string, value: T): T | undefined =>
-    query.get(key) === value ? value : undefined;
 
   return {
     tier,
@@ -57,11 +45,6 @@ export function readDebugParams(search: string): DebugParams {
     // a numeric but out-of-range value is clamped rather than thrown away.
     moon: moonValue === undefined ? undefined : clamp01(moonValue),
     length: lengthValue === undefined ? undefined : Math.min(4, Math.max(1.5, lengthValue)),
-    pace: only('pace', 'full'),
-    march: only('march', 'old'),
-    glints: only('glints', 'old'),
-    frame: only('frame', 'old'),
-    snap: only('snap', 'wheel'),
     hud: query.has('hud'),
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),

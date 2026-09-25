@@ -56,11 +56,6 @@ describe('createPacer', () => {
     expect(pacer.targetIntervalMs).toBeCloseTo(2000 / 90, 5);
   });
 
-  it('renders every vsync when asked for full pace', () => {
-    const intervals = run(createPacer({ full: true }), 90, 2).slice(MEASURE_SAMPLES);
-    expect(intervals.every((ms) => Math.abs(ms - 1000 / 90) < 1e-6)).toBe(true);
-  });
-
   it('halves the rate when idle', () => {
     const pacer = createPacer();
     run(pacer, 60, 1);

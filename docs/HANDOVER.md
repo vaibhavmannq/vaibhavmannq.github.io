@@ -1,6 +1,6 @@
 # Handover — Moonsink Shore
 
-Written 2026-09-25. Everything a new session needs to pick this up without re-deriving it. Read this first,
+Written 2026-09-25, updated 2026-09-26 after the waxing voyage. Everything a new session needs to pick this up without re-deriving it. Read this first,
 then the master spec (`docs/superpowers/specs/2026-09-13-moonlit-portfolio-design.md`) for the detail.
 
 ---
@@ -18,14 +18,16 @@ the canvas. Four pages, one scene, one moon.
 
 The journey, in order:
 
-| Page | Scroll | On screen | Camera |
-|---|---|---|---|
-| 1 · Adrift | 0 – 1.4 screens | the name (Fraunces), a tagline | drifting on the open sea |
-| 2 · The shore | 1.4 – 2.8 | About, in prose | arriving at the black-sand shore (lands at 2.7) |
-| 3 · What washed ashore | 2.8 – 4.2 | Projects — this site as project #1, opens a dialog | walking sideways along the waterline (ends at 4.1) |
-| 4 · The water's edge | 4.2 – 5.6 | "Hola Amigo", email, GitHub, LinkedIn, Return to the shore | stepping toward the sea and crouching |
+| Page | Scroll | On screen | Moon (S40) | Camera |
+|---|---|---|---|---|
+| 1 · Adrift | 0 – 1.4 screens | the name (Fraunces), a tagline, "See the work" | 0.08, a crescent | drifting on the open sea |
+| 2 · The shore | 1.4 – 2.8 | About, in two paragraphs | 0.25, first quarter | up the beach: lands at 2.0 (S41) |
+| 3 · What washed ashore | 2.8 – 4.2 | Projects — a card with a cover, opens the case study | 0.375, gibbous | walking sideways along the sand (ends at 4.1) |
+| 4 · The water's edge | 4.2 – 5.6 | "Hola Amigo", email, GitHub, LinkedIn, Return to the shore | 0.5, full | stepping toward the sea and crouching |
 
-Before it: a black opening reading "Hello, voyager" that leaves by itself once the scene is ready.
+The moon waxes with the scroll, reaching each phase where its page is fully shown. There is no opening any more
+(S42): the HTML is the first paint, the sea fades up under the name, and the page settles (header, rail of four
+moons, "Hello, voyager" scrambling into "I · Adrift") 1.2 s in, or by 3 s if the sea is still compiling.
 
 ---
 
@@ -36,7 +38,8 @@ Before it: a black opening reading "Hello, voyager" that leaves by itself once t
    every change you made is awful, please revert". They judge by feel and in motion. Every look-and-feel
    choice since has been put in front of them **running behind a switch on a real build served to their
    phone** (`?open=a|b|c|d`, a face/ink bar, and so on), and only then committed. Keep doing that.
-2. **Never push without asking.** Pushing `main` publishes.
+2. **Never push without asking.** Pushing `main` publishes. Serve review builds to the phone from a frozen copy
+   (`.superpowers/review-dist` on :4175), so running the test suite never kills the owner's link.
 3. **No attribution trailers in commits** — no `Co-Authored-By`, no "Generated with", no session lines.
 4. **Claude writes the code**, and every change gets a plain-language walkthrough of what changed and why.
 5. **Be blunt.** If the owner is wrong, say so with evidence. If something cannot be verified from this
@@ -57,34 +60,35 @@ Before it: a black opening reading "Hello, voyager" that leaves by itself once t
 npm run dev          # Vite dev server on :5173 (add -- --host for the owner's phone)
 npm run build        # tsc --noEmit ×2, then vite build   → dist/
 npm run preview      # serves dist/ on :4173 (add --host for the phone)
-npm test             # Vitest unit tests (157)
-npm run e2e          # Playwright, 3 browsers, against a production build (89)
+npm test             # Vitest unit tests (209)
+npm run e2e          # Playwright, 3 browsers, against a production build (186, 19 of them skipped by design)
 npm run check        # Biome
 npm run format       # Biome --write
-npm run size         # size-limit: 330 kB budget, currently ~293 kB gzipped
+npm run size         # size-limit: 330 kB budget, currently ~295 kB gzipped
+npm run capture      # re-render public/stills/ and the project cover from the real scene (headed Chromium, :4180)
 ```
 
-**Judge anything about first paint, the opening, or fonts on `npm run preview`, never on the dev server.**
-Vite injects CSS through JavaScript in dev, so the dev page paints about 14 frames — roughly 640 ms — with
-no stylesheet at all, showing unstyled text before the black opening even exists. The built site never does
-this. Measured 2026-09-25.
+The npm shim in PowerShell drops `--host`: for the phone run `npx vite preview --port 4175 --strictPort --host`.
+
+**Judge anything about first paint or fonts on a built preview, never on the dev server.** Vite injects CSS
+through JavaScript in dev, so the dev page paints about 14 frames — roughly 640 ms — with no stylesheet at all.
+The built site never does this. Measured 2026-09-25.
 
 ### Query hooks (`src/app/params.ts`, spec §12.2)
 
 | Hook | Does |
 |---|---|
-| `?p=0.65` | pin scroll progress (0..1) and skip the opening — how every page is inspected |
+| `?p=0.65` | pin scroll progress (0..1) — how every page is inspected |
 | `?stills` | no WebGL: show the pre-rendered JPEGs in `public/stills/` — fast, deterministic, used by most e2e |
 | `?tier=0..4` | pin the quality tier and disable the governor |
-| `?moon=0..1` | pin the lunar phase (0.5 = full) instead of tonight's real one |
+| `?moon=0..1` | pin the moon's phase (0.5 = full) instead of the one the scroll gives |
 | `?time=12` | pin the scene clock, so waves and motes are identical between runs |
 | `?length=2.5` | Moonsink's scroll length in screen heights, for tuning by feel |
-| `?hold=600000` | keep the opening up (tests act while the greeting is on screen) |
-| `?hud` / `?gui` | frame-rate HUD (now with the measured display refresh) / dev controls |
-| `?pace=full` | render every vsync instead of an even divisor near 60 fps. Owner-review switch, removed at the end of plan 2 |
-| `?march=old` | the sea's ray march before the bounding plane (S39). Owner-review switch, removed at the end of plan 2 |
-| `?glints=old` | sand glints strongest at the camera, as before (S39). Owner-review switch, removed at the end of plan 2 |
-| `?frame=old` | no frame fit for windows wider than 16:9 (S46). Owner-review switch, removed at the end of plan 2 |
+| `?bare` | hide the text layer: the scene alone, for `npm run capture` |
+| `?hud` / `?gui` | frame-rate HUD (with the measured display refresh) / dev controls |
+
+The owner-review switches of plan 2 (`?pace`, `?march`, `?glints`, `?frame`, `?snap`) are gone: the owner kept
+every new side, and mouse-wheel snapping was never picked, so wheels do not snap.
 
 `window.__moonlit` exposes `tier()`, `frames()`, `progress()`, `section()`, `reducedMotion()` for probes.
 
@@ -96,28 +100,34 @@ this. Measured 2026-09-25.
 src/
   main.ts                  entry; catches boot failure → html.is-broken fallback
   app/
-    boot.ts                wires everything: renderer, region, scroll, sections, gate, opening,
-                           projects, governor, stills fallback. The one big file — read it first.
+    boot.ts                wires everything: renderer, region, scroll, sections, welcome, header, rail,
+                           projects, governor, the waking and stills loops. The one big file — read it first.
     capabilities.ts        device hints (pointer, memory, save-data, reduced motion)
-    loop.ts                the single rAF loop: 60 fps cap, 30 fps idle, paused when hidden
+    loop.ts                the single rAF loop: asks the pacer which frames render; text-only while it measures
+    refresh.ts             THE PACER: measures the screen quietly, renders every Nth vsync near 60 fps (S38, S47)
     frameRate.ts           frame interval helpers
     params.ts              the query hooks above
     debug.ts               window.__moonlit
+  content/projects.ts      the projects: copy, cover, the hard part, the number
   journey/
-    journey.config.ts      LENGTH 5.6, four pages of 1.4 screens each, camera anchors
+    journey.config.ts      LENGTH 5.6, four pages of 1.4 screens each, the landing at 2.0
+    journeyMoon.ts         the moon's phase from scroll: 0.08 → 0.5 (S40)
     timeline.ts            resolve(p) → which region, which section, region-local position
     types.ts               Segment, SectionAnchor, JourneyState
   overlay/                 everything that is HTML rather than pixels
-    gate.ts                loading → ready → entered
-    opening.ts             the black greeting; min hold 2.2 s; leaves on tap/scroll/key
-    sections.ts            THE HANDOVER: opacity, offset and text motion from scroll position
+    welcome.ts             opening E: the sea fades up; the page settles at 1.2 s, by 3 s at the latest
+    sections.ts            THE HANDOVER: one shown page at a time (S44), opacity and offset from scroll
     sectionMotion.ts       one paused GSAP timeline per chapter, positioned by the handover
-    nameMotion.ts          the name split into masked letters; its one-shot rise
+    nameMotion.ts          the name split into masked letters
+    frame.ts               fits the text into the scene's 16:9 frame (S46)
+    header.ts              "Email me" and the data-go links
+    chapterRail.ts         the four moon glyphs on the right
+    focusGlide.ts          focus in a page that is not fully shown glides to it
     pointerTouch.ts        the name's letters swell toward the pointer. Nothing else moves.
-    projectList.ts         builds the project list from content/projects.ts
-    projectDialog.ts       native <dialog>, focus handling
+    projectList.ts         builds the project cards from content/projects.ts
+    projectDialog.ts       native <dialog>: the case study (picture, hard part, number)
     router.ts              #/projects/:slug deep links
-    voyageLog.ts           the top-left log: date, time, tonight's moon
+    voyageLog.ts           the top-left log: date, time, the moon the scene shows
   quality/
     tiers.ts               the five tiers (render scale, march steps, bloom) and the boot guess
     governor.ts            measures frame intervals, steps tiers, latched ceiling, settle window
@@ -125,8 +135,9 @@ src/
     sea.ts                 the TSL sea shader: ray march, night sky, moon, foam
     nightSky.ts            star layers, milky band, nebula positions
     moonDirection.ts       where the moon sits
-    moonPhase.ts           tonight's real phase (mean synodic approximation)
-    cameraPath.ts          the keyframed camera and its damped follow
+    moonPhase.ts           phase maths: how much light a phase gives
+    surfaceTop.ts          the highest surface ahead of the camera, where the ray march starts (S39)
+    cameraPath.ts          the keyframed camera and its damped follow (it lands on the first frame)
     index.ts               the region: build, update, applyTier, resize, dispose
   render/renderer.ts       WebGPURenderer + RenderPipeline, bloom, warm-up
   scroll/
@@ -135,7 +146,7 @@ src/
     activity.ts            "is the visitor scrolling right now"
     progress.ts            scroll → 0..1
   shared/math.ts           clamp01, lerp, smoothstep, damp
-  styles/base.css          type variables, @font-face for Satoshi, resets
+  styles/base.css          type variables, @font-face for Satoshi, Fraunces and Space Mono (all local), resets
   styles/overlay.css       everything the text layer looks like
 ```
 
@@ -151,17 +162,22 @@ These are the ones that get broken by accident. Each is in the spec with its rea
    scroll-driven properties (§5.4a). Since 2026-09-25 the text *travels* toward that scroll-derived target
    with a damped follow (`CATCH_UP` in `sections.ts`), which is still not a clock: the target comes only
    from scroll, and scrolling backwards reverses it exactly.
-3. **The handover is sequential.** The outgoing text finishes leaving before the incoming text starts, with
-   a gap where only the scene shows. Two texts never share the screen (§5.4a).
+3. **The handover is sequential and exclusive.** The outgoing text finishes leaving before the incoming text
+   starts, with a gap where only the scene shows. However fast the scroll, one page is shown at a time: on a
+   jump the shown one leaves in about 0.25 s before the next arrives (§5.4a, §17 S44).
 4. **One focal point per screen; text never crosses the moon or its path** (§3.4). Contrast is checked at
    full moon, which is the worst case for light text.
 5. **Tiers change cost only** — render scale and march steps — never composition, camera, content, timing or
    palette (§5.6). Wave iterations are constant at 6.
 6. **A tier change is visible, so it is rationed.** Never mid-scroll; never back to a tier that proved too
    slow; step ups only in the first 20 s (§5.6, §17 S36).
-7. **Nothing of the journey appears until the black opening has gone** (§17 S37). There is a test that reads
-   both timings.
+7. **The name is the first paint, and nothing waits for the sea** (§17 S42). Text moves from the first frame
+   (the waking loop), the scroll is never locked, and the page settles by 3 s whatever the GPU is doing.
 8. **Every page is worth the same scrolling:** 1.4 screens (§3.1).
+9. **Nothing focused is ever invisible** (§17 S43): focus glides to a page until it is fully shown, and the
+   header and rail show at once if a link in them takes focus before the page settles.
+10. **The pacer never measures while it renders** (§17 S47): a slow GPU delays the next animation frame, so
+    frames timed while rendering measure the GPU, not the screen.
 
 ---
 
@@ -169,12 +185,16 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 - **Satoshi** (self-hosted, `public/fonts/satoshi-{300,400,500}.woff2`) for headings, reading text, the
   project title and the contact links, set tight: −0.03em headings, −0.011em body.
-- **Fraunces** for exactly two things: the name on page one, and the opening's greeting with its italic
-  second line. It is the only serif on the site, which is what makes the name read as a signature.
+- **Fraunces** for the name on page one only. It is the only serif on the site, which is what makes the name
+  read as a signature.
 - **Space Mono** for the log's voice: chapter titles, the voyage log, the small labels, in glow blue.
 - **No italics** anywhere else; a stressed line goes lighter and tighter instead.
 - Contact values use the softer ink (`--ink-dim`), which the owner chose over full white.
-- The opening: black lifts 0.4 – 2.0 s, the journey's text arrives 2.0 – 2.8 s. No overlap, by choice.
+- The opening (E): the intro text is there at first paint; the sea fades up under it once compiled; at 1.2 s
+  (or when the sea is ready, by 3 s at the latest) the header and rail fade in and "Hello, voyager" scrambles
+  into "I · Adrift". On a phone the intro shows "See the work" but hides the email, which pushed the name onto
+  the glitter (2.28:1 contrast).
+- Big headings keep a 20 px halo; their masks leave room for it and for descenders (S45).
 
 ---
 
@@ -210,20 +230,25 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 ## 8. Testing
 
-- **Unit (Vitest, 157):** the pure things — handover maths, journey config, governor, tiers, camera path,
-  moon phase, router, params, night sky layout.
-- **E2E (Playwright, 89, three browsers):** against a **production build** on :4173. Most use `?stills` so
+- **Unit (Vitest, 209):** the pure things — handover maths, journey config, the journey moon, governor,
+  tiers, camera path, the pacer (`refresh.test.ts`) and **the pacer and governor wired together against a
+  simulated screen and GPU** (`refreshSimulation.test.ts`: free GPUs at 60–165 Hz, a GPU that cannot keep up,
+  a screen that changes rate mid-visit), router, params, night sky layout.
+- **E2E (Playwright, 186, 19 of them skipped by design, three browsers):** against a **production build** on :4173. Most use `?stills` so
   they do not wait on a software GPU.
-  - `gate.spec.ts` — the opening: it leaves, keyboard and tap start it, focus behaviour, **the ordering
-    test** (text may not start before the black is gone) and **the greeting keeps Fraunces**.
-  - `sections.spec.ts` — the sequential handover at pinned scroll positions.
+  - `opening.spec.ts` — opening E: the first paint with no JavaScript, it settles, it settles by 3 s even when
+    the GPU never answers (an init script hangs `navigator.gpu`), and the text hands over while the sea wakes.
+  - `navigation.spec.ts`, `focus.spec.ts` — the header, the rail, and every Tab stop visible once glided to.
+  - `frame.spec.ts` — the same composition in a window and full screen, under 1.5% drift.
+  - `fonts.spec.ts` — no font request leaves the site.
+  - `sections.spec.ts` — the sequential handover at pinned scroll positions, and fast scrolls never stack.
   - `touchSnap.spec.ts` — a flick lands on a page, never in a gap. Its `swipeTo` waits for the page's own
     progress to catch up before lifting the finger; without that it raced and flaked on WebKit.
   - `a11y.spec.ts` — axe on each page and the dialog, plus **contrast measured from rendered pixels** at
     full moon on a phone (and on a laptop for the centred case), with the text made transparent so the
     helper reads what is actually behind the glyphs (`helpers.ts`).
   - `projects.spec.ts`, `contact.spec.ts`, `redesign.spec.ts`, `smoke.spec.ts`, `reduced-motion.spec.ts`.
-- **Budget:** `.size-limit.json`, 330 kB gzipped, currently ~293 kB.
+- **Budget:** `.size-limit.json`, 330 kB gzipped, currently ~295 kB.
 - CI (`.github/workflows/ci.yml`) runs check + build + tests, then deploys `main` to Pages.
 
 ---
@@ -232,12 +257,13 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 | Document | Covers |
 |---|---|
-| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S37** |
+| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S47** |
 | `specs/2026-09-14-journey-flow-design.md` | the scroll feel: handover, camera follow, touch snap, the black opening |
 | `specs/2026-09-21-projects-page-design.md` | Projects on the shore, the dialog, deep links |
 | `specs/2026-09-21-contact-page-design.md` | Contact at the water's edge |
 | `specs/2026-09-22-redesign-design.md` | chapters, the voyage log, the type system that Satoshi later replaced |
-| `specs/2026-09-25-opening-type-and-quality.md` | the opening's hand-over, Satoshi, the blinking scene, equal pages, the end of the pull |
+| `specs/2026-09-25-opening-type-and-quality.md` | the old opening's hand-over, Satoshi, the blinking scene, equal pages, the end of the pull |
+| `specs/2026-09-25-waxing-voyage-design.md` | the waxing moon, the beach landing, opening E, header and rail, frame pacing, the faster sea, the case study (S38–S47) |
 
 ---
 
@@ -245,26 +271,40 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 Updated 2026-09-26.
 
-- `main` = `c834e4c`; the live site is older (`b3af23e`). Nothing has been pushed since.
-- Branch **`waxing-voyage`** holds:
-  - the spec `specs/2026-09-25-waxing-voyage-design.md`;
-  - plan 1 of 2 (`plans/2026-09-25-smooth-and-steady.md`), fully built: frame pacing that follows the display
-    (S38), the faster ray march (S39), one page at a time (S44), heading masks that no longer clip (S45), and
-    the frame fit for windows (S46).
-- Owner-review switches still in place: `?pace=full`, `?march=old`, `?glints=old`, `?frame=old`. Plan 2's
-  last task removes the losing sides.
-- **Next:** plan 2, the waxing voyage itself: the moon waxes with the scroll, the camera lands up the beach,
-  opening E, the header and chapter rail, local fonts, the project card and case study. The approved
-  storyboard is https://claude.ai/artifact/QCL4tADM3udn13qavw7cZV (page "Storyboard").
+- The waxing voyage is built, reviewed and live: both plans (`plans/2026-09-25-smooth-and-steady.md`,
+  `plans/2026-09-26-the-waxing-voyage.md`) are done, merged into `main` and pushed on 2026-09-26 at the
+  owner's request.
+- The owner reviewed it on their phone and laptop: "everything is perfect". Their two faults (the case study
+  would not scroll on a phone; a dark shadow on "See the work") are fixed.
+- An independent final review found one critical and four important issues (S47 and the I1–I3 lines of S42 and
+  S43), all fixed test-first.
+- Measured on this laptop's Intel UHD: the sea at tier 2 runs at 60 fps (was 46.6), tier 3 at 58 (was 31.6),
+  tier 4 at 41.4 (was 21); the name is readable at first paint (was 5.6 s); a fast scroll shows at most one
+  page (was four); a window against full screen drifts under 0.5% (was 6–13%).
 - **Never push without the owner saying so.**
 
 ## 11. Open work, roughly in the order it matters
 
 1. **Screen-reader pass** with NVDA (the owner agreed to this a while back and it keeps slipping). Includes
-   a script to follow: the opening, skip link, chapter titles, the project dialog, the contact links.
+   a script to follow: the header, the rail, chapter titles, the case study, the contact links.
 2. **Link previews**: Open Graph image and JSON-LD, so sharing the site shows the moon rather than nothing
    (spec §11).
 3. **A second project.** The list and dialog are data-driven — add to `src/content/projects.ts`. Nothing
    else needs touching, and new projects inherit the no-pull behaviour automatically.
 4. **Sound**, if ever: it was always phase 6 and has never been started.
 5. Deferred, still valid: sections clickable at their anchor rather than at full visibility (review M5).
+6. Deferred minors from the waxing-voyage final review, none of which the owner has noticed:
+   - "The sea is waking" is never cleared without JavaScript or after a boot failure, and is 3.9:1.
+   - After a late boot failure, the waking loop keeps writing opacities.
+   - The stills loop's first frame pops the handover at a waking → stills switch.
+   - `TRAVEL_PERCENT` 200 also moves unmasked blocks twice their height.
+   - The frame fit shrinks the text on landscape phones and ultra-wide windows.
+   - A fresh load with `#about`, `#projects` or `#contact` opens on the intro.
+   - Small spec deviations: no `<dl>` for the facts, the full date on a phone header, the phone cover height,
+     stills at q82, and an `img` without `src` until it is filled.
+   - Stale comments and a dead idle-pose path in the camera.
+   - Test gaps: a tautological wane test, the mask test lacks body text and a phone, the axe rule name, and the
+     Tab test only starts from the intro.
+   - The pacer's quiet measurement freezes the sea (not the text) for about 0.5 s when the tab comes back, and
+     about 0.33 s once per tier change on a struggling GPU. That is the price of an honest reading; nobody has
+     seen it yet.

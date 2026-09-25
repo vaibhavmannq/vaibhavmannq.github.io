@@ -46,12 +46,10 @@ export interface TouchSnapOptions {
   stops: readonly number[];
   /** False while a dialog is open and under test hooks (`?p=`). */
   enabled: () => boolean;
-  /** Mouse wheels and trackpads snap too (owner-review switch `?snap=wheel`). */
-  wheel?: boolean;
 }
 
-/** Wires touchSnapTarget to touch (and, with `wheel`, mouse and trackpad) scrolling. Keys never snap. */
-export function createTouchSnap({ progress, glideTo, stops, enabled, wheel = false }: TouchSnapOptions): void {
+/** Wires touchSnapTarget to touch scrolling. Mouse wheels, trackpads and keys never snap. */
+export function createTouchSnap({ progress, glideTo, stops, enabled }: TouchSnapOptions): void {
   let startP = 0;
   let touching = false;
   // A touch has happened since the last settle, so the next rest is the end of a swipe.
@@ -83,18 +81,6 @@ export function createTouchSnap({ progress, glideTo, stops, enabled, wheel = fal
   };
 
   window.addEventListener('touchstart', onTouchStart, { passive: true });
-  if (wheel) {
-    // A wheel or trackpad scroll counts as one gesture from its first event until it has been still for SETTLE_MS.
-    window.addEventListener(
-      'wheel',
-      () => {
-        if (!pending) startP = progress();
-        pending = true;
-        settleSoon();
-      },
-      { passive: true },
-    );
-  }
   window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('touchcancel', onTouchEnd, { passive: true });
   // Momentum keeps scrolling after the finger lifts; wait for it to stop before choosing a stop.
