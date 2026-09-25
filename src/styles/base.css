@@ -40,6 +40,7 @@
   --font-display: Satoshi, "Segoe UI", system-ui, sans-serif;
   --font-accent: Satoshi, "Segoe UI", system-ui, sans-serif;
   --font-body: Satoshi, "Segoe UI", system-ui, sans-serif;
+  /* Fraunces is kept for two things only: the name, and the black opening's greeting (owner, 2026-09-25). */
   --font-name: Fraunces, Georgia, "Times New Roman", serif;
   --font-mono: "Space Mono", "Cascadia Mono", ui-monospace, monospace;
 }

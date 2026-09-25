@@ -15,6 +15,14 @@ export interface GovernorOptions {
   upThresholdMs: number;
   upWindowsRequired: number;
   cooldownMs: number;
+  /**
+   * Step ups are only allowed this long after the journey starts. A tier change is visible — bloom turning
+   * on brightens the whole scene, and a render-scale step changes about 3% of the pixels — and the governor
+   * may only change tier once the visitor stops moving, so late changes read as the page blinking at them
+   * while they read (owner, 2026-09-25). Steps down are never time-limited: a struggling device still gets
+   * help whenever it needs it.
+   */
+  settleMs: number;
 }
 
 export const DEFAULT_GOVERNOR: GovernorOptions = {
@@ -27,6 +35,7 @@ export const DEFAULT_GOVERNOR: GovernorOptions = {
   upThresholdMs: 17.5,
   upWindowsRequired: 3,
   cooldownMs: 2000,
+  settleMs: 20_000,
 };
 
 /** Nearest-rank percentile, e.g. p = 0.95 gives the value 95% of samples are at or below. */
@@ -47,11 +56,21 @@ export class Governor {
   private lastChange = Number.NEGATIVE_INFINITY;
   /** A slow window closed while the visitor was scrolling: step down as soon as a change is allowed. */
   private pendingDown = false;
+  /**
+   * The highest tier still allowed. A tier that has proved too slow is never returned to: without this the
+   * governor flapped between two tiers forever, because scrolling frames are slower than standing-still
+   * ones, so every stop stepped down and every few quiet seconds stepped back up — which the visitor sees
+   * as the scene blinking each time they settle on a page (owner, 2026-09-25; journey-flow review M10).
+   */
+  private ceiling: Tier;
+  /** When the journey started, for the settle window. Set from the first sample. */
+  private startedAt: number | null = null;
 
   constructor(tier: Tier, webgpu: boolean, options: GovernorOptions = DEFAULT_GOVERNOR) {
     this.tier = tier;
     this.webgpu = webgpu;
     this.options = options;
+    this.ceiling = clampTier(webgpu ? 4 : 3, webgpu);
   }
 
   // Not read in production (boot.ts tracks its own `tier`); kept for the unit tests, which
@@ -68,6 +87,7 @@ export class Governor {
    * toward a step up.
    */
   sample(frameMs: number, nowMs: number, canChange = true): Tier | null {
+    this.startedAt ??= nowMs;
     // A window left open across the idle 30 fps mode or a hidden tab is stale, and this frame's
     // interval spans the gap. Start again rather than judge it (journey-flow review I4).
     if (this.windowStart !== null && nowMs - this.windowStart > 2 * this.options.windowMs) {
@@ -102,7 +122,7 @@ export class Governor {
     }
     if (slowFrames < this.options.upThresholdMs) {
       this.fastWindows += 1;
-      if (this.fastWindows >= this.options.upWindowsRequired && canChange) {
+      if (this.fastWindows >= this.options.upWindowsRequired && canChange && this.mayStepUp(nowMs)) {
         this.fastWindows = 0;
         return this.changeTo(this.tier + 1, nowMs);
       }
@@ -112,9 +132,17 @@ export class Governor {
     return null;
   }
 
+  /** Ups are for settling on the right tier early, not for changing the picture while someone reads. */
+  private mayStepUp(nowMs: number): boolean {
+    return this.tier < this.ceiling && nowMs - (this.startedAt ?? nowMs) < this.options.settleMs;
+  }
+
   private changeTo(target: number, nowMs: number): Tier | null {
-    const next = clampTier(target, this.webgpu);
+    const wanted = clampTier(target, this.webgpu);
+    const next = wanted > this.tier ? (Math.min(wanted, this.ceiling) as Tier) : wanted;
     if (next === this.tier) return null;
+    // Stepping down means this tier could not hold the frame rate: shut the door on it for this visit.
+    if (next < this.tier) this.ceiling = next;
     this.tier = next;
     this.lastChange = nowMs;
     return next;

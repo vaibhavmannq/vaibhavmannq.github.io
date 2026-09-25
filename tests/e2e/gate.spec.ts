@@ -15,6 +15,27 @@ test('the opening greets, then leaves by itself once the page is ready', async (
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
 });
 
+// The rest of the journey moved to Satoshi on 2026-09-25, but the owner asked for the opening to stay
+// exactly as it was, in Fraunces. Guard it: it is the moment they care most about.
+test('the greeting keeps its own face', async ({ page }) => {
+  await page.goto('/?stills&hold=600000');
+  await expect(page.locator('.opening__hello')).toBeVisible();
+  const faces = await page.evaluate(() => {
+    const first = (value: string) => value.split(',')[0].replaceAll('"', '').trim();
+    const hello = document.querySelector('.opening__hello');
+    const line = document.querySelector('.opening__line');
+    if (hello === null || line === null) throw new Error('the greeting is missing');
+    return {
+      hello: first(getComputedStyle(hello).fontFamily),
+      line: first(getComputedStyle(line).fontFamily),
+      lineStyle: getComputedStyle(line).fontStyle,
+    };
+  });
+  expect(faces.hello).toBe('Fraunces');
+  expect(faces.line).toBe('Fraunces');
+  expect(faces.lineStyle).toBe('italic');
+});
+
 // The owner's review, 2026-09-25: the journey's text used to start fading in 900 ms before the black had
 // finished lifting, so half-faded words appeared on the black. Read the timings rather than race them:
 // whatever the frame rate, the reveal may not begin before the black is clear.
