@@ -320,22 +320,26 @@ In the window, "Moonlit" sits on the horizon, and the moon moves about 30 px tow
 **Cause:** the text is sized by the window's **width** (`10vw`, `9vw`…), and the scene by its **height**. The
 vertical field of view is fixed for any screen wider than 16:9. Change only the height and they drift apart.
 
-**Fix:** size and place the text by the same frame the scene keeps.
+**Fix:** draw each page as at 16:9, then scale and shift it into the frame.
 
-```css
---frame-w: min(100vw, 100lvh * 16 / 9);   /* the 16:9 frame the camera composes for */
---frame-x: calc((100vw - var(--frame-w)) / 2);
-```
+- `overlay/frame.ts` computes `frameFit(stageWidth, stageHeight)` → `{ scale, x }`. The result is 1 and 0 at 16:9
+  or narrower, and also for a stage with no size yet.
+- It writes `--frame-scale` and `--frame-x` whenever the stage changes size, watched with a `ResizeObserver`.
+- `.section__panel` takes its `scale` and `translate` from them: top pages scale from the top edge, bottom pages
+  from the bottom.
 
-- Heading and body sizes become `clamp(minimum, var(--frame-w) * k, maximum)` with today's values at 16:9.
-- The vertical positions (16% from the top, 12% from the bottom) are measured in `lvh`, the same height as the
-  scene.
-- The left edge becomes `var(--frame-x) + 5% of the frame` on screens wider than 16:9.
-- Phones and anything narrower than 16:9 behave as now, because the frame is the width there.
+Scaling only the font sizes was tried on paper and rejected: the rem spacing and the small labels don't scale, which
+leaves about 3% of drift in a 590 px window.
 
-**Checked** at 16:9 (1280×720), 2.17:1 (1280×590, the windowed laptop), 4:3 and a phone:
-- the text block's top and bottom, as a fraction of the height, match 16:9 within 1%;
-- the text never crosses the moon or its path (§3.4).
+Found while building, and fixed:
+- WebKit can run the script before the stylesheet sizes the stage. It measured 0 tall, and the first version scaled
+  every page's text to nothing. The zero-size rule and the `ResizeObserver` cover it.
+
+**Checked** in Chromium, Firefox and WebKit at 1280×720 and 1280×590, on all four pages (`tests/e2e/frame.spec.ts`):
+- The panel's edges, as fractions of the frame, match within 0.5% in Chromium and Firefox. Before the fit they
+  were 6–13% apart.
+- WebKit is within 1.5%. At a device pixel ratio of 2 it lays scaled text out about 4 px taller, which moves a
+  bottom-anchored page's top by about 6 px.
 
 Type change is look-and-feel, so it goes behind `?frame=old` for the owner to feel (§7).
 
@@ -414,7 +418,7 @@ Per S34, each look-and-feel choice is served to the owner's phone running, then 
 | `?glints=old` | glints strongest at the camera, against fading near it | new |
 | `?pace=full` | 90 Hz screens: 45 evenly spaced against 90 fps. The owner's phone runs at 60 or 120 Hz, where it makes no difference, so this is checked on the laptop only | 45 |
 | `?snap=wheel` | mouse/trackpad snap on or off | off |
-| `?frame=old` | text sized by the window's width (today) against sized by the scene's frame (§4.14) | new |
+| `?frame=old` | no frame fit (today), against each page scaled into the scene's frame (§4.14) | new |
 
 The landing at 2.0 screens is part of the approved storyboard, but it changes a pace the owner tuned. It is
 checked on the phone before the merge, like the rest.
