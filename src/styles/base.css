@@ -26,6 +26,31 @@
   font-display: swap;
 }
 
+/* Fraunces and Space Mono ship with the site too (SIL Open Font License), latin only, so the page never waits on
+   another host (spec 2026-09-25 §4.7). Fraunces is variable: weight 300–800 for the name's pointer swell, and
+   optical size. 67 kB and 16.5 kB. */
+@font-face {
+  font-family: Fraunces;
+  src: url("/fonts/fraunces-var-latin.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+    U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("/fonts/space-mono-400-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+    U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   color-scheme: dark;
   --ink: #e6eef0;
@@ -40,7 +65,7 @@
   --font-display: Satoshi, "Segoe UI", system-ui, sans-serif;
   --font-accent: Satoshi, "Segoe UI", system-ui, sans-serif;
   --font-body: Satoshi, "Segoe UI", system-ui, sans-serif;
-  /* Fraunces is kept for two things only: the name, and the black opening's greeting (owner, 2026-09-25). */
+  /* Fraunces is kept for the name alone (owner, 2026-09-25; the black opening and its greeting went in opening E). */
   --font-name: Fraunces, Georgia, "Times New Roman", serif;
   --font-mono: "Space Mono", "Cascadia Mono", ui-monospace, monospace;
 }
