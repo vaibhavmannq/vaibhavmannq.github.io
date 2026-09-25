@@ -17,17 +17,21 @@ describe('journey config', () => {
     expect(totalLength(journey)).toBe(5.6);
   });
 
-  it('keeps pages 1 to 3 where they were in screen heights', () => {
-    expect(MOONSINK_ABOUT_FROM * MOONSINK_LENGTH).toBeCloseTo(1.215, 10);
-    expect(MOONSINK_SHORE_AT * MOONSINK_LENGTH).toBeCloseTo(2.7, 10);
-    expect(MOONSINK_PROJECTS_FROM * MOONSINK_LENGTH).toBeCloseTo(2.8, 10);
-    expect(MOONSINK_WALK_END * MOONSINK_LENGTH).toBeCloseTo(4.2, 10);
+  // The owner, 2026-09-25: every page should be worth the same amount of scrolling. Before this the four
+  // ran 1.215, 1.585, 1.5 and 1.3 screens, so the journey sped up and slowed down for no visible reason.
+  it('gives every page the same amount of scrolling', () => {
+    const starts = [0, MOONSINK_ABOUT_FROM, MOONSINK_PROJECTS_FROM, MOONSINK_CONTACT_FROM, 1];
+    for (let i = 0; i < 4; i++) {
+      const screens = ((starts[i + 1] as number) - (starts[i] as number)) * MOONSINK_LENGTH;
+      expect(screens).toBeCloseTo(1.4, 10);
+    }
   });
 
   it('starts each page just after the camera arrives: Projects on the shore, Contact after the walk', () => {
     expect(MOONSINK_PROJECTS_FROM).toBeGreaterThan(MOONSINK_SHORE_AT);
     expect(MOONSINK_CONTACT_FROM).toBeGreaterThan(MOONSINK_WALK_END);
-    expect(MOONSINK_CONTACT_FROM * MOONSINK_LENGTH).toBeCloseTo(4.3, 10);
+    expect(MOONSINK_SHORE_AT * MOONSINK_LENGTH).toBeCloseTo(2.7, 10);
+    expect(MOONSINK_WALK_END * MOONSINK_LENGTH).toBeCloseTo(4.1, 10);
   });
 
   it('can rebuild the journey with another length for tuning, keeping the anchors', () => {

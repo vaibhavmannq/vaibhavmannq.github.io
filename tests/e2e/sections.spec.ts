@@ -26,9 +26,11 @@ test('scroll progress decides which section is shown', async ({ page }) => {
 // Each row: the page leaving, the page arriving, a point mid-fade-out, the anchor (the quiet gap) and
 // a point mid-fade-in.
 for (const [leaving, arriving, fadingOut, anchor, fadingIn] of [
-  ['intro', 'about', 0.17, 0.217, 0.26],
-  ['about', 'projects', 0.455, 0.5001, 0.545],
-  ['projects', 'contact', 0.725, 0.768, 0.81],
+  // The pages have been worth a quarter of the journey each since 2026-09-25, so the anchors are at
+  // 0.25, 0.5 and 0.75, with a fade of 0.34 screens either side of a 0.216-screen gap.
+  ['intro', 'about', 0.2, 0.2501, 0.3],
+  ['about', 'projects', 0.45, 0.5001, 0.55],
+  ['projects', 'contact', 0.7, 0.7501, 0.8],
 ] as const) {
   test(`${leaving} leaves before ${arriving} arrives, with a gap between them (spec §5.4a)`, async ({ page }) => {
     await page.goto(`/?stills&p=${fadingOut}`);

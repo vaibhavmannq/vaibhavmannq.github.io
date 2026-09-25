@@ -121,12 +121,10 @@ export async function boot(): Promise<void> {
   let state: JourneyState = resolve(p, activeJourney);
   sections.show(state.a.local, ctx.reducedMotion);
 
-  // The page answers a mouse or trackpad: the name swells near it, links lean toward it.
+  // The page answers a mouse or trackpad: the name's letters swell near it, and nothing else moves.
   createPointerTouch({
     chars: name.chars,
-    pulled: [...document.querySelectorAll<HTMLElement>('[data-pull]')],
     swellActive: () => !ctx.reducedMotion && gate.state === 'entered' && state.section === 'intro',
-    pullActive: () => !ctx.reducedMotion,
   });
 
   gate.onEnter(() => {
@@ -203,11 +201,16 @@ export async function boot(): Promise<void> {
       stills.set(page, layer);
     }
     let shownStill = '';
+    let lastFrameMs = -1;
     const step = (nowMs: number) => {
       scroll.raf(nowMs);
       p = params.p ?? scroll.progress();
       state = resolve(p, activeJourney);
-      sections.show(state.a.local, ctx.reducedMotion);
+      // Stills mode runs its own loop, so it has to measure its own frames: without this the text landed
+      // on its scroll position at once here, while the 3D page let it travel (sections.ts CATCH_UP).
+      const dtSeconds = lastFrameMs < 0 ? 0 : Math.min(0.1, (nowMs - lastFrameMs) / 1000);
+      lastFrameMs = nowMs;
+      sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
       if (state.section !== shownStill) {
         stills.get(shownStill)?.classList.remove('is-shown');
         stills.get(state.section)?.classList.add('is-shown');
@@ -325,7 +328,9 @@ export async function boot(): Promise<void> {
     const timeSeconds = params.time ?? nowMs / 1000;
 
     region.update(state.a.local, timeSeconds, dtSeconds);
-    sections.show(state.a.local, ctx.reducedMotion);
+    // Only the frame loop passes a frame time: the text travels toward the scroll's handover here, and
+    // lands on it at once everywhere else (first frame, deep links, Skip intro).
+    sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
     moonlit.render();
     frames += 1;
 

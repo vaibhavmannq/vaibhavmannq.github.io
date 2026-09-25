@@ -251,7 +251,11 @@ html.is-gated .content {
 .section h2 {
   margin: 0 0 1.1rem;
   line-height: 0.9;
-  text-shadow: 0 1px 2px rgba(2, 4, 6, 0.8);
+  /* The second shadow is a soft halo, not a drop shadow: a big heading can cross the moon's glitter,
+     where the water is nearly white ("Hola Amigo" measured 2.94:1 against the 3:1 large text needs). */
+  text-shadow:
+    0 1px 2px rgba(2, 4, 6, 0.8),
+    0 0 20px rgba(2, 4, 6, 0.6);
 }
 
 /* The name: the one place Fraunces is kept, and the only text whose weight the pointer moves. */

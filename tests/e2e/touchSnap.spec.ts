@@ -6,18 +6,24 @@ const progress = (page: Page) => page.evaluate(() => window.__moonlit?.progress(
 const opacityOf = (page: Page, selector: string) =>
   page.locator(selector).evaluate((element) => Number(getComputedStyle(element).opacity));
 
-const swipeTo = (page: Page, target: number) =>
-  page.evaluate((to) => {
+const swipeTo = async (page: Page, target: number) => {
+  await page.evaluate((to) => {
     window.dispatchEvent(new Event('touchstart'));
     const limit = document.documentElement.scrollHeight - window.innerHeight;
     window.scrollTo({ top: to * limit, behavior: 'auto' });
-    window.dispatchEvent(new Event('touchend'));
   }, target);
+  // Let the page's own reading of the scroll catch up before the finger lifts. A real touch ends after the
+  // page has moved; dispatching touchend in the same tick as the jump let the snap judge the position the
+  // page had *before* it, decide it was already resting on a stop, and stay put (WebKit, ~1 run in 3).
+  await expect.poll(() => progress(page)).toBeCloseTo(target, 2);
+  await page.evaluate(() => window.dispatchEvent(new Event('touchend')));
+};
 
-// Each page is fully shown a hair past its fade (overlay/sections.ts SHOWN_OFFSET).
-const ABOUT_STOP = 0.289;
-const PROJECTS_STOP = 0.572;
-const CONTACT_STOP = 0.84;
+// Each page is fully shown a hair past its fade (overlay/sections.ts SHOWN_OFFSET). The pages have been
+// worth a quarter of the journey each since 2026-09-25, so the anchors sit at 0.25, 0.5 and 0.75.
+const ABOUT_STOP = 0.335;
+const PROJECTS_STOP = 0.585;
+const CONTACT_STOP = 0.835;
 
 test('touch swipes page through all four pages, gliding on from wherever they stop', async ({ page }) => {
   await page.goto('/?stills');
