@@ -66,7 +66,7 @@
           </h2>
           <p data-reveal="lines">
             I'm learning to shape light, water and code into places you can wander through. Everything here is made
-            by hand: <em>the sea is a shader, and the moon is tonight's.</em>
+            by hand: <em>the sea is a shader, and the moon fills as you travel.</em>
           </p>
         </div>
       </section>
@@ -117,11 +117,18 @@
     <dialog class="project-dialog" id="project-dialog" aria-labelledby="project-dialog-title">
       <div class="project-dialog__body">
         <button class="project-dialog__close" type="button" data-project-close>Close</button>
-        <p class="project-dialog__meta" data-project-meta></p>
-        <h2 class="project-dialog__title" id="project-dialog-title" data-project-title>Project</h2>
-        <div class="project-dialog__text" data-project-text></div>
-        <ul class="project-dialog__tools" aria-label="Built with" data-project-tools></ul>
-        <p class="project-dialog__links" data-project-links></p>
+        <img class="project-dialog__cover" data-project-cover alt="" />
+        <div class="project-dialog__text-col">
+          <p class="project-dialog__meta" data-project-meta></p>
+          <h2 class="project-dialog__title" id="project-dialog-title" data-project-title>Project</h2>
+          <h3 class="project-dialog__label">What it is</h3>
+          <div class="project-dialog__text" data-project-text></div>
+          <h3 class="project-dialog__label">The hard part</h3>
+          <p class="project-dialog__hard" data-project-hard></p>
+          <p class="project-dialog__metric" data-project-metric></p>
+          <ul class="project-dialog__tools" aria-label="Built with" data-project-tools></ul>
+          <p class="project-dialog__links" data-project-links></p>
+        </div>
       </div>
     </dialog>
 

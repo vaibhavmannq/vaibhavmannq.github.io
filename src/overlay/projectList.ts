@@ -38,7 +38,15 @@ export function renderProjectList(
         head.append(aside);
       }
 
-      item.append(meta, head, summary);
+      // The cover is decoration beside the title here (empty alt); the dialog carries the described image.
+      const cover = document.createElement('img');
+      cover.className = 'project__cover';
+      cover.src = project.cover.src;
+      cover.alt = '';
+      cover.loading = 'lazy';
+      cover.decoding = 'async';
+
+      item.append(cover, meta, head, summary);
       return item;
     }),
   );

@@ -764,3 +764,93 @@ html.is-reduced-motion .world__still {
     0 0 3px rgba(2, 4, 6, 0.95),
     0 1px 2px rgba(2, 4, 6, 0.9);
 }
+
+/* ---------- project card and case study (spec 2026-09-25 §4.8, storyboard F) ---------- */
+.project-list li {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  column-gap: 1.25rem;
+  align-items: start;
+}
+
+.project__cover {
+  grid-row: span 3;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 1px solid rgba(159, 230, 238, 0.2);
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
+.project-dialog {
+  width: min(64rem, calc(100vw - 2rem));
+}
+
+.project-dialog__body {
+  grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+  column-gap: 2rem;
+}
+
+.project-dialog__close {
+  grid-column: 1 / -1;
+}
+
+.project-dialog__cover {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  height: 100%;
+  min-height: 16rem;
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
+.project-dialog__text-col {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.project-dialog__label {
+  margin: 0.5rem 0 0;
+  color: var(--glow);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.project-dialog__hard,
+.project-dialog__metric {
+  margin: 0;
+  color: var(--ink-dim);
+  line-height: 1.7;
+}
+
+.project-dialog__metric {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+@media (max-width: 699px) {
+  .project-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .project__cover {
+    grid-row: auto;
+    margin-bottom: 0.75rem;
+  }
+
+  .project-dialog__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .project-dialog__cover {
+    grid-column: 1;
+    grid-row: 2;
+    height: 12rem;
+    min-height: 0;
+  }
+}

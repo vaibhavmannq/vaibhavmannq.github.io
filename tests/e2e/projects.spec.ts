@@ -46,3 +46,13 @@ test('Back closes an open project, and an unknown project link is ignored', asyn
   await expect(page).not.toHaveURL(/#\/projects/);
   await expect(page.getByRole('dialog')).toBeHidden();
 });
+
+test('the card shows a cover, and the case study shows the hard part and its number', async ({ page }) => {
+  await page.goto('/?stills&p=0.65');
+  await expect(page.locator('#projects .project__cover')).toHaveAttribute('src', '/projects/moonlit-cover.jpg');
+  await page.getByRole('button', { name: 'Moonlit' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Moonlit' });
+  await expect(dialog.getByRole('heading', { name: 'The hard part' })).toBeVisible();
+  await expect(dialog.locator('[data-project-metric]')).toContainText('fps');
+  await expect(dialog.getByRole('img')).toHaveAttribute('alt', /rendered by the site/);
+});
