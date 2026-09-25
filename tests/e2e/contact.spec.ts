@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 test('the Contact page offers email, GitHub and LinkedIn', async ({ page }) => {
   await page.goto('/?stills&p=0.92');
   await expect(page.locator('#contact')).toHaveClass(/is-active/);
-  await expect(page.getByRole('link', { name: 'vaibhavmann.03@gmail.com' })).toHaveAttribute(
+  // The intro offers the address too (spec 2026-09-25 §4.6), so look inside the Contact page.
+  await expect(page.locator('#contact').getByRole('link', { name: 'vaibhavmann.03@gmail.com' })).toHaveAttribute(
     'href',
     'mailto:vaibhavmann.03@gmail.com',
   );

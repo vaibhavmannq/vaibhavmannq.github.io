@@ -287,12 +287,8 @@ html.is-stills .world {
   }
 }
 
-/* The voyage log: today's date and time, and tonight's real moon (voyageLog.ts). */
+/* The voyage log: today's date and time, and the moon the scene shows (voyageLog.ts). It sits in the header. */
 .voyage-log {
-  position: absolute;
-  top: max(1rem, env(safe-area-inset-top));
-  right: max(1.25rem, env(safe-area-inset-right));
-  left: max(1.25rem, env(safe-area-inset-left));
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 1.1rem;
@@ -307,6 +303,169 @@ html.is-stills .world {
 
 .voyage-log__moon {
   color: var(--glow);
+}
+
+/* ---------- header, chapter rail, call to action (spec 2026-09-25 §4.6; storyboard frames) ---------- */
+.site-header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: max(0.5rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) 0
+    max(1.25rem, env(safe-area-inset-left));
+  pointer-events: auto;
+}
+
+.site-nav {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  text-decoration: none;
+  text-shadow:
+    0 0 10px rgba(2, 4, 6, 0.95),
+    0 1px 2px rgba(2, 4, 6, 0.9);
+}
+
+.site-nav .site-nav__email {
+  padding: 0 1.1rem;
+  border: 1px solid rgba(159, 230, 238, 0.45);
+  border-radius: 999px;
+  background: rgba(2, 4, 6, 0.35);
+}
+
+.chapter-rail {
+  position: absolute;
+  top: 50%;
+  right: max(1.5rem, env(safe-area-inset-right));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  pointer-events: auto;
+  translate: 0 -50%;
+}
+
+.chapter-rail a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  color: rgba(230, 238, 240, 0.6);
+  text-decoration: none;
+  text-shadow:
+    0 0 10px rgba(2, 4, 6, 0.95),
+    0 1px 2px rgba(2, 4, 6, 0.9);
+}
+
+.chapter-rail a[aria-current="step"] {
+  color: var(--glow);
+}
+
+.chapter-rail svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.chapter-rail circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-opacity: 0.45;
+}
+
+.chapter-rail path {
+  fill: currentColor;
+}
+
+.section .section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  max-width: none;
+  margin-top: 1.6rem;
+}
+
+.section__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #04161a;
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.section__email {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: rgba(230, 238, 240, 0.35);
+  text-underline-offset: 0.35em;
+  text-shadow: 0 1px 2px rgba(2, 4, 6, 0.8);
+}
+
+/* Phones: the header keeps the log and Email me; the rail is four moons in a row under it, named for screen readers. */
+@media (max-width: 699px) {
+  .site-nav a:not(.site-nav__email) {
+    display: none;
+  }
+
+  /* As in the storyboard's phone frame: the header's "Email me" carries the address, and the intro stays short
+     enough that the name sits below the moon's glitter at full moon (§3.4 rule 4; the contrast test measures it). */
+  .section__email {
+    display: none;
+  }
+
+  .chapter-rail {
+    top: calc(max(0.5rem, env(safe-area-inset-top)) + 48px);
+    right: auto;
+    left: max(0.5rem, env(safe-area-inset-left));
+    flex-direction: row;
+    translate: none;
+  }
+
+  .chapter-rail a {
+    justify-content: center;
+    width: 44px;
+  }
+
+  .chapter-rail span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 /* ---------- projects (page 3) ---------- */
@@ -554,6 +713,16 @@ html.is-broken .content::before {
 html.is-broken .section {
   position: static;
   margin: 2rem 0;
+}
+
+/* Show everything that would have arrived once the page settled, in the page's flow. */
+html.is-broken .welcome-arrives {
+  opacity: 1;
+}
+
+html.is-broken :is(.site-header, .chapter-rail) {
+  position: static;
+  translate: none;
 }
 
 /* SplitText's masks (…-mask) clipped at the line's own box, which cut the descenders ("Amigo", "Projects") and the
