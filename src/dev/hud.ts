@@ -6,6 +6,8 @@ export interface HudInfo {
   renderScale: number;
   progress: number;
   scrolling: boolean;
+  /** The measured display refresh and the frame rate the pacer renders at (app/refresh.ts). */
+  refresh: string;
 }
 
 export interface Hud {
@@ -48,6 +50,7 @@ export function createHud(parent: HTMLElement): Hud {
       element.textContent = [
         `backend   ${info.backend}`,
         `tier      ${info.tier}  (render scale ${info.renderScale})`,
+        `display   ${info.refresh}`,
         `fps       ${Math.round(1000 / median)}`,
         `frame ms  p50 ${median.toFixed(1)}  p95 ${slow.toFixed(1)}`,
         `dropped   ${dropped}  (frames > 25 ms)`,

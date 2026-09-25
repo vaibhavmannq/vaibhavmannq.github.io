@@ -84,6 +84,38 @@ describe('createPacer', () => {
     expect(pacer.tick(t, false)).toBe(true);
   });
 
+  // Found running the build (plan 1, Task 3): Chrome throttled an obscured window to one frame a second, the
+  // pacer measured "1 Hz", and kept rendering at 1 fps after the throttle lifted. Throttling, a phone's
+  // low-power mode or a refresh-rate setting all change the rate without a resize.
+  it('measures again when frames stop matching the measured refresh, without being told', () => {
+    const pacer = createPacer();
+    run(pacer, 1, 40);
+    expect(pacer.refreshHz).toBeCloseTo(1, 5);
+    const intervals = run(pacer, 60, 2, 100_000).slice(MEASURE_SAMPLES + 10);
+    expect(pacer.refreshHz).toBeCloseTo(60, 5);
+    expect(new Set(intervals.map((ms) => ms.toFixed(2)))).toEqual(new Set([(1000 / 60).toFixed(2)]));
+  });
+
+  it('follows a phone switched from 60 to 120 Hz mid-visit', () => {
+    const pacer = createPacer();
+    run(pacer, 60, 1);
+    const intervals = run(pacer, 120, 2, 50_000).slice(MEASURE_SAMPLES + 10);
+    expect(pacer.refreshHz).toBeCloseTo(120, 5);
+    expect(intervals.every((ms) => Math.abs(ms - 1000 / 60) < 1e-6)).toBe(true);
+  });
+
+  it('shrugs off a short hitch without measuring again', () => {
+    const pacer = createPacer();
+    run(pacer, 60, 1);
+    const vsync = 1000 / 60;
+    let t = 30_000;
+    for (let i = 0; i < 4; i++) {
+      t += 3 * vsync;
+      pacer.tick(t, false);
+    }
+    expect(pacer.refreshHz).toBeCloseTo(60, 5);
+  });
+
   // Review focus 2: a window dragged from a 60 Hz laptop screen to a 144 Hz monitor.
   it('re-measures after remeasure() and adopts the new cadence', () => {
     const pacer = createPacer();

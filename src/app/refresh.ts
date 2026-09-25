@@ -4,6 +4,14 @@ import { frameInterval, shouldRender } from './frameRate';
 export const MEASURE_SAMPLES = 30;
 
 /**
+ * This many animation frames in a row, each more than DRIFT_TOLERANCE away from the measured vsync, mean the
+ * rate itself has changed: the browser throttled or stopped throttling the page, a phone entered low-power mode,
+ * or the refresh-rate setting changed. A hitch shorter than this is ignored.
+ */
+const DRIFT_FRAMES = 5;
+const DRIFT_TOLERANCE = 0.3;
+
+/**
  * The display's refresh rate in Hz, from the time between animation frames. The median, so a shader compile
  * or a garbage-collection pause during the measurement cannot make a 60 Hz screen read as 30 Hz. Pure.
  */
@@ -41,9 +49,22 @@ export function createPacer(options: { full?: boolean; fallbackFps?: number; idl
   let lastRender = -1;
   let vsyncMs: number | null = null;
   let divisor = 1;
+  let drifting = 0;
+
+  const remeasure = () => {
+    deltas = [];
+    vsyncMs = null;
+    lastTick = -1;
+    drifting = 0;
+  };
 
   return {
     tick(nowMs, idle) {
+      if (vsyncMs !== null && lastTick >= 0) {
+        const off = Math.abs(nowMs - lastTick - vsyncMs) / vsyncMs;
+        drifting = off > DRIFT_TOLERANCE ? drifting + 1 : 0;
+        if (drifting >= DRIFT_FRAMES) remeasure();
+      }
       if (vsyncMs === null && lastTick >= 0) {
         deltas.push(nowMs - lastTick);
         if (deltas.length >= MEASURE_SAMPLES) {
@@ -66,11 +87,7 @@ export function createPacer(options: { full?: boolean; fallbackFps?: number; idl
       lastRender = nowMs;
       return true;
     },
-    remeasure() {
-      deltas = [];
-      vsyncMs = null;
-      lastTick = -1;
-    },
+    remeasure,
     get refreshHz() {
       return vsyncMs === null ? null : 1000 / vsyncMs;
     },

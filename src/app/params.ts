@@ -12,6 +12,14 @@ export interface DebugParams {
   hold?: number;
   /** `?length=`: Moonsink's scroll length in screen heights, for tuning by feel (clamped 1.5–4). */
   length?: number;
+  /** `?pace=full`: render every vsync instead of an even divisor near 60 fps (owner review, spec §7). */
+  pace?: 'full';
+  /** `?march=old`: the sea's ray march as it was before the bounding plane (owner review, spec §7). */
+  march?: 'old';
+  /** `?glints=old`: sand glints strongest at the camera, as before (owner review, spec §7). */
+  glints?: 'old';
+  /** `?frame=old`: text sized by the window, not fitted to the scene's 16:9 frame (owner review, spec §7). */
+  frame?: 'old';
   hud: boolean;
   gui: boolean;
   forceWebGL: boolean;
@@ -37,6 +45,8 @@ export function readDebugParams(search: string): DebugParams {
   const moonValue = number('moon');
   const holdValue = number('hold');
   const lengthValue = number('length');
+  const only = <T extends string>(key: string, value: T): T | undefined =>
+    query.get(key) === value ? value : undefined;
 
   return {
     tier,
@@ -47,6 +57,10 @@ export function readDebugParams(search: string): DebugParams {
     moon: moonValue === undefined ? undefined : clamp01(moonValue),
     hold: holdValue === undefined || holdValue < 0 ? undefined : holdValue,
     length: lengthValue === undefined ? undefined : Math.min(4, Math.max(1.5, lengthValue)),
+    pace: only('pace', 'full'),
+    march: only('march', 'old'),
+    glints: only('glints', 'old'),
+    frame: only('frame', 'old'),
     hud: query.has('hud'),
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),
