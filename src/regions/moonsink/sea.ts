@@ -70,10 +70,24 @@ const BELOW_LOWEST_WAVE = -0.3;
 // must be PURE. They never read uniforms directly; time and step counts come in as parameters.
 // (Reading a uniform inside a layout function breaks WGSL compilation: "struct member not found".)
 
-export function createSea() {
+/** Owner-review switches (spec 2026-09-25 §7). The defaults are the new behaviour. */
+export interface SeaOptions {
+  /** 'bounded' starts each ray at `surfaceTop` and steps 0.7 of the height gap; 'old' is the march before. */
+  march?: 'bounded' | 'old';
+  /** 'fade' keeps glints away from the camera; 'old' makes them strongest right at it. */
+  glints?: 'fade' | 'old';
+}
+
+export function createSea(options: SeaOptions = {}) {
+  const bounded = options.march !== 'old';
+  // The share of the height gap a step may cover. 0.7 still never jumps through a crest at this wave height;
+  // the bisection after the loop refines the hit either way.
+  const stepShare = bounded ? 0.7 : 0.5;
   const uniforms = {
     time: uniform(0),
     marchSteps: uniform(80, 'int'),
+    // The highest surface a ray from the camera can meet, set every frame from the camera (surfaceTop.ts).
+    surfaceTop: uniform(2.4),
     // Tonight's real lunar phase (0 = new, 0.5 = full) and the illumination it produces after
     // the floor is applied (spec §5.4b). Set once at construction in index.ts; never mutated
     // per-frame, so a fixed date/`?moon=` value stays fixed for the whole visit.
@@ -345,12 +359,24 @@ export function createSea() {
 
   // Sphere-trace the height field. On overshoot we stop, then refine with a short
   // bisection *after* the loop (no nested loops, which keeps the shader simple).
-  const march = Fn(([ro, rd, steps, time]: [V3, V3, I, F]) => {
+  const march = Fn(([ro, rd, steps, time, top]: [V3, V3, I, F, F]) => {
     const t = float(0.05).toVar();
     const tPrev = float(0.05).toVar();
     const hit = float(-1).toVar();
     const overshot = float(0).toVar();
-    Loop({ start: int(0), end: steps, type: 'int', condition: '<' }, () => {
+    // 1 when the ray starts above every surface and heads up: sky, with no steps at all.
+    const skyOnly = float(0).toVar();
+    if (bounded) {
+      If(ro.y.greaterThan(top), () => {
+        If(rd.y.greaterThanEqual(0), () => {
+          skyOnly.assign(1);
+        }).Else(() => {
+          t.assign(max(t, ro.y.sub(top).div(rd.y.negate())));
+          tPrev.assign(t);
+        });
+      });
+    }
+    Loop({ start: int(0), end: select(skyOnly.greaterThan(0.5), int(0), steps), type: 'int', condition: '<' }, () => {
       const p = ro.add(rd.mul(t)).toVar();
       If(p.y.greaterThan(2.4).and(rd.y.greaterThan(0)), () => {
         Break();
@@ -365,7 +391,7 @@ export function createSea() {
         Break();
       });
       tPrev.assign(t);
-      t.addAssign(max(d.mul(0.5), t.mul(0.006).add(0.012)));
+      t.addAssign(max(d.mul(stepShare), t.mul(0.006).add(0.012)));
       If(t.greaterThan(240), () => {
         Break();
       });
@@ -374,7 +400,7 @@ export function createSea() {
     // camera is low, and rays skimming the sea creep toward it in ever smaller steps, so every tier ran
     // out and the sky showed through as a streak below the horizon (spec §17 S29). Treat the point where
     // the ray passes below the lowest wave as an overshoot, so the bisection below finds the surface.
-    If(hit.lessThan(0).and(overshot.lessThan(0.5)).and(rd.y.lessThan(0)), () => {
+    If(hit.lessThan(0).and(overshot.lessThan(0.5)).and(rd.y.lessThan(0)).and(skyOnly.lessThan(0.5)), () => {
       t.assign(max(t, ro.y.sub(BELOW_LOWEST_WAVE).div(rd.y.negate())));
       overshot.assign(1);
     });
@@ -401,6 +427,7 @@ export function createSea() {
       { name: 'rd', type: 'vec3' },
       { name: 'steps', type: 'int' },
       { name: 'time', type: 'float' },
+      { name: 'top', type: 'float' },
     ],
   });
 
@@ -422,7 +449,7 @@ export function createSea() {
   const dirWorld = normalize(cameraWorldMatrix.mul(vec4(dirView, 0)).xyz);
   const ro = toSea(cameraPosition).toVar('seaRo');
   const rd = toSea(dirWorld).toVar('seaRd');
-  const tHit = march(ro, rd, uniforms.marchSteps, time).toVar('seaT');
+  const tHit = march(ro, rd, uniforms.marchSteps, time, uniforms.surfaceTop).toVar('seaT');
 
   const color = Fn(() => {
     const col = vec3(0).toVar();
@@ -479,7 +506,9 @@ export function createSea() {
             .mul(0.5)
             .add(0.5),
         )
-        .mul(fall(2.0, 25.0, tHit))
+        // Glints rise away from the camera and fade into the distance. Strongest at the camera, as before, they
+        // drew large square specks behind the phone's text once the camera stood on the sand (spec §4.2).
+        .mul(options.glints === 'old' ? fall(2.0, 25.0, tHit) : smoothstep(1.5, 5.0, tHit).mul(fall(5.0, 25.0, tHit)))
         .mul(1.4);
       // Glitter: scales with moonLight (spec §5.4b Step 5).
       sand.addAssign(vec3(0.75, 0.95, 1.0).mul(glint).mul(moonLightVar));
