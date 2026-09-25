@@ -14,11 +14,11 @@ export const MOONSINK_PAGE = MOONSINK_LENGTH / 4;
 export const MOONSINK_ABOUT_FROM = MOONSINK_PAGE / MOONSINK_LENGTH;
 
 /**
- * Where the camera lands on the black-sand shore; from here it walks along the waterline. It lands a
- * tenth of a screen before the Projects text arrives, so the text follows the camera's move rather than
- * racing it.
+ * Where the camera lands on the black sand, up the beach, then walks along it. At 2.0 screens (was 2.7) the surf is
+ * already curving in under About's text, and the sand is in view for Projects and Contact (spec 2026-09-25 §4.4,
+ * owner's pick from the storyboard).
  */
-export const MOONSINK_SHORE_AT = 2.7 / MOONSINK_LENGTH;
+export const MOONSINK_SHORE_AT = 2.0 / MOONSINK_LENGTH;
 
 /** Where the Projects text begins: two pages in, just after the camera lands. */
 export const MOONSINK_PROJECTS_FROM = (2 * MOONSINK_PAGE) / MOONSINK_LENGTH;
