@@ -29,3 +29,12 @@ test('See the work glides to the projects', async ({ page }) => {
   await page.getByRole('link', { name: 'See the work' }).click();
   await expect(page.locator('#projects')).toHaveClass(/is-active/, { timeout: 5_000 });
 });
+
+// Owner (2026-09-26): no dark shadow around "See the work" — it is dark text on a light button.
+test('See the work has no text shadow', async ({ page }) => {
+  await page.goto('/?stills');
+  const shadow = await page
+    .getByRole('link', { name: 'See the work' })
+    .evaluate((el) => getComputedStyle(el).textShadow);
+  expect(shadow).toBe('none');
+});

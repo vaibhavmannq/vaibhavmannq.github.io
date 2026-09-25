@@ -56,3 +56,19 @@ test('the card shows a cover, and the case study shows the hard part and its num
   await expect(dialog.locator('[data-project-metric]')).toContainText('fps');
   await expect(dialog.getByRole('img')).toHaveAttribute('alt', /rendered by the site/);
 });
+
+// Owner, on a phone (2026-09-26): the case study opened but would not scroll, so the rest of it was out of reach.
+test('the case study scrolls on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?stills&p=0.65');
+  await page.getByRole('button', { name: 'Moonlit' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Moonlit' });
+  await expect(dialog).toBeVisible();
+  const fits = await dialog.evaluate((el) => el.scrollHeight <= el.clientHeight);
+  expect(fits, 'the case study should be taller than a phone screen, or this test proves nothing').toBe(false);
+  const box = await dialog.boundingBox();
+  if (box === null) throw new Error('no dialog box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 600);
+  await expect.poll(() => dialog.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});

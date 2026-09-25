@@ -424,6 +424,8 @@ html.is-stills .world {
   font-family: var(--font-display);
   font-weight: 500;
   text-decoration: none;
+  /* Dark text on a light button: the paragraph's dark shadow would smudge it (owner, 2026-09-26). */
+  text-shadow: none;
 }
 
 .section__email {
