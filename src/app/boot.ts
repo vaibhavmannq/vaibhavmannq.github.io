@@ -3,8 +3,10 @@ import { createHud } from '../dev/hud';
 import { journey, journeyWithLength } from '../journey/journey.config';
 import { journeyPhase, reducedMotionPhase } from '../journey/journeyMoon';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
-import type { JourneyState, RegionSegment } from '../journey/types';
+import type { JourneyState, RegionSegment, SectionId } from '../journey/types';
+import { createChapterRail, moonGlyphPath } from '../overlay/chapterRail';
 import { applyFrameFit } from '../overlay/frame';
+import { bindGoLinks } from '../overlay/header';
 import { createNameMotion } from '../overlay/nameMotion';
 import { createPointerTouch } from '../overlay/pointerTouch';
 import { createProjectDialog } from '../overlay/projectDialog';
@@ -114,6 +116,23 @@ export async function boot(): Promise<void> {
   const aboutShown = progressForSection(activeJourney, 'about', SHOWN_OFFSET);
   const projectsShown = progressForSection(activeJourney, 'projects', SHOWN_OFFSET);
   const contactShown = progressForSection(activeJourney, 'contact', SHOWN_OFFSET);
+  const shownAt: Record<SectionId, number> = {
+    intro: 0,
+    about: aboutShown,
+    projects: projectsShown,
+    contact: contactShown,
+  };
+  // The rail, Work, About, "See the work" and "Return to the shore" all glide to where a chapter is fully shown,
+  // then give its heading focus (spec 2026-09-25 §4.6).
+  const go = (id: SectionId) => {
+    scroll.glideToProgress(shownAt[id], !ctx.reducedMotion);
+    byId(`${id}-title`).focus({ preventScroll: true });
+  };
+  for (const path of document.querySelectorAll<SVGPathElement>('#chapter-rail path[data-phase]')) {
+    path.setAttribute('d', moonGlyphPath(Number(path.dataset.phase)));
+  }
+  const rail = createChapterRail(byId('chapter-rail'), { go });
+  bindGoLinks(document, { go });
   createTouchSnap({
     progress: () => scroll.progress(),
     glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
@@ -139,8 +158,7 @@ export async function boot(): Promise<void> {
   // "Return to the shore" (spec §3.2) glides back to the top and hands keyboard focus to the name.
   byId<HTMLAnchorElement>('return-to-shore').addEventListener('click', (event) => {
     event.preventDefault();
-    scroll.glideToProgress(0, !ctx.reducedMotion);
-    byId('intro-title').focus({ preventScroll: true });
+    go('intro');
   });
   // A deep link opens its project straight away, over the Projects page.
   const initialRoute = parseRoute(window.location.hash);
@@ -162,6 +180,7 @@ export async function boot(): Promise<void> {
     state = resolve(p, activeJourney);
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
     log.show(phaseFor(state.a.local));
+    rail.show(state.section);
   };
   /** Frame time for loops that run on requestAnimationFrame: 0 on their first frame, so the text lands at once. */
   const frameClock = () => {
@@ -330,6 +349,7 @@ export async function boot(): Promise<void> {
     // Only the frame loops pass a frame time: the text travels toward the scroll's handover here, and
     // lands on it at once on the first frame.
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
+    rail.show(state.section);
     moonlit.render();
     frames += 1;
 

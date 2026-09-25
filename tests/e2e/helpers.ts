@@ -47,15 +47,17 @@ export async function measureTextContrast(page: Page): Promise<LineContrast[]> {
     // measured with its own colour).
     const selector = '.section.is-active :is(h1, h2, p, a, .contact-list__label):not([aria-hidden="true"])';
     for (const element of document.querySelectorAll<HTMLElement>(selector)) {
-      const style = getComputedStyle(element);
-      const size = Number.parseFloat(style.fontSize);
-      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
-      const [r = 0, g = 0, b = 0, a = 1] = (style.color.match(/[\d.]+/g) ?? []).map(Number);
       // Measure only text a reader can see: a visually hidden copy for screen readers is squeezed into a
       // 1-pixel box, so its words stack down the page over whatever is there, unseen.
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
         if (node.parentElement?.closest('.visually-hidden') || !node.textContent?.trim()) continue;
+        // Each piece of text in its own colour: "See the work" is dark on a light button inside a paragraph of
+        // light text, and measuring it in the paragraph's colour read light on light (plan 2, Task 4).
+        const style = getComputedStyle(node.parentElement ?? element);
+        const size = Number.parseFloat(style.fontSize);
+        const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+        const [r = 0, g = 0, b = 0, a = 1] = (style.color.match(/[\d.]+/g) ?? []).map(Number);
         const range = document.createRange();
         range.selectNodeContents(node);
         for (const box of range.getClientRects()) {

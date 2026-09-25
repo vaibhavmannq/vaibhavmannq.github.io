@@ -64,6 +64,10 @@ test.describe('accessibility', () => {
         await expect
           .poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity), { timeout: 30_000 })
           .toBe('1');
+        // Measure what a visitor reads: once the page has settled, the header and "See the work" have arrived
+        // (opening E). Before that they are transparent, and their text would be measured against the scene.
+        await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 30_000 });
+        await page.waitForTimeout(700);
 
         const lines = await measureTextContrast(page);
         expect(lines.length).toBeGreaterThanOrEqual(minLines);

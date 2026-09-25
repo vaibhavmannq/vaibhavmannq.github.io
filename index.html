@@ -17,6 +17,8 @@
       <style>
         .content { position: static; height: auto; pointer-events: auto; }
         .section { position: static; opacity: 1; margin: 2rem 0; }
+        .welcome-arrives { opacity: 1; }
+        .site-header, .chapter-rail { position: static; translate: none; }
       </style>
     </noscript>
     <title>Vaibhav Mann</title>
@@ -26,11 +28,24 @@
 
     <main class="content" id="content">
       <p class="scene-status" id="scene-status" role="status">The sea is waking…</p>
-      <p class="voyage-log" id="voyage-log">
-        <span>Log</span>
-        <span data-log-when></span>
-        <span class="voyage-log__moon" data-log-moon></span>
-      </p>
+      <header class="site-header welcome-arrives" id="site-header">
+        <p class="voyage-log" id="voyage-log">
+          <span>Log</span>
+          <span data-log-when></span>
+          <span class="voyage-log__moon" data-log-moon></span>
+        </p>
+        <nav class="site-nav" aria-label="Main">
+          <a href="#projects" data-go="projects">Work</a>
+          <a href="#about" data-go="about">About</a>
+          <a class="site-nav__email" href="mailto:vaibhavmann.03@gmail.com">Email me</a>
+        </nav>
+      </header>
+      <nav class="chapter-rail welcome-arrives" id="chapter-rail" aria-label="Chapters">
+        <a href="#intro"><span>I · Adrift</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.08" /></svg></a>
+        <a href="#about"><span>II · The shore</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.25" /></svg></a>
+        <a href="#projects"><span>III · What washed ashore</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.375" /></svg></a>
+        <a href="#contact"><span>IV · The water's edge</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.5" /></svg></a>
+      </nav>
 
       <section class="section" id="intro" data-section="intro" aria-labelledby="intro-title">
         <div class="section__panel">
@@ -40,6 +55,10 @@
           </p>
           <h1 id="intro-title" tabindex="-1" data-reveal="block">Vaibhav Mann</h1>
           <p class="section__lede" data-reveal="lines">I build quiet, moonlit things for the web.</p>
+          <p class="section__actions welcome-arrives">
+            <a class="section__cta" href="#projects" data-go="projects">See the work <span aria-hidden="true">→</span></a>
+            <a class="section__email" href="mailto:vaibhavmann.03@gmail.com">vaibhavmann.03@gmail.com</a>
+          </p>
           <p class="section__hint" aria-hidden="true">Scroll to drift ashore</p>
         </div>
       </section>
