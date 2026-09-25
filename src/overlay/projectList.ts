@@ -22,7 +22,6 @@ export function renderProjectList(
       open.className = 'project__open';
       open.textContent = project.title;
       open.setAttribute('aria-haspopup', 'dialog');
-      open.dataset.pull = '';
       open.addEventListener('click', () => onOpen(project.slug, open));
 
       const summary = document.createElement('p');

@@ -1,29 +1,33 @@
 import type { Segment } from './types';
 
 /**
- * Moonsink Shore's scroll length in screen heights. The first 2.7 screens are pages 1 and 2 (intro
- * and About) exactly as the owner judged them "perfect" (2026-09-14). Page 3, Projects, walks along
- * the shoreline to 4.2; page 4, Contact, steps to the water's edge (both 2026-09-21).
+ * Moonsink Shore's scroll length in screen heights, and the four pages that share it. Every page is worth
+ * the same amount of scrolling — 1.4 screens each (owner, 2026-09-25). Before that the pages ran 1.215,
+ * 1.585, 1.5 and 1.3 screens, so the journey sped up and slowed down for no reason a visitor could see.
  */
 export const MOONSINK_LENGTH = 5.6;
 
-/** Where pages 1 and 2 end, in screen heights: the camera's drift reaches the shore here. */
-const PAGES_ONE_AND_TWO = 2.7;
+/** One page's worth of scrolling: the journey divided evenly between the four of them. */
+export const MOONSINK_PAGE = MOONSINK_LENGTH / 4;
 
-/** Where the About text begins inside Moonsink Shore (0..1 of the region): 1.215 screens in, as before. */
-export const MOONSINK_ABOUT_FROM = (0.45 * PAGES_ONE_AND_TWO) / MOONSINK_LENGTH;
+/** Where the About text begins inside Moonsink Shore (0..1 of the region): one page in. */
+export const MOONSINK_ABOUT_FROM = MOONSINK_PAGE / MOONSINK_LENGTH;
 
-/** Where the camera lands on the black-sand shore; from here it walks along the waterline. */
-export const MOONSINK_SHORE_AT = PAGES_ONE_AND_TWO / MOONSINK_LENGTH;
+/**
+ * Where the camera lands on the black-sand shore; from here it walks along the waterline. It lands a
+ * tenth of a screen before the Projects text arrives, so the text follows the camera's move rather than
+ * racing it.
+ */
+export const MOONSINK_SHORE_AT = 2.7 / MOONSINK_LENGTH;
 
-/** Where the Projects text begins: just after the camera lands, as the walk starts. */
-export const MOONSINK_PROJECTS_FROM = 2.8 / MOONSINK_LENGTH;
+/** Where the Projects text begins: two pages in, just after the camera lands. */
+export const MOONSINK_PROJECTS_FROM = (2 * MOONSINK_PAGE) / MOONSINK_LENGTH;
 
-/** Where the shoreline walk ends, 4.2 screens in; from here the camera steps to the water's edge. */
-export const MOONSINK_WALK_END = 4.2 / MOONSINK_LENGTH;
+/** Where the shoreline walk ends; from here the camera steps to the water's edge, just before Contact. */
+export const MOONSINK_WALK_END = 4.1 / MOONSINK_LENGTH;
 
-/** Where the Contact text begins: just after the walk ends, as the step to the water starts. */
-export const MOONSINK_CONTACT_FROM = 4.3 / MOONSINK_LENGTH;
+/** Where the Contact text begins: three pages in, just after the walk ends. */
+export const MOONSINK_CONTACT_FROM = (3 * MOONSINK_PAGE) / MOONSINK_LENGTH;
 
 /** The journey with Moonsink's length replaced, for the `?length` tuning hook. Called once at boot. */
 export function journeyWithLength(length: number): readonly Segment[] {

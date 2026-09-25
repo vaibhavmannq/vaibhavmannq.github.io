@@ -3,22 +3,20 @@ import gsap from 'gsap';
 export interface PointerTouchOptions {
   /** The name's letters: they swell as the pointer comes near. */
   chars: readonly HTMLElement[];
-  /** Links and buttons that lean gently toward the pointer. */
-  pulled: readonly HTMLElement[];
   /** Whether the name is on screen and motion is allowed. */
   swellActive: () => boolean;
-  /** Whether motion is allowed at all. */
-  pullActive: () => boolean;
 }
 
 const RESTING_WEIGHT = 340;
 const NEAR_PX = 260;
 
 /**
- * The page answering the pointer (redesign, 2026-09-22; the owner kept the pull and dropped the water
- * ripple). Only for a mouse or trackpad: touch screens have no hover, so there is nothing to follow.
+ * The page answering the pointer. The name's letters grow heavier and lift a little as the pointer nears
+ * them, and nothing else moves: the owner had links lean toward the cursor until 2026-09-25, which could
+ * push them past the edge of the window, and asked for it to go from the project list and the contact
+ * links alike. Only for a mouse or trackpad: touch screens have no hover, so there is nothing to follow.
  */
-export function createPointerTouch({ chars, pulled, swellActive, pullActive }: PointerTouchOptions): void {
+export function createPointerTouch({ chars, swellActive }: PointerTouchOptions): void {
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
   const weights = chars.map((char) => gsap.quickTo(char, '--w', { duration: 0.5, ease: 'power3.out' }));
@@ -49,19 +47,4 @@ export function createPointerTouch({ chars, pulled, swellActive, pullActive }: P
     },
     { passive: true },
   );
-
-  for (const element of pulled) {
-    const toX = gsap.quickTo(element, 'x', { duration: 0.5, ease: 'power3.out' });
-    const toY = gsap.quickTo(element, 'y', { duration: 0.5, ease: 'power3.out' });
-    element.addEventListener('pointermove', (event) => {
-      if (!pullActive()) return;
-      const box = element.getBoundingClientRect();
-      toX((event.clientX - (box.left + box.width / 2)) * 0.25);
-      toY((event.clientY - (box.top + box.height / 2)) * 0.35);
-    });
-    element.addEventListener('pointerleave', () => {
-      toX(0);
-      toY(0);
-    });
-  }
 }
