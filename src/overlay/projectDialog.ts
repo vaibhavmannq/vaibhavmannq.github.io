@@ -34,8 +34,6 @@ export function createProjectDialog(
   const hard = part('[data-project-hard]');
   const metric = part('[data-project-metric]');
   const extras = part('[data-project-extras]');
-  // The tiles only show on a laptop (storyboard F; the phone frame SB5 has none), so a phone never loads the clip.
-  const wide = window.matchMedia('(min-width: 700px)');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let clip: HTMLVideoElement | null = null;
 
@@ -150,7 +148,7 @@ export function createProjectDialog(
       if (project === undefined) return false;
       fill(project);
       if (!dialog.open) dialog.showModal();
-      if (clip && wide.matches && !reducedMotion.matches) {
+      if (clip && !reducedMotion.matches) {
         // A browser may refuse to play; the poster and the controls are still there.
         clip.play().catch(() => {});
       }
