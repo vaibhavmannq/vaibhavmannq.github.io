@@ -612,6 +612,17 @@ html.is-broken .section {
   margin: 2rem 0;
 }
 
+/* SplitText's masks (…-mask) clipped at the line's own box, which cut the descenders ("Amigo", "Projects") and the
+   headings' 20 px halo into a visible rectangle (owner report, spec 2026-09-25 §4.13). At a line-height of 0.9 a
+   heading's glyphs already overhang its line box by up to 0.2em, and the halo reaches 20 px past the glyphs, so the
+   clip reaches that far past the box on every side. clip-path changes nothing about layout, so the lines stay
+   exactly where they were. SplitText's own inline `overflow: clip` is switched off where the text is split
+   (sectionMotion.ts, nameMotion.ts). */
+.split-line-mask,
+.section__char-mask {
+  clip-path: inset(calc(-1 * (0.2em + 20px)));
+}
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .opening,
