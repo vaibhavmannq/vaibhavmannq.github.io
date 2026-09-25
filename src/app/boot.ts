@@ -1,6 +1,7 @@
 import { projects } from '../content/projects';
 import { createHud } from '../dev/hud';
 import { journey, journeyWithLength } from '../journey/journey.config';
+import { journeyPhase, reducedMotionPhase } from '../journey/journeyMoon';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { applyFrameFit } from '../overlay/frame';
@@ -17,7 +18,6 @@ import { createVoyageLog } from '../overlay/voyageLog';
 import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
 import { createMoonsink } from '../regions/moonsink';
-import { resolveMoonPhase } from '../regions/moonsink/moonPhase';
 import { createRenderer, type MoonlitRenderer } from '../render/renderer';
 import { createScrollActivity } from '../scroll/activity';
 import { createScroll } from '../scroll/scroll';
@@ -57,7 +57,6 @@ export async function boot(): Promise<void> {
   const motions = new Map(anchors.map((anchor) => [anchor.id, createSectionMotion(byId(anchor.id))] as const));
   const sections = createSections(byId('content'), anchors, motions);
   // The voyage log shows the same moon as the scene, including a `?moon=` override.
-  createVoyageLog(byId('voyage-log'), (now) => resolveMoonPhase(now, params.moon));
   const name = createNameMotion(byId('intro-title'));
   // Motion follows the system setting alone: the owner asked for the on-page "Reduce motion" button to go
   // (2026-09-25). Followed live, so turning the setting on mid-visit still quiets the page.
@@ -125,6 +124,11 @@ export async function boot(): Promise<void> {
   let p = params.p ?? 0;
   let state: JourneyState = resolve(p, activeJourney);
   sections.show(state.a.local, ctx.reducedMotion);
+  // The log names the moon the scene shows, which waxes with the scroll (or `?moon=`, pinned).
+  const log = createVoyageLog(byId('voyage-log'));
+  const phaseFor = (local: number) =>
+    params.moon ?? (ctx.reducedMotion ? reducedMotionPhase(local, anchors) : journeyPhase(local, anchors));
+  log.show(phaseFor(state.a.local));
 
   // The page answers a mouse or trackpad: the name's letters swell near it, and nothing else moves.
   createPointerTouch({
@@ -216,6 +220,7 @@ export async function boot(): Promise<void> {
       const dtSeconds = lastFrameMs < 0 ? 0 : Math.min(0.1, (nowMs - lastFrameMs) / 1000);
       lastFrameMs = nowMs;
       sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
+      log.show(phaseFor(state.a.local));
       if (state.section !== shownStill) {
         stills.get(shownStill)?.classList.remove('is-shown');
         stills.get(state.section)?.classList.add('is-shown');
@@ -263,7 +268,7 @@ export async function boot(): Promise<void> {
     handleContextLoss(info),
   );
 
-  const region = createMoonsink(ctx, params.moon, {
+  const region = createMoonsink(ctx, anchors, params.moon, {
     march: params.march === 'old' ? 'old' : 'bounded',
     glints: params.glints === 'old' ? 'old' : 'fade',
   });
@@ -336,6 +341,7 @@ export async function boot(): Promise<void> {
     const timeSeconds = params.time ?? nowMs / 1000;
 
     region.update(state.a.local, timeSeconds, dtSeconds);
+    log.show(region.phase);
     // Only the frame loop passes a frame time: the text travels toward the scroll's handover here, and
     // lands on it at once everywhere else (first frame, deep links, Skip intro).
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);

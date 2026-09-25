@@ -48,3 +48,16 @@ for (const [id, progress] of [
     expect(masked.equals(unclipped)).toBe(true);
   });
 }
+
+// Spec 2026-09-25 §4.3: the moon waxes from a crescent at Adrift to full at the water's edge, and the log says so.
+for (const [progress, moon] of [
+  [0, 'Waxing crescent · 6% lit'],
+  [0.335, 'First quarter · 50% lit'],
+  [0.585, 'Waxing gibbous · 85% lit'],
+  [0.92, 'Full moon · 100% lit'],
+] as const) {
+  test(`the log reads "${moon}" at ${progress}`, async ({ page }) => {
+    await page.goto(`/?stills&p=${progress}`);
+    await expect(page.locator('#voyage-log [data-log-moon]')).toHaveText(moon);
+  });
+}
