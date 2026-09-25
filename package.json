@@ -14,7 +14,8 @@
     "format": "biome check --write .",
     "test": "vitest run",
     "e2e": "playwright test",
-    "size": "size-limit"
+    "size": "size-limit",
+    "capture": "node scripts/capture.mjs"
   },
   "dependencies": {
     "gsap": "3.15.0",

@@ -18,6 +18,7 @@ describe('readDebugParams', () => {
       gui: false,
       forceWebGL: false,
       stills: false,
+      bare: false,
     });
   });
 
@@ -63,7 +64,8 @@ describe('readDebugParams', () => {
   });
 
   it('treats presence-only flags as true', () => {
-    const params = readDebugParams('?hud&gui&webgl&stills');
+    const params = readDebugParams('?hud&gui&webgl&stills&bare');
+    expect(params.bare).toBe(true);
     expect(params.hud).toBe(true);
     expect(params.gui).toBe(true);
     expect(params.forceWebGL).toBe(true);

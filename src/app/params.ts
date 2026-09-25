@@ -24,6 +24,8 @@ export interface DebugParams {
   gui: boolean;
   forceWebGL: boolean;
   stills: boolean;
+  /** `?bare`: hide the text layer, for rendering the stills and the project cover (scripts/capture.mjs). */
+  bare: boolean;
 }
 
 export function readDebugParams(search: string): DebugParams {
@@ -64,5 +66,6 @@ export function readDebugParams(search: string): DebugParams {
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),
     stills: query.has('stills'),
+    bare: query.has('bare'),
   };
 }

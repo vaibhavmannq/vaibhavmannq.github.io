@@ -48,6 +48,8 @@ export async function boot(): Promise<void> {
   // Text keeps its place in the scene whether the window is full screen or not (spec 2026-09-25 §4.14).
   // `?frame=old` shows the previous behaviour for the owner to compare.
   if (params.frame !== 'old') applyFrameFit(root, byId('world'));
+  // `?bare`: the scene alone, for rendering the stills and the project cover (scripts/capture.mjs).
+  if (params.bare) root.classList.add('is-bare');
 
   // ---- HTML layer: works even if 3D never starts ----
   // Phase 1 has one region, so its anchors are the page's sections.
