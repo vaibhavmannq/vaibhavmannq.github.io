@@ -65,7 +65,34 @@ Two rules now hold it still:
 
 Measured after: one change at 0.7 s, then nothing for the remaining 24 s.
 
-## 5. Also
+## 5. Equal pages, and text that arrives
+
+The owner, later the same day: every page should be worth the same amount of scrolling, and a new page's
+text should come in slowly rather than appearing.
+
+- **Equal pages.** They ran 1.215, 1.585, 1.5 and 1.3 screens; they are 1.4 each now, 5.6 in total. The
+  camera keeps landing just before the text that follows it: the shore at 2.7 (Projects text at 2.8) and
+  the walk's end at 4.1 (Contact text at 4.2).
+- **Text that arrives.** The handover is still computed from scroll position and nothing else, but the text
+  now travels toward it with a damped follow rather than being written straight to the screen — the same
+  mechanism the camera has used since 2026-09-14. Measured after a flick: the text starts appearing as the
+  glide ends and keeps arriving for about a second after the scroll has stopped, where before it went from
+  invisible to fully there in 184 ms.
+- The fade itself also widened, 0.27 → 0.34 screens, which the evenly spaced anchors left room for.
+- Stills mode runs its own frame loop and had to start measuring its own frames; without that the text
+  landed at once there while the 3D page let it travel. Every probe of this behaviour uses `?stills`, so
+  the bug hid the very thing being measured.
+
+## 6. The pull, and the last page
+
+- **The pull is gone.** Links no longer lean toward the cursor: not the project opener (nor any project
+  added later, since the list stopped marking its button), not email, GitHub or LinkedIn, not Return to the
+  shore. It could push text past the edge of the window. Only the name answers the pointer now.
+- **"Hola Amigo"** greets on the last page, marked `lang="es"`.
+- Big headings carry a soft halo as well as their drop shadow: a wider heading can cross the moon's
+  glitter, where the water is nearly white ("Hola Amigo" measured 2.94:1 against the 3:1 large text needs).
+
+## 7. Also
 
 The on-page "Reduce motion" button is gone at the owner's request; the system setting alone decides, and is
 followed live so switching it mid-visit still quiets the page.
