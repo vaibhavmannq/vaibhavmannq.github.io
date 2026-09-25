@@ -17,7 +17,7 @@ import {
   toThreeCamera,
 } from './cameraPath';
 import { moonLight } from './moonPhase';
-import { createSea, type SeaOptions, type SeaUniforms } from './sea';
+import { createSea, type SeaUniforms } from './sea';
 import { surfaceTopAt } from './surfaceTop';
 
 export interface MoonsinkRegion extends Region {
@@ -37,11 +37,10 @@ export function createMoonsink(
   ctx: RegionContext,
   anchors: readonly SectionAnchor[],
   moonOverride?: number,
-  seaOptions: SeaOptions = {},
 ): MoonsinkRegion {
   const scene = new Scene();
   const camera = new PerspectiveCamera(SEA_FOV, window.innerWidth / window.innerHeight, 0.1, 400);
-  const sea = createSea(seaOptions);
+  const sea = createSea();
   scene.add(sea.mesh);
 
   // The moon waxes with the scroll (spec 2026-09-25 §4.3), unless `?moon=` pins it for a test or a review.

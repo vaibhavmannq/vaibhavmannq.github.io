@@ -70,19 +70,13 @@ const BELOW_LOWEST_WAVE = -0.3;
 // must be PURE. They never read uniforms directly; time and step counts come in as parameters.
 // (Reading a uniform inside a layout function breaks WGSL compilation: "struct member not found".)
 
-/** Owner-review switches (spec 2026-09-25 §7). The defaults are the new behaviour. */
-export interface SeaOptions {
-  /** 'bounded' starts each ray at `surfaceTop` and steps 0.7 of the height gap; 'old' is the march before. */
-  march?: 'bounded' | 'old';
-  /** 'fade' keeps glints away from the camera; 'old' makes them strongest right at it. */
-  glints?: 'fade' | 'old';
-}
+/**
+ * The share of the height gap a march step may cover (spec 2026-09-25 §4.2, owner kept it). 0.7 still never jumps
+ * through a crest at this wave height; the bisection after the loop refines the hit either way.
+ */
+const STEP_SHARE = 0.7;
 
-export function createSea(options: SeaOptions = {}) {
-  const bounded = options.march !== 'old';
-  // The share of the height gap a step may cover. 0.7 still never jumps through a crest at this wave height;
-  // the bisection after the loop refines the hit either way.
-  const stepShare = bounded ? 0.7 : 0.5;
+export function createSea() {
   const uniforms = {
     time: uniform(0),
     marchSteps: uniform(80, 'int'),
@@ -364,18 +358,17 @@ export function createSea(options: SeaOptions = {}) {
     const tPrev = float(0.05).toVar();
     const hit = float(-1).toVar();
     const overshot = float(0).toVar();
-    // 1 when the ray starts above every surface and heads up: sky, with no steps at all.
+    // 1 when the ray starts above every surface and heads up: sky, with no steps at all. A ray heading down starts
+    // where it crosses the highest surface it can meet.
     const skyOnly = float(0).toVar();
-    if (bounded) {
-      If(ro.y.greaterThan(top), () => {
-        If(rd.y.greaterThanEqual(0), () => {
-          skyOnly.assign(1);
-        }).Else(() => {
-          t.assign(max(t, ro.y.sub(top).div(rd.y.negate())));
-          tPrev.assign(t);
-        });
+    If(ro.y.greaterThan(top), () => {
+      If(rd.y.greaterThanEqual(0), () => {
+        skyOnly.assign(1);
+      }).Else(() => {
+        t.assign(max(t, ro.y.sub(top).div(rd.y.negate())));
+        tPrev.assign(t);
       });
-    }
+    });
     Loop({ start: int(0), end: select(skyOnly.greaterThan(0.5), int(0), steps), type: 'int', condition: '<' }, () => {
       const p = ro.add(rd.mul(t)).toVar();
       If(p.y.greaterThan(2.4).and(rd.y.greaterThan(0)), () => {
@@ -391,7 +384,7 @@ export function createSea(options: SeaOptions = {}) {
         Break();
       });
       tPrev.assign(t);
-      t.addAssign(max(d.mul(stepShare), t.mul(0.006).add(0.012)));
+      t.addAssign(max(d.mul(STEP_SHARE), t.mul(0.006).add(0.012)));
       If(t.greaterThan(240), () => {
         Break();
       });
@@ -508,7 +501,7 @@ export function createSea(options: SeaOptions = {}) {
         )
         // Glints rise away from the camera and fade into the distance. Strongest at the camera, as before, they
         // drew large square specks behind the phone's text once the camera stood on the sand (spec §4.2).
-        .mul(options.glints === 'old' ? fall(2.0, 25.0, tHit) : smoothstep(1.5, 5.0, tHit).mul(fall(5.0, 25.0, tHit)))
+        .mul(smoothstep(1.5, 5.0, tHit).mul(fall(5.0, 25.0, tHit)))
         .mul(1.4);
       // Glitter: scales with moonLight (spec §5.4b Step 5).
       sand.addAssign(vec3(0.75, 0.95, 1.0).mul(glint).mul(moonLightVar));

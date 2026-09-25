@@ -46,8 +46,7 @@ export async function boot(): Promise<void> {
 
   byId('journey-track').style.setProperty('--journey-length', String(totalLength(activeJourney)));
   // Text keeps its place in the scene whether the window is full screen or not (spec 2026-09-25 §4.14).
-  // `?frame=old` shows the previous behaviour for the owner to compare.
-  if (params.frame !== 'old') applyFrameFit(root, byId('world'));
+  applyFrameFit(root, byId('world'));
   // `?bare`: the scene alone, for rendering the stills and the project cover (scripts/capture.mjs).
   if (params.bare) root.classList.add('is-bare');
 
@@ -146,7 +145,6 @@ export async function boot(): Promise<void> {
     glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
     stops: [0, aboutShown, projectsShown, contactShown],
     enabled: () => params.p === undefined && !dialog.isOpen,
-    wheel: params.snap === 'wheel',
   });
 
   let p = params.p ?? 0;
@@ -288,10 +286,7 @@ export async function boot(): Promise<void> {
     handleContextLoss(info),
   );
 
-  const region = createMoonsink(ctx, anchors, params.moon, {
-    march: params.march === 'old' ? 'old' : 'bounded',
-    glints: params.glints === 'old' ? 'old' : 'fade',
-  });
+  const region = createMoonsink(ctx, anchors, params.moon);
   // No opening to wait behind: the camera follows the scroll from the first frame.
   region.setEntered(true);
   moonlit.setView(region.scene, region.camera);
@@ -397,9 +392,8 @@ export async function boot(): Promise<void> {
       }
     }
   };
-  // `?pace=full` renders every vsync, for the owner to compare on a 90 Hz screen (spec 2026-09-25 §7).
   // While the pacer measures quietly, the text layer runs alone, as it did before the sea was ready.
-  loop = createLoop(onFrame, createPacer({ full: params.pace === 'full' }), textFrame);
+  loop = createLoop(onFrame, createPacer(), textFrame);
 
   exposeDebug({
     backend: moonlit.backend,

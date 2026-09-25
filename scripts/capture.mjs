@@ -33,7 +33,7 @@ try {
     const shoot = async ({ width, height, scale }, progress, path) => {
       const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
       await page.bringToFront();
-      await page.goto(`http://localhost:${PORT}/?p=${progress}&tier=3&time=12&bare&pace=full`);
+      await page.goto(`http://localhost:${PORT}/?p=${progress}&tier=3&time=12&bare`);
       await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 60, undefined, { timeout: 120_000 });
       // The sea fades up over 1.2 s once it is ready (overlay.css .world).
       await page.waitForTimeout(1500);
