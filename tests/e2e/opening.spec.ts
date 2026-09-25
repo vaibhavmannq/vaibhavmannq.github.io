@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Opening E (spec 2026-09-25 §4.5): the name is the first paint, not a black screen. Before, it was readable 5.6 s in
 // although the scene was ready at 0.23 s.
@@ -33,6 +33,33 @@ test('it settles: the header and rail arrive and the greeting becomes the chapte
   await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 5_000 });
   await expect(page.locator('#intro [data-welcome]')).toHaveText('I · Adrift', { timeout: 5_000 });
   await expect(page.locator('#scene-status')).toHaveText('');
+});
+
+// Final review I1: settling waited for the scene, and headless browsers (or a slow phone) take seconds to compile the
+// sea, so the header, the rail and the chapter title stayed hidden all that time, even to keyboard focus.
+/** A GPU that never answers: the renderer waits forever, so the sea is never ready. */
+const hangTheSea = (page: Page) =>
+  page.addInitScript(() => {
+    Object.defineProperty(navigator, 'gpu', {
+      configurable: true,
+      value: { requestAdapter: () => new Promise(() => {}), getPreferredCanvasFormat: () => 'bgra8unorm' },
+    });
+  });
+
+test('it settles on time even while the sea is still waking', async ({ page }) => {
+  await hangTheSea(page);
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 4_000 });
+  await expect(page.locator('#intro [data-welcome]')).toHaveText('I · Adrift', { timeout: 3_000 });
+  await expect(page.locator('html')).not.toHaveClass(/is-scene-ready/);
+});
+
+test('a header link that takes focus before the page settles is visible at once', async ({ page }) => {
+  await hangTheSea(page);
+  await page.goto('/');
+  await page.locator('#site-header a').first().focus();
+  expect(await page.locator('#site-header').evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
+  await expect(page.locator('html')).not.toHaveClass(/is-settled/);
 });
 
 test('scrolling works at once: no lock while the scene wakes', async ({ page }) => {

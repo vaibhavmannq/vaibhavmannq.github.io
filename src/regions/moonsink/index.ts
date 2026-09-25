@@ -55,6 +55,8 @@ export function createMoonsink(
   setPhase(moonOverride ?? journeyPhase(0, anchors));
 
   let entered = false;
+  /** Whether the journey camera has had its first frame since entering. */
+  let landed = false;
   // `current` is the camera's own persistent pose, mutated in place every frame from here on.
   // poseAt/idlePose/reducedMotionTarget hand back a short-lived scratch object each call (see
   // cameraPath.ts) — copy it here at construction, and never let `current` itself become one of
@@ -77,6 +79,7 @@ export function createMoonsink(
       return shownPhase;
     },
     setEntered(value) {
+      if (value && !entered) landed = false;
       entered = value;
     },
     update(local, timeSeconds, dtSeconds) {
@@ -91,7 +94,10 @@ export function createMoonsink(
       // Reduced motion cuts straight to the viewpoint; otherwise the camera glides after the
       // target. Both branches write into `current` in place rather than repointing the variable
       // at `target`, which cameraPath.ts reuses as scratch space on the next call.
-      if (ctx.reducedMotion) {
+      // The first journey frame lands on the scroll: a page opened partway down (a deep link, a reload on Contact)
+      // showed its text at once while the camera drifted in from the open sea (final review I3).
+      if (ctx.reducedMotion || (entered && !landed)) {
+        landed = entered;
         current.x = target.x;
         current.y = target.y;
         current.z = target.z;

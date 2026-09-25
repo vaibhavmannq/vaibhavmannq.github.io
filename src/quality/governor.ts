@@ -78,7 +78,14 @@ export class Governor {
 
   /** Tell the governor what "on time" is: the pacer's target interval. Called every frame; cheap. */
   setTargetInterval(ms: number): void {
+    if (Math.abs(ms - this.targetMs) < 0.01) return;
     this.targetMs = ms;
+    // Frames measured against the old target say nothing about the new one: judging a window that spans a 60 → 144 Hz
+    // change against the 144 Hz budget stepped a fast device down (final review I4). Start afresh.
+    this.samples = [];
+    this.windowStart = null;
+    this.fastWindows = 0;
+    this.pendingDown = false;
   }
 
   /**

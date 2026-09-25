@@ -200,6 +200,15 @@ describe('Governor', () => {
     expect(runWindow(governor, 30, t + 2100).change).toBe(2);
   });
 
+  // Final review I4: a window open across a change of target judged 60 Hz frames against the 144 Hz budget.
+  it('starts a fresh window when the target interval changes', () => {
+    const governor = new Governor(4, true);
+    for (let i = 1; i <= 40; i++) governor.sample(1000 / 60, (i * 1000) / 60, true);
+    governor.setTargetInterval(1000 / 144);
+    for (let i = 1; i <= 300; i++) expect(governor.sample(1000 / 144, 40_000 / 60 + (i * 1000) / 144, true)).toBeNull();
+    expect(governor.current).toBe(4);
+  });
+
   it('keeps S16 exactly at 60 Hz: slow above 20 ms, fast below 17.5 ms', () => {
     const governor = new Governor(2, true);
     expect(runWindow(governor, 19.9, 0).change).toBeNull();

@@ -5,6 +5,11 @@ gsap.registerPlugin(ScrambleTextPlugin);
 
 /** How long after navigation starts the page settles, if the scene is ready by then (spec 2026-09-25 §4.5). */
 export const SETTLE_AFTER_MS = 1200;
+/**
+ * The page settles by now whether or not the scene is ready. A phone can compile the sea for seconds, and the header,
+ * the rail and the chapter title must not wait for it (final review I1).
+ */
+export const SETTLE_BY_MS = 3000;
 
 const KICKER_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ·';
 
@@ -18,8 +23,8 @@ export interface Welcome {
 /**
  * Opening E (spec 2026-09-25 §4.5). The HTML is already the first paint: the greeting, the name, the line. This only
  * runs the one arrival that happens on a clock, never on scroll: the sea fades up once it is ready, and
- * SETTLE_AFTER_MS after the page began (or at that moment, if later) the header and rail fade in and the greeting
- * types itself into the chapter title. Nothing is locked meanwhile.
+ * SETTLE_AFTER_MS after the page began (or at that moment, if later, but never after SETTLE_BY_MS) the header and
+ * rail fade in and the greeting types itself into the chapter title. Nothing is locked meanwhile.
  */
 export function createWelcome(options: { kicker: HTMLElement; reducedMotion: () => boolean }): Welcome {
   const root = document.documentElement;
@@ -28,8 +33,8 @@ export function createWelcome(options: { kicker: HTMLElement; reducedMotion: () 
   let ready = false;
   let settled = false;
 
-  const settle = () => {
-    if (settled || !ready) return;
+  const settle = (force = false) => {
+    if (settled || !(ready || force)) return;
     settled = true;
     root.classList.add('is-settled');
     if (options.reducedMotion()) {
@@ -42,7 +47,8 @@ export function createWelcome(options: { kicker: HTMLElement; reducedMotion: () 
       ease: 'none',
     });
   };
-  window.setTimeout(settle, Math.max(0, SETTLE_AFTER_MS - performance.now()));
+  window.setTimeout(() => settle(), Math.max(0, SETTLE_AFTER_MS - performance.now()));
+  window.setTimeout(() => settle(true), Math.max(0, SETTLE_BY_MS - performance.now()));
 
   return {
     sceneReady() {

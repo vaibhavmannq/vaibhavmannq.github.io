@@ -14,7 +14,7 @@ import { createProjectDialog } from '../overlay/projectDialog';
 import { renderProjectList } from '../overlay/projectList';
 import { parseRoute, projectHash } from '../overlay/router';
 import { createSectionMotion } from '../overlay/sectionMotion';
-import { createSections, SHOWN_OFFSET } from '../overlay/sections';
+import { createSections, fullyShown, SHOWN_OFFSET } from '../overlay/sections';
 import { createVoyageLog } from '../overlay/voyageLog';
 import { createWelcome } from '../overlay/welcome';
 import { Governor } from '../quality/governor';
@@ -138,7 +138,7 @@ export async function boot(): Promise<void> {
   bindGoLinks(document, { go });
   createFocusGlide({
     sectionOf: (element) => (element.closest<HTMLElement>('[data-section]')?.dataset.section as SectionId) ?? null,
-    isShown: (id) => state.section === id,
+    isShown: (id) => fullyShown(state.a.local, anchors, id, ctx.reducedMotion),
     glideTo: (id) => scroll.glideToProgress(shownAt[id], !ctx.reducedMotion),
   });
   createTouchSnap({
@@ -355,8 +355,8 @@ export async function boot(): Promise<void> {
 
     region.update(state.a.local, timeSeconds, dtSeconds);
     log.show(region.phase);
-    // Only the frame loops pass a frame time: the text travels toward the scroll's handover here, and
-    // lands on it at once on the first frame.
+    // Only the frame loops pass a frame time: the text travels toward the scroll's handover here. It landed on
+    // the scroll before this loop began (the waking loop's first frame), as the camera does on its first frame.
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
     rail.show(state.section);
     moonlit.render();
@@ -380,11 +380,11 @@ export async function boot(): Promise<void> {
           : `${Math.round(refreshHz)} Hz → ${Math.round(1000 / (loop?.pacer.targetIntervalMs ?? 1000 / 60))} fps`,
     });
 
-    // Let the governor judge only real, warmed-up, non-idle frames, and only once the pacer knows the screen:
-    // while it measures (the first ~0.4 s, and after a resize) frames follow a time-based cap that is uneven on
-    // 75 or 144 Hz screens and would read as slow (plan 1, Task 2 ruling).
+    // Let the governor judge only real, warmed-up, non-idle frames, only once the pacer knows the screen, and never
+    // the first frame after the pacer measured quietly: its interval spans the pause (final review C1).
     const warmedUp = nowMs - enteredAt > 1500;
-    if (params.tier === undefined && warmedUp && !loop?.isIdle(nowMs) && refreshHz !== null) {
+    const resumed = loop?.pacer.resumed ?? true;
+    if (params.tier === undefined && warmedUp && !loop?.isIdle(nowMs) && refreshHz !== null && !resumed) {
       governor.setTargetInterval(loop?.pacer.targetIntervalMs ?? 1000 / 60);
       // Keep measuring while the visitor scrolls, but change tier only once they stop: a tier change
       // resizes render buffers, which hitches exactly when motion is most visible (spec §5.6).
@@ -392,11 +392,14 @@ export async function boot(): Promise<void> {
       if (next !== null) {
         hud?.tierChanged(scrolling);
         applyTier(next);
+        // A new tier costs the GPU differently: let the pacer check once more whether slow frames are the screen's.
+        loop?.pacer.rearm();
       }
     }
   };
   // `?pace=full` renders every vsync, for the owner to compare on a 90 Hz screen (spec 2026-09-25 §7).
-  loop = createLoop(onFrame, createPacer({ full: params.pace === 'full' }));
+  // While the pacer measures quietly, the text layer runs alone, as it did before the sea was ready.
+  loop = createLoop(onFrame, createPacer({ full: params.pace === 'full' }), textFrame);
 
   exposeDebug({
     backend: moonlit.backend,
