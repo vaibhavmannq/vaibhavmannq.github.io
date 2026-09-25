@@ -1,14 +1,3 @@
-.sprite {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
-html.is-gated {
-  overflow: hidden;
-}
-
 :focus-visible {
   outline: 2px solid var(--glow);
   outline-offset: 3px;
@@ -24,6 +13,36 @@ html.is-gated {
   /* The large viewport never changes as a phone's toolbar shows or hides. Android only resizes the
      page once a scroll ends, so a viewport-sized scene jumped at the end of every swipe. */
   height: 100lvh;
+  /* Opening E (spec 2026-09-25 §4.5): the text is the first paint; the sea fades up beneath it once the GPU is
+     ready (html.is-scene-ready, overlay/welcome.ts). */
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+html.is-scene-ready .world {
+  opacity: 1;
+}
+
+/* What arrives once the page settles (overlay/welcome.ts): the header, the rail, the call to action. */
+.welcome-arrives {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+html.is-settled .welcome-arrives {
+  opacity: 1;
+}
+
+.scene-status {
+  position: absolute;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  left: max(1.25rem, env(safe-area-inset-left));
+  margin: 0;
+  color: rgba(230, 238, 240, 0.45);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
 }
 
 .world canvas {
@@ -91,92 +110,6 @@ html.is-stills .world {
   height: calc(var(--journey-length, 3) * 100svh);
 }
 
-/* ---------- skip link ---------- */
-.skip-link {
-  position: fixed;
-  top: max(1rem, env(safe-area-inset-top));
-  left: max(1rem, env(safe-area-inset-left));
-  z-index: 50;
-  padding: 0.6rem 1rem;
-  border-radius: 999px;
-  background: var(--ink);
-  color: #04161a;
-  font-weight: 600;
-  text-decoration: none;
-  transform: translateY(-200%);
-  transition: transform 0.2s ease;
-}
-
-.skip-link:focus-visible {
-  transform: none;
-}
-
-/* ---------- opening ---------- */
-.opening {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 0.75rem;
-  padding-block: max(1.5rem, env(safe-area-inset-top));
-  padding-inline: max(1.5rem, env(safe-area-inset-left)) max(1.5rem, env(safe-area-inset-right));
-  text-align: center;
-  background: var(--night);
-  /* Leaving: the black lifts over 1.6 s, starting once the greeting has begun to fade. The journey's text
-     waits for it (see .content): the owner chose this ordering on a phone, from four running side by side
-     (2026-09-25). Measured before: the text arrived 900 ms before the black had finished lifting, which is
-     what showed up as half-faded words on the black. */
-  transition: opacity 1.6s ease 0.4s;
-}
-
-.opening > * {
-  transition: opacity 0.7s ease;
-}
-
-.opening__glyph {
-  width: 4.5rem;
-  height: 4.5rem;
-  color: var(--ink);
-  filter: drop-shadow(0 0 14px rgba(159, 230, 238, 0.45));
-}
-
-.opening__hello {
-  margin: 0.5rem 0 0;
-  /* Balances the trailing letter-spacing so the line stays optically centred. */
-  padding-left: 0.3em;
-  font-family: var(--font-name);
-  font-size: clamp(1.5rem, 7.5vw, 4.5rem);
-  font-weight: 400;
-  letter-spacing: 0.3em;
-}
-
-/* The greeting's second line, in the same Fraunces italic it has always had: the opening is the one place
-   the owner asked to leave exactly as it was. */
-.opening__line {
-  margin: 0;
-  color: var(--ink-dim);
-  font-family: var(--font-name);
-  font-size: clamp(1.2rem, 4.8vw, 1.6rem);
-  font-style: italic;
-  font-weight: 300;
-  letter-spacing: 0.01em;
-}
-
-.opening[hidden] {
-  display: none;
-}
-
-.opening.is-leaving {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.opening.is-leaving > * {
-  opacity: 0;
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -200,15 +133,12 @@ html.is-stills .world {
      jump when the toolbar hides (see .world). */
   height: 100svh;
   pointer-events: none;
-  opacity: 1;
-  /* Held at 0 by html.is-gated below. Nothing of the journey shows until the black has gone completely:
-     the black is clear at 2 s (see .opening), and this reveal starts exactly there. Anything earlier puts
-     the text on the black. */
-  transition: opacity 0.8s ease 2s;
 }
 
-html.is-gated .content {
-  opacity: 0;
+/* The intro is the first paint, with or without JavaScript (opening E, spec 2026-09-25 §4.5); the other pages wait
+   for the handover (sections.ts), which writes every page's opacity from the first frame on. */
+#intro {
+  opacity: 1;
 }
 
 .content::before {
@@ -639,17 +569,15 @@ html.is-broken .section {
 
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .opening,
-  .opening > *,
-  .content,
+  .world,
+  .welcome-arrives,
   .world__still {
     transition: none;
   }
 }
 
-html.is-reduced-motion .opening,
-html.is-reduced-motion .opening > *,
-html.is-reduced-motion .content,
+html.is-reduced-motion .world,
+html.is-reduced-motion .welcome-arrives,
 html.is-reduced-motion .world__still {
   transition: none;
 }

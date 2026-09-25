@@ -14,9 +14,9 @@ export interface MoonlitRenderer {
   render(): void;
   /**
    * Renders one hidden frame through each output, plain and with bloom, so their shaders compile now
-   * rather than on the first visible frame (or the first tier change). Call while the opening covers
-   * the canvas: the first bloom frame blocked the page for ~385 ms in a local measurement, freezing the
-   * opening's fade on desktop (owner, 2026-09-22).
+   * rather than on the first visible frame (or the first tier change). Call while the canvas is still
+   * transparent (overlay.css .world, before html.is-scene-ready): the first bloom frame blocked the page for
+   * ~385 ms in a local measurement (owner, 2026-09-22).
    */
   warmUp(): void;
 }

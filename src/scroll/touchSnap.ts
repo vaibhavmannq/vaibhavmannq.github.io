@@ -44,7 +44,7 @@ export interface TouchSnapOptions {
   glideTo: (p: number) => void;
   /** Where each page is fully shown, ascending, starting at 0. */
   stops: readonly number[];
-  /** False while the opening is up (the page is locked), while a dialog is open, and under test hooks. */
+  /** False while a dialog is open and under test hooks (`?p=`). */
   enabled: () => boolean;
 }
 

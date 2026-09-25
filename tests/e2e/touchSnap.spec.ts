@@ -27,7 +27,7 @@ const CONTACT_STOP = 0.835;
 
 test('touch swipes page through all four pages, gliding on from wherever they stop', async ({ page }) => {
   await page.goto('/?stills');
-  await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('html')).toHaveClass(/is-scene-ready/);
 
   // Owner's phone, 2026-09-14: a normal flick stopped short, the next in an empty gap.
   await swipeTo(page, 0.07);
@@ -48,7 +48,7 @@ test('touch swipes page through all four pages, gliding on from wherever they st
 
 test('scrolling stays free once Contact is fully shown', async ({ page }) => {
   await page.goto('/?stills');
-  await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('html')).toHaveClass(/is-scene-ready/);
 
   await swipeTo(page, 0.95);
   await page.waitForTimeout(600);

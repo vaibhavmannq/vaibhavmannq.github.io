@@ -8,8 +8,6 @@ export interface DebugParams {
   time?: number;
   /** `?moon=`: 0..1 override for the lunar phase (0 = new, 0.5 = full). Undefined falls back to tonight's real phase. */
   moon?: number;
-  /** `?hold=ms`: the opening's minimum hold, for tests. Undefined uses the default 2.2 s. */
-  hold?: number;
   /** `?length=`: Moonsink's scroll length in screen heights, for tuning by feel (clamped 1.5–4). */
   length?: number;
   /** `?pace=full`: render every vsync instead of an even divisor near 60 fps (owner review, spec §7). */
@@ -43,7 +41,6 @@ export function readDebugParams(search: string): DebugParams {
       : undefined;
   const progress = number('p');
   const moonValue = number('moon');
-  const holdValue = number('hold');
   const lengthValue = number('length');
   const only = <T extends string>(key: string, value: T): T | undefined =>
     query.get(key) === value ? value : undefined;
@@ -55,7 +52,6 @@ export function readDebugParams(search: string): DebugParams {
     // Non-numeric or blank falls back to `undefined` (real date, via resolveMoonPhase);
     // a numeric but out-of-range value is clamped rather than thrown away.
     moon: moonValue === undefined ? undefined : clamp01(moonValue),
-    hold: holdValue === undefined || holdValue < 0 ? undefined : holdValue,
     length: lengthValue === undefined ? undefined : Math.min(4, Math.max(1.5, lengthValue)),
     pace: only('pace', 'full'),
     march: only('march', 'old'),
