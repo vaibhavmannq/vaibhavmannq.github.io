@@ -8,6 +8,13 @@ gsap.registerPlugin(SplitText, ScrambleTextPlugin);
 const KICKER_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ·';
 
 /**
+ * How far a line travels to rise in and to lift out, as a share of its own height. Its mask now reaches past the
+ * line by 0.2em + 20 px for the glyphs' overhang and the halo (overlay.css), so a line has to start 200% below to
+ * be fully hidden, even for body text, the worst case: about 23 px of margin on a 26 px line.
+ */
+const TRAVEL_PERCENT = 200;
+
+/**
  * A chapter's text motion (redesign, 2026-09-22). As it arrives, its lines rise through masks and its
  * log-style title types itself in; as it leaves, the lines lift away and the title fades.
  *
@@ -35,7 +42,7 @@ export function createSectionMotion(section: HTMLElement): SectionMotionHook {
     const arrive = gsap.timeline();
     arrive.fromTo(
       parts,
-      { yPercent: 115 },
+      { yPercent: TRAVEL_PERCENT },
       { yPercent: 0, duration: 0.6, stagger: 0.07, ease: 'expo.out', immediateRender: false },
       0.1,
     );
@@ -52,7 +59,7 @@ export function createSectionMotion(section: HTMLElement): SectionMotionHook {
     leave.fromTo(
       parts,
       { yPercent: 0 },
-      { yPercent: -115, duration: 0.45, stagger: 0.04, ease: 'power3.in', immediateRender: false },
+      { yPercent: -TRAVEL_PERCENT, duration: 0.45, stagger: 0.04, ease: 'power3.in', immediateRender: false },
       0,
     );
     if (kicker) leave.fromTo(kicker, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.3, immediateRender: false }, 0);
@@ -73,11 +80,16 @@ export function createSectionMotion(section: HTMLElement): SectionMotionHook {
     SplitText.create(element, {
       type: 'lines',
       mask: 'lines',
+      // Names the masks `split-line-mask`, so overlay.css can give them room for the halo.
+      linesClass: 'split-line',
       // No aria-label: it is not allowed on a paragraph (axe aria-prohibited-attr), and line wrappers
       // leave the words intact for screen readers anyway.
       aria: 'none',
       autoSplit: true,
       onSplit: (split) => {
+        // The masks clip with clip-path (overlay.css), which reaches past the line for the halo and descenders;
+        // SplitText's inline `overflow: clip` would cut them at the line's own box.
+        for (const mask of split.masks) (mask as HTMLElement).style.overflow = 'visible';
         lineSplits.set(element, split);
         rebuildSoon();
       },
