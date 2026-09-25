@@ -26,7 +26,7 @@ test('a deep link opens the project straight away, and closing it clears the lin
   await page.goto('/?stills#/projects/moonlit');
   const dialog = page.getByRole('dialog', { name: 'Moonlit' });
   await expect(dialog).toBeVisible();
-  await expect(page.locator('#opening')).toBeHidden();
+  await expect(page.locator('html')).toHaveClass(/is-scene-ready/);
 
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(dialog).toBeHidden();

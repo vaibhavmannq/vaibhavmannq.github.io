@@ -19,7 +19,7 @@ test('the Contact page offers email, GitHub and LinkedIn', async ({ page }) => {
 
 test('Return to the shore glides back to the top and moves focus to the name', async ({ page }) => {
   await page.goto('/?stills');
-  await expect(page.locator('#opening')).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('html')).toHaveClass(/is-scene-ready/);
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await expect(page.locator('#contact')).toHaveClass(/is-active/);
 

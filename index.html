@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="is-gated">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -15,8 +15,6 @@
     <link rel="preload" href="/fonts/satoshi-400.woff2" as="font" type="font/woff2" crossorigin />
     <noscript>
       <style>
-        html.is-gated { overflow: auto; }
-        .opening { display: none; }
         .content { position: static; height: auto; pointer-events: auto; }
         .section { position: static; opacity: 1; margin: 2rem 0; }
       </style>
@@ -24,28 +22,10 @@
     <title>Vaibhav Mann</title>
   </head>
   <body>
-    <svg class="sprite" aria-hidden="true" focusable="false">
-      <symbol id="glyph" viewBox="0 0 64 64">
-        <line x1="32" y1="4" x2="32" y2="60" stroke="currentColor" stroke-width=".8" opacity=".45" />
-        <circle cx="32" cy="32" r="21" fill="none" stroke="currentColor" stroke-width="1.1" />
-        <circle cx="32" cy="23" r="4.2" fill="currentColor" />
-        <path d="M13 37 q4.75 -4 9.5 0 t9.5 0 t9.5 0 t9.5 0" fill="none" stroke="currentColor" stroke-width="1.2" />
-        <path d="M17 43 q3.75 -3 7.5 0 t7.5 0 t7.5 0 t7.5 0" fill="none" stroke="currentColor" stroke-width="1" opacity=".55" />
-      </symbol>
-    </svg>
-
-    <a class="skip-link" id="skip-intro" href="#about">Skip intro</a>
-
     <div class="world" id="world" aria-hidden="true"></div>
 
-    <div class="opening" id="opening" data-state="loading" aria-hidden="true">
-      <svg class="opening__glyph" aria-hidden="true" focusable="false"><use href="#glyph" /></svg>
-      <p class="opening__hello">Hello, voyager</p>
-      <p class="opening__line">A moonlit journey across the sea.</p>
-    </div>
-
     <main class="content" id="content">
-      <p class="visually-hidden" id="load-status" role="status">Loading the scene…</p>
+      <p class="scene-status" id="scene-status" role="status">The sea is waking…</p>
       <p class="voyage-log" id="voyage-log">
         <span>Log</span>
         <span data-log-when></span>
@@ -56,7 +36,7 @@
         <div class="section__panel">
           <p class="section__kicker">
             <span class="visually-hidden">Chapter one: Adrift</span>
-            <span aria-hidden="true" data-kicker="I · Adrift">I · Adrift</span>
+            <span aria-hidden="true" data-welcome="I · Adrift">Hello, voyager</span>
           </p>
           <h1 id="intro-title" tabindex="-1" data-reveal="block">Vaibhav Mann</h1>
           <p class="section__lede" data-reveal="lines">I build quiet, moonlit things for the web.</p>

@@ -5,9 +5,7 @@ import { journeyPhase, reducedMotionPhase } from '../journey/journeyMoon';
 import { progressForSection, resolve, totalLength } from '../journey/timeline';
 import type { JourneyState, RegionSegment } from '../journey/types';
 import { applyFrameFit } from '../overlay/frame';
-import { createGate } from '../overlay/gate';
 import { createNameMotion } from '../overlay/nameMotion';
-import { createOpening } from '../overlay/opening';
 import { createPointerTouch } from '../overlay/pointerTouch';
 import { createProjectDialog } from '../overlay/projectDialog';
 import { renderProjectList } from '../overlay/projectList';
@@ -15,6 +13,7 @@ import { parseRoute, projectHash } from '../overlay/router';
 import { createSectionMotion } from '../overlay/sectionMotion';
 import { createSections, SHOWN_OFFSET } from '../overlay/sections';
 import { createVoyageLog } from '../overlay/voyageLog';
+import { createWelcome } from '../overlay/welcome';
 import { Governor } from '../quality/governor';
 import { bootTier, clampTier, TIERS, type Tier } from '../quality/tiers';
 import { createMoonsink } from '../regions/moonsink';
@@ -48,16 +47,17 @@ export async function boot(): Promise<void> {
   if (params.frame !== 'old') applyFrameFit(root, byId('world'));
 
   // ---- HTML layer: works even if 3D never starts ----
-  const openingElement = byId('opening');
-  const gate = createGate(openingElement, byId('load-status'));
-  const opening = createOpening(openingElement, { minHoldMs: params.hold });
   // Phase 1 has one region, so its anchors are the page's sections.
   const anchors = (activeJourney[0] as RegionSegment).sections;
   // Each chapter's text motion follows the same handover as its opacity (overlay/sectionMotion.ts).
   const motions = new Map(anchors.map((anchor) => [anchor.id, createSectionMotion(byId(anchor.id))] as const));
   const sections = createSections(byId('content'), anchors, motions);
-  // The voyage log shows the same moon as the scene, including a `?moon=` override.
   const name = createNameMotion(byId('intro-title'));
+  // Opening E (spec 2026-09-25 §4.5): the HTML is the first paint; this runs the one timed arrival.
+  const welcome = createWelcome({
+    kicker: byId('intro').querySelector<HTMLElement>('[data-welcome]') ?? byId('intro-title'),
+    reducedMotion: () => ctx.reducedMotion,
+  });
   // Motion follows the system setting alone: the owner asked for the on-page "Reduce motion" button to go
   // (2026-09-25). Followed live, so turning the setting on mid-visit still quiets the page.
   const systemMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -67,8 +67,8 @@ export async function boot(): Promise<void> {
   };
   applyMotion();
   systemMotion.addEventListener('change', applyMotion);
+  // Nothing is locked while the scene wakes: the text is readable and scrollable from the first paint.
   const scroll = createScroll();
-  scroll.setLocked(true);
 
   // ---- Projects: the list, its dialog and #/projects/<slug> deep links (spec §3.2) ----
   let opener: HTMLElement | null = null;
@@ -76,7 +76,7 @@ export async function boot(): Promise<void> {
   const clearRoute = () =>
     window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
   const dialog = createProjectDialog(byId<HTMLDialogElement>('project-dialog'), projects, () => {
-    if (gate.state === 'entered') scroll.setLocked(false);
+    scroll.setLocked(false);
     // Closing with Esc, the button or the backdrop also leaves the deep link: step back if this visit
     // opened it, so Back does not reopen it; otherwise just drop it from the address.
     if (parseRoute(window.location.hash).kind === 'project') {
@@ -109,8 +109,8 @@ export async function boot(): Promise<void> {
     }
   });
 
-  // Where each page is fully shown (overlay/sections.ts SHOWN_OFFSET). Skip intro, deep links and the
-  // touch snap all land there, never in a handover gap.
+  // Where each page is fully shown (overlay/sections.ts SHOWN_OFFSET). Deep links and the touch snap
+  // land there, never in a handover gap.
   const aboutShown = progressForSection(activeJourney, 'about', SHOWN_OFFSET);
   const projectsShown = progressForSection(activeJourney, 'projects', SHOWN_OFFSET);
   const contactShown = progressForSection(activeJourney, 'contact', SHOWN_OFFSET);
@@ -118,7 +118,7 @@ export async function boot(): Promise<void> {
     progress: () => scroll.progress(),
     glideTo: (target) => scroll.glideToProgress(target, !ctx.reducedMotion),
     stops: [0, aboutShown, projectsShown, contactShown],
-    enabled: () => gate.state === 'entered' && params.p === undefined && !dialog.isOpen,
+    enabled: () => params.p === undefined && !dialog.isOpen,
   });
 
   let p = params.p ?? 0;
@@ -133,37 +133,19 @@ export async function boot(): Promise<void> {
   // The page answers a mouse or trackpad: the name's letters swell near it, and nothing else moves.
   createPointerTouch({
     chars: name.chars,
-    swellActive: () => !ctx.reducedMotion && gate.state === 'entered' && state.section === 'intro',
+    swellActive: () => !ctx.reducedMotion && welcome.settled && state.section === 'intro',
   });
 
-  gate.onEnter(() => {
-    scroll.setLocked(false);
-    name.rise(ctx.reducedMotion);
-  });
-  byId<HTMLAnchorElement>('skip-intro').addEventListener('click', (event) => {
-    event.preventDefault();
-    gate.enter();
-    opening.dismiss();
-    scroll.scrollToProgress(aboutShown, true);
-    byId('about-title').focus({ preventScroll: true });
-  });
   // "Return to the shore" (spec §3.2) glides back to the top and hands keyboard focus to the name.
   byId<HTMLAnchorElement>('return-to-shore').addEventListener('click', (event) => {
     event.preventDefault();
     scroll.glideToProgress(0, !ctx.reducedMotion);
     byId('intro-title').focus({ preventScroll: true });
   });
-  // Test hook: ?p=… jumps straight into the journey, past the opening
-  if (params.p !== undefined) {
-    gate.enter();
-    opening.dismiss();
-  }
-  // A deep link opens its project straight away, over the Projects page, with the opening skipped.
+  // A deep link opens its project straight away, over the Projects page.
   const initialRoute = parseRoute(window.location.hash);
   if (initialRoute.kind === 'project') {
     if (projects.some((project) => project.slug === initialRoute.slug)) {
-      gate.enter();
-      opening.dismiss();
       scroll.scrollToProgress(projectsShown, true);
       showProject(initialRoute.slug);
     } else {
@@ -171,22 +153,39 @@ export async function boot(): Promise<void> {
     }
   }
 
-  // The opening leaves by itself once the page is ready (spec §5.8). A key that starts it moves focus
-  // to the intro heading for keyboard users; an automatic or pointer start moves no focus, so no
-  // focus ring appears around the name.
-  const openWhenReady = () =>
-    opening.begin({
-      reducedMotion: () => ctx.reducedMotion,
-      onStart: (how) => {
-        gate.enter();
-        if (how === 'key') byId('intro-title').focus({ preventScroll: true });
-      },
-    });
+  // One frame of the text layer: scroll → journey state → the pages and the log. The stills loop runs it with its
+  // scenery; until then, and until the 3D loop starts, the waking loop below runs it alone, so nothing waits for
+  // the sea (opening E, spec 2026-09-25 §4.5; the shaders can compile for seconds on a phone).
+  const textFrame = (nowMs: number, dtSeconds: number) => {
+    scroll.raf(nowMs);
+    p = params.p ?? scroll.progress();
+    state = resolve(p, activeJourney);
+    sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
+    log.show(phaseFor(state.a.local));
+  };
+  /** Frame time for loops that run on requestAnimationFrame: 0 on their first frame, so the text lands at once. */
+  const frameClock = () => {
+    let last = -1;
+    return (nowMs: number) => {
+      const dt = last < 0 ? 0 : Math.min(0.1, (nowMs - last) / 1000);
+      last = nowMs;
+      return dt;
+    };
+  };
+  let waking = true;
+  const wakingClock = frameClock();
+  const wake = (nowMs: number) => {
+    if (!waking) return;
+    textFrame(nowMs, wakingClock(nowMs));
+    window.requestAnimationFrame(wake);
+  };
+  window.requestAnimationFrame(wake);
 
   let stillsStarted = false;
   const startStills = () => {
     if (stillsStarted) return;
     stillsStarted = true;
+    waking = false;
     root.classList.add('is-stills');
     exposeDebug({
       backend: 'stills',
@@ -196,8 +195,7 @@ export async function boot(): Promise<void> {
       section: () => state.section,
       reducedMotion: () => ctx.reducedMotion,
     });
-    gate.setReady();
-    openWhenReady();
+    welcome.sceneReady();
     // Renders of each page's scenery stand in for the 3D scene (overlay.css .world__still). They are
     // created only here, so visitors with the 3D scene never download them.
     const stage = byId('world');
@@ -210,17 +208,11 @@ export async function boot(): Promise<void> {
       stills.set(page, layer);
     }
     let shownStill = '';
-    let lastFrameMs = -1;
+    // Stills mode runs its own loop, so it measures its own frames: without that the text landed on its
+    // scroll position at once here, while the 3D page let it travel (sections.ts CATCH_UP).
+    const stillsClock = frameClock();
     const step = (nowMs: number) => {
-      scroll.raf(nowMs);
-      p = params.p ?? scroll.progress();
-      state = resolve(p, activeJourney);
-      // Stills mode runs its own loop, so it has to measure its own frames: without this the text landed
-      // on its scroll position at once here, while the 3D page let it travel (sections.ts CATCH_UP).
-      const dtSeconds = lastFrameMs < 0 ? 0 : Math.min(0.1, (nowMs - lastFrameMs) / 1000);
-      lastFrameMs = nowMs;
-      sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
-      log.show(phaseFor(state.a.local));
+      textFrame(nowMs, stillsClock(nowMs));
       if (state.section !== shownStill) {
         stills.get(shownStill)?.classList.remove('is-shown');
         stills.get(state.section)?.classList.add('is-shown');
@@ -272,8 +264,8 @@ export async function boot(): Promise<void> {
     march: params.march === 'old' ? 'old' : 'bounded',
     glints: params.glints === 'old' ? 'old' : 'fade',
   });
-  gate.onEnter(() => region.setEntered(true));
-  if (gate.state === 'entered') region.setEntered(true);
+  // No opening to wait behind: the camera follows the scroll from the first frame.
+  region.setEntered(true);
   moonlit.setView(region.scene, region.camera);
   // Size from the stage, not the window: the stage is the large viewport, which a phone's toolbar
   // never changes, so swiping never resizes the render buffers (overlay.css .world).
@@ -304,7 +296,7 @@ export async function boot(): Promise<void> {
     }, 150);
   });
 
-  // Compile shaders behind the opening so the first scroll never stutters. This is where
+  // Compile shaders before the sea fades up, so the first scroll never stutters. This is where
   // WGSL compile errors on WebGPU would surface (spec §17 S2) — guard it the same way renderer
   // creation is guarded above, so a failure here still leaves a usable page.
   try {
@@ -319,15 +311,8 @@ export async function boot(): Promise<void> {
   // we were waiting, handleContextLoss already switched to stills — don't also start the 3D loop
   // on a now-dead device.
   if (contextLost) return;
-  // Pay the first-frame shader cost now, while the black opening still covers the canvas.
+  // Pay the first-frame shader cost now, while the canvas is still transparent (overlay.css .world).
   moonlit.warmUp();
-  gate.setReady();
-  openWhenReady();
-
-  let enteredAt = gate.state === 'entered' ? performance.now() : Number.POSITIVE_INFINITY;
-  gate.onEnter(() => {
-    enteredAt = performance.now();
-  });
 
   const hud = params.hud ? createHud(document.body) : null;
   const activity = createScrollActivity();
@@ -342,8 +327,8 @@ export async function boot(): Promise<void> {
 
     region.update(state.a.local, timeSeconds, dtSeconds);
     log.show(region.phase);
-    // Only the frame loop passes a frame time: the text travels toward the scroll's handover here, and
-    // lands on it at once everywhere else (first frame, deep links, Skip intro).
+    // Only the frame loops pass a frame time: the text travels toward the scroll's handover here, and
+    // lands on it at once on the first frame.
     sections.show(state.a.local, ctx.reducedMotion, dtSeconds);
     moonlit.render();
     frames += 1;
@@ -392,7 +377,11 @@ export async function boot(): Promise<void> {
     section: () => state.section,
     reducedMotion: () => ctx.reducedMotion,
   });
+  // The governor judges frames from 1.5 s after they begin (warmedUp above).
+  const enteredAt = performance.now();
+  waking = false;
   loop.start(moonlit.renderer);
+  welcome.sceneReady();
 
   if (import.meta.env.DEV && params.gui) {
     const { createGui } = await import('../dev/gui');
