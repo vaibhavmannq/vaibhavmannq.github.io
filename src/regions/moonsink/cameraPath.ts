@@ -44,20 +44,20 @@ export interface CameraKey extends CameraPose {
 const VIEW_YAW = 0;
 const VIEW_PITCH = -0.06;
 
-// Pages 1 and 2 keep their drift from the open sea to the shore, keys spread evenly up to the moment
-// the camera lands (MOONSINK_SHORE_AT). Page 3, Projects, is a walk sideways along the waterline: only
-// x changes, so the foam line stays at the same distance. Page 4, Contact, steps toward the sea and
-// crouches a little, stopping short of the foam (owner, 2026-09-21).
+// Pages 1 and 2 drift from the open sea toward the shore, keys spread evenly up to the moment the camera lands
+// (MOONSINK_SHORE_AT). It lands up the beach (z −12), so the surf is under About's text and the black sand is in view
+// from then on; the old landing at z −5.5 stood at the waterline and never showed the sand. Page 3, Projects, walks
+// along the sand: only x changes, so the foam stays at the same distance. Page 4, Contact, steps toward the sea and
+// crouches, stopping on the sand (spec 2026-09-25 §4.4; owner's picks 2026-09-21 and 2026-09-25).
 const SHORE = MOONSINK_SHORE_AT;
 
 export const MOONSINK_PATH: readonly CameraKey[] = [
   { at: 0, x: 0, y: 3.2, z: 34, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 0.25 * SHORE, x: -2, y: 6, z: 26, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 0.5 * SHORE, x: 1, y: 1.8, z: 8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 0.75 * SHORE, x: 2.5, y: 1.55, z: -1.8, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: SHORE, x: 0, y: 1.45, z: -5.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: MOONSINK_WALK_END, x: -8, y: 1.45, z: -5.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
-  { at: 1, x: -8, y: 0.95, z: -4.3, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: SHORE / 3, x: -2, y: 6, z: 26, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: (2 * SHORE) / 3, x: 1, y: 2.2, z: 9, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: SHORE, x: 2.5, y: 1.8, z: -12, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: MOONSINK_WALK_END, x: -8, y: 1.8, z: -12, yaw: VIEW_YAW, pitch: VIEW_PITCH },
+  { at: 1, x: -8, y: 1.25, z: -8.5, yaw: VIEW_YAW, pitch: VIEW_PITCH },
 ];
 
 const writePose = (out: CameraPose, pose: CameraPose): CameraPose => {

@@ -48,17 +48,17 @@ describe('poseAt', () => {
     expect(pose.y).toBeCloseTo(4.6, 10);
   });
 
-  it('keeps the drift to the shore evenly spaced, then walks the shoreline to the end', () => {
+  it('keeps the drift to the shore evenly spaced, then walks the sand to the end', () => {
     const shore = MOONSINK_SHORE_AT;
-    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([
-      0,
-      0.25 * shore,
-      0.5 * shore,
-      0.75 * shore,
-      shore,
-      MOONSINK_WALK_END,
-      1,
-    ]);
+    expect(MOONSINK_PATH.map((key) => key.at)).toEqual([0, shore / 3, (2 * shore) / 3, shore, MOONSINK_WALK_END, 1]);
+  });
+
+  // Spec 2026-09-25 §4.4 (owner's pick): the camera lands up the beach so the black sand is on screen.
+  it('lands on the sand, well up the beach, and never below the sand it stands on', () => {
+    const landed = { ...poseAt(MOONSINK_PATH, MOONSINK_SHORE_AT) };
+    expect(landed.z).toBeLessThanOrEqual(-12);
+    // sea.ts sandH peaks at −0.07·z + 0.025 (surfaceTop.ts): every key stays at least half a unit above it.
+    for (const key of MOONSINK_PATH) expect(key.y - (-0.07 * key.z + 0.025)).toBeGreaterThan(0.5);
   });
 
   it('walks along the waterline for Projects: only x changes, so the foam stays at the same distance', () => {

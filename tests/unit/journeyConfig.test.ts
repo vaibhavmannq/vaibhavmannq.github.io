@@ -30,7 +30,8 @@ describe('journey config', () => {
   it('starts each page just after the camera arrives: Projects on the shore, Contact after the walk', () => {
     expect(MOONSINK_PROJECTS_FROM).toBeGreaterThan(MOONSINK_SHORE_AT);
     expect(MOONSINK_CONTACT_FROM).toBeGreaterThan(MOONSINK_WALK_END);
-    expect(MOONSINK_SHORE_AT * MOONSINK_LENGTH).toBeCloseTo(2.7, 10);
+    // Up the beach, so the surf is under About's text and the sand is in view from here on (spec 2026-09-25 §4.4).
+    expect(MOONSINK_SHORE_AT * MOONSINK_LENGTH).toBeCloseTo(2.0, 10);
     expect(MOONSINK_WALK_END * MOONSINK_LENGTH).toBeCloseTo(4.1, 10);
   });
 
