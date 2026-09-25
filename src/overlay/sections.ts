@@ -39,12 +39,25 @@ const ENTER_OFFSET_PX = 16;
  * quarter of a second and settles just after it, which reads as arriving rather than appearing. The camera
  * has followed the same way since 2026-09-14 (cameraPath.ts).
  */
-const CATCH_UP = 3.5;
+export const CATCH_UP = 3.5;
 /** Below this, land exactly: an asymptote never reaches 1, and the page needs exact 0 and 1 to settle. */
 const SETTLED = 0.008;
 
 /** Land exactly on the target once the difference stops being visible. */
 const settle = (value: number, target: number): number => (Math.abs(target - value) < SETTLED ? target : value);
+
+/**
+ * How fast the shown page leaves when the scroll has already moved on to a different page: about 0.25 s. A fast
+ * scroll used to leave every page it passed half faded at once, because each page eased toward its own target
+ * (owner report, spec 2026-09-25 §4.12).
+ */
+export const LEAVE_FAST = 12;
+
+/** Where a page is in its handover as shown on screen, which may trail the scroll. */
+export interface Shown {
+  arrive: number;
+  leave: number;
+}
 
 /** 0..1 progress of a section's outgoing fade (0 before it starts, 1 once gone). */
 function leaving(local: number, next: SectionAnchor | undefined): number {
@@ -116,15 +129,72 @@ export function sectionOffset(
   return offsetFrom(arrive, leave, index);
 }
 
+/**
+ * The handover as shown: at most one page is visible, ever. The page under the scroll eases toward its
+ * scroll-derived target as before. When the scroll lands on a different page, the shown one leaves fast
+ * (up and out when the new page is further on, sinking back when it is earlier) and only then does the new
+ * page start to arrive. Pages that were only flown past never appear. Pure: no DOM, no clock.
+ */
+export function createHandover(anchors: readonly SectionAnchor[]) {
+  const state: Shown[] = anchors.map(() => ({ arrive: 0, leave: 0 }));
+  let shown = -1;
+  let started = false;
+
+  return {
+    step(local: number, reducedMotion: boolean, dtSeconds = 0): readonly Shown[] {
+      let wanted = -1;
+      for (let i = 0; i < anchors.length; i++) {
+        const target = handoverAt(local, anchors, i, reducedMotion);
+        if (opacityFrom(target.arrive, target.leave) > 0) wanted = i;
+      }
+
+      const smooth = dtSeconds > 0 && !reducedMotion && started;
+      started = true;
+      if (!smooth) {
+        for (let i = 0; i < anchors.length; i++) {
+          const target = handoverAt(local, anchors, i, reducedMotion);
+          const entry = state[i] as Shown;
+          entry.arrive = target.arrive;
+          entry.leave = target.leave;
+        }
+        shown = wanted;
+        return state;
+      }
+
+      if (shown !== -1 && wanted !== -1 && wanted !== shown) {
+        const leaving = state[shown] as Shown;
+        if (wanted > shown) leaving.leave = settle(damp(leaving.leave, 1, LEAVE_FAST, dtSeconds), 1);
+        else leaving.arrive = settle(damp(leaving.arrive, 0, LEAVE_FAST, dtSeconds), 0);
+        if (opacityFrom(leaving.arrive, leaving.leave) <= SETTLED) {
+          leaving.arrive = 0;
+          leaving.leave = 0;
+          shown = wanted;
+        }
+      }
+      if (shown === -1) shown = wanted;
+
+      for (let i = 0; i < anchors.length; i++) {
+        if (i === shown) continue;
+        const hidden = state[i] as Shown;
+        hidden.arrive = 0;
+        hidden.leave = 0;
+      }
+      if (shown !== -1 && (wanted === shown || wanted === -1)) {
+        const target = handoverAt(local, anchors, shown, reducedMotion);
+        const entry = state[shown] as Shown;
+        entry.arrive = settle(damp(entry.arrive, target.arrive, CATCH_UP, dtSeconds), target.arrive);
+        entry.leave = settle(damp(entry.leave, target.leave, CATCH_UP, dtSeconds), target.leave);
+      }
+      return state;
+    },
+  };
+}
+
 interface Tracked {
   element: HTMLElement;
   lastOpacity: number | undefined;
   lastOffset: number | undefined;
   lastActive: boolean | undefined;
-  /** Where the text actually is, on its way to where the scroll says it should be. */
-  arrive: number;
-  leave: number;
-  started: boolean;
 }
 
 /**
@@ -151,11 +221,9 @@ export function createSections(
       lastOpacity: undefined,
       lastOffset: undefined,
       lastActive: undefined,
-      arrive: 0,
-      leave: 0,
-      started: false,
     });
   }
+  const handover = createHandover(anchors);
 
   const write = (entry: Tracked, opacity: number, offsetPx: number, active: boolean) => {
     if (entry.lastOpacity !== opacity) {
@@ -174,32 +242,18 @@ export function createSections(
 
   return {
     show(local, reducedMotion, dtSeconds = 0) {
+      // Travel toward the scroll's handover, one page at a time; land on it at once when asked (dtSeconds 0).
+      const shown = handover.step(local, reducedMotion, dtSeconds);
       for (let i = 0; i < tracked.length; i++) {
         const entry = tracked[i] as Tracked;
         const anchor = anchors[i] as SectionAnchor;
         const next = anchors[i + 1];
         const active =
           local + ANCHOR_EPSILON >= anchor.from && (next === undefined || local + ANCHOR_EPSILON < next.from);
-
-        const target = handoverAt(local, anchors, i, reducedMotion);
-        // Travel toward the scroll's handover, landing on it exactly when close - or at once when asked.
-        const smooth = dtSeconds > 0 && !reducedMotion && entry.started;
-        entry.arrive = smooth
-          ? settle(damp(entry.arrive, target.arrive, CATCH_UP, dtSeconds), target.arrive)
-          : target.arrive;
-        entry.leave = smooth
-          ? settle(damp(entry.leave, target.leave, CATCH_UP, dtSeconds), target.leave)
-          : target.leave;
-        entry.started = true;
-
-        write(
-          entry,
-          opacityFrom(entry.arrive, entry.leave),
-          reducedMotion ? 0 : offsetFrom(entry.arrive, entry.leave, i),
-          active,
-        );
+        const { arrive, leave } = shown[i] as Shown;
+        write(entry, opacityFrom(arrive, leave), reducedMotion ? 0 : offsetFrom(arrive, leave, i), active);
         // Under reduced motion the text stays still: fully arrived, never leaving (it switches instead).
-        motions.get(anchor.id)?.set(entry.arrive, entry.leave);
+        motions.get(anchor.id)?.set(arrive, leave);
       }
     },
   };

@@ -50,3 +50,36 @@ for (const [leaving, arriving, fadingOut, anchor, fadingIn] of [
     expect(await opacityOf(page, `#${leaving}`)).toBe(0);
   });
 }
+
+// Owner report (spec 2026-09-25 §4.12): scroll fast and "Projects", "Moonlit", the About text and "Hola Amigo"
+// all showed at once. Measured before the fix: all four at 0.06–0.35 opacity, for about a second.
+test('a fast scroll never shows two pages at once, going down or up', async ({ page }) => {
+  await page.goto('/?stills&hold=0');
+  await expect
+    .poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity), { timeout: 15_000 })
+    .toBe('1');
+  await page.mouse.move(640, 360);
+  for (const direction of [1, -1]) {
+    await page.evaluate(() => {
+      const w = window as unknown as { __worst: number; __sampling?: boolean };
+      w.__worst = 0;
+      if (w.__sampling) return;
+      w.__sampling = true;
+      const sample = () => {
+        const visible = [...document.querySelectorAll('.section')].filter(
+          (s) => Number(getComputedStyle(s).opacity) > 0.05,
+        ).length;
+        w.__worst = Math.max(w.__worst, visible);
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    for (let i = 0; i < 14; i++) {
+      await page.mouse.wheel(0, direction * 400);
+      await page.waitForTimeout(40);
+    }
+    await page.waitForTimeout(2500);
+    const worst = await page.evaluate(() => (window as unknown as { __worst: number }).__worst);
+    expect(worst, direction > 0 ? 'down' : 'up').toBeLessThanOrEqual(1);
+  }
+});
