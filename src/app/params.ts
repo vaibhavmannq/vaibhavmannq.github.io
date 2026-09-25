@@ -18,6 +18,8 @@ export interface DebugParams {
   glints?: 'old';
   /** `?frame=old`: text sized by the window, not fitted to the scene's 16:9 frame (owner review, spec §7). */
   frame?: 'old';
+  /** `?snap=wheel`: mouse and trackpad snap to pages like touch (owner review, spec §7). */
+  snap?: 'wheel';
   hud: boolean;
   gui: boolean;
   forceWebGL: boolean;
@@ -57,6 +59,7 @@ export function readDebugParams(search: string): DebugParams {
     march: only('march', 'old'),
     glints: only('glints', 'old'),
     frame: only('frame', 'old'),
+    snap: only('snap', 'wheel'),
     hud: query.has('hud'),
     gui: query.has('gui'),
     forceWebGL: query.has('webgl'),
