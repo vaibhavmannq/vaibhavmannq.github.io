@@ -1,14 +1,46 @@
+/* Satoshi ships with the site rather than coming from Fontshare's CDN (ITF Free Font Licence allows it).
+   A second font host meant a second DNS lookup and connection before the journey's type could settle, and
+   under load it made the page slow enough that a touch-snap test missed its window. Three weights, 74 kB
+   in total: 300 for the lighter lines, 400 for reading, 500 for headings and links. */
+@font-face {
+  font-family: Satoshi;
+  src: url("/fonts/satoshi-300.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Satoshi;
+  src: url("/fonts/satoshi-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Satoshi;
+  src: url("/fonts/satoshi-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   --ink: #e6eef0;
   --ink-dim: rgba(230, 238, 240, 0.78);
   --glow: #9fe6ee;
   --night: #020406;
-  /* Redesign 2026-09-22: Fraunces for the name, headings and italic lines; Hanken Grotesk for reading;
-     Space Mono for the log voice (chapter titles, the voyage log). */
-  --font-display: Fraunces, Georgia, "Times New Roman", serif;
-  --font-accent: Fraunces, Georgia, serif;
-  --font-body: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  /* Type (owner's choice, 2026-09-25, from seven faces running on the real journey): Satoshi carries
+     everything — headings, reading text, links — and Fraunces is kept for the name alone, which makes the
+     name the one serif on the page instead of one serif among many. Space Mono still speaks the log's
+     voice (chapter titles, the voyage log, the small labels). Chosen after the owner's references —
+     shadergradient.co, dark.design, minimal.gallery — turned out to be modern grotesks set tight. */
+  --font-display: Satoshi, "Segoe UI", system-ui, sans-serif;
+  --font-accent: Satoshi, "Segoe UI", system-ui, sans-serif;
+  --font-body: Satoshi, "Segoe UI", system-ui, sans-serif;
+  --font-name: Fraunces, Georgia, "Times New Roman", serif;
   --font-mono: "Space Mono", "Cascadia Mono", ui-monospace, monospace;
 }
 
