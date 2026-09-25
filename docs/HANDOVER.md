@@ -40,7 +40,8 @@ Before it: a black opening reading "Hello, voyager" that leaves by itself once t
 3. **No attribution trailers in commits** — no `Co-Authored-By`, no "Generated with", no session lines.
 4. **Claude writes the code**, and every change gets a plain-language walkthrough of what changed and why.
 5. **Be blunt.** If the owner is wrong, say so with evidence. If something cannot be verified from this
-   machine (no GPU here — it renders in software), say that plainly rather than implying it was checked.
+   machine (a phone, Safari on a Mac), say that plainly rather than implying it was checked. This laptop does
+   have a GPU (see §7): only the headless test browsers render in software.
 6. **Measure before fixing.** When the owner says something "blinks" or "pops", find out what actually
    changes on screen — pixel diffs, frame traces, computed styles — and show the number. Two of the last
    three fixes were only possible because the cause was measured first, and one earlier "fix" failed
@@ -79,7 +80,11 @@ this. Measured 2026-09-25.
 | `?time=12` | pin the scene clock, so waves and motes are identical between runs |
 | `?length=2.5` | Moonsink's scroll length in screen heights, for tuning by feel |
 | `?hold=600000` | keep the opening up (tests act while the greeting is on screen) |
-| `?hud` / `?gui` | frame-rate HUD / dev controls |
+| `?hud` / `?gui` | frame-rate HUD (now with the measured display refresh) / dev controls |
+| `?pace=full` | render every vsync instead of an even divisor near 60 fps. Owner-review switch, removed at the end of plan 2 |
+| `?march=old` | the sea's ray march before the bounding plane (S39). Owner-review switch, removed at the end of plan 2 |
+| `?glints=old` | sand glints strongest at the camera, as before (S39). Owner-review switch, removed at the end of plan 2 |
+| `?frame=old` | no frame fit for windows wider than 16:9 (S46). Owner-review switch, removed at the end of plan 2 |
 
 `window.__moonlit` exposes `tier()`, `frames()`, `progress()`, `section()`, `reducedMotion()` for probes.
 
@@ -187,8 +192,15 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 - **Stills mode has its own frame loop** in `boot.ts`. Anything the 3D loop is given per frame must be given
   to that loop too, or `?stills` (which most probes and tests use) will not exercise it.
 - **A second font CDN made a WebKit scroll test flake** under load. Fonts are self-hosted now; keep them so.
-- **Frame sampling under this machine's software renderer is too coarse** for millisecond questions. For
+- **Frame sampling under the headless browsers' software renderer is too coarse** for millisecond questions. For
   anything about CSS timing, read the computed `transitionDelay`/`transitionDuration` instead — deterministic.
+- **This laptop has a real GPU:** an Intel UHD (Gen12), and the headed Playwright MCP browser gets WebGPU on it.
+  Use it for performance numbers, and count rendered frames over whole seconds (`__moonlit.frames()`). Timing a
+  burst of renders with `onSubmittedWorkDone` gave bogus numbers.
+- **Chrome throttles an obscured window's animation frames to about one a second.** Bring the MCP browser to the
+  front (`page.bringToFront()`) before measuring anything about frames (S38).
+- **WebKit can run boot before the stylesheet has sized an element**, which then measures 0. Anything read from
+  layout at boot must survive a zero size and re-measure (`ResizeObserver`) (S46).
 - **Long bash heredocs fail to parse here.** Write a Python or Node patch script to a file and run it.
 - **`fwidth` is illegal inside the sea's march-dependent branch**; the pixel angle is measured from the next
   pixel's ray instead (§17).
@@ -231,13 +243,20 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 ## 10. State right now
 
-- `main` = `a303e2d`, which is **one commit ahead of what is live** (`b3af23e`). The live site has the
-  opening hand-over, Satoshi, no Reduce motion button and the tier fix; it does **not** yet have equal
-  pages, the travelling text, the removal of the pull, or "Hola Amigo".
-- Working tree clean, no scratch branches left.
-- 157 unit tests, 89 e2e, 293 kB of 330 kB — all green at the time of writing.
-- **Waiting on the owner:** whether the arrival of the text feels right (one number, `CATCH_UP` in
-  `sections.ts`, tunes it: higher is faster) and permission to push.
+Updated 2026-09-26.
+
+- `main` = `c834e4c`; the live site is older (`b3af23e`). Nothing has been pushed since.
+- Branch **`waxing-voyage`** holds:
+  - the spec `specs/2026-09-25-waxing-voyage-design.md`;
+  - plan 1 of 2 (`plans/2026-09-25-smooth-and-steady.md`), fully built: frame pacing that follows the display
+    (S38), the faster ray march (S39), one page at a time (S44), heading masks that no longer clip (S45), and
+    the frame fit for windows (S46).
+- Owner-review switches still in place: `?pace=full`, `?march=old`, `?glints=old`, `?frame=old`. Plan 2's
+  last task removes the losing sides.
+- **Next:** plan 2, the waxing voyage itself: the moon waxes with the scroll, the camera lands up the beach,
+  opening E, the header and chapter rail, local fonts, the project card and case study. The approved
+  storyboard is https://claude.ai/artifact/QCL4tADM3udn13qavw7cZV (page "Storyboard").
+- **Never push without the owner saying so.**
 
 ## 11. Open work, roughly in the order it matters
 
