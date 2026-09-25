@@ -11,8 +11,8 @@ export type OpeningStart = 'auto' | 'pointer' | 'key';
 /** Keys that never start the opening: they move focus, or belong to the browser or the system. */
 const KEYS_THAT_DONT_START = new Set(['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
 
-/** The black lifts over 1.8 s after a 0.5 s delay; hide by then even if no transition event fires. */
-const LEAVE_SAFETY_MS = 2600;
+/** The black lifts over 1.6 s after a 0.4 s delay; hide by then even if no transition event fires. */
+const LEAVE_SAFETY_MS = 2300;
 
 export interface OpeningOptions {
   /** Read at the moment of leaving, so a reduced-motion toggle during the greeting is honoured. */
