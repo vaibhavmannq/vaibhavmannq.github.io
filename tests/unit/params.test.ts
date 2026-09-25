@@ -14,7 +14,19 @@ describe('readDebugParams', () => {
       forceWebGL: false,
       stills: false,
       bare: false,
+      fit: undefined,
+      demo: false,
+      cards: undefined,
     });
+  });
+
+  // Owner-review switches (2026-09-26), removed once the owner picks.
+  it('reads the review switches, and only their known values', () => {
+    const params = readDebugParams('?fit=inset&demo&cards=row');
+    expect([params.fit, params.demo, params.cards]).toEqual(['inset', true, 'row']);
+    expect(readDebugParams('?cards=list').cards).toBe('list');
+    const junk = readDebugParams('?fit=wide&cards=grid');
+    expect([junk.fit, junk.cards]).toEqual([undefined, undefined]);
   });
 
   it('reads a valid tier and ignores invalid ones', () => {

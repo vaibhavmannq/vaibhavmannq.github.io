@@ -23,24 +23,15 @@
 
     <main class="content" id="content">
       <p class="scene-status" id="scene-status" role="status">The sea is waking…</p>
-      <!-- Each page shades only where its text is, as in the storyboard, and fades with its page (sections.ts). -->
-      <div class="scrim" data-follows="intro" aria-hidden="true"></div>
-      <div class="scrim" data-follows="about" aria-hidden="true"></div>
-      <div class="scrim" data-follows="projects" aria-hidden="true"></div>
-      <div class="scrim" data-follows="contact" aria-hidden="true"></div>
+      <!-- The intro's scroll hint, at the foot of the screen; it fades with the intro (sections.ts data-follows). -->
       <div class="journey-hint" data-follows="intro" aria-hidden="true">
-        <p class="welcome-arrives">
-          <span class="journey-hint__fine">Scroll to drift ashore · the moon fills as you go</span>
-          <span class="journey-hint__touch">Swipe to drift ashore</span>
-        </p>
+        <p class="welcome-arrives">Scroll to drift ashore</p>
       </div>
       <header class="site-header welcome-arrives" id="site-header">
         <p class="voyage-log" id="voyage-log">
-          <span class="voyage-log__long">Log</span>
-          <span class="voyage-log__long" data-log-when></span>
-          <span class="voyage-log__long voyage-log__moon" data-log-moon></span>
-          <span class="voyage-log__short" data-log-time></span>
-          <span class="voyage-log__short voyage-log__moon" data-log-moon-short></span>
+          <span>Log</span>
+          <span data-log-when></span>
+          <span class="voyage-log__moon" data-log-moon></span>
         </p>
         <nav class="site-nav" aria-label="Main">
           <a href="#projects" data-go="projects">Work</a>
@@ -122,11 +113,7 @@
             </li>
           </ul>
           <p class="contact-return" data-reveal="block">
-            <a id="return-to-shore" href="#intro"
-              >Return to the shore<span class="contact-return__more" aria-hidden="true">
-                · the moon wanes on the way back</span
-              ></a
-            >
+            <a id="return-to-shore" href="#intro">Return to the shore</a>
           </p>
         </div>
       </section>

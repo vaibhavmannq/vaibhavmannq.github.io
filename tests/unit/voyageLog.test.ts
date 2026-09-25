@@ -35,20 +35,6 @@ describe('formatLog', () => {
   });
 });
 
-// The storyboard's phone header (2026-09-25 canvas, SB2–SB6 phone): "22:10 · Crescent · 6%", one line beside Email me.
-describe('the short log for a phone', () => {
-  const night = new Date(2026, 8, 26, 22, 10);
-
-  it('keeps the time and names the moon in a word or two, without "waxing" or "lit"', () => {
-    const log = formatLog(night, 0.08);
-    expect(log.time).toBe('22:10');
-    expect(log.moonShort).toBe('Crescent · 6%');
-    expect(formatLog(night, 0.25).moonShort).toBe('First quarter · 50%');
-    expect(formatLog(night, 0.375).moonShort).toBe('Gibbous · 85%');
-    expect(formatLog(night, 0.5).moonShort).toBe('Full moon · 100%');
-  });
-});
-
 describe('the log follows the journey moon', () => {
   it('names the crescent and the gibbous moon the journey passes through', () => {
     const night = new Date(2026, 8, 26, 22, 10);
