@@ -207,6 +207,8 @@ export function createHandover(anchors: readonly SectionAnchor[]) {
 
 interface Tracked {
   element: HTMLElement;
+  /** Layers outside the page that fade with it: its shading and, for the intro, the scroll hint (index.html). */
+  followers: readonly HTMLElement[];
   lastOpacity: number | undefined;
   lastOffset: number | undefined;
   lastActive: boolean | undefined;
@@ -233,6 +235,7 @@ export function createSections(
     if (element === null) throw new Error(`section ${anchor.id} is missing from index.html`);
     tracked.push({
       element,
+      followers: [...root.querySelectorAll<HTMLElement>(`[data-follows="${anchor.id}"]`)],
       lastOpacity: undefined,
       lastOffset: undefined,
       lastActive: undefined,
@@ -243,6 +246,7 @@ export function createSections(
   const write = (entry: Tracked, opacity: number, offsetPx: number, active: boolean) => {
     if (entry.lastOpacity !== opacity) {
       entry.element.style.opacity = String(opacity);
+      for (const follower of entry.followers) follower.style.opacity = String(opacity);
       entry.lastOpacity = opacity;
     }
     if (entry.lastOffset !== offsetPx) {

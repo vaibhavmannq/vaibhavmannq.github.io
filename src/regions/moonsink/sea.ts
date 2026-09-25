@@ -492,7 +492,11 @@ export function createSea() {
       sand.assign(mix(sand, skyR.mul(fres.mul(0.8)).add(vec3(0.002, 0.006, 0.008)), wet));
       sand.addAssign(vec3(0.55, 0.68, 0.7).mul(fall(0.0, 0.05, sH.sub(wH)).mul(0.25)));
       const gh = hash21(floor(p.xz.mul(50)));
-      const glint = step(0.985, gh)
+      // Smaller and rarer, as the storyboard asked (frame III note): a soft point at the middle of one cell in 125,
+      // where each used to light its whole cell in 67 and read as a grid of square specks behind the phone's text.
+      const speck = smoothstep(0.24, 0.06, length(fract(p.xz.mul(50)).sub(0.5)));
+      const glint = step(0.992, gh)
+        .mul(speck)
         .mul(pow(max(dot(R, MOON), 0), 5))
         .mul(
           sin(time.mul(3).add(gh.mul(80)))
@@ -502,7 +506,7 @@ export function createSea() {
         // Glints rise away from the camera and fade into the distance. Strongest at the camera, as before, they
         // drew large square specks behind the phone's text once the camera stood on the sand (spec §4.2).
         .mul(smoothstep(1.5, 5.0, tHit).mul(fall(5.0, 25.0, tHit)))
-        .mul(1.4);
+        .mul(1.8);
       // Glitter: scales with moonLight (spec §5.4b Step 5).
       sand.addAssign(vec3(0.75, 0.95, 1.0).mul(glint).mul(moonLightVar));
 

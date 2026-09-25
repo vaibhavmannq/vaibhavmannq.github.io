@@ -65,7 +65,8 @@ npm run e2e          # Playwright, 3 browsers, against a production build (186, 
 npm run check        # Biome
 npm run format       # Biome --write
 npm run size         # size-limit: 330 kB budget, currently ~295 kB gzipped
-npm run capture      # re-render public/stills/ and the project cover from the real scene (headed Chromium, :4180)
+npm run capture      # re-render the stills, the cover, the tier comparison and the voyage clip from the real scene
+                     # (headed Chromium, :4180, ffmpeg on the PATH; name parts to render only those: capture clip)
 ```
 
 The npm shim in PowerShell drops `--host`: for the phone run `npx vite preview --port 4175 --strictPort --host`.
@@ -120,11 +121,11 @@ src/
     sectionMotion.ts       one paused GSAP timeline per chapter, positioned by the handover
     nameMotion.ts          the name split into masked letters
     frame.ts               fits the text into the scene's 16:9 frame (S46)
-    header.ts              "Email me" and the data-go links
+    header.ts              the data-go links, and the header naming the page you are on
     chapterRail.ts         the four moon glyphs on the right
     focusGlide.ts          focus in a page that is not fully shown glides to it
     pointerTouch.ts        the name's letters swell toward the pointer. Nothing else moves.
-    projectList.ts         builds the project cards from content/projects.ts
+    projectList.ts         builds the storyboard's project card from content/projects.ts
     projectDialog.ts       native <dialog>: the case study (picture, hard part, number)
     router.ts              #/projects/:slug deep links
     voyageLog.ts           the top-left log: date, time, the moon the scene shows
@@ -178,6 +179,8 @@ These are the ones that get broken by accident. Each is in the spec with its rea
    header and rail show at once if a link in them takes focus before the page settles.
 10. **The pacer never measures while it renders** (§17 S47): a slow GPU delays the next animation frame, so
     frames timed while rendering measure the GPU, not the screen.
+11. **Shade only where the text is** (§17 S48): each page's `.scrim` fades with its page. A full-width dark floor
+    once hid the sand the whole journey lands on. The contrast tests measure every page on a phone and a laptop.
 
 ---
 
@@ -195,6 +198,8 @@ These are the ones that get broken by accident. Each is in the spec with its rea
   into "I · Adrift". On a phone the intro shows "See the work" but hides the email, which pushed the name onto
   the glitter (2.28:1 contrast).
 - Big headings keep a 20 px halo; their masks leave room for it and for descenders (S45).
+- The storyboard (canvas https://claude.ai/artifact/QCL4tADM3udn13qavw7cZV, page Storyboard) is the reference for
+  layout, sizes, shading and copy; 	ests/e2e/storyboard.spec.ts pins each place the site once drifted from it (S48).
 
 ---
 
@@ -257,7 +262,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 | Document | Covers |
 |---|---|
-| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S47** |
+| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S48** |
 | `specs/2026-09-14-journey-flow-design.md` | the scroll feel: handover, camera follow, touch snap, the black opening |
 | `specs/2026-09-21-projects-page-design.md` | Projects on the shore, the dialog, deep links |
 | `specs/2026-09-21-contact-page-design.md` | Contact at the water's edge |
@@ -278,6 +283,10 @@ Updated 2026-09-26.
   would not scroll on a phone; a dark shadow on "See the work") are fixed.
 - An independent final review found one critical and four important issues (S47 and the I1–I3 lines of S42 and
   S43), all fixed test-first.
+- Then the owner asked whether the site was truly the storyboard. It was not (S48): the sand was hidden under a
+  dark floor, and the card, header, margins, hint, phone header and case study had drifted. Branch
+  **`storyboard-match`** rebuilds all of it; the owner compares it (phone review link) with the live site, then
+  it is finalised and pushed.
 - Measured on this laptop's Intel UHD: the sea at tier 2 runs at 60 fps (was 46.6), tier 3 at 58 (was 31.6),
   tier 4 at 41.4 (was 21); the name is readable at first paint (was 5.6 s); a fast scroll shows at most one
   page (was four); a window against full screen drifts under 0.5% (was 6–13%).

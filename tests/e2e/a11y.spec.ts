@@ -41,42 +41,44 @@ test.describe('accessibility', () => {
   // contrast. A phone is the worst screen because the text runs the full width, across the moon's path.
   // Reduced motion places the camera exactly on each viewpoint. The intro run covers the name and the
   // thin italic tagline; the About run covers the body text (journey-flow review I2).
-  for (const [where, progress, minLines] of [
-    ['Intro', 0.1, 2],
-    ['About', 0.36, 3],
-    ['Projects', 0.65, 3],
-    ['Contact', 0.92, 3],
-  ] as const) {
-    test(`${where} text stays legible over the brightest moon on a phone`, async ({ browser }) => {
-      test.setTimeout(200_000);
-      const context = await browser.newContext({
-        viewport: { width: 390, height: 844 },
-        isMobile: true,
-        hasTouch: true,
-        reducedMotion: 'reduce',
-      });
-      try {
-        const page = await context.newPage();
-        await page.goto(`/?p=${progress}&moon=0.5&tier=3&time=12`);
-        await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 20, undefined, { timeout: 150_000 });
-        // A cold software-GPU start can starve the page for several seconds (the first test of a run once
-        // needed more than the default 5 s here), so give the text layer room to appear.
-        await expect
-          .poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity), { timeout: 30_000 })
-          .toBe('1');
-        // Measure what a visitor reads: once the page has settled, the header and "See the work" have arrived
-        // (opening E). Before that they are transparent, and their text would be measured against the scene.
-        await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 30_000 });
-        await page.waitForTimeout(700);
+  // Since 2026-09-26 each page shades only where its text is (the storyboard's shading), so a laptop, where the
+  // shading comes in from the side, is measured too.
+  const screens = [
+    ['a phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }],
+    ['a laptop', { viewport: { width: 1440, height: 900 } }],
+  ] as const;
+  for (const [screen, device] of screens)
+    for (const [where, progress, minLines] of [
+      ['Intro', 0.1, 2],
+      ['About', 0.36, 3],
+      ['Projects', 0.65, 3],
+      ['Contact', 0.92, 3],
+    ] as const) {
+      test(`${where} text stays legible over the brightest moon on ${screen}`, async ({ browser }) => {
+        test.setTimeout(200_000);
+        const context = await browser.newContext({ ...device, reducedMotion: 'reduce' });
+        try {
+          const page = await context.newPage();
+          await page.goto(`/?p=${progress}&moon=0.5&tier=3&time=12`);
+          await page.waitForFunction(() => (window.__moonlit?.frames() ?? 0) > 20, undefined, { timeout: 150_000 });
+          // A cold software-GPU start can starve the page for several seconds (the first test of a run once
+          // needed more than the default 5 s here), so give the text layer room to appear.
+          await expect
+            .poll(() => page.locator('#content').evaluate((el) => getComputedStyle(el).opacity), { timeout: 30_000 })
+            .toBe('1');
+          // Measure what a visitor reads: once the page has settled, the header and "See the work" have arrived
+          // (opening E). Before that they are transparent, and their text would be measured against the scene.
+          await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 30_000 });
+          await page.waitForTimeout(700);
 
-        const lines = await measureTextContrast(page);
-        expect(lines.length).toBeGreaterThanOrEqual(minLines);
-        for (const line of lines) {
-          expect(line.ratio, `"${line.text}"`).toBeGreaterThanOrEqual(line.required);
+          const lines = await measureTextContrast(page);
+          expect(lines.length).toBeGreaterThanOrEqual(minLines);
+          for (const line of lines) {
+            expect(line.ratio, `"${line.text}"`).toBeGreaterThanOrEqual(line.required);
+          }
+        } finally {
+          await context.close();
         }
-      } finally {
-        await context.close();
-      }
-    });
-  }
+      });
+    }
 });

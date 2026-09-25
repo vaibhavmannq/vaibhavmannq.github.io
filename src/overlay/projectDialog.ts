@@ -23,20 +23,45 @@ export function createProjectDialog(
     return element;
   };
   const meta = part('[data-project-meta]');
+  const crumb = part('[data-project-crumb]');
   const title = part('[data-project-title]');
+  const aside = part('[data-project-aside]');
+  const facts = part('[data-project-facts]');
+  const caption = part('[data-project-caption]');
   const text = part('[data-project-text]');
-  const tools = part('[data-project-tools]');
   const links = part('[data-project-links]');
   const cover = part<HTMLImageElement>('[data-project-cover]');
   const hard = part('[data-project-hard]');
   const metric = part('[data-project-metric]');
+  const extras = part('[data-project-extras]');
+  // The tiles only show on a laptop (storyboard F; the phone frame SB5 has none), so a phone never loads the clip.
+  const wide = window.matchMedia('(min-width: 700px)');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let clip: HTMLVideoElement | null = null;
+
+  const tile = (media: HTMLElement, ...captions: string[]) => {
+    const figure = document.createElement('figure');
+    figure.className = 'project-dialog__tile';
+    const label = document.createElement('figcaption');
+    label.className = 'project-dialog__caption';
+    for (const text of captions) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      label.append(span);
+    }
+    figure.append(media, label);
+    return figure;
+  };
 
   part<HTMLButtonElement>('[data-project-close]').addEventListener('click', () => dialog.close());
   // The body fills the dialog, so a click that lands on the dialog element itself is on the backdrop.
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) dialog.close();
   });
-  dialog.addEventListener('close', onClosed);
+  dialog.addEventListener('close', () => {
+    clip?.pause();
+    onClosed();
+  });
 
   const link = (href: string, label: string) => {
     const anchor = document.createElement('a');
@@ -53,9 +78,55 @@ export function createProjectDialog(
 
   const fill = (project: Project) => {
     meta.textContent = `${project.year} · ${project.role}`;
+    crumb.textContent = project.title;
     title.textContent = project.title;
+    aside.textContent = project.aside ?? '';
+    aside.hidden = project.aside === undefined;
+    facts.replaceChildren(
+      ...(
+        [
+          ['Year', String(project.year)],
+          ['Role', project.role],
+          ['Stack', project.tools.join(', ')],
+        ] as const
+      ).flatMap(([term, value]) => {
+        const dt = document.createElement('dt');
+        dt.textContent = term;
+        const dd = document.createElement('dd');
+        dd.textContent = value;
+        return [dt, dd];
+      }),
+    );
     cover.src = project.cover.src;
     cover.alt = project.cover.alt;
+    caption.textContent = project.cover.caption ?? '';
+    caption.hidden = project.cover.caption === undefined;
+
+    const tiles: HTMLElement[] = [];
+    clip = null;
+    if (project.extras?.clip) {
+      // Muted and looping, with its controls showing: moving pictures that last longer than five seconds must be
+      // possible to pause (WCAG 2.2.2). It plays by itself only without reduced motion (open() below).
+      const video = document.createElement('video');
+      video.src = project.extras.clip.src;
+      video.poster = project.extras.clip.poster;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = 'none';
+      video.controls = true;
+      video.setAttribute('aria-label', project.extras.clip.label);
+      tiles.push(tile(video, project.extras.clip.label));
+      clip = video;
+    }
+    if (project.extras?.compare) {
+      const image = document.createElement('img');
+      image.src = project.extras.compare.src;
+      image.alt = project.extras.compare.alt;
+      image.loading = 'lazy';
+      tiles.push(tile(image, project.extras.compare.before, project.extras.compare.after));
+    }
+    extras.replaceChildren(...tiles);
     hard.textContent = project.hardPart;
     metric.textContent = project.metric ? `${project.metric.value} — ${project.metric.label}` : '';
     metric.hidden = project.metric === undefined;
@@ -63,13 +134,6 @@ export function createProjectDialog(
       ...project.details.map((paragraph) => {
         const element = document.createElement('p');
         element.textContent = paragraph;
-        return element;
-      }),
-    );
-    tools.replaceChildren(
-      ...project.tools.map((tool) => {
-        const element = document.createElement('li');
-        element.textContent = tool;
         return element;
       }),
     );
@@ -86,6 +150,10 @@ export function createProjectDialog(
       if (project === undefined) return false;
       fill(project);
       if (!dialog.open) dialog.showModal();
+      if (clip && wide.matches && !reducedMotion.matches) {
+        // A browser may refuse to play; the poster and the controls are still there.
+        clip.play().catch(() => {});
+      }
       return true;
     },
     close() {
