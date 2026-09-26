@@ -14,19 +14,7 @@ describe('readDebugParams', () => {
       forceWebGL: false,
       stills: false,
       bare: false,
-      demo: false,
-      hello: undefined,
     });
-  });
-
-  it('reads the heading switch, and only its wordings', () => {
-    expect(readDebugParams('?hello=3').hello).toBe(3);
-    expect(readDebugParams('?hello=1').hello).toBeUndefined();
-    expect(readDebugParams('?hello=9').hello).toBeUndefined();
-  });
-
-  it('reads the demo switch: placeholder projects until real ones exist', () => {
-    expect(readDebugParams('?demo').demo).toBe(true);
   });
 
   it('reads a valid tier and ignores invalid ones', () => {

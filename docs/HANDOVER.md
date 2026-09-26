@@ -23,7 +23,7 @@ The journey, in order:
 | 1 · Adrift | 0 – 1.4 screens | the name (Fraunces), a tagline, "See the work" | 0.08, a crescent | drifting on the open sea |
 | 2 · The shore | 1.4 – 2.8 | About, in two paragraphs | 0.25, first quarter | up the beach: lands at 2.0 (S41) |
 | 3 · What washed ashore | 2.8 – 4.2 | Projects — a card with a cover, opens the case study | 0.375, gibbous | walking sideways along the sand (ends at 4.1) |
-| 4 · The water's edge | 4.2 – 5.6 | "Drop me a line" (Fraunces italic), email, GitHub, LinkedIn, Return to the shore | 0.5, full | stepping toward the sea and crouching |
+| 4 · The water's edge | 4.2 – 5.6 | "Over to you" (Fraunces italic), email, GitHub, LinkedIn, Return to the shore | 0.5, full | stepping toward the sea and crouching |
 
 The moon waxes with the scroll, reaching each phase where its page is fully shown. There is no opening any more
 (S42): the HTML is the first paint, the sea fades up under the name, and the page settles (header, rail of four
@@ -110,7 +110,6 @@ src/
     params.ts              the query hooks above
     debug.ts               window.__moonlit
   content/projects.ts      the projects: copy, cover, the hard part, the number, the clip and comparison
-  content/demoProjects.ts  three placeholders for ?demo; delete once real projects exist
   journey/
     journey.config.ts      LENGTH 5.6, four pages of 1.4 screens each, the landing at 2.0
     journeyMoon.ts         the moon's phase from scroll: 0.08 → 0.5 (S40)
@@ -203,7 +202,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 - Big headings keep a 20 px halo; their masks leave room for it and for descenders (S45).
 - The storyboard (canvas https://claude.ai/artifact/QCL4tADM3udn13qavw7cZV, page Storyboard) is where the header,
   the project card, the case study and the per-page shading came from; the owner kept the live site's margins,
-  sizes and copy over it (S48–S51). `tests/e2e/storyboard.spec.ts` pins what was kept.
+  sizes and copy over it (S48–S52). `tests/e2e/storyboard.spec.ts` pins what was kept.
 
 ---
 
@@ -266,7 +265,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 | Document | Covers |
 |---|---|
-| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S51** |
+| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S52** |
 | `specs/2026-09-14-journey-flow-design.md` | the scroll feel: handover, camera follow, touch snap, the black opening |
 | `specs/2026-09-21-projects-page-design.md` | Projects on the shore, the dialog, deep links |
 | `specs/2026-09-21-contact-page-design.md` | Contact at the water's edge |
@@ -291,8 +290,8 @@ Updated 2026-09-26.
   dark floor, and the card, header, margins, hint, phone header and case study had drifted. Branch
   **`storyboard-match`** rebuilt all of it, and the owner picked what to keep (S49, S50): the header naming the
   page, the project card in a sideways row, the case study, the smaller glints and the lighter shading around the
-  sand; the laptop text 110 px in at an 83% zoom, the same in a window and full screen. `?demo` shows three
-  placeholder projects until real ones exist (`content/demoProjects.ts`).
+  sand; the laptop text 110 px in at an 83% zoom, the same in a window and full screen. Two "Coming soon"
+  cards sit beside Moonlit until real projects replace them (`upcoming` in `content/projects.ts`).
 - Measured on this laptop's Intel UHD: the sea at tier 2 runs at 60 fps (was 46.6), tier 3 at 58 (was 31.6),
   tier 4 at 41.4 (was 21); the name is readable at first paint (was 5.6 s); a fast scroll shows at most one
   page (was four); a window against full screen drifts under 0.5% (was 6–13%).

@@ -58,12 +58,30 @@ export async function measureTextContrast(page: Page): Promise<LineContrast[]> {
         const size = Number.parseFloat(style.fontSize);
         const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
         const [r = 0, g = 0, b = 0, a = 1] = (style.color.match(/[\d.]+/g) ?? []).map(Number);
+        // Only what is on screen: a card scrolled out of a sideways row is clipped by the row, and its text would be
+        // measured against whatever scene lies behind that hidden spot (found 2026-09-26: "Coming soon" at 2.87:1).
+        let visible = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+        for (let parent = node.parentElement; parent !== null; parent = parent.parentElement) {
+          const overflow = getComputedStyle(parent);
+          if (overflow.overflowX === 'visible' && overflow.overflowY === 'visible') continue;
+          const clip = parent.getBoundingClientRect();
+          visible = {
+            left: Math.max(visible.left, clip.left),
+            top: Math.max(visible.top, clip.top),
+            right: Math.min(visible.right, clip.right),
+            bottom: Math.min(visible.bottom, clip.bottom),
+          };
+        }
         const range = document.createRange();
         range.selectNodeContents(node);
         for (const box of range.getClientRects()) {
-          if (box.width < 4 || box.height < 4) continue;
+          const left = Math.max(box.left, visible.left);
+          const top = Math.max(box.top, visible.top);
+          const w = Math.min(box.right, visible.right) - left;
+          const h = Math.min(box.bottom, visible.bottom) - top;
+          if (w < 4 || h < 4) continue;
           const text = node.textContent.trim().slice(0, 40);
-          out.push({ text, rgba: [r, g, b, a], large, x: box.left, y: box.top, w: box.width, h: box.height });
+          out.push({ text, rgba: [r, g, b, a], large, x: left, y: top, w, h });
         }
       }
     }

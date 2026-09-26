@@ -174,20 +174,32 @@ html.is-stills .world {
   background: linear-gradient(to top, rgba(2, 4, 6, 0.88) 22%, rgba(2, 4, 6, 0.45) 42%, rgba(2, 4, 6, 0) 58%);
 }
 
+/* The cards are solid, so on a phone the shading only guards "Projects" and the count; the foot is left light for the
+   sand (owner, 2026-09-26). */
 .scrim[data-follows="projects"] {
-  background: linear-gradient(to top, rgba(2, 4, 6, 0.95) 42%, rgba(2, 4, 6, 0.6) 60%, rgba(2, 4, 6, 0) 76%);
+  background: linear-gradient(
+    to top,
+    rgba(2, 4, 6, 0.35) 0%,
+    rgba(2, 4, 6, 0.55) 16%,
+    rgba(2, 4, 6, 0.9) 40%,
+    rgba(2, 4, 6, 0.95) 58%,
+    rgba(2, 4, 6, 0.6) 66%,
+    rgba(2, 4, 6, 0) 78%
+  );
 }
 
-/* Lighter at the very foot, where only the links sit over the sand, so the sand shines through on a phone (owner,
-   2026-09-26); as dark as before behind the heading, which crosses the bright foam. */
+/* Light at the foot, where only the links sit over the sand, so the sand shines through on a phone (owner,
+   2026-09-26); dark only in a band behind the chapter title and the heading, which cross the bright foam, and clear
+   above them, so the moon's path on the water shows. */
 .scrim[data-follows="contact"] {
   background: linear-gradient(
     to top,
-    rgba(2, 4, 6, 0.6) 0%,
-    rgba(2, 4, 6, 0.8) 22%,
-    rgba(2, 4, 6, 0.94) 40%,
-    rgba(2, 4, 6, 0.55) 56%,
-    rgba(2, 4, 6, 0) 70%
+    rgba(2, 4, 6, 0.25) 0%,
+    rgba(2, 4, 6, 0.4) 22%,
+    rgba(2, 4, 6, 0.9) 31%,
+    rgba(2, 4, 6, 0.9) 44%,
+    rgba(2, 4, 6, 0.4) 50%,
+    rgba(2, 4, 6, 0) 57%
   );
 }
 
