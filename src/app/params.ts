@@ -18,7 +18,12 @@ export interface DebugParams {
   bare: boolean;
   /** `?demo`: three placeholder projects beside Moonlit, to see the Projects page with several (owner review). */
   demo: boolean;
+  /** `?hello=2|3|4`: the other wordings for page IV's heading, until the owner picks one (owner review). */
+  hello?: 2 | 3 | 4;
 }
+
+/** Page IV's heading: the default, then the wordings `?hello=2..4` shows (owner review, 2026-09-26). */
+export const HELLO_WORDINGS = ['Drop me a line', "Let's talk", 'Write to me', 'Send word'] as const;
 
 export function readDebugParams(search: string): DebugParams {
   const query = new URLSearchParams(search);
@@ -53,5 +58,6 @@ export function readDebugParams(search: string): DebugParams {
     stills: query.has('stills'),
     bare: query.has('bare'),
     demo: query.has('demo'),
+    hello: [2, 3, 4].find((n) => String(n) === query.get('hello')) as 2 | 3 | 4 | undefined,
   };
 }
