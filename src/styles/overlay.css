@@ -178,8 +178,17 @@ html.is-stills .world {
   background: linear-gradient(to top, rgba(2, 4, 6, 0.95) 42%, rgba(2, 4, 6, 0.6) 60%, rgba(2, 4, 6, 0) 76%);
 }
 
+/* Lighter at the very foot, where only the links sit over the sand, so the sand shines through on a phone (owner,
+   2026-09-26); as dark as before behind the heading, which crosses the bright foam. */
 .scrim[data-follows="contact"] {
-  background: linear-gradient(to top, rgba(2, 4, 6, 0.94) 40%, rgba(2, 4, 6, 0.55) 56%, rgba(2, 4, 6, 0) 70%);
+  background: linear-gradient(
+    to top,
+    rgba(2, 4, 6, 0.6) 0%,
+    rgba(2, 4, 6, 0.8) 22%,
+    rgba(2, 4, 6, 0.94) 40%,
+    rgba(2, 4, 6, 0.55) 56%,
+    rgba(2, 4, 6, 0) 70%
+  );
 }
 
 @media (min-width: 700px) {
@@ -282,6 +291,15 @@ html.is-stills .world {
   font-size: clamp(3rem, 9vw, 7.5rem);
   font-weight: 500;
   letter-spacing: -0.03em;
+}
+
+/* Page IV closes the voyage in italic, in the name's own face (owner, 2026-09-26): Satoshi has no italic, and a
+   browser's slanted Satoshi looks faked. The only italic on the site. */
+.section #contact-title {
+  font-family: var(--font-name);
+  font-style: italic;
+  font-weight: 360;
+  letter-spacing: -0.02em;
 }
 
 /* The name's letters (SplitText): their weight follows the pointer (pointerTouch.ts). */
@@ -512,10 +530,27 @@ html.is-stills .world {
     display: none;
   }
 
+  /* The log keeps each of its parts whole, so it is always three lines ("Log", the date, the moon) and the rail
+     below it never meets a stray word: "WAXING CRESCENT · 27% LIT" once wrapped and put "LIT" on the first moon
+     (owner, 2026-09-26). A touch less letter-spacing lets the longest phase fit beside "Email me" on a 360 px phone. */
+  .voyage-log {
+    letter-spacing: 0.1em;
+  }
+
+  .voyage-log span {
+    white-space: nowrap;
+  }
+
   /* As in the storyboard's phone frame: the header's "Email me" carries the address, and the intro stays short
      enough that the name sits below the moon's glitter at full moon (§3.4 rule 4; the contrast test measures it). */
   .section__email {
     display: none;
+  }
+
+  /* The last page sits nearer the foot of a phone: at 12% up it left an empty band under "Return to the shore"
+     (owner, 2026-09-26). */
+  #contact {
+    bottom: max(6svh, env(safe-area-inset-bottom));
   }
 
   .chapter-rail {

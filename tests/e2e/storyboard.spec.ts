@@ -254,3 +254,64 @@ async function meanLuminance(page: Page, region: { x: number; y: number; w: numb
     await decoder.close();
   }
 }
+
+// Owner, 2026-09-26: on a phone "WAXING CRESCENT · 27% LIT" wrapped, and "LIT" sat on the rail's first moon.
+for (const width of [390, 360]) {
+  test(`on a ${width} px phone the log never runs into the rail, whatever the moon`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    for (const progress of [0, 0.12, 0.2, 0.3348, 0.47, 0.5848, 0.8348]) {
+      await page.goto(`/?stills&p=${progress}`);
+      await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 5_000 });
+      const log = await page.locator('#voyage-log').boundingBox();
+      const moon = await page.locator('#voyage-log [data-log-moon]').boundingBox();
+      const rail = await page.locator('#chapter-rail svg').first().boundingBox();
+      if (log === null || moon === null || rail === null) throw new Error('missing boxes');
+      expect(log.y + log.height, `log bottom at p=${progress}`).toBeLessThan(rail.y);
+      // The moon's words stay on one line, and clear of "Email me".
+      expect(moon.height, `moon line at p=${progress}`).toBeLessThan(24);
+      const email = await page.locator('.site-nav__email').boundingBox();
+      if (email === null) throw new Error('no Email me');
+      expect(moon.x + moon.width, `moon beside Email me at p=${progress}`).toBeLessThan(email.x);
+    }
+  });
+}
+
+// Owner, 2026-09-26: "change Hola Amigo to something else and italic". Fraunces italic, since Satoshi has none;
+// ?hello=2..4 shows the other wordings on the review build until the owner picks.
+test('the closing heading reads "Drop me a line", in Fraunces italic', async ({ page }) => {
+  await page.goto('/?stills&p=0.92');
+  const heading = page.locator('#contact-title');
+  await expect(heading).toHaveText('Drop me a line');
+  await expect(page.getByRole('heading', { name: 'Drop me a line' })).toBeAttached();
+  const style = await heading.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { family: s.fontFamily, italic: s.fontStyle, lang: el.getAttribute('lang') };
+  });
+  expect(style.family).toMatch(/Fraunces/);
+  expect(style.italic).toBe('italic');
+  expect(style.lang).toBeNull();
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.fonts.check('italic 400 40px Fraunces'))).toBe(true);
+});
+
+for (const [n, words] of [
+  [2, "Let's talk"],
+  [3, 'Write to me'],
+  [4, 'Send word'],
+] as const) {
+  test(`?hello=${n} shows "${words}"`, async ({ page }) => {
+    await page.goto(`/?stills&p=0.92&hello=${n}`);
+    await expect(page.locator('#contact-title')).toHaveText(words);
+  });
+}
+
+// Owner, 2026-09-26: on a phone the last page sat high, with an empty band under "Return to the shore".
+test('on a phone the last page sits low, near the foot of the screen', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('/?stills&p=0.92');
+  await expect(page.locator('#contact')).toHaveClass(/is-active/);
+  await page.waitForTimeout(1200);
+  const back = await page.locator('#return-to-shore').boundingBox();
+  if (back === null) throw new Error('no return link');
+  expect(PHONE.height - (back.y + back.height)).toBeLessThan(70);
+});

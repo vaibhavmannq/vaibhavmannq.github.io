@@ -28,7 +28,7 @@ import { createTouchSnap } from '../scroll/touchSnap';
 import { detectCapabilities } from './capabilities';
 import { exposeDebug } from './debug';
 import { createLoop, type Loop } from './loop';
-import { readDebugParams } from './params';
+import { HELLO_WORDINGS, readDebugParams } from './params';
 import { createPacer } from './refresh';
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -46,8 +46,10 @@ export async function boot(): Promise<void> {
   const root = document.documentElement;
 
   byId('journey-track').style.setProperty('--journey-length', String(totalLength(activeJourney)));
-  // Text keeps its place in the scene whether the window is full screen or not (spec 2026-09-25 §4.14).
+  // Text keeps its size and place whether the window is full screen or not (§17 S49, S50).
   applyFrameFit(root, byId('world'));
+  // `?hello=2..4`: page IV's other wordings for the owner to pick from. Set before the heading is split into lines.
+  if (params.hello !== undefined) byId('contact-title').textContent = HELLO_WORDINGS[params.hello - 1] ?? '';
   // `?bare`: the scene alone, for rendering the stills and the project cover (scripts/capture.mjs).
   if (params.bare) root.classList.add('is-bare');
 

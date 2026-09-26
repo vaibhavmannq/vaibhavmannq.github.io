@@ -483,19 +483,27 @@ export function createSea() {
       const foam = fall(0.0, 0.14, wH.sub(sH)).mul(foamNoise.mul(0.55).add(0.45));
       water.assign(mix(water, vec3(0.3, 0.4, 0.42), foam.mul(0.7)));
 
-      // Black sand: barely-lit base, wet sheen near the waterline, rare glints
-      const sand = vec3(0.004, 0.004, 0.005)
+      // Black sand, lightly shining (owner, 2026-09-26: "I just want the lightly shining sand"): a dark base the moon
+      // lifts a little, a soft moonlit sheen on the side facing the moon, the wet sheen near the waterline, and glints.
+      // It was nearly black (about 1% grey), so on a phone the whole foot of the picture read as empty.
+      const sand = vec3(0.012, 0.014, 0.018)
         .mul(max(dot(n, MOON), 0).add(0.3))
-        .add(vec3(0.004, 0.012, 0.016))
+        .add(vec3(0.006, 0.014, 0.018))
+        .add(
+          vec3(0.5, 0.6, 0.66)
+            .mul(pow(max(dot(R, MOON), 0), 6).mul(0.07))
+            .mul(moonLightVar),
+        )
         .toVar();
       const wet = fall(0.0, 0.35, sH.sub(wH));
       sand.assign(mix(sand, skyR.mul(fres.mul(0.8)).add(vec3(0.002, 0.006, 0.008)), wet));
       sand.addAssign(vec3(0.55, 0.68, 0.7).mul(fall(0.0, 0.05, sH.sub(wH)).mul(0.25)));
       const gh = hash21(floor(p.xz.mul(50)));
-      // Smaller and rarer, as the storyboard asked (frame III note): a soft point at the middle of one cell in 125,
+      // Smaller than they were, as the storyboard asked (frame III note): a soft point at the middle of one cell in 83,
       // where each used to light its whole cell in 67 and read as a grid of square specks behind the phone's text.
-      const speck = smoothstep(0.24, 0.06, length(fract(p.xz.mul(50)).sub(0.5)));
-      const glint = step(0.992, gh)
+      // One in 125 left the sand looking empty (owner, 2026-09-26).
+      const speck = smoothstep(0.28, 0.06, length(fract(p.xz.mul(50)).sub(0.5)));
+      const glint = step(0.988, gh)
         .mul(speck)
         .mul(pow(max(dot(R, MOON), 0), 5))
         .mul(

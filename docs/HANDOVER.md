@@ -23,7 +23,7 @@ The journey, in order:
 | 1 · Adrift | 0 – 1.4 screens | the name (Fraunces), a tagline, "See the work" | 0.08, a crescent | drifting on the open sea |
 | 2 · The shore | 1.4 – 2.8 | About, in two paragraphs | 0.25, first quarter | up the beach: lands at 2.0 (S41) |
 | 3 · What washed ashore | 2.8 – 4.2 | Projects — a card with a cover, opens the case study | 0.375, gibbous | walking sideways along the sand (ends at 4.1) |
-| 4 · The water's edge | 4.2 – 5.6 | "Hola Amigo", email, GitHub, LinkedIn, Return to the shore | 0.5, full | stepping toward the sea and crouching |
+| 4 · The water's edge | 4.2 – 5.6 | "Drop me a line" (Fraunces italic), email, GitHub, LinkedIn, Return to the shore | 0.5, full | stepping toward the sea and crouching |
 
 The moon waxes with the scroll, reaching each phase where its page is fully shown. There is no opening any more
 (S42): the HTML is the first paint, the sea fades up under the name, and the page settles (header, rail of four
@@ -191,8 +191,8 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 - **Satoshi** (self-hosted, `public/fonts/satoshi-{300,400,500}.woff2`) for headings, reading text, the
   project title and the contact links, set tight: −0.03em headings, −0.011em body.
-- **Fraunces** for the name on page one only. It is the only serif on the site, which is what makes the name
-  read as a signature.
+- **Fraunces** for the name on page one, and in italic for page IV's closing heading (S51). It is the only serif on
+  the site, so the journey opens and closes in the same hand.
 - **Space Mono** for the log's voice: chapter titles, the voyage log, the small labels, in glow blue.
 - **No italics** anywhere else; a stressed line goes lighter and tighter instead.
 - Contact values use the softer ink (`--ink-dim`), which the owner chose over full white.
@@ -203,7 +203,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 - Big headings keep a 20 px halo; their masks leave room for it and for descenders (S45).
 - The storyboard (canvas https://claude.ai/artifact/QCL4tADM3udn13qavw7cZV, page Storyboard) is where the header,
   the project card, the case study and the per-page shading came from; the owner kept the live site's margins,
-  sizes and copy over it (S48–S50). `tests/e2e/storyboard.spec.ts` pins what was kept.
+  sizes and copy over it (S48–S51). `tests/e2e/storyboard.spec.ts` pins what was kept.
 
 ---
 
@@ -266,7 +266,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 | Document | Covers |
 |---|---|
-| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S50** |
+| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S51** |
 | `specs/2026-09-14-journey-flow-design.md` | the scroll feel: handover, camera follow, touch snap, the black opening |
 | `specs/2026-09-21-projects-page-design.md` | Projects on the shore, the dialog, deep links |
 | `specs/2026-09-21-contact-page-design.md` | Contact at the water's edge |
