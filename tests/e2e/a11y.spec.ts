@@ -10,6 +10,15 @@ test.describe('accessibility', () => {
   test('the first paint has no axe violations', async ({ page }) => {
     await page.goto('/?stills');
     await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 5_000 });
+    // Measure what a visitor reads: the header and "See the work" fade in over 0.6 s once the page settles, and axe
+    // caught the button half-way (its dark text on a greyed fill, 3.81:1) in about one run in three.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('.welcome-arrives')].every((el) => getComputedStyle(el).opacity === '1'),
+        ),
+      )
+      .toBe(true);
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });

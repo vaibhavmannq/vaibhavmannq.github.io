@@ -69,3 +69,18 @@ export const projects: readonly Project[] = [
     links: { repo: 'https://github.com/vaibhavmannq/vaibhavmannq.github.io' },
   },
 ];
+
+/**
+ * Projects on the way: cards in the same row, with a picture from the scene and no case study yet (owner,
+ * 2026-09-26: "add that multiple projects card for both phone and laptop"). When a project is ready, it moves into
+ * `projects` above and its card here goes.
+ */
+export interface Upcoming {
+  /** A picture from the site's own stills, standing in until the project has one. */
+  cover: string;
+}
+
+export const upcoming: readonly Upcoming[] = [
+  { cover: '/stills/about-landscape.jpg' },
+  { cover: '/stills/intro-landscape.jpg' },
+];

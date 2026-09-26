@@ -47,7 +47,7 @@ test('Return to the shore says only that', async ({ page }) => {
 test('the project is a card, and its button reads "Read the case study"', async ({ page }) => {
   await page.setViewportSize(LAPTOP);
   await page.goto('/?stills&p=0.5848');
-  const card = page.locator('#projects .project-card');
+  const card = page.locator('#projects .project-card').first();
   await expect(card).toBeVisible();
   expect(await card.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('1px');
   const open = card.getByRole('button', { name: /Read the case study/ });
@@ -126,37 +126,41 @@ test('with reduced motion the clip waits to be played', async ({ browser }) => {
   }
 });
 
-// Owner, 2026-09-26, from the demo (?demo adds three placeholders): the sideways row, with the storyboard's card on
-// a laptop (the picture beside the words), at least two cards in full view, and a little room under "Projects".
-test('with several projects a laptop shows two whole cards side by side, and steps through them', async ({ page }) => {
+// Owner, 2026-09-26: the sideways row of cards on every screen (the storyboard's card on a laptop, picture beside the
+// words, two in full view), and "add that multiple projects card for both phone and laptop": Moonlit and two
+// "Coming soon" cards, which have no case study yet, so no button.
+test('a laptop shows two whole cards side by side, and steps through them', async ({ page }) => {
   await page.setViewportSize(LAPTOP);
-  await page.goto('/?stills&p=0.5848&demo');
+  await page.goto('/?stills&p=0.5848');
   const list = page.locator('#project-list');
   const cards = page.locator('#projects .project-card');
-  await expect(cards).toHaveCount(4);
+  await expect(cards).toHaveCount(3);
   const row = await list.boundingBox();
-  const first = await cards.nth(0).boundingBox();
   const second = await cards.nth(1).boundingBox();
-  if (row === null || first === null || second === null) throw new Error('missing boxes');
+  if (row === null || second === null) throw new Error('missing boxes');
   expect(second.x + second.width).toBeLessThanOrEqual(row.x + row.width + 1);
   // The storyboard's card: the picture beside the words, not above them.
   const cover = await cards.nth(0).locator('.project__cover').boundingBox();
   const title = await cards.nth(0).locator('.project__title').boundingBox();
   if (cover === null || title === null) throw new Error('missing boxes');
   expect(title.x).toBeGreaterThan(cover.x + cover.width - 1);
-  await expect(page.locator('.project-row-nav__count')).toHaveText('1–2 / 4');
+  await expect(page.locator('.project-row-nav__count')).toHaveText('1–2 / 3');
   await page.getByRole('button', { name: 'Next project' }).click();
-  await expect(page.locator('.project-row-nav__count')).toHaveText('2–3 / 4');
-  await cards
-    .nth(2)
-    .getByRole('button', { name: /Read the case study: Placeholder/ })
-    .click();
-  await expect(page.getByRole('dialog', { name: /Placeholder/ })).toBeVisible();
+  await expect(page.locator('.project-row-nav__count')).toHaveText('2–3 / 3');
+});
+
+test('the coming-soon cards say so, and offer no case study', async ({ page }) => {
+  await page.goto('/?stills&p=0.5848');
+  const soon = page.locator('#projects .project-card--soon');
+  await expect(soon).toHaveCount(2);
+  await expect(soon.first()).toContainText('Coming soon');
+  await expect(soon.getByRole('button')).toHaveCount(0);
+  await expect(page.locator('#projects').getByRole('button', { name: /Read the case study/ })).toHaveCount(1);
 });
 
 test('the cards leave room under "Projects", so its descender never touches them', async ({ page }) => {
   await page.setViewportSize(LAPTOP);
-  await page.goto('/?stills&p=0.5848&demo');
+  await page.goto('/?stills&p=0.5848');
   await page.evaluate(() => document.fonts.ready);
   const gap = await page.evaluate(() => {
     const title = document.querySelector('#projects-title');
@@ -179,20 +183,14 @@ test('the cards leave room under "Projects", so its descender never touches them
   expect(gap).toBeGreaterThan(8);
 });
 
-test('with several projects a phone swipes through them, and says which one it shows', async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  await page.goto('/?stills&p=0.5848&demo');
-  const list = page.locator('#project-list');
-  expect(await list.evaluate((el) => getComputedStyle(el).overflowX)).toBe('auto');
-  await expect(page.locator('.project-row-nav__count')).toHaveText('1 / 4');
-  await list.evaluate((el) => el.scrollTo({ left: el.scrollWidth }));
-  await expect(page.locator('.project-row-nav__count')).toHaveText('4 / 4');
-});
-
-test('one project needs no row controls', async ({ page }) => {
+test('a phone swipes through the cards, and says which one it shows', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto('/?stills&p=0.5848');
-  await expect(page.locator('.project-row-nav')).toHaveCount(0);
+  const list = page.locator('#project-list');
+  expect(await list.evaluate((el) => getComputedStyle(el).overflowX)).toBe('auto');
+  await expect(page.locator('.project-row-nav__count')).toHaveText('1 / 3');
+  await list.evaluate((el) => el.scrollTo({ left: el.scrollWidth }));
+  await expect(page.locator('.project-row-nav__count')).toHaveText('3 / 3');
 });
 
 // Owner, 2026-09-26: "can I get the lighter look around the sand back … the lightly shining sand". The storyboard's
@@ -276,13 +274,13 @@ for (const width of [390, 360]) {
   });
 }
 
-// Owner, 2026-09-26: "change Hola Amigo to something else and italic". Fraunces italic, since Satoshi has none;
-// ?hello=2..4 shows the other wordings on the review build until the owner picks.
-test('the closing heading reads "Drop me a line", in Fraunces italic', async ({ page }) => {
+// Owner, 2026-09-26: "change Hola Amigo to something else and italic", then, from four wordings, "Over to you".
+// Fraunces italic, since Satoshi has none.
+test('the closing heading reads "Over to you", in Fraunces italic', async ({ page }) => {
   await page.goto('/?stills&p=0.92');
   const heading = page.locator('#contact-title');
-  await expect(heading).toHaveText('Drop me a line');
-  await expect(page.getByRole('heading', { name: 'Drop me a line' })).toBeAttached();
+  await expect(heading).toHaveText('Over to you');
+  await expect(page.getByRole('heading', { name: 'Over to you' })).toBeAttached();
   const style = await heading.evaluate((el) => {
     const s = getComputedStyle(el);
     return { family: s.fontFamily, italic: s.fontStyle, lang: el.getAttribute('lang') };
@@ -293,17 +291,6 @@ test('the closing heading reads "Drop me a line", in Fraunces italic', async ({ 
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('italic 400 40px Fraunces'))).toBe(true);
 });
-
-for (const [n, words] of [
-  [2, "Let's talk"],
-  [3, 'Write to me'],
-  [4, 'Send word'],
-] as const) {
-  test(`?hello=${n} shows "${words}"`, async ({ page }) => {
-    await page.goto(`/?stills&p=0.92&hello=${n}`);
-    await expect(page.locator('#contact-title')).toHaveText(words);
-  });
-}
 
 // Owner, 2026-09-26: on a phone the last page sat high, with an empty band under "Return to the shore".
 test('on a phone the last page sits low, near the foot of the screen', async ({ page }) => {

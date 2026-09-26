@@ -1,5 +1,4 @@
-import { demoProjects } from '../content/demoProjects';
-import { projects as realProjects } from '../content/projects';
+import { projects, upcoming } from '../content/projects';
 import { createHud } from '../dev/hud';
 import { journey, journeyWithLength } from '../journey/journey.config';
 import { journeyPhase, reducedMotionPhase } from '../journey/journeyMoon';
@@ -28,7 +27,7 @@ import { createTouchSnap } from '../scroll/touchSnap';
 import { detectCapabilities } from './capabilities';
 import { exposeDebug } from './debug';
 import { createLoop, type Loop } from './loop';
-import { HELLO_WORDINGS, readDebugParams } from './params';
+import { readDebugParams } from './params';
 import { createPacer } from './refresh';
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -48,8 +47,6 @@ export async function boot(): Promise<void> {
   byId('journey-track').style.setProperty('--journey-length', String(totalLength(activeJourney)));
   // Text keeps its size and place whether the window is full screen or not (§17 S49, S50).
   applyFrameFit(root, byId('world'));
-  // `?hello=2..4`: page IV's other wordings for the owner to pick from. Set before the heading is split into lines.
-  if (params.hello !== undefined) byId('contact-title').textContent = HELLO_WORDINGS[params.hello - 1] ?? '';
   // `?bare`: the scene alone, for rendering the stills and the project cover (scripts/capture.mjs).
   if (params.bare) root.classList.add('is-bare');
 
@@ -78,8 +75,6 @@ export async function boot(): Promise<void> {
   const scroll = createScroll();
 
   // ---- Projects: the list, its dialog and #/projects/<slug> deep links (spec §3.2) ----
-  // `?demo` adds three placeholders, for the owner to judge the page with several projects (owner review).
-  const projects = params.demo ? [...realProjects, ...demoProjects] : realProjects;
   let opener: HTMLElement | null = null;
   let pushedRoute = false;
   const clearRoute = () =>
@@ -101,12 +96,17 @@ export async function boot(): Promise<void> {
     scroll.setLocked(true);
     return true;
   };
-  renderProjectList(byId('project-list'), projects, (slug, button) => {
-    opener = button;
-    window.history.pushState(window.history.state, '', projectHash(slug));
-    pushedRoute = true;
-    showProject(slug);
-  });
+  renderProjectList(
+    byId('project-list'),
+    projects,
+    (slug, button) => {
+      opener = button;
+      window.history.pushState(window.history.state, '', projectHash(slug));
+      pushedRoute = true;
+      showProject(slug);
+    },
+    upcoming,
+  );
   // Back, Forward and edited addresses: the hash decides whether a project is open.
   window.addEventListener('hashchange', () => {
     const route = parseRoute(window.location.hash);
