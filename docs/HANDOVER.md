@@ -121,7 +121,7 @@ src/
     sections.ts            THE HANDOVER: one shown page at a time (S44), opacity and offset from scroll
     sectionMotion.ts       one paused GSAP timeline per chapter, positioned by the handover
     nameMotion.ts          the name split into masked letters
-    frame.ts               the laptop text zoom (83%), the same in a window and full screen (S49)
+    frame.ts               the laptop text zoom (83%) and inset, the same in a window and full screen (S49, S50)
     header.ts              the data-go links, and the header naming the page you are on
     chapterRail.ts         the four moon glyphs on the right
     focusGlide.ts          focus in a page that is not fully shown glides to it
@@ -180,8 +180,10 @@ These are the ones that get broken by accident. Each is in the spec with its rea
    header and rail show at once if a link in them takes focus before the page settles.
 10. **The pacer never measures while it renders** (§17 S47): a slow GPU delays the next animation frame, so
     frames timed while rendering measure the GPU, not the screen.
-11. **A window and full screen draw the text the same** (§17 S49): on a laptop its size and place depend on the
-    width alone, at the normal window's 83% zoom. The contrast tests measure every page on a phone and a laptop.
+11. **A window and full screen draw the text the same** (§17 S49, S50): on a laptop its size and place depend on
+    the width alone: an 83% zoom, 5.8% of the width in from the edge.
+12. **Shade only where the text is** (§17 S48, S50): each page's `.scrim` fades with its page, so the sand the
+    journey lands on shines. The contrast tests measure every page at full moon on a phone and a laptop.
 
 ---
 
@@ -200,8 +202,8 @@ These are the ones that get broken by accident. Each is in the spec with its rea
   the glitter (2.28:1 contrast).
 - Big headings keep a 20 px halo; their masks leave room for it and for descenders (S45).
 - The storyboard (canvas https://claude.ai/artifact/QCL4tADM3udn13qavw7cZV, page Storyboard) is where the header,
-  the project card and the case study came from; the owner kept the live site's shading, margins, sizes and copy
-  over it (S48, S49). `tests/e2e/storyboard.spec.ts` pins what was kept.
+  the project card, the case study and the per-page shading came from; the owner kept the live site's margins,
+  sizes and copy over it (S48–S50). `tests/e2e/storyboard.spec.ts` pins what was kept.
 
 ---
 
@@ -264,7 +266,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 | Document | Covers |
 |---|---|
-| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S49** |
+| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S50** |
 | `specs/2026-09-14-journey-flow-design.md` | the scroll feel: handover, camera follow, touch snap, the black opening |
 | `specs/2026-09-21-projects-page-design.md` | Projects on the shore, the dialog, deep links |
 | `specs/2026-09-21-contact-page-design.md` | Contact at the water's edge |
@@ -287,9 +289,10 @@ Updated 2026-09-26.
   S43), all fixed test-first.
 - Then the owner asked whether the site was truly the storyboard. It was not (S48): the sand was hidden under a
   dark floor, and the card, header, margins, hint, phone header and case study had drifted. Branch
-  **`storyboard-match`** rebuilt all of it, and the owner kept part of it (S49). Still open with the owner: the
-  window zoom from the edge or `?fit=inset`, and the several-projects layout (`?demo`, `?cards=list|row`). Those
-  switches go once they pick; then it is pushed.
+  **`storyboard-match`** rebuilt all of it, and the owner picked what to keep (S49, S50): the header naming the
+  page, the project card in a sideways row, the case study, the smaller glints and the lighter shading around the
+  sand; the laptop text 110 px in at an 83% zoom, the same in a window and full screen. `?demo` shows three
+  placeholder projects until real ones exist (`content/demoProjects.ts`).
 - Measured on this laptop's Intel UHD: the sea at tier 2 runs at 60 fps (was 46.6), tier 3 at 58 (was 31.6),
   tier 4 at 41.4 (was 21); the name is readable at first paint (was 5.6 s); a fast scroll shows at most one
   page (was four); a window against full screen drifts under 0.5% (was 6–13%).

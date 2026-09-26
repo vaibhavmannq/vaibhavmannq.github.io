@@ -23,7 +23,12 @@
 
     <main class="content" id="content">
       <p class="scene-status" id="scene-status" role="status">The sea is waking…</p>
-      <!-- The intro's scroll hint, at the foot of the screen; it fades with the intro (sections.ts data-follows). -->
+      <!-- Each page shades only where its text is, and fades with its page (sections.ts data-follows). -->
+      <div class="scrim" data-follows="intro" aria-hidden="true"></div>
+      <div class="scrim" data-follows="about" aria-hidden="true"></div>
+      <div class="scrim" data-follows="projects" aria-hidden="true"></div>
+      <div class="scrim" data-follows="contact" aria-hidden="true"></div>
+      <!-- The intro's scroll hint, at the foot of the screen; it fades with the intro. -->
       <div class="journey-hint" data-follows="intro" aria-hidden="true">
         <p class="welcome-arrives">Scroll to drift ashore</p>
       </div>

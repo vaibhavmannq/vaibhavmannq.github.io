@@ -3,9 +3,9 @@ import { expect, type Page, test } from '@playwright/test';
 // Owner, 2026-09-26: a normal window and full screen (Fn+F11) must show the text in the same place and at the same
 // size, at the normal window's zoomed-out size. The earlier fit (S46) followed the picture instead, so the window
 // moved the text inward and shrank it, while full screen showed it larger at the edge.
-async function place(page: Page, height: number, progress: number, query = '') {
+async function place(page: Page, height: number, progress: number) {
   await page.setViewportSize({ width: 1440, height });
-  await page.goto(`/?stills&p=${progress}${query}`);
+  await page.goto(`/?stills&p=${progress}`);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('.section.is-active')).toHaveCount(1);
   const measure = () =>
@@ -46,10 +46,10 @@ for (const [name, progress, anchor] of [
   });
 }
 
-test('a laptop draws the text at the normal window’s zoom, from the edge or, if asked, inset', async ({ page }) => {
-  const edge = await place(page, 900, 0);
-  expect(edge.left).toBeLessThan(40);
-  const inset = await place(page, 900, 0, '&fit=inset');
-  expect(inset.left).toBeGreaterThan(110);
-  expect(Math.abs(inset.width - edge.width)).toBeLessThan(1);
+// The owner compared the edge with the normal window's inset and asked for the inset, "a bit to the left": 110 px of
+// their 1897 px window, 84 px of this 1440 px one, plus the page's own 20 px padding.
+test('a laptop draws the text a little in from the edge', async ({ page }) => {
+  const { left } = await place(page, 900, 0);
+  expect(left).toBeGreaterThan(90);
+  expect(left).toBeLessThan(120);
 });

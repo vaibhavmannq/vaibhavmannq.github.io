@@ -1,9 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // The approved storyboard (canvas "Moonsink Shore — redesign directions", page Storyboard, 2026-09-25), compared
 // frame by frame with the site on 2026-09-26, and then the owner's picks: they kept the header that names the page,
-// the project card, the case study (frame F) and the smaller glints, moved the scroll hint to the foot of the screen,
-// and kept the live site's shading, margins, sizes, phone header and copy.
+// the project card, the case study (frame F), the smaller glints and the lighter shading around the sand, moved the
+// scroll hint to the foot of the screen, and kept the live site's margins, sizes, phone header and copy.
 
 const LAPTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
@@ -126,17 +126,57 @@ test('with reduced motion the clip waits to be played', async ({ browser }) => {
   }
 });
 
-// Owner, 2026-09-26: how would several projects sit? A demo (?demo adds three placeholders) for the owner to judge.
-test('with several projects a laptop shows the newest as a card and the rest as rows', async ({ page }) => {
+// Owner, 2026-09-26, from the demo (?demo adds three placeholders): the sideways row, with the storyboard's card on
+// a laptop (the picture beside the words), at least two cards in full view, and a little room under "Projects".
+test('with several projects a laptop shows two whole cards side by side, and steps through them', async ({ page }) => {
   await page.setViewportSize(LAPTOP);
   await page.goto('/?stills&p=0.5848&demo');
+  const list = page.locator('#project-list');
   const cards = page.locator('#projects .project-card');
   await expect(cards).toHaveCount(4);
-  await expect(cards.first().locator('.project__cover')).toBeVisible();
-  await expect(cards.nth(1).locator('.project__cover')).toBeHidden();
-  await expect(cards.nth(1).getByRole('button', { name: /Read the case study: Placeholder/ })).toBeVisible();
-  await cards.nth(2).getByRole('button').click();
+  const row = await list.boundingBox();
+  const first = await cards.nth(0).boundingBox();
+  const second = await cards.nth(1).boundingBox();
+  if (row === null || first === null || second === null) throw new Error('missing boxes');
+  expect(second.x + second.width).toBeLessThanOrEqual(row.x + row.width + 1);
+  // The storyboard's card: the picture beside the words, not above them.
+  const cover = await cards.nth(0).locator('.project__cover').boundingBox();
+  const title = await cards.nth(0).locator('.project__title').boundingBox();
+  if (cover === null || title === null) throw new Error('missing boxes');
+  expect(title.x).toBeGreaterThan(cover.x + cover.width - 1);
+  await expect(page.locator('.project-row-nav__count')).toHaveText('1–2 / 4');
+  await page.getByRole('button', { name: 'Next project' }).click();
+  await expect(page.locator('.project-row-nav__count')).toHaveText('2–3 / 4');
+  await cards
+    .nth(2)
+    .getByRole('button', { name: /Read the case study: Placeholder/ })
+    .click();
   await expect(page.getByRole('dialog', { name: /Placeholder/ })).toBeVisible();
+});
+
+test('the cards leave room under "Projects", so its descender never touches them', async ({ page }) => {
+  await page.setViewportSize(LAPTOP);
+  await page.goto('/?stills&p=0.5848&demo');
+  await page.evaluate(() => document.fonts.ready);
+  const gap = await page.evaluate(() => {
+    const title = document.querySelector('#projects-title');
+    const list = document.querySelector('#project-list');
+    if (title === null || list === null) throw new Error('missing');
+    // Where the ink of the "j" ends: the text box's bottom is the font's full descent below the baseline, and the
+    // canvas measures how far the letters' own ink reaches below it. Both scale with the page's zoom.
+    const range = document.createRange();
+    range.selectNodeContents(title);
+    const box = range.getBoundingClientRect();
+    const style = getComputedStyle(title);
+    const context = document.createElement('canvas').getContext('2d');
+    if (context === null) throw new Error('2D canvas unavailable');
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const metrics = context.measureText(title.textContent ?? '');
+    const scale = box.height / (metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent);
+    const inkBottom = box.bottom - (metrics.fontBoundingBoxDescent - metrics.actualBoundingBoxDescent) * scale;
+    return list.getBoundingClientRect().top - inkBottom;
+  });
+  expect(gap).toBeGreaterThan(8);
 });
 
 test('with several projects a phone swipes through them, and says which one it shows', async ({ page }) => {
@@ -149,16 +189,68 @@ test('with several projects a phone swipes through them, and says which one it s
   await expect(page.locator('.project-row-nav__count')).toHaveText('4 / 4');
 });
 
-test('?cards=row puts the swipe row on a laptop too, with buttons to step through', async ({ page }) => {
-  await page.setViewportSize(LAPTOP);
-  await page.goto('/?stills&p=0.5848&demo&cards=row');
-  await expect(page.locator('.project-row-nav__count')).toHaveText('1 / 4');
-  await page.getByRole('button', { name: 'Next project' }).click();
-  await expect(page.locator('.project-row-nav__count')).toHaveText('2 / 4');
-});
-
 test('one project needs no row controls', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto('/?stills&p=0.5848');
   await expect(page.locator('.project-row-nav')).toHaveCount(0);
 });
+
+// Owner, 2026-09-26: "can I get the lighter look around the sand back … the lightly shining sand". The storyboard's
+// III and IV show the foam and the black sand across the bottom; one dark floor under the lower 62% of every page
+// took ~78% of the light out of it (measured). Each page shades only where its text is.
+for (const [page_, progress] of [
+  ['III', 0.5848],
+  ['IV', 0.8348],
+] as const) {
+  test(`${page_}: on a laptop the text layer leaves the sand on the right as bright as the scene`, async ({ page }) => {
+    await page.setViewportSize(LAPTOP);
+    await page.goto(`/?stills&p=${progress}`);
+    await expect(page.locator('html')).toHaveClass(/is-settled/, { timeout: 5_000 });
+    await page.waitForTimeout(1500);
+    const sand = { x: 0.6, y: 0.72, w: 0.4, h: 0.28 };
+    const withText = await meanLuminance(page, sand);
+    await page.evaluate(() => document.documentElement.classList.add('is-bare'));
+    const sceneAlone = await meanLuminance(page, sand);
+    // The scene must be there to be measured: a page that failed to boot once passed this with both at 0.025.
+    expect(sceneAlone).toBeGreaterThan(0.1);
+    expect(withText / sceneAlone).toBeGreaterThan(0.9);
+  });
+}
+
+/**
+ * Mean luminance (0..1) of a region of the screen, given as fractions of it. Fractions of the screenshot itself, not
+ * of the viewport: WebKit's test device draws at twice the pixel density, and CSS pixels there measured the wrong place.
+ */
+async function meanLuminance(page: Page, region: { x: number; y: number; w: number; h: number }): Promise<number> {
+  const shot = await page.screenshot({ animations: 'disabled' });
+  const decoder = await page.context().newPage();
+  try {
+    return await decoder.evaluate(
+      async ({ base64, box }) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${base64}`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('2D canvas unavailable');
+        context.drawImage(image, 0, 0);
+        const data = context.getImageData(
+          Math.round(box.x * image.width),
+          Math.round(box.y * image.height),
+          Math.round(box.w * image.width),
+          Math.round(box.h * image.height),
+        ).data;
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          sum += (0.2126 * (data[i] ?? 0) + 0.7152 * (data[i + 1] ?? 0) + 0.0722 * (data[i + 2] ?? 0)) / 255;
+        }
+        return sum / (data.length / 4);
+      },
+      { base64: shot.toString('base64'), box: region },
+    );
+  } finally {
+    await decoder.close();
+  }
+}

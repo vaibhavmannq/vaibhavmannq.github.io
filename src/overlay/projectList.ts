@@ -1,25 +1,16 @@
 import type { Project } from '../content/projects';
 
 /**
- * How several projects share the page (owner review, 2026-09-26):
- * - 'auto': on a laptop the newest is the full card and the rest are one-line rows under it; on a phone they sit in a
- *   row the visitor swipes sideways, since swiping up and down already travels the journey.
- * - 'list': the card and the rows on every screen.
- * - 'row': the sideways row on every screen, with buttons to step through on a laptop.
- * One project is always just the card.
- */
-export type CardLayout = 'auto' | 'list' | 'row';
-
-/**
  * Fills the Projects page's list from the data (content/projects.ts). Each project is a card, as in the storyboard's
  * frame III: its cover, then the year and role, the title with its aside, one line of summary, and a button that
- * opens the case study.
+ * opens the case study. Several projects sit in a row that scrolls sideways (the owner's pick from a demo,
+ * 2026-09-26): two cards in full view on a laptop, one with the next peeking in on a phone, where swiping up and down
+ * already travels the journey.
  */
 export function renderProjectList(
   list: HTMLElement,
   projects: readonly Project[],
   onOpen: (slug: string, opener: HTMLButtonElement) => void,
-  layout: CardLayout = 'auto',
 ): void {
   const element = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) => {
     const node = document.createElement(tag);
@@ -28,15 +19,7 @@ export function renderProjectList(
     return node;
   };
 
-  // One class names the layout in force; 'auto' follows the screen, and changes if a window crosses the breakpoint.
-  const wide = window.matchMedia('(min-width: 700px)');
-  const arrange = () => {
-    const as = layout === 'auto' ? (wide.matches ? 'list' : 'row') : layout;
-    list.classList.toggle('project-list--as-list', projects.length > 1 && as === 'list');
-    list.classList.toggle('project-list--as-row', projects.length > 1 && as === 'row');
-  };
-  arrange();
-  wide.addEventListener('change', arrange);
+  list.classList.toggle('project-list--row', projects.length > 1);
   list.replaceChildren(
     ...projects.map((project) => {
       // The cover is decoration here (empty alt); the case study carries the described image.
@@ -102,20 +85,22 @@ function createRowNav(list: HTMLElement, count: number): HTMLElement {
   shown.className = 'project-row-nav__count';
   shown.setAttribute('aria-live', 'polite');
 
-  // The card whose left edge is nearest the row's left edge is the one on show; scrolled to the very end, the last
-  // one. The list is positioned (overlay.css), so each card's offsetLeft is measured from the row's own start.
+  // Names the cards in full view: "1–2 / 4" on a laptop, "1 / 4" on a phone. The list is positioned (overlay.css), so
+  // each card's offsetLeft is measured from the row's own start; a hair of slack absorbs sub-pixel rounding.
   const update = () => {
     const cards = [...list.children] as HTMLElement[];
-    const scrolls = list.scrollWidth > list.clientWidth + 2;
-    const atEnd = scrolls && list.scrollLeft + list.clientWidth >= list.scrollWidth - 2;
-    const distance = (card: HTMLElement) => Math.abs(card.offsetLeft - list.scrollLeft);
-    let index = 0;
-    cards.forEach((card, i) => {
-      if (distance(card) < distance(cards[index] as HTMLElement)) index = i;
-    });
-    shown.textContent = `${atEnd ? count : index + 1} / ${count}`;
+    const left = list.scrollLeft - 2;
+    const right = list.scrollLeft + list.clientWidth + 2;
+    const inView = cards.flatMap((card, i) =>
+      card.offsetLeft >= left && card.offsetLeft + card.offsetWidth <= right ? [i + 1] : [],
+    );
+    const first = inView[0] ?? 1;
+    const last = inView.at(-1) ?? first;
+    shown.textContent = `${first === last ? first : `${first}–${last}`} / ${count}`;
   };
   list.addEventListener('scroll', update, { passive: true });
+  // Also when the cards change size: fonts arriving, a window resized across the phone breakpoint.
+  new ResizeObserver(update).observe(list);
   update();
 
   nav.append(button('Previous project', '←', -1), shown, button('Next project', '→', 1));
