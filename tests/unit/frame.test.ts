@@ -8,25 +8,25 @@ describe('frameFit', () => {
   it('gives a window and full screen of the same width the same size and place', () => {
     expect(frameFit(1897, 886)).toEqual(frameFit(1897, 1080));
     expect(frameFit(1280, 590)).toEqual(frameFit(1280, 720));
-    expect(frameFit(1897, 886, 'inset')).toEqual(frameFit(1897, 1080, 'inset'));
   });
 
-  it('draws a laptop at the normal window’s zoom: the text at 83%, at the left edge', () => {
-    expect(frameFit(1897, 1080)).toEqual({ scale: TEXT_ZOOM, x: 0 });
-    expect(TEXT_ZOOM).toBeCloseTo(0.83, 2);
-  });
-
-  it('can keep the normal window’s inset instead', () => {
-    const { scale, x } = frameFit(1897, 1080, 'inset');
+  // The owner compared the edge (0 px) with the normal window's inset (161 px of 1897): "I liked the inset more, just
+  // move it a bit to the left".
+  it('draws a laptop at the normal window’s zoom, a little in from the edge', () => {
+    const { scale, x } = frameFit(1897, 1080);
     expect(scale).toBe(TEXT_ZOOM);
-    expect(x).toBeGreaterThan(150);
-    expect(x).toBeLessThan(175);
+    expect(TEXT_ZOOM).toBeCloseTo(0.83, 2);
+    expect(x).toBeGreaterThan(90);
+    expect(x).toBeLessThan(130);
+  });
+
+  it('keeps the margin in proportion on a narrower laptop', () => {
+    expect(frameFit(1280, 720).x / 1280).toBeCloseTo(frameFit(1897, 1080).x / 1897, 6);
   });
 
   it('leaves phones and tablets alone', () => {
     expect(frameFit(390, 844)).toEqual({ scale: 1, x: 0 });
     expect(frameFit(820, 1180)).toEqual({ scale: 1, x: 0 });
-    expect(frameFit(820, 1180, 'inset')).toEqual({ scale: 1, x: 0 });
   });
 
   // Found in WebKit (plan 1, Task 6): the script can run before the stylesheet sizes the stage, so the stage

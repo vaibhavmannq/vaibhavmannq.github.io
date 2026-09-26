@@ -6,10 +6,11 @@
 export const TEXT_ZOOM = 0.83;
 /** Narrower than this is a phone or a tablet: no zoom. */
 const LAPTOP_FROM = 1024;
-/** 'inset' keeps the normal window's margin instead of the edge: 161 px of that 1897 px window. */
-const INSET = 161 / 1897;
-
-export type FitMode = 'edge' | 'inset';
+/**
+ * How far in from the edge the text starts, as a share of the width: 110 px of the owner's 1897 px window. They
+ * compared the edge with the normal window's 161 px and asked for the inset, "a bit to the left" (2026-09-26).
+ */
+const INSET = 110 / 1897;
 
 /**
  * Each page is laid out as usual, then scaled by `scale` and shifted right by `x` px. It depends on the width alone,
@@ -17,11 +18,11 @@ export type FitMode = 'edge' | 'inset';
  * height differs. The earlier rule (S46) followed the picture instead, which moved and shrank the text in a window.
  * Pure.
  */
-export function frameFit(width: number, height: number, mode: FitMode = 'edge'): { scale: number; x: number } {
+export function frameFit(width: number, height: number): { scale: number; x: number } {
   // A stage with no size yet (WebKit can run this before the stylesheet has laid it out) means "no change",
   // never scale 0, which would shrink every page's text to nothing.
   if (width <= 0 || height <= 0 || width < LAPTOP_FROM) return { scale: 1, x: 0 };
-  return { scale: TEXT_ZOOM, x: mode === 'inset' ? width * INSET : 0 };
+  return { scale: TEXT_ZOOM, x: width * INSET };
 }
 
 /**
@@ -29,9 +30,9 @@ export function frameFit(width: number, height: number, mode: FitMode = 'edge'):
  * stage changes size. Watching the stage rather than the window also catches the stylesheet sizing it after this
  * runs, which WebKit can do.
  */
-export function applyFrameFit(root: HTMLElement, stage: HTMLElement, mode: FitMode = 'edge'): void {
+export function applyFrameFit(root: HTMLElement, stage: HTMLElement): void {
   const update = () => {
-    const { scale, x } = frameFit(stage.clientWidth, stage.clientHeight, mode);
+    const { scale, x } = frameFit(stage.clientWidth, stage.clientHeight);
     root.style.setProperty('--frame-scale', String(scale));
     root.style.setProperty('--frame-x', `${x}px`);
   };

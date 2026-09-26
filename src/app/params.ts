@@ -16,12 +16,8 @@ export interface DebugParams {
   stills: boolean;
   /** `?bare`: hide the text layer, for rendering the stills and the project cover (scripts/capture.mjs). */
   bare: boolean;
-  /** `?fit=inset`: keep the normal window's margin on a laptop instead of the edge (owner review, 2026-09-26). */
-  fit?: 'inset';
-  /** `?demo`: three placeholder projects beside Moonlit, to judge the Projects page with several (owner review). */
+  /** `?demo`: three placeholder projects beside Moonlit, to see the Projects page with several (owner review). */
   demo: boolean;
-  /** `?cards=list|row`: how several projects are laid out, on every screen (owner review). */
-  cards?: 'list' | 'row';
 }
 
 export function readDebugParams(search: string): DebugParams {
@@ -42,8 +38,6 @@ export function readDebugParams(search: string): DebugParams {
   const progress = number('p');
   const moonValue = number('moon');
   const lengthValue = number('length');
-  const only = <T extends string>(key: string, values: readonly T[]): T | undefined =>
-    values.find((value) => value === query.get(key));
 
   return {
     tier,
@@ -58,8 +52,6 @@ export function readDebugParams(search: string): DebugParams {
     forceWebGL: query.has('webgl'),
     stills: query.has('stills'),
     bare: query.has('bare'),
-    fit: only('fit', ['inset']),
     demo: query.has('demo'),
-    cards: only('cards', ['list', 'row']),
   };
 }

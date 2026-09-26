@@ -47,8 +47,7 @@ export async function boot(): Promise<void> {
 
   byId('journey-track').style.setProperty('--journey-length', String(totalLength(activeJourney)));
   // Text keeps its place in the scene whether the window is full screen or not (spec 2026-09-25 §4.14).
-  // ?fit=inset keeps the normal window's margin instead of the edge (owner review, 2026-09-26).
-  applyFrameFit(root, byId('world'), params.fit ?? 'edge');
+  applyFrameFit(root, byId('world'));
   // `?bare`: the scene alone, for rendering the stills and the project cover (scripts/capture.mjs).
   if (params.bare) root.classList.add('is-bare');
 
@@ -100,17 +99,12 @@ export async function boot(): Promise<void> {
     scroll.setLocked(true);
     return true;
   };
-  renderProjectList(
-    byId('project-list'),
-    projects,
-    (slug, button) => {
-      opener = button;
-      window.history.pushState(window.history.state, '', projectHash(slug));
-      pushedRoute = true;
-      showProject(slug);
-    },
-    params.cards ?? 'auto',
-  );
+  renderProjectList(byId('project-list'), projects, (slug, button) => {
+    opener = button;
+    window.history.pushState(window.history.state, '', projectHash(slug));
+    pushedRoute = true;
+    showProject(slug);
+  });
   // Back, Forward and edited addresses: the hash decides whether a project is open.
   window.addEventListener('hashchange', () => {
     const route = parseRoute(window.location.hash);
