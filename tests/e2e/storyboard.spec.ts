@@ -149,13 +149,14 @@ test('a laptop shows two whole cards side by side, and steps through them', asyn
   await expect(page.locator('.project-row-nav__count')).toHaveText('2–3 / 3');
 });
 
-test('the coming-soon cards say so, and offer no case study', async ({ page }) => {
+// Eventide took one of the two coming-soon places (2026-10-25), so one is left beside the two projects.
+test('the coming-soon card says so, and offers no case study', async ({ page }) => {
   await page.goto('/?stills&p=0.5848');
   const soon = page.locator('#projects .project-card--soon');
-  await expect(soon).toHaveCount(2);
+  await expect(soon).toHaveCount(1);
   await expect(soon.first()).toContainText('Coming soon');
   await expect(soon.getByRole('button')).toHaveCount(0);
-  await expect(page.locator('#projects').getByRole('button', { name: /Read the case study/ })).toHaveCount(1);
+  await expect(page.locator('#projects').getByRole('button', { name: /Read the case study/ })).toHaveCount(2);
 });
 
 test('the cards leave room under "Projects", so its descender never touches them', async ({ page }) => {
