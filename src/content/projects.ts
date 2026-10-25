@@ -68,6 +68,32 @@ export const projects: readonly Project[] = [
     },
     links: { repo: 'https://github.com/vaibhavmannq/vaibhavmannq.github.io' },
   },
+  {
+    slug: 'eventide',
+    title: 'Eventide',
+    aside: 'everyone’s even by nightfall',
+    year: 2026,
+    role: 'Design, code and infrastructure',
+    tools: ['TypeScript', 'PostgreSQL', 'Cloudflare Workers', 'Hono', 'Preact', 'Playwright'],
+    summary: 'Split costs with a flat, a trip or a dinner, and settle up in as few payments as possible.',
+    details: [
+      'A Splitwise-style app that installs on a phone and keeps working offline. Every expense is double-entry bookkeeping: its postings must sum to zero or Postgres refuses the commit, and nothing is ever edited, only reversed, so the history can always be audited.',
+      'It runs entirely on free tiers: one Cloudflare Worker serves the app and the API, in front of Postgres on Neon. Each person can only ever read their own groups, and that is enforced by the database itself, not just the code.',
+    ],
+    hardPart:
+      'Saving exactly once over a bad connection. A phone often loses the answer to a request that did succeed, then sends it again. Every change carries a key that the server remembers along with its answer, so a retry gets back the same reply and never a second expense; and two people editing the same expense at once can’t overwrite each other.',
+    // Measured 2026-10-25: npm run crash in the eventide repo (docs/PERFORMANCE.md).
+    metric: { value: '800 sent → 800 saved', label: 'server killed 15 times mid-write, none lost or doubled' },
+    cover: {
+      src: '/projects/eventide-cover.jpg',
+      alt: 'A group in Eventide: a crescent moon beside “You’re owed ₹9,442.50”, and the first payment to settle up',
+      caption: 'The app · a group’s balance',
+    },
+    links: {
+      live: 'https://eventide.vaibhavmann-10.workers.dev',
+      repo: 'https://github.com/vaibhavmannq/eventide',
+    },
+  },
 ];
 
 /**
@@ -80,7 +106,4 @@ export interface Upcoming {
   cover: string;
 }
 
-export const upcoming: readonly Upcoming[] = [
-  { cover: '/stills/about-landscape.jpg' },
-  { cover: '/stills/intro-landscape.jpg' },
-];
+export const upcoming: readonly Upcoming[] = [{ cover: '/stills/intro-landscape.jpg' }];
