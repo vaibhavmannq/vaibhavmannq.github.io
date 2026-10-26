@@ -26,7 +26,7 @@
     "@axe-core/playwright": "4.13.0",
     "@biomejs/biome": "2.5.13",
     "@playwright/test": "1.63.0",
-    "@size-limit/file": "13.1.1",
+    "@size-limit/file": "14.2.0",
     "@types/node": "24.13.4",
     "@types/three": "0.186.0",
     "lil-gui": "0.21.0",
