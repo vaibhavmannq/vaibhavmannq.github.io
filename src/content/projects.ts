@@ -88,10 +88,10 @@ export const projects: readonly Project[] = [
     year: 2026,
     kind: 'Full-stack app',
     role: 'Design, code and infrastructure',
-    tools: ['TypeScript', 'PostgreSQL', 'Cloudflare Workers', 'Hono', 'Preact', 'Playwright'],
+    tools: ['TypeScript', 'PostgreSQL', 'Cloudflare Workers', 'Hono', 'Preact', 'Tauri', 'Playwright'],
     summary: 'Split costs with a flat, a trip or a dinner, and settle up in as few payments as possible.',
     details: [
-      'A Splitwise-style app that installs on a phone and keeps working offline. Every expense is double-entry bookkeeping: its postings must sum to zero or Postgres refuses the commit, and nothing is ever edited, only reversed, so the history can always be audited.',
+      'A Splitwise-style app that runs in the browser and as Android, Windows and Linux apps, and keeps working offline. Every expense is double-entry bookkeeping: its postings must sum to zero or Postgres refuses the commit, and nothing is ever edited, only reversed, so the history can always be audited.',
       'It runs entirely on free tiers: one Cloudflare Worker serves the app and the API, in front of Postgres on Neon. Each person can only ever read their own groups, and that is enforced by the database itself, not just the code.',
     ],
     hardPart:
