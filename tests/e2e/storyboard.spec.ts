@@ -126,37 +126,70 @@ test('with reduced motion the clip waits to be played', async ({ browser }) => {
   }
 });
 
-// Owner, 2026-09-26: the sideways row of cards on every screen (the storyboard's card on a laptop, picture beside the
-// words, two in full view), and "add that multiple projects card for both phone and laptop": Moonlit and two
-// "Coming soon" cards, which have no case study yet, so no button.
-test('a laptop shows two whole cards side by side, and steps through them', async ({ page }) => {
+// Redone 2026-11-08: with two real projects, both cards are in full view on every screen. The sideways row (owner's
+// pick, 2026-09-26) hid Eventide behind arrows on a laptop and behind a swipe on a phone; it returns past two projects.
+test('a laptop shows both projects side by side, each picture above its words, with nothing to step through', async ({
+  page,
+}) => {
   await page.setViewportSize(LAPTOP);
   await page.goto('/?stills&p=0.5848');
-  const list = page.locator('#project-list');
   const cards = page.locator('#projects .project-card');
-  await expect(cards).toHaveCount(3);
-  const row = await list.boundingBox();
+  await expect(cards).toHaveCount(2);
+  const first = await cards.nth(0).boundingBox();
   const second = await cards.nth(1).boundingBox();
-  if (row === null || second === null) throw new Error('missing boxes');
-  expect(second.x + second.width).toBeLessThanOrEqual(row.x + row.width + 1);
-  // The storyboard's card: the picture beside the words, not above them.
+  if (first === null || second === null) throw new Error('missing boxes');
+  expect(second.x).toBeGreaterThan(first.x + first.width - 1);
+  expect(Math.abs(second.y - first.y)).toBeLessThan(1);
+  expect(second.y + second.height).toBeLessThanOrEqual(LAPTOP.height);
   const cover = await cards.nth(0).locator('.project__cover').boundingBox();
   const title = await cards.nth(0).locator('.project__title').boundingBox();
   if (cover === null || title === null) throw new Error('missing boxes');
-  expect(title.x).toBeGreaterThan(cover.x + cover.width - 1);
-  await expect(page.locator('.project-row-nav__count')).toHaveText('1–2 / 3');
-  await page.getByRole('button', { name: 'Next project' }).click();
-  await expect(page.locator('.project-row-nav__count')).toHaveText('2–3 / 3');
+  expect(title.y).toBeGreaterThan(cover.y + cover.height - 1);
+  await expect(page.locator('.project-row-nav')).toHaveCount(0);
 });
 
-// Eventide took one of the two coming-soon places (2026-10-25), so one is left beside the two projects.
-test('the coming-soon card says so, and offers no case study', async ({ page }) => {
+test('a phone stacks both projects on one screen, each picture beside its words', async ({ page }) => {
+  await page.setViewportSize(PHONE);
   await page.goto('/?stills&p=0.5848');
-  const soon = page.locator('#projects .project-card--soon');
-  await expect(soon).toHaveCount(1);
-  await expect(soon.first()).toContainText('Coming soon');
-  await expect(soon.getByRole('button')).toHaveCount(0);
+  const cards = page.locator('#projects .project-card');
+  await expect(cards).toHaveCount(2);
+  const first = await cards.nth(0).boundingBox();
+  const second = await cards.nth(1).boundingBox();
+  if (first === null || second === null) throw new Error('missing boxes');
+  expect(second.y).toBeGreaterThan(first.y + first.height - 1);
+  expect(second.y + second.height).toBeLessThanOrEqual(PHONE.height);
+  // Clear of the header and the rail of moons.
+  const rail = await page.locator('.chapter-rail').boundingBox();
+  const kicker = await page.locator('#projects .section__kicker').boundingBox();
+  if (rail === null || kicker === null) throw new Error('missing boxes');
+  expect(kicker.y).toBeGreaterThan(rail.y + rail.height);
+  const cover = await cards.nth(1).locator('.project__cover').boundingBox();
+  const title = await cards.nth(1).locator('.project__title').boundingBox();
+  if (cover === null || title === null) throw new Error('missing boxes');
+  expect(title.x).toBeGreaterThan(cover.x + cover.width - 1);
+  expect(await page.locator('#project-list').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+});
+
+test('a project on its way is one line under the cards, not a card', async ({ page }) => {
+  await page.goto('/?stills&p=0.5848');
+  await expect(page.locator('#projects .project-card--soon')).toHaveCount(0);
+  await expect(page.locator('#projects .project-next')).toContainText('Another project is on its way.');
   await expect(page.locator('#projects').getByRole('button', { name: /Read the case study/ })).toHaveCount(2);
+});
+
+test('the Eventide case study shows the app on a laptop and two phone screens', async ({ page }) => {
+  await page.setViewportSize(LAPTOP);
+  await page.goto('/?stills#/projects/eventide');
+  const dialog = page.getByRole('dialog', { name: 'Eventide' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-project-cover]')).toHaveAttribute('src', '/projects/eventide-cover.jpg');
+  await expect(dialog.locator('.project-dialog__tile--screen')).toHaveCount(2);
+  await expect(dialog.locator('[data-project-metric-value]')).toHaveText('800 sent → 800 saved');
+  // Moonlit afterwards: no phone screens, and no leftover narrow picture from Eventide.
+  await page.goto('/?stills#/projects/moonlit');
+  const moonlit = page.getByRole('dialog', { name: 'Moonlit' });
+  await expect(moonlit.locator('.project-dialog__tile--screen')).toHaveCount(0);
+  expect(await moonlit.locator('[data-project-cover-narrow]').getAttribute('srcset')).toBeNull();
 });
 
 test('the cards leave room under "Projects", so its descender never touches them', async ({ page }) => {
@@ -182,16 +215,6 @@ test('the cards leave room under "Projects", so its descender never touches them
     return list.getBoundingClientRect().top - inkBottom;
   });
   expect(gap).toBeGreaterThan(8);
-});
-
-test('a phone swipes through the cards, and says which one it shows', async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  await page.goto('/?stills&p=0.5848');
-  const list = page.locator('#project-list');
-  expect(await list.evaluate((el) => getComputedStyle(el).overflowX)).toBe('auto');
-  await expect(page.locator('.project-row-nav__count')).toHaveText('1 / 3');
-  await list.evaluate((el) => el.scrollTo({ left: el.scrollWidth }));
-  await expect(page.locator('.project-row-nav__count')).toHaveText('3 / 3');
 });
 
 // Owner, 2026-09-26: "can I get the lighter look around the sand back … the lightly shining sand". The storyboard's

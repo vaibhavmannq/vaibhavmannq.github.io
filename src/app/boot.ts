@@ -111,7 +111,8 @@ export async function boot(): Promise<void> {
   window.addEventListener('hashchange', () => {
     const route = parseRoute(window.location.hash);
     if (route.kind === 'project') {
-      if (!dialog.isOpen && !showProject(route.slug)) clearRoute();
+      // Also when one case study is open and the address names another: it swaps (was ignored until 2026-11-08).
+      if (!showProject(route.slug) && !dialog.isOpen) clearRoute();
     } else if (dialog.isOpen) {
       pushedRoute = false;
       dialog.close();

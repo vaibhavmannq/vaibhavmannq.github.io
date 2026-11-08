@@ -31,8 +31,11 @@ export function createProjectDialog(
   const text = part('[data-project-text]');
   const links = part('[data-project-links]');
   const cover = part<HTMLImageElement>('[data-project-cover]');
+  const coverNarrow = part<HTMLSourceElement>('[data-project-cover-narrow]');
   const hard = part('[data-project-hard]');
   const metric = part('[data-project-metric]');
+  const metricValue = part('[data-project-metric-value]');
+  const metricLabel = part('[data-project-metric-label]');
   const extras = part('[data-project-extras]');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let clip: HTMLVideoElement | null = null;
@@ -40,6 +43,8 @@ export function createProjectDialog(
   const tile = (media: HTMLElement, ...captions: string[]) => {
     const figure = document.createElement('figure');
     figure.className = 'project-dialog__tile';
+    if (media instanceof HTMLImageElement && media.dataset.screen !== undefined)
+      figure.classList.add('project-dialog__tile--screen');
     const label = document.createElement('figcaption');
     label.className = 'project-dialog__caption';
     for (const text of captions) {
@@ -95,6 +100,10 @@ export function createProjectDialog(
         return [dt, dd];
       }),
     );
+    // A phone gets the narrow cut when there is one; the <source> must be emptied otherwise, or the last project's
+    // narrow picture would stay.
+    if (project.cover.narrow) coverNarrow.srcset = project.cover.narrow;
+    else coverNarrow.removeAttribute('srcset');
     cover.src = project.cover.src;
     cover.alt = project.cover.alt;
     caption.textContent = project.cover.caption ?? '';
@@ -124,9 +133,20 @@ export function createProjectDialog(
       image.loading = 'lazy';
       tiles.push(tile(image, project.extras.compare.before, project.extras.compare.after));
     }
+    for (const screen of project.extras?.screens ?? []) {
+      const image = document.createElement('img');
+      image.src = screen.src;
+      image.alt = screen.alt;
+      image.loading = 'lazy';
+      image.dataset.screen = '';
+      tiles.push(tile(image, screen.label));
+    }
     extras.replaceChildren(...tiles);
+    // Upright phone screens want a different sheet on a laptop: the picture at its own shape, the screens below it.
+    dialog.classList.toggle('project-dialog--screens', (project.extras?.screens?.length ?? 0) > 0);
     hard.textContent = project.hardPart;
-    metric.textContent = project.metric ? `${project.metric.value} — ${project.metric.label}` : '';
+    metricValue.textContent = project.metric?.value ?? '';
+    metricLabel.textContent = project.metric?.label ?? '';
     metric.hidden = project.metric === undefined;
     text.replaceChildren(
       ...project.details.map((paragraph) => {
@@ -148,6 +168,8 @@ export function createProjectDialog(
       if (project === undefined) return false;
       fill(project);
       if (!dialog.open) dialog.showModal();
+      // A swap from another case study starts at the top, not where the last one was scrolled to.
+      dialog.scrollTop = 0;
       if (clip && !reducedMotion.matches) {
         // A browser may refuse to play; the poster and the controls are still there.
         clip.play().catch(() => {});

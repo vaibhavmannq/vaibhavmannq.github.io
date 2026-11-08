@@ -22,7 +22,7 @@ The journey, in order:
 |---|---|---|---|---|
 | 1 · Adrift | 0 – 1.4 screens | the name (Fraunces), a tagline, "See the work" | 0.08, a crescent | drifting on the open sea |
 | 2 · The shore | 1.4 – 2.8 | About, in two paragraphs | 0.25, first quarter | up the beach: lands at 2.0 (S41) |
-| 3 · What washed ashore | 2.8 – 4.2 | Projects — a card with a cover, opens the case study | 0.375, gibbous | walking sideways along the sand (ends at 4.1) |
+| 3 · What washed ashore | 2.8 – 4.2 | Projects — Moonlit and Eventide as cards, each opens its case study (S53) | 0.375, gibbous | walking sideways along the sand (ends at 4.1) |
 | 4 · The water's edge | 4.2 – 5.6 | "Over to you" (Fraunces italic), email, GitHub, LinkedIn, Return to the shore | 0.5, full | stepping toward the sea and crouching |
 
 The moon waxes with the scroll, reaching each phase where its page is fully shown. There is no opening any more
@@ -265,7 +265,7 @@ These are the ones that get broken by accident. Each is in the spec with its rea
 
 | Document | Covers |
 |---|---|
-| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S52** |
+| `specs/2026-09-13-moonlit-portfolio-design.md` | the master spec: goals, architecture, LLD, performance, a11y, CI. **§17 is the change log — every decision since, numbered S1…S53** |
 | `specs/2026-09-14-journey-flow-design.md` | the scroll feel: handover, camera follow, touch snap, the black opening |
 | `specs/2026-09-21-projects-page-design.md` | Projects on the shore, the dialog, deep links |
 | `specs/2026-09-21-contact-page-design.md` | Contact at the water's edge |
@@ -290,8 +290,12 @@ Updated 2026-09-26.
   dark floor, and the card, header, margins, hint, phone header and case study had drifted. Branch
   **`storyboard-match`** rebuilt all of it, and the owner picked what to keep (S49, S50): the header naming the
   page, the project card in a sideways row, the case study, the smaller glints and the lighter shading around the
-  sand; the laptop text 110 px in at an 83% zoom, the same in a window and full screen. Two "Coming soon"
-  cards sit beside Moonlit until real projects replace them (`upcoming` in `content/projects.ts`).
+  sand; the laptop text 110 px in at an 83% zoom, the same in a window and full screen.
+- 2026-11-08 (S53): Eventide is the second project, and the Projects page was redone for two projects. Both cards
+  are in full view on every screen (side by side on a laptop, stacked on a phone); the sideways row comes back by
+  itself past two projects; a project on its way is one line under the cards (`upcoming` in `content/projects.ts`).
+  Eventide's pictures are real captures of its app with invented demo data, made by serving its build with a fake
+  API in Playwright (no database needed).
 - Measured on this laptop's Intel UHD: the sea at tier 2 runs at 60 fps (was 46.6), tier 3 at 58 (was 31.6),
   tier 4 at 41.4 (was 21); the name is readable at first paint (was 5.6 s); a fast scroll shows at most one
   page (was four); a window against full screen drifts under 0.5% (was 6–13%).

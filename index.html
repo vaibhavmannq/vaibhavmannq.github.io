@@ -132,7 +132,10 @@
         </div>
         <div class="project-dialog__media">
           <figure class="project-dialog__figure">
-            <img class="project-dialog__cover" data-project-cover alt="" />
+            <picture>
+              <source media="(max-width: 699px)" data-project-cover-narrow />
+              <img class="project-dialog__cover" data-project-cover alt="" />
+            </picture>
             <figcaption class="project-dialog__caption" data-project-caption></figcaption>
           </figure>
           <div class="project-dialog__extras" data-project-extras></div>
@@ -148,7 +151,11 @@
           <div class="project-dialog__text" data-project-text></div>
           <h3 class="project-dialog__label">The hard part</h3>
           <p class="project-dialog__hard" data-project-hard></p>
-          <p class="project-dialog__metric" data-project-metric></p>
+          <p class="project-dialog__metric" data-project-metric>
+            <span class="project-dialog__metric-value" data-project-metric-value></span>
+            <span class="visually-hidden"> — </span>
+            <span class="project-dialog__metric-label" data-project-metric-label></span>
+          </p>
           <p class="project-dialog__links" data-project-links></p>
         </div>
       </div>

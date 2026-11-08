@@ -9,6 +9,8 @@ export interface Project {
   /** A few words set in italics beside the title. */
   aside?: string;
   year: number;
+  /** What kind of thing it is, in two or three words: the card's small line beside the year. */
+  kind: string;
   role: string;
   tools: readonly string[];
   /** One line, shown in the list. */
@@ -19,8 +21,16 @@ export interface Project {
   hardPart: string;
   /** One measured number, never an estimate. */
   metric?: { value: string; label: string };
-  /** The case study's picture; the caption says what it shows (storyboard F). */
-  cover: { src: string; alt: string; caption?: string };
+  /**
+   * The case study's picture; the caption says what it shows (storyboard F). `narrow` is the same moment cut for a
+   * phone's wide, short strip, where a laptop screenshot's text would be too small to read.
+   */
+  cover: { src: string; alt: string; caption?: string; narrow?: string };
+  /**
+   * The card's picture on the Projects page, when it is not the cover. `focus` is the CSS object-position that keeps
+   * the subject in view when a phone's card crops it narrow.
+   */
+  thumb?: { src: string; focus?: string };
   /**
    * The two tiles under the picture on a laptop (storyboard F): a clip of the thing itself, and a before and after
    * of its hard part. Both rendered from the real scene (scripts/capture.mjs).
@@ -28,6 +38,8 @@ export interface Project {
   extras?: {
     clip?: { src: string; poster: string; label: string };
     compare?: { src: string; alt: string; before: string; after: string };
+    /** Phone screens of an app, shown upright side by side. */
+    screens?: readonly { src: string; alt: string; label: string }[];
   };
   links?: { live?: string; repo?: string };
 }
@@ -38,6 +50,7 @@ export const projects: readonly Project[] = [
     title: 'Moonlit',
     aside: 'you’re standing in it',
     year: 2026,
+    kind: 'WebGPU website',
     role: 'Design and code',
     tools: ['TypeScript', 'Three.js', 'WebGPU and WebGL2', 'Lenis', 'Vite'],
     summary: 'The journey you are on: a moonlit sea whose moon fills as you travel.',
@@ -73,6 +86,7 @@ export const projects: readonly Project[] = [
     title: 'Eventide',
     aside: 'everyone’s even by nightfall',
     year: 2026,
+    kind: 'Full-stack app',
     role: 'Design, code and infrastructure',
     tools: ['TypeScript', 'PostgreSQL', 'Cloudflare Workers', 'Hono', 'Preact', 'Playwright'],
     summary: 'Split costs with a flat, a trip or a dinner, and settle up in as few payments as possible.',
@@ -84,10 +98,27 @@ export const projects: readonly Project[] = [
       'Saving exactly once over a bad connection. A phone often loses the answer to a request that did succeed, then sends it again. Every change carries a key that the server remembers along with its answer, so a retry gets back the same reply and never a second expense; and two people editing the same expense at once can’t overwrite each other.',
     // Measured 2026-10-25: npm run crash in the eventide repo (docs/PERFORMANCE.md).
     metric: { value: '800 sent → 800 saved', label: 'server killed 15 times mid-write, none lost or doubled' },
+    // Captured 2026-11-08 from the real app (the eventide repo's build) with invented demo data: no real names or money.
     cover: {
       src: '/projects/eventide-cover.jpg',
-      alt: 'A group in Eventide: a crescent moon beside “You’re owed ₹9,442.50”, and the first payment to settle up',
-      caption: 'The app · a group’s balance',
+      narrow: '/projects/eventide-card.jpg',
+      alt: 'Eventide on a laptop: the Goa trip group, “You’re owed ₹12,234.87” beside a half moon, the three payments that settle it, and the activity by day',
+      caption: 'The app on a laptop · a trip’s balances (demo data)',
+    },
+    thumb: { src: '/projects/eventide-card.jpg', focus: '98% 40%' },
+    extras: {
+      screens: [
+        {
+          src: '/projects/eventide-groups.jpg',
+          alt: 'The groups screen on a phone: each group has a moon that fills as its debts are settled; Friday dinner is full and reads “Everyone’s even”',
+          label: 'Each moon fills as a group settles',
+        },
+        {
+          src: '/projects/eventide-split.jpg',
+          alt: 'Adding an expense on a phone: ₹3,860.50 split by percentage, 40, 20, 20 and 20, with each share worked out to the paisa',
+          label: 'Split equally, exactly, by percent or by shares',
+        },
+      ],
     },
     links: {
       live: 'https://eventide.vaibhavmann-10.workers.dev',
@@ -97,13 +128,8 @@ export const projects: readonly Project[] = [
 ];
 
 /**
- * Projects on the way: cards in the same row, with a picture from the scene and no case study yet (owner,
- * 2026-09-26: "add that multiple projects card for both phone and laptop"). When a project is ready, it moves into
- * `projects` above and its card here goes.
+ * Projects on the way. Each is one quiet line under the cards, not a card of its own (2026-11-08: with two real
+ * projects, a third "Coming soon" card pushed Eventide behind a sideways scroll on a phone). When a project is ready,
+ * it moves into `projects` above and its line here goes.
  */
-export interface Upcoming {
-  /** A picture from the site's own stills, standing in until the project has one. */
-  cover: string;
-}
-
-export const upcoming: readonly Upcoming[] = [{ cover: '/stills/intro-landscape.jpg' }];
+export const upcoming: readonly string[] = ['Another project is on its way.'];

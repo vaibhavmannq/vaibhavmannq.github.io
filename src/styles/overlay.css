@@ -611,7 +611,7 @@ html.is-stills .world {
   height: 9.375rem;
   border-bottom: 1px solid rgba(159, 230, 238, 0.15);
   object-fit: cover;
-  object-position: center 60%;
+  object-position: var(--focus, center 60%);
 }
 
 .project__body {
@@ -651,6 +651,7 @@ html.is-stills .world {
 .project__open {
   display: inline-flex;
   align-self: flex-start;
+  margin-top: auto;
   align-items: center;
   min-height: 44px;
   padding: 0;
@@ -957,7 +958,6 @@ html.is-stills .world {
 }
 
 .project-dialog__aside {
-  display: none;
   margin: 0;
   color: var(--glow);
   font-family: var(--font-accent);
@@ -996,18 +996,67 @@ html.is-stills .world {
   text-transform: uppercase;
 }
 
+.project-dialog__text {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .project-dialog__text p,
-.project-dialog__hard,
-.project-dialog__metric {
+.project-dialog__hard {
   margin: 0;
   color: rgba(230, 238, 240, 0.8);
   font-size: 0.9375rem;
   line-height: 1.6;
 }
 
+/* The measured number, as a number: large, with what it measures beneath it (2026-11-08; it was a bold sentence). */
 .project-dialog__metric {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.25rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(159, 230, 238, 0.15);
+}
+
+.project-dialog__metric-value {
   color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.75rem;
   font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.project-dialog__metric-label {
+  color: rgba(230, 238, 240, 0.7);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.project-dialog__metric[hidden] {
+  display: none;
+}
+
+/* The <picture> only chooses the file; the image itself is the figure's grid item. */
+.project-dialog__figure picture {
+  display: contents;
+}
+
+/* …and its <source> must not become one too: it took an empty row and the gap above the picture. */
+.project-dialog__figure source {
+  display: none;
+}
+
+/* An app's phone screens, upright, two side by side on every screen. */
+.project-dialog--screens .project-dialog__extras {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 0.75rem;
+}
+
+.project-dialog__tile--screen img {
+  aspect-ratio: 390 / 600;
+  border-radius: 1.25rem;
+  object-position: top;
 }
 
 .project-dialog__links {
@@ -1125,10 +1174,6 @@ html.is-stills .world {
     line-height: 1;
   }
 
-  .project-dialog__aside:not([hidden]) {
-    display: block;
-  }
-
   .project-dialog__facts {
     display: grid;
   }
@@ -1138,10 +1183,43 @@ html.is-stills .world {
   }
 
   .project-dialog__text p,
-  .project-dialog__hard,
-  .project-dialog__metric {
+  .project-dialog__hard {
     font-size: 1rem;
     line-height: 1.65;
+  }
+
+  .project-dialog__metric-value {
+    font-size: 2.25rem;
+  }
+
+  .project-dialog__metric-label {
+    font-size: 0.9375rem;
+  }
+
+  /* With phone screens, the picture keeps its own shape and the screens sit under it at theirs; the sheet scrolls. */
+  .project-dialog--screens .project-dialog__media {
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+
+  .project-dialog--screens .project-dialog__figure {
+    grid-template-rows: auto auto;
+  }
+
+  .project-dialog--screens .project-dialog__cover {
+    height: auto;
+    aspect-ratio: 16 / 10;
+    object-position: center;
+  }
+
+  .project-dialog--screens .project-dialog__extras {
+    gap: 1rem;
+  }
+
+  .project-dialog__tile--screen img,
+  .project-dialog--screens .project-dialog__tile :is(video, img) {
+    height: auto;
+    aspect-ratio: 390 / 600;
   }
 
   .project-dialog__links {
@@ -1254,7 +1332,7 @@ html.is-bare .content {
   display: none;
 }
 
-/* ---------- several projects (the owner's pick from a demo, 2026-09-26; projectList.ts) ---------- */
+/* ---------- the list of projects (projectList.ts) ---------- */
 /* Room under "Projects": at a line-height of 0.9 its "j" hangs below the line box and touched the card (owner). */
 #projects .project-list {
   margin-top: 1rem;
@@ -1360,6 +1438,149 @@ html.is-bare .content {
   }
 
   .project-list--row .project__summary {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Up to two projects, all in view (redone 2026-11-08). A phone stacks them, each card's picture beside its words, so
+   both fit on one screen above the sand; a laptop sets them side by side, the picture above the words, in the same
+   room the row had, clear of the moon. */
+.project-list--grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.project-list--grid > li {
+  display: grid;
+}
+
+.project-list--grid .project-card {
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+}
+
+.project-list--grid .project__cover {
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid rgba(159, 230, 238, 0.15);
+  border-bottom: 0;
+}
+
+.project-list--grid .project__body {
+  gap: 0.35rem;
+  padding: 0.9rem 1rem 0.35rem;
+}
+
+.project-list--grid .project__title {
+  font-size: 1.5rem;
+}
+
+.section .project-list--grid .project__summary {
+  font-size: 0.875rem;
+}
+
+/* The aside waits for the case study on a phone, where every line of the card pushes the page up the sky. */
+.project-list--grid .project__aside {
+  display: none;
+}
+
+/* A phone's Projects page sits lower than the others: two stacked cards are its tallest page, and on a small phone
+   (360 × 740) they reached up into the header. The foot below is sand, with nothing to read. */
+@media (max-width: 699px) {
+  #projects {
+    bottom: max(6svh, env(safe-area-inset-bottom));
+  }
+
+  .section .project-list--grid .project__meta {
+    letter-spacing: 0.16em;
+  }
+}
+
+@media (max-width: 380px) {
+  .project-list--grid .project-card {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+  }
+
+  .project-list--grid .project__body {
+    padding: 0.75rem 0.85rem 0.25rem;
+  }
+
+  .project-list--grid .project__title {
+    font-size: 1.375rem;
+  }
+
+  .section .project-list--grid .project__summary {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+}
+
+.section .project-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  max-width: none;
+  margin: 0.9rem 0 0;
+  font-size: 0.875rem;
+}
+
+.project-next__label {
+  color: var(--glow);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 700px) {
+  #projects .section__panel:has(.project-list--grid) {
+    max-width: min(56rem, calc(48vw / var(--frame-scale, 1)));
+  }
+
+  .project-list--grid .project-card {
+    grid-template-columns: 9rem minmax(0, 1fr);
+    max-width: none;
+  }
+
+  .project-list--grid .project__aside {
+    display: inline;
+  }
+}
+
+@media (min-width: 1024px) {
+  .project-list--grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .project-list--grid .project-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .project-list--grid .project__cover {
+    height: auto;
+    aspect-ratio: 16 / 9;
+    border-right: 0;
+    border-bottom: 1px solid rgba(159, 230, 238, 0.15);
+    object-position: center;
+  }
+
+  .project-list--grid .project__body {
+    gap: 0.45rem;
+    padding: 1.1rem 1.25rem 0.5rem;
+  }
+
+  .project-list--grid .project__title {
+    font-size: 1.875rem;
+  }
+
+  .section .project-list--grid .project__summary {
+    font-size: 0.9375rem;
+  }
+
+  .section .project-next {
+    margin-top: 1.1rem;
     font-size: 0.9375rem;
   }
 }

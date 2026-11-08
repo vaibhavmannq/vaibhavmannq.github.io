@@ -1,17 +1,23 @@
-import type { Project, Upcoming } from '../content/projects';
+import type { Project } from '../content/projects';
+
+/** More projects than this and the cards go into the sideways row (createRowNav below); up to it, all are in view. */
+const IN_VIEW = 2;
 
 /**
- * Fills the Projects page's list from the data (content/projects.ts). Each project is a card, as in the storyboard's
- * frame III: its cover, then the year and role, the title with its aside, one line of summary, and a button that
- * opens the case study. Several projects sit in a row that scrolls sideways (the owner's pick from a demo,
- * 2026-09-26): two cards in full view on a laptop, one with the next peeking in on a phone, where swiping up and down
- * already travels the journey.
+ * Fills the Projects page's list from the data (content/projects.ts). Each project is a card: its picture, the year
+ * and what kind of thing it is, the title with its aside, one line of summary, and a button that opens the case
+ * study.
+ *
+ * Redone 2026-11-08. With two real projects, both cards are in full view on every screen: side by side on a laptop,
+ * the picture above the words; stacked on a phone, the picture beside them. The earlier sideways row hid the second
+ * project behind a swipe on a phone and behind arrows on a laptop. It comes back by itself past IN_VIEW projects,
+ * when they no longer fit on one screen. Projects still on the way are one quiet line under the cards.
  */
 export function renderProjectList(
   list: HTMLElement,
   projects: readonly Project[],
   onOpen: (slug: string, opener: HTMLButtonElement) => void,
-  upcoming: readonly Upcoming[] = [],
+  upcoming: readonly string[] = [],
 ): void {
   const element = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) => {
     const node = document.createElement(tag);
@@ -20,25 +26,19 @@ export function renderProjectList(
     return node;
   };
 
-  const count = projects.length + upcoming.length;
-  const cover = (src: string) => {
-    // The cover is decoration here (empty alt); the case study carries the described image.
-    const image = element('img', 'project__cover');
-    image.src = src;
-    image.alt = '';
-    image.loading = 'lazy';
-    image.decoding = 'async';
-    return image;
-  };
-  const item = (card: HTMLElement) => {
-    const li = document.createElement('li');
-    li.append(card);
-    return li;
-  };
-
-  list.classList.toggle('project-list--row', count > 1);
+  const row = projects.length > IN_VIEW;
+  list.classList.toggle('project-list--row', row);
+  list.classList.toggle('project-list--grid', !row);
   list.replaceChildren(
     ...projects.map((project) => {
+      // The card's picture is decoration here (empty alt); the case study carries the described image.
+      const cover = element('img', 'project__cover');
+      cover.src = project.thumb?.src ?? project.cover.src;
+      cover.alt = '';
+      cover.loading = 'lazy';
+      cover.decoding = 'async';
+      if (project.thumb?.focus) cover.style.setProperty('--focus', project.thumb.focus);
+
       const head = element('div', 'project__head');
       head.append(element('h3', 'project__title', project.title));
       if (project.aside) head.append(element('span', 'project__aside', project.aside));
@@ -56,34 +56,29 @@ export function renderProjectList(
 
       const body = element('div', 'project__body');
       body.append(
-        element('p', 'project__meta', `${project.year} · ${project.role}`),
+        element('p', 'project__meta', `${project.year} · ${project.kind}`),
         head,
         element('p', 'project__summary', project.summary),
         open,
       );
 
       const card = element('article', 'project-card');
-      card.append(cover(project.cover.src), body);
-      return item(card);
-    }),
-    // A project on its way: the same card, saying so, with no case study to open yet.
-    ...upcoming.map((next) => {
-      const body = element('div', 'project__body');
-      const head = element('div', 'project__head');
-      head.append(element('h3', 'project__title', 'In the works'));
-      body.append(
-        element('p', 'project__meta', 'Coming soon'),
-        head,
-        element('p', 'project__summary', 'A new project is on its way here.'),
-      );
-      const card = element('article', 'project-card project-card--soon');
-      card.append(cover(next.cover), body);
-      return item(card);
+      card.append(cover, body);
+      const li = document.createElement('li');
+      li.append(card);
+      return li;
     }),
   );
 
-  list.parentElement?.querySelector('.project-row-nav')?.remove();
-  if (count > 1) list.after(createRowNav(list, count));
+  const panel = list.parentElement;
+  panel?.querySelector('.project-row-nav')?.remove();
+  panel?.querySelector('.project-next')?.remove();
+  if (row) list.after(createRowNav(list, projects.length));
+  if (upcoming.length > 0) {
+    const next = element('p', 'project-next');
+    next.append(element('span', 'project-next__label', 'Next'), ...upcoming.map((line) => element('span', '', line)));
+    (panel?.querySelector('.project-row-nav') ?? list).after(next);
+  }
 }
 
 /** The sideways row's count ("2 / 4") and, on a laptop, the buttons that step through it. */
