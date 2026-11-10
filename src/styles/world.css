@@ -169,3 +169,30 @@ html.is-stills .world {
 .veil {
   transition: opacity 400ms ease;
 }
+
+.hud {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
+  padding: 0.5rem 0.6rem;
+  background: rgb(0 0 0 / 0.6);
+  color: #d8f5d0;
+  font:
+    12px / 1.35 ui-monospace,
+    monospace;
+  border-radius: 4px;
+}
+
+.hud pre {
+  margin: 0 0 0.4rem;
+}
+
+.hud button {
+  margin-right: 0.25rem;
+  font: inherit;
+}
+
+.hud button[aria-pressed="true"] {
+  background: #d8f5d0;
+}

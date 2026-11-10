@@ -9,6 +9,7 @@ import { blendHours, HOURS } from '../journey/hours';
 import { STOPS } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
+import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
 import { createRail } from '../overlay/rail';
 import { createStage } from '../overlay/stage';
@@ -22,6 +23,7 @@ import type { WorldFrame, WorldPart } from '../world/part';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
 import { createTerrain } from '../world/terrain';
+import { installBench } from './bench';
 import { detectCapabilities } from './capabilities';
 import { createLoop } from './loop';
 import { readParams } from './params';
@@ -41,6 +43,10 @@ export interface App {
   addPart(part: WorldPart): void;
   /** Called after every rendered frame (HUD, overlay). */
   onFrame: ((frame: FrameState, nowMs: number, dtMs: number) => void)[];
+  /** Show the renders at the stops (`?stills=off` and the HUD turn them off). */
+  stills: boolean;
+  /** Resolves when stage B (the world base) is in the scene. */
+  stageB: Promise<void>;
 }
 
 const html = document.documentElement;
@@ -109,7 +115,7 @@ export async function boot(): Promise<App> {
     const u = appRef?.override ?? scroll.progress() * track.total;
     const state = frameAt(track, u, caps.reducedMotion);
     const nearest = nearestStop(track, u);
-    stage.update(state, nearest, params.stills);
+    stage.update(state, nearest, appRef?.stills ?? params.stills);
     rail.setCurrent(nearest);
     requestAnimationFrame(overlayTick);
   };
@@ -152,6 +158,8 @@ export async function boot(): Promise<App> {
       part.setTier(TIERS[tier]);
     },
     onFrame: [],
+    stills: params.stills,
+    stageB: Promise.resolve(),
   };
   appRef = app;
 
@@ -222,9 +230,11 @@ export async function boot(): Promise<App> {
     loop.start(active.renderer);
 
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
-    void loadBase(app, sky, light).catch((error: unknown) => console.warn('world base failed to load', error));
+    app.stageB = loadBase(app, sky, light).catch((error: unknown) => console.warn('world base failed to load', error));
   }
   void last;
+  installBench(app);
+  if (params.hud) installHud(app);
   // Development only: the running app, for checks from the browser console and the headed test browser.
   if (import.meta.env.DEV) (window as unknown as { __app: App }).__app = app;
   return app;
