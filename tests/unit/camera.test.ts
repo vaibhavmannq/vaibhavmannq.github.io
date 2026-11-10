@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, expect, it } from 'vitest';
 import { fovFor, poseAt, shortestYaw } from '../../src/journey/camera';
 import type { FlightPath } from '../../src/journey/flights';
@@ -41,5 +42,24 @@ describe('the pose at a stop', () => {
       expect(pose.yaw).toBe(stop.landscape.yaw);
       expect(pose.pitch).toBe(stop.landscape.pitch);
     }
+  });
+});
+
+describe('reduced motion (spec §8.5, review I4)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const paths = JSON.parse(readFileSync('src/journey/flightPaths.json', 'utf8')) as FlightPath[];
+  const track = buildTrack(STOPS);
+  const flight = track.segments[5]; // III -> IV, 1.5 km
+  if (!flight) throw new Error('no flight');
+  const at = (t: number) => flight.start + (flight.end - flight.start) * t;
+
+  it('never flies: the camera stands at the stop it comes from, then at the one it goes to', () => {
+    const from = toThree((STOPS[2] as (typeof STOPS)[number]).cam);
+    const to = toThree((STOPS[3] as (typeof STOPS)[number]).cam);
+    const near = (p: number[], q: number[]) => Math.hypot(...p.map((v, i) => v - (q[i] as number))) < 0.06;
+    for (const t of [0.2, 0.3, 0.45])
+      expect(near(poseAt(frameAt(track, at(t), true), paths, 16 / 9, 0, true).position, from)).toBe(true);
+    for (const t of [0.55, 0.7, 0.8])
+      expect(near(poseAt(frameAt(track, at(t), true), paths, 16 / 9, 0, true).position, to)).toBe(true);
   });
 });

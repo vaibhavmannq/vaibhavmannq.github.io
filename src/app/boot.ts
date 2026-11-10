@@ -13,7 +13,7 @@ import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
 import { createRail } from '../overlay/rail';
 import { createStage } from '../overlay/stage';
-import { Governor } from '../quality/governor';
+import { DEFAULT_GOVERNOR, Governor } from '../quality/governor';
 import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
@@ -137,6 +137,15 @@ export async function boot(): Promise<App> {
 
   const parts: WorldPart[] = [];
   let tier: Tier = params.tier ?? bootTier(caps);
+  // Loading hitches in the first seconds say nothing about the device (s04: the owner's phone fell to low in its first
+  // second and stayed there), so the governor's first 3 s are not judged.
+  const governor = new Governor(tier, { ...DEFAULT_GOVERNOR, warmupMs: 3000 });
+  const applyTier = (t: Tier) => {
+    tier = t;
+    app.tier = t;
+    pipeline?.setTier(TIERS[t], caps.devicePixelRatio);
+    for (const part of parts) part.setTier(TIERS[t]);
+  };
   const app: App = {
     track,
     scroll,
@@ -146,11 +155,10 @@ export async function boot(): Promise<App> {
     camera,
     override: null,
     tier,
+    /** A tier picked by hand (HUD, benchmark): the governor takes it as its own (review I3). */
     setTier(t) {
-      tier = t;
-      app.tier = t;
-      pipeline?.setTier(TIERS[t], caps.devicePixelRatio);
-      for (const part of parts) part.setTier(TIERS[t]);
+      applyTier(t);
+      governor.reset(t, performance.now());
     },
     addPart(part) {
       parts.push(part);
@@ -169,12 +177,16 @@ export async function boot(): Promise<App> {
   light.install(scene);
   const blank = new DataTexture(new Uint8Array([20, 18, 32, 255]), 1, 1, RGBAFormat);
   blank.needsUpdate = true;
-  const skies = createSkyStore(manifest, blank);
-  jumps.ready = (i) => skies.ready(i);
+  const skies = createSkyStore(manifest, blank, {
+    onLoaded: (t) => {
+      pipeline?.renderer.initTexture(t);
+    },
+  });
+  // With no GPU nothing shows the skies, so jumps never wait for them (review I5).
+  if (pipeline) jumps.ready = (i) => skies.ready(i);
   const sky = createSky(light, skies, blank);
   app.addPart(sky);
 
-  const governor = new Governor(tier);
   const startedAt = performance.now();
   let last: FrameState | null = null;
 
@@ -182,7 +194,7 @@ export async function boot(): Promise<App> {
     const u = app.override ?? scroll.progress() * track.total;
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
-    const pose = poseAt(state, paths, camera.aspect, timeS);
+    const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion);
     aimCamera(camera, pose);
     const hour = blendHours(
       HOURS[STOP_IDS[state.a] ?? 'golden'],
@@ -199,15 +211,17 @@ export async function boot(): Promise<App> {
   if (pipeline) {
     const active = pipeline;
     active.setScene(scene, camera, light);
-    app.setTier(tier);
+    applyTier(tier);
     new ResizeObserver(() => {
       camera.aspect = host.clientWidth / Math.max(1, host.clientHeight);
       camera.updateProjectionMatrix();
       active.resize(host.clientWidth, host.clientHeight);
     }).observe(host);
 
-    // Stage A: the first stop's sky, then a hidden warm-up frame, then the fade-in (spec §12).
-    await skies.ready(0);
+    // Stage A: the skies of the place the visit starts at (a link may open on any place), then a hidden warm-up frame,
+    // then the fade-in (spec §12, review I2). A failed sky still fades in; the store retries.
+    const start = frameAt(track, scroll.progress() * track.total, caps.reducedMotion);
+    await Promise.all([skies.ready(start.a), skies.ready(start.b)]).catch(() => undefined);
     const first = frame(performance.now(), 1 / 60);
     for (const part of parts) part.update(first);
     await active.warmUp();
@@ -218,10 +232,11 @@ export async function boot(): Promise<App> {
       for (const part of parts) part.update(f);
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
-      if (!loop.pacer.resumed) {
+      // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).
+      if (!loop.pacer.resumed && app.override === null && params.tier === undefined) {
         const change = governor.sample(dtS * 1000, nowMs, f.state.resting);
         if (change !== null) {
-          app.setTier(change);
+          applyTier(change);
           loop.pacer.rearm();
         }
       }
@@ -230,7 +245,9 @@ export async function boot(): Promise<App> {
     loop.start(active.renderer);
 
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
-    app.stageB = loadBase(app, sky, light).catch((error: unknown) => console.warn('world base failed to load', error));
+    app.stageB = loadBase(app, sky, light)
+      .then(() => governor.reset(app.tier, performance.now()))
+      .catch((error: unknown) => console.warn('world base failed to load', error));
   }
   void last;
   installBench(app);

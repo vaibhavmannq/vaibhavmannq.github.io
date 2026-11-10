@@ -20,6 +20,11 @@ export interface GovernorOptions {
    * help whenever it needs it.
    */
   settleMs: number;
+  /**
+   * Frames in this first stretch after the start (or a reset) are not judged: loading, shader builds and texture uploads
+   * say nothing about the device. Without it the owner's phone fell to low in its first second and stayed there (s04).
+   */
+  warmupMs: number;
 }
 
 export const DEFAULT_GOVERNOR: GovernorOptions = {
@@ -31,6 +36,7 @@ export const DEFAULT_GOVERNOR: GovernorOptions = {
   upWindowsRequired: 3,
   cooldownMs: 2000,
   settleMs: 20_000,
+  warmupMs: 0,
 };
 
 /** Nearest-rank percentile, e.g. p = 0.95 gives the value 95% of samples are at or below. */
@@ -74,6 +80,21 @@ export class Governor {
     return this.tier;
   }
 
+  /**
+   * Take a tier chosen by hand (the HUD, the benchmark, `?tier=`) or a fresh start (the world base just arrived) as the
+   * governor's own: the ceiling opens again and the warm-up starts over.
+   */
+  reset(tier: Tier, nowMs: number): void {
+    this.tier = tier;
+    this.ceiling = 2;
+    this.samples = [];
+    this.windowStart = null;
+    this.fastWindows = 0;
+    this.pendingDown = false;
+    this.startedAt = nowMs;
+    this.lastChange = Number.NEGATIVE_INFINITY;
+  }
+
   /** Tell the governor what "on time" is: the pacer's target interval. Called every frame; cheap. */
   setTargetInterval(ms: number): void {
     if (Math.abs(ms - this.targetMs) < 0.01) return;
@@ -95,6 +116,7 @@ export class Governor {
    */
   sample(frameMs: number, nowMs: number, canChange = true): Tier | null {
     this.startedAt ??= nowMs;
+    if (nowMs - this.startedAt < this.options.warmupMs) return null;
     // A window left open across the idle 30 fps mode or a hidden tab is stale, and this frame's
     // interval spans the gap. Start again rather than judge it (journey-flow review I4).
     if (this.windowStart !== null && nowMs - this.windowStart > 2 * this.options.windowMs) {

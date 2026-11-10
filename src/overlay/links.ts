@@ -18,7 +18,7 @@ export function snapStops(track: Track): number[] {
   return STOP_IDS.map((_, i) => (i === 0 ? 0 : i === STOP_IDS.length - 1 ? 1 : stopCentre(track, i) / track.total));
 }
 
-const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise<void>((resolve) => globalThis.setTimeout(resolve, ms));
 
 export interface Jumps {
   go(index: number): Promise<void>;
@@ -28,7 +28,13 @@ export interface Jumps {
   ready: (index: number) => Promise<void>;
 }
 
-export function createJumps(scroll: ScrollController, track: Track, setVeil: (opacity: number) => void): Jumps {
+/** `fadeMs` matches the veil's CSS transition (world.css). */
+export function createJumps(
+  scroll: ScrollController,
+  track: Track,
+  setVeil: (opacity: number) => void,
+  fadeMs = 400,
+): Jumps {
   const at = (index: number) => stopCentre(track, index) / track.total;
   const jumps: Jumps = {
     ready: () => Promise.resolve(),
@@ -42,10 +48,14 @@ export function createJumps(scroll: ScrollController, track: Track, setVeil: (op
         return;
       }
       setVeil(1);
-      await wait(400);
-      scroll.scrollToProgress(at(index), true);
-      await Promise.race([jumps.ready(index), wait(500)]);
-      setVeil(0);
+      try {
+        await wait(fadeMs);
+        scroll.scrollToProgress(at(index), true);
+        // A place that fails to load must never leave the veil over the page (I1): its still shows instead.
+        await Promise.race([jumps.ready(index).catch(() => undefined), wait(500)]);
+      } finally {
+        setVeil(0);
+      }
     },
   };
   return jumps;

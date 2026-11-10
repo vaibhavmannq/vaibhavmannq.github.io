@@ -41,10 +41,17 @@ function drift(timeS: number): Vec3 {
   return [0.03 * Math.sin(0.21 * timeS), 0.03 * Math.sin(0.17 * timeS + 1), 0.02 * Math.sin(0.13 * timeS + 2)];
 }
 
-export function poseAt(frame: FrameState, paths: readonly FlightPath[], aspect: number, timeS: number): Pose {
+/** Under reduced motion the camera never flies: it stands at stop a, then at stop b, behind the cross-fade (spec §8.5). */
+export function poseAt(
+  frame: FrameState,
+  paths: readonly FlightPath[],
+  aspect: number,
+  timeS: number,
+  reducedMotion = false,
+): Pose {
   const a = stopAt(frame.a);
   const path = paths[frame.a];
-  if (frame.kind === 'stop' || !path) {
+  if (frame.kind === 'stop' || !path || reducedMotion) {
     const at = frame.kind === 'stop' || frame.t < 0.5 ? a : stopAt(frame.b);
     const d = drift(timeS);
     const cam: Vec3 = [at.cam[0] + d[0], at.cam[1] + d[1], at.cam[2] + d[2]];

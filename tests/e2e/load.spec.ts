@@ -17,7 +17,17 @@ test('the name and the first view arrive in time on 10 Mbit/s', async ({ page, b
   });
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#name')).toBeVisible({ timeout: 5000 });
-  const nameMs = await page.evaluate(() => performance.now());
+  // The browser's own first contentful paint: the name is the page's first content. Timing the test runner's
+  // round trip instead measured the runner, which is slow when three browsers test in parallel.
+  const nameMs = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        new PerformanceObserver((list) => {
+          const fcp = list.getEntriesByName('first-contentful-paint')[0];
+          if (fcp) resolve(fcp.startTime);
+        }).observe({ type: 'paint', buffered: true });
+      }),
+  );
   expect(nameMs).toBeLessThan(1000);
 
   await page.waitForFunction(

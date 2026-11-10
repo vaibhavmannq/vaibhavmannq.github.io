@@ -31,3 +31,20 @@ test('with no GPU, the name and a still show at the start and the end (Review Fo
   await expect(page.locator('#place')).toHaveText('IX · Sunrise · The rise', { timeout: 15_000 });
   await expect(visibleStill).toHaveCount(1);
 });
+
+test("a link to a place loads that place's sky first, not Golden's (review I2)", async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'one engine is enough for a loading-order check');
+  test.setTimeout(180_000);
+  await page.goto('/?stills=off#midnight');
+  await page.waitForFunction(() => document.documentElement.classList.contains('is-scene-ready'), undefined, {
+    timeout: 150_000,
+  });
+  const skies = await page.evaluate(() =>
+    performance
+      .getEntriesByType('resource')
+      .map((e) => new URL(e.name).pathname)
+      .filter((p) => p.startsWith('/world/sky/')),
+  );
+  expect(skies).toContain('/world/sky/midnight.jpg');
+  expect(skies).not.toContain('/world/sky/golden.jpg');
+});

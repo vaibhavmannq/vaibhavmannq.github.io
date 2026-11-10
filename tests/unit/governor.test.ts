@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Governor, percentile } from '../../src/quality/governor';
+import { DEFAULT_GOVERNOR, Governor, percentile } from '../../src/quality/governor';
 import type { Tier } from '../../src/quality/tiers';
 
 /** Feed ~1 s of frames (62 samples at 60 Hz). Returns the tier change reported during that window, if any. */
@@ -222,5 +222,26 @@ describe('Governor', () => {
     expect(stillScrolling.change).toBeNull();
     expect(governor.current).toBe(2);
     expect(governor.sample(16.7, stillScrolling.endMs, true)).toBe(1);
+  });
+});
+
+describe('Governor start-up and hand-picked tiers (review I3)', () => {
+  it('ignores the first seconds, so loading hitches never cost a tier', () => {
+    const governor = new Governor(1, { ...DEFAULT_GOVERNOR, warmupMs: 3000 });
+    let t = 0;
+    for (let i = 0; i < 2; i++) t = runWindow(governor, 66, t).endMs;
+    expect(governor.current).toBe(1);
+    t = runWindow(governor, 66, t + 1500).endMs;
+    expect(governor.current).toBe(0);
+  });
+
+  it('takes a hand-picked tier as its own, with the door to it open again', () => {
+    const governor = new Governor(2, { ...DEFAULT_GOVERNOR, warmupMs: 0 });
+    let t = runWindow(governor, 40, 0).endMs;
+    expect(governor.current).toBe(1);
+    governor.reset(2, t);
+    expect(governor.current).toBe(2);
+    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t + 2100).endMs;
+    expect(governor.current).toBe(2);
   });
 });

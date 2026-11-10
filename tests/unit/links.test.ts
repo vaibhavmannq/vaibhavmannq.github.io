@@ -34,3 +34,23 @@ describe('touch snap points', () => {
     for (let i = 1; i < stops.length; i++) expect(stops[i]).toBeGreaterThan(stops[i - 1] as number);
   });
 });
+
+describe('a fade jump', () => {
+  it('lifts the veil even when the place fails to load (I1)', async () => {
+    const { createJumps } = await import('../../src/overlay/links');
+    const track = buildTrack(STOPS);
+    const veil: number[] = [];
+    const scroll = {
+      progress: () => 0,
+      raf: () => {},
+      scrollToProgress: () => {},
+      glideToProgress: () => {},
+      setLocked: () => {},
+      destroy: () => {},
+    };
+    const jumps = createJumps(scroll, track, (o) => veil.push(o), 0);
+    jumps.ready = () => Promise.reject(new Error('404'));
+    await jumps.go(6).catch(() => undefined);
+    expect(veil.at(-1)).toBe(0);
+  });
+});
