@@ -43,6 +43,9 @@ jobs:
       - name: JavaScript size budget
         run: npm run size
 
+      - name: World pack budget
+        run: npm run world:report
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
