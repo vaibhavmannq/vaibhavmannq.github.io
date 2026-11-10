@@ -1,0 +1,337 @@
+{
+ "version": 1,
+ "base": {
+  "heights": {
+   "x0": -2000,
+   "y0": -2400,
+   "step": 8,
+   "nx": 401,
+   "ny": 501,
+   "lo": -22,
+   "hi": 347
+  },
+  "ring": {
+   "cx": -400,
+   "cy": -400,
+   "r0": 1500,
+   "r1": 7000,
+   "nr": 120,
+   "na": 288,
+   "lo": -22,
+   "hi": 355
+  }
+ },
+ "skies": {
+  "golden": {
+   "file": "sky/golden.jpg",
+   "ambientSky": [
+    0.5709,
+    0.3715,
+    0.3572
+   ],
+   "ambientGround": [
+    0.1811,
+    0.1176,
+    0.1137
+   ]
+  },
+  "sunset": {
+   "file": "sky/sunset.jpg",
+   "ambientSky": [
+    0.6984,
+    0.3589,
+    0.324
+   ],
+   "ambientGround": [
+    0.2163,
+    0.1327,
+    0.1002
+   ]
+  },
+  "dusk": {
+   "file": "sky/dusk.jpg",
+   "ambientSky": [
+    0.3378,
+    0.1826,
+    0.391
+   ],
+   "ambientGround": [
+    0.1688,
+    0.0797,
+    0.102
+   ]
+  },
+  "bluehour": {
+   "file": "sky/bluehour.jpg",
+   "ambientSky": [
+    0.1117,
+    0.0906,
+    0.149
+   ],
+   "ambientGround": [
+    0.0761,
+    0.0593,
+    0.0669
+   ]
+  },
+  "night": {
+   "file": "sky/night.jpg",
+   "ambientSky": [
+    0.1066,
+    0.1078,
+    0.135
+   ],
+   "ambientGround": [
+    0.0105,
+    0.0106,
+    0.0208
+   ]
+  },
+  "midnight": {
+   "file": "sky/midnight.jpg",
+   "ambientSky": [
+    0.0709,
+    0.0744,
+    0.1377
+   ],
+   "ambientGround": [
+    0.0723,
+    0.0714,
+    0.1029
+   ]
+  },
+  "beforedawn": {
+   "file": "sky/beforedawn.jpg",
+   "ambientSky": [
+    0.206,
+    0.1758,
+    0.26
+   ],
+   "ambientGround": [
+    0.0301,
+    0.0276,
+    0.0451
+   ]
+  },
+  "firstlight": {
+   "file": "sky/firstlight.jpg",
+   "ambientSky": [
+    0.5796,
+    0.5356,
+    0.7498
+   ],
+   "ambientGround": [
+    0.1334,
+    0.0844,
+    0.1034
+   ]
+  },
+  "sunrise": {
+   "file": "sky/sunrise.jpg",
+   "ambientSky": [
+    0.5871,
+    0.4702,
+    0.5777
+   ],
+   "ambientGround": [
+    0.2449,
+    0.1626,
+    0.1526
+   ]
+  }
+ },
+ "files": [
+  {
+   "path": "base/colour.webp",
+   "bytes": 5954,
+   "sha256": "fd9c9dfd1e2fa8fc2cf7c6c8aab5cdded194cc5176aabf829bbd5952d59d292c",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "base/heights.bin",
+   "bytes": 401802,
+   "sha256": "30f96ae387eec038d5af7c5518cb609e7d5f776b683a138df899449748e5867d",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "base/ring.bin",
+   "bytes": 69120,
+   "sha256": "0a6510b1e30ef616fba7fbd4ed8e657bf337882664114b53502d2719ffe8857b",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "sky/beforedawn.jpg",
+   "bytes": 110532,
+   "sha256": "7bbfdc7ba692389d08235aa3cbbb96e8704aeff7b9be0051238249ef216f3a64",
+   "stage": "B",
+   "stops": [
+    "beforedawn"
+   ]
+  },
+  {
+   "path": "sky/bluehour.jpg",
+   "bytes": 90076,
+   "sha256": "4a85b7c2e9c28606ae9f7f92230112b0a7adfcfe1222acd65ba2b06c30647dc4",
+   "stage": "B",
+   "stops": [
+    "bluehour"
+   ]
+  },
+  {
+   "path": "sky/dusk.jpg",
+   "bytes": 103675,
+   "sha256": "d50c80ee8a8877f84c63641ee970bac043fa0a9aeda80430ce49c39b8c016fb2",
+   "stage": "B",
+   "stops": [
+    "dusk"
+   ]
+  },
+  {
+   "path": "sky/firstlight.jpg",
+   "bytes": 95198,
+   "sha256": "8d1a554f3d205d373de70347e5188f5fb8d170764e3c921faffad0f106cded94",
+   "stage": "B",
+   "stops": [
+    "firstlight"
+   ]
+  },
+  {
+   "path": "sky/golden.jpg",
+   "bytes": 101757,
+   "sha256": "3731c0b66b289f33dade8f722177d46c97fc1caad82a42f3f86bb3debf91f183",
+   "stage": "A",
+   "stops": [
+    "golden"
+   ]
+  },
+  {
+   "path": "sky/midnight.jpg",
+   "bytes": 94431,
+   "sha256": "8408fa7964fa9f2ca63d2dfc971104cf79e3cc08519418452ae1f74f068f19e3",
+   "stage": "B",
+   "stops": [
+    "midnight"
+   ]
+  },
+  {
+   "path": "sky/night.jpg",
+   "bytes": 56928,
+   "sha256": "e0d15904cf8296a739e1570ed7faa6d386d0a9814db998bbebf0b28d74194ac3",
+   "stage": "B",
+   "stops": [
+    "night"
+   ]
+  },
+  {
+   "path": "sky/sunrise.jpg",
+   "bytes": 93144,
+   "sha256": "da3183c1afccab40e9121264b26355327d48c7e513bc5157bb724efffcf5245d",
+   "stage": "B",
+   "stops": [
+    "sunrise"
+   ]
+  },
+  {
+   "path": "sky/sunset.jpg",
+   "bytes": 83919,
+   "sha256": "377bbf7f757f8a8435a94516e6f842f3df08147e247f12ce9a0a8cd3239cf1a1",
+   "stage": "B",
+   "stops": [
+    "sunset"
+   ]
+  },
+  {
+   "path": "stills/beforedawn.webp",
+   "bytes": 93756,
+   "sha256": "5b2910457009632d582ba8d77822caaf6bf72dfe6d4bf7de96ba68a0d1c728b2",
+   "stage": "B",
+   "stops": [
+    "beforedawn"
+   ]
+  },
+  {
+   "path": "stills/bluehour.webp",
+   "bytes": 65400,
+   "sha256": "8567a6a8424ffe1dda8f2a025c60b417d7b018643dcf7c0b3b817e95b70e3039",
+   "stage": "B",
+   "stops": [
+    "bluehour"
+   ]
+  },
+  {
+   "path": "stills/dusk.webp",
+   "bytes": 88806,
+   "sha256": "9f0aa4943325c8f89d39a1941c5d1af62781e6399613f90aba80598153ad2b55",
+   "stage": "B",
+   "stops": [
+    "dusk"
+   ]
+  },
+  {
+   "path": "stills/firstlight.webp",
+   "bytes": 127878,
+   "sha256": "70f9f7ffe2158e04960fe5e21473f2de810217513a48ccea09450c9f10d2bce4",
+   "stage": "B",
+   "stops": [
+    "firstlight"
+   ]
+  },
+  {
+   "path": "stills/golden.webp",
+   "bytes": 100970,
+   "sha256": "4e2bb50cc567d5af95514c4c3c5db5247a49c938620eb4e48c0e411dde6cf641",
+   "stage": "A",
+   "stops": [
+    "golden"
+   ]
+  },
+  {
+   "path": "stills/midnight.webp",
+   "bytes": 88248,
+   "sha256": "ef36a84c0f352c011d3014f8cf8c0d81cfe6aa8accd24a93318baab68c3ad3d2",
+   "stage": "B",
+   "stops": [
+    "midnight"
+   ]
+  },
+  {
+   "path": "stills/night.webp",
+   "bytes": 89078,
+   "sha256": "78427306b9452da62e20209598856c7f5a42c3f6950f124a6f5e8ab84c339bcd",
+   "stage": "B",
+   "stops": [
+    "night"
+   ]
+  },
+  {
+   "path": "stills/poster.webp",
+   "bytes": 336,
+   "sha256": "7f8c7b1e2dcceb6b197e31121b2e11343163b98b0e8bfd9549b86c660d709055",
+   "stage": "A",
+   "stops": [
+    "golden"
+   ]
+  },
+  {
+   "path": "stills/sunrise.webp",
+   "bytes": 112402,
+   "sha256": "7b988bd9ec8391dc25a9adc760cfeb0e617bc19edef3ebe6a0eada6b1279f7d0",
+   "stage": "B",
+   "stops": [
+    "sunrise"
+   ]
+  },
+  {
+   "path": "stills/sunset.webp",
+   "bytes": 135518,
+   "sha256": "9c9c43786393722eacc44dcdf2795deb5c2fd2714c197e113ddf0200ca2e9bc5",
+   "stage": "B",
+   "stops": [
+    "sunset"
+   ]
+  }
+ ]
+}
