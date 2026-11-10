@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, expect, it } from 'vitest';
 import { generateWaypoints, sampleFlight } from '../../src/journey/flights';
 import type { Vec3 } from '../../src/journey/types';
