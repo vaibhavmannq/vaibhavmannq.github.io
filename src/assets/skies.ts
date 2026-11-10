@@ -1,4 +1,4 @@
-import { LinearFilter, NoColorSpace, RepeatWrapping, type Texture, TextureLoader } from 'three/webgpu';
+import { ImageBitmapLoader, LinearFilter, NoColorSpace, RepeatWrapping, Texture } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
 import type { Manifest, SkyAmbient } from './manifest';
@@ -54,7 +54,10 @@ function prepare(t: Texture): Texture {
 }
 
 export function createSkyStore(manifest: Manifest, fallback: Texture, base = '/world/'): SkyStore {
-  const loader = new TextureLoader();
+  // ImageBitmapLoader decodes the 2048 px JPEGs off the main thread; an <img> decoded them on the first draw, mid-flight
+  // (a 51 ms frame on the first visit, M0 measurement). The bitmap is flipped while decoding, so the texture is not.
+  const loader = new ImageBitmapLoader();
+  loader.setOptions({ imageOrientation: 'flipY' });
   const loaded = new Map<number, Texture>();
   const pending = new Map<number, Promise<Texture>>();
 
@@ -66,7 +69,10 @@ export function createSkyStore(manifest: Manifest, fallback: Texture, base = '/w
       const id = STOP_IDS[index];
       const file = id ? manifest.skies[id]?.file : undefined;
       if (!file) return Promise.reject(new Error(`no sky ${index}`));
-      p = loader.loadAsync(base + file).then((t) => {
+      p = loader.loadAsync(base + file).then((bitmap) => {
+        const t = new Texture(bitmap);
+        t.flipY = false;
+        t.needsUpdate = true;
         pending.delete(index);
         loaded.set(index, prepare(t));
         return t;
@@ -84,6 +90,7 @@ export function createSkyStore(manifest: Manifest, fallback: Texture, base = '/w
       for (const [i, t] of loaded)
         if (!hold.includes(i)) {
           t.dispose();
+          (t.image as ImageBitmap | null)?.close?.();
           loaded.delete(i);
         }
     },

@@ -11,6 +11,8 @@ export interface FlightResult {
   max: number;
   over20: number;
   over50: number;
+  /** Where on the journey (screens) each frame over 50 ms happened, and how long it took. */
+  slow: { u: number; ms: number }[];
 }
 
 export interface CensusRow {
@@ -67,7 +69,11 @@ export function installBench(app: App): void {
     if (tier >= 0) app.setTier(tier);
     await app.stageB;
     const intervals: number[] = [];
-    const collect = (_: unknown, __: number, dtMs: number) => intervals.push(dtMs);
+    const slow: { u: number; ms: number }[] = [];
+    const collect = (_: unknown, __: number, dtMs: number) => {
+      intervals.push(dtMs);
+      if (dtMs > 50) slow.push({ u: Math.round((app.override ?? 0) * 100) / 100, ms: Math.round(dtMs) });
+    };
     app.override = 0;
     for (let i = 0; i < 10; i++) await nextFrame();
     app.onFrame.push(collect);
@@ -76,6 +82,8 @@ export function installBench(app: App): void {
       const step = (now: number) => {
         const t = (now - start) / (seconds * 1000);
         app.override = Math.min(1, t) * app.track.total;
+        // A visitor flying the night is scrolling; without input the loop drops to its idle half rate after 8 s.
+        window.dispatchEvent(new PointerEvent('pointermove'));
         if (t >= 1) resolve();
         else requestAnimationFrame(step);
       };
@@ -92,6 +100,7 @@ export function installBench(app: App): void {
       max: Math.round((sorted[sorted.length - 1] ?? 0) * 10) / 10,
       over20: intervals.filter((x) => x > 20).length,
       over50: intervals.filter((x) => x > 50).length,
+      slow,
     };
   };
 

@@ -13,7 +13,7 @@ export function createRail(nav: HTMLElement, stops: readonly Stop[], go: (index:
     const hour = document.createElement('span');
     hour.className = 'rail__hour';
     hour.textContent = stop.hour;
-    link.append(numeral, hour);
+    link.append(hour, numeral);
     link.addEventListener('click', (event) => {
       event.preventDefault();
       history.replaceState(null, '', `#${stop.id}`);
