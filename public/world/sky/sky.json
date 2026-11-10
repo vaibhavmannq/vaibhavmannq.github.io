@@ -1,0 +1,119 @@
+{
+ "golden": {
+  "file": "sky/golden.jpg",
+  "ambientSky": [
+   0.5709,
+   0.3715,
+   0.3572
+  ],
+  "ambientGround": [
+   0.1811,
+   0.1176,
+   0.1137
+  ]
+ },
+ "sunset": {
+  "file": "sky/sunset.jpg",
+  "ambientSky": [
+   0.6984,
+   0.3589,
+   0.324
+  ],
+  "ambientGround": [
+   0.2163,
+   0.1327,
+   0.1002
+  ]
+ },
+ "dusk": {
+  "file": "sky/dusk.jpg",
+  "ambientSky": [
+   0.3378,
+   0.1826,
+   0.391
+  ],
+  "ambientGround": [
+   0.1688,
+   0.0797,
+   0.102
+  ]
+ },
+ "bluehour": {
+  "file": "sky/bluehour.jpg",
+  "ambientSky": [
+   0.1117,
+   0.0906,
+   0.149
+  ],
+  "ambientGround": [
+   0.0761,
+   0.0593,
+   0.0669
+  ]
+ },
+ "night": {
+  "file": "sky/night.jpg",
+  "ambientSky": [
+   0.1066,
+   0.1078,
+   0.135
+  ],
+  "ambientGround": [
+   0.0105,
+   0.0106,
+   0.0208
+  ]
+ },
+ "midnight": {
+  "file": "sky/midnight.jpg",
+  "ambientSky": [
+   0.0709,
+   0.0744,
+   0.1377
+  ],
+  "ambientGround": [
+   0.0723,
+   0.0714,
+   0.1029
+  ]
+ },
+ "beforedawn": {
+  "file": "sky/beforedawn.jpg",
+  "ambientSky": [
+   0.206,
+   0.1758,
+   0.26
+  ],
+  "ambientGround": [
+   0.0301,
+   0.0276,
+   0.0451
+  ]
+ },
+ "firstlight": {
+  "file": "sky/firstlight.jpg",
+  "ambientSky": [
+   0.5796,
+   0.5356,
+   0.7498
+  ],
+  "ambientGround": [
+   0.1334,
+   0.0844,
+   0.1034
+  ]
+ },
+ "sunrise": {
+  "file": "sky/sunrise.jpg",
+  "ambientSky": [
+   0.5871,
+   0.4702,
+   0.5777
+  ],
+  "ambientGround": [
+   0.2449,
+   0.1626,
+   0.1526
+  ]
+ }
+}
