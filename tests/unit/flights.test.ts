@@ -39,8 +39,12 @@ describe('sampling a flight', () => {
   it('starts at the first point and ends at the last', () => {
     const start = sampleFlight(points, 0).pos;
     const end = sampleFlight(points, 1).pos;
-    start.forEach((v, i) => expect(v).toBeCloseTo((points[0] as Vec3)[i] as number, 6));
-    end.forEach((v, i) => expect(v).toBeCloseTo((points[3] as Vec3)[i] as number, 6));
+    start.forEach((v, i) => {
+      expect(v).toBeCloseTo((points[0] as Vec3)[i] as number, 6);
+    });
+    end.forEach((v, i) => {
+      expect(v).toBeCloseTo((points[3] as Vec3)[i] as number, 6);
+    });
   });
 
   it('gives a unit tangent', () => {
