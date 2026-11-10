@@ -18,3 +18,9 @@ export const smoothstep = (edge0: number, edge1: number, x: number): number => {
  */
 export const damp = (current: number, target: number, lambda: number, dtSeconds: number): number =>
   lerp(current, target, 1 - Math.exp(-lambda * dtSeconds));
+
+/** Ken Perlin's smoother ease of 0..1: zero speed and zero acceleration at both ends. */
+export const smootherstep = (x: number): number => {
+  const t = clamp01(x);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+};
