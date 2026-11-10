@@ -118,3 +118,7 @@ html.is-stills .world {
   width: 1px;
   height: 100lvh;
 }
+
+.poster {
+  background-image: url("/world/stills/poster.webp");
+}

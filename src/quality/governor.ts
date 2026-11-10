@@ -43,7 +43,6 @@ export function percentile(values: readonly number[], p: number): number {
 
 export class Governor {
   private tier: Tier;
-  private readonly webgpu: boolean;
   private readonly options: GovernorOptions;
   private samples: number[] = [];
   private windowStart: number | null = null;
@@ -63,11 +62,10 @@ export class Governor {
   /** The interval between rendered frames on a healthy device (app/refresh.ts). */
   private targetMs = 1000 / 60;
 
-  constructor(tier: Tier, webgpu: boolean, options: GovernorOptions = DEFAULT_GOVERNOR) {
+  constructor(tier: Tier, options: GovernorOptions = DEFAULT_GOVERNOR) {
     this.tier = tier;
-    this.webgpu = webgpu;
     this.options = options;
-    this.ceiling = clampTier(webgpu ? 4 : 3, webgpu);
+    this.ceiling = 2;
   }
 
   // Not read in production (boot.ts tracks its own `tier`); kept for the unit tests, which
@@ -147,7 +145,7 @@ export class Governor {
   }
 
   private changeTo(target: number, nowMs: number): Tier | null {
-    const wanted = clampTier(target, this.webgpu);
+    const wanted = clampTier(target);
     const next = wanted > this.tier ? (Math.min(wanted, this.ceiling) as Tier) : wanted;
     if (next === this.tier) return null;
     // Stepping down means this tier could not hold the frame rate: shut the door on it for this visit.

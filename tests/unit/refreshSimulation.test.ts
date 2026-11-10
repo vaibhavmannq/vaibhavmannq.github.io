@@ -14,7 +14,7 @@ function simulate(options: {
   startTier?: Tier;
 }) {
   const pacer = createPacer();
-  const governor = new Governor(options.startTier ?? 4, true);
+  const governor = new Governor(options.startTier ?? 2);
   const changes: Tier[] = [];
   const intervals: number[] = [];
   let t = 1000;
@@ -49,7 +49,7 @@ describe('a free GPU on any refresh rate', () => {
       const { changes, intervals, governor } = simulate({ hzAt: () => hz, costMs: () => 2, seconds: 30 });
       expect(changes).toEqual([]);
       expect(new Set(intervals.slice(MEASURE_SAMPLES * 4).map((ms) => ms.toFixed(2))).size).toBe(1);
-      expect(governor.current).toBe(4);
+      expect(governor.current).toBe(2);
     });
   }
 });
@@ -57,13 +57,13 @@ describe('a free GPU on any refresh rate', () => {
 // Final review C1 (2026-09-26): a slow GPU delays the next animation frame, so the pacer used to measure the frame
 // rate it achieved as if it were the screen, the governor judged frames "on time", and never stepped down.
 describe('a GPU that cannot keep up', () => {
-  const cost: Record<Tier, number> = { 4: 50, 3: 35, 2: 24, 1: 15, 0: 10 };
+  const cost: Record<Tier, number> = { 2: 35, 1: 24, 0: 12 };
 
   it('still measures the screen, and the governor steps down until frames are on time', () => {
     const { pacer, governor, changes } = simulate({ hzAt: () => 60, costMs: (tier) => cost[tier], seconds: 30 });
     expect(pacer.refreshHz).toBeCloseTo(60, 5);
     expect(changes.length).toBeGreaterThan(0);
-    expect(governor.current).toBeLessThanOrEqual(1);
+    expect(governor.current).toBe(0);
   });
 
   it('does the same on a 120 Hz phone', () => {

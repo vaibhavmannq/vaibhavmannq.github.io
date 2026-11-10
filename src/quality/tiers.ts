@@ -1,22 +1,22 @@
-export type Tier = 0 | 1 | 2 | 3 | 4;
+/** low, mid, high (spec §13.1). */
+export type Tier = 0 | 1 | 2;
 
+export const TIER_NAMES = ['low', 'mid', 'high'] as const;
+export type TierName = (typeof TIER_NAMES)[number];
+
+/** Cost only: never composition, camera, colour or content (spec §13.1). */
 export interface TierSettings {
   /** Multiplies the (capped) device pixel ratio. */
-  renderScale: number;
-  /** Maximum ray-march steps for the sea. */
-  marchSteps: number;
+  scale: number;
+  /** Resolution of the water's mirror, as a share of the screen. */
+  reflect: number;
   bloom: boolean;
 }
 
-/** Cost only. Tiers never change composition, camera path, content, timing, surface shape or palette (spec §5.6).
- *  Render scale is the primary cost lever because it is the one knob §5.6 permits a tier to change;
- *  march steps stay in a narrow band that always resolves the water. */
 export const TIERS: Readonly<Record<Tier, TierSettings>> = {
-  0: { renderScale: 0.4, marchSteps: 80, bloom: false },
-  1: { renderScale: 0.5, marchSteps: 88, bloom: false },
-  2: { renderScale: 0.65, marchSteps: 96, bloom: true },
-  3: { renderScale: 0.8, marchSteps: 104, bloom: true },
-  4: { renderScale: 1.0, marchSteps: 112, bloom: true },
+  0: { scale: 0.5, reflect: 0.25, bloom: false },
+  1: { scale: 0.75, reflect: 0.35, bloom: true },
+  2: { scale: 1.0, reflect: 0.5, bloom: true },
 };
 
 export interface DeviceHints {
@@ -29,16 +29,14 @@ export interface DeviceHints {
   webgpu: boolean;
 }
 
-/** WebGL2 tops out at tier 3; tier 4 extras need WebGPU. */
-export function clampTier(tier: number, webgpu: boolean): Tier {
-  const max = webgpu ? 4 : 3;
-  return Math.min(max, Math.max(0, Math.round(tier))) as Tier;
+export function clampTier(tier: number): Tier {
+  return Math.min(2, Math.max(0, Math.round(tier))) as Tier;
 }
 
-/** A cautious first guess. The governor corrects it from real frame times. */
+/**
+ * Every device starts on mid; the governor decides from measured frame times, not from "it is a phone"
+ * (s02: the owner's phone held 54–60 fps on high at the stops). Data saver starts on low.
+ */
 export function bootTier(hints: DeviceHints): Tier {
-  let tier = hints.coarsePointer ? 1 : 2;
-  const lowMemory = hints.deviceMemoryGB !== undefined && hints.deviceMemoryGB <= 4;
-  if (hints.saveData || lowMemory) tier -= 1;
-  return clampTier(tier, hints.webgpu);
+  return hints.saveData ? 0 : 1;
 }
