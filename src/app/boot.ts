@@ -7,12 +7,16 @@ import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
 import { STOPS } from '../journey/stops';
-import { buildTrack, type FrameState, frameAt, stopCentre, type Track } from '../journey/timeline';
+import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
+import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
+import { createRail } from '../overlay/rail';
+import { createStage } from '../overlay/stage';
 import { Governor } from '../quality/governor';
 import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
+import { createTouchSnap } from '../scroll/touchSnap';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { createSea, heightTexture } from '../world/sea';
@@ -81,8 +85,35 @@ export async function boot(): Promise<App> {
   const trackEl = document.getElementById('track');
   if (trackEl) trackEl.style.height = `${(track.total + 1) * 100}lvh`;
   const scroll = createScroll();
-  if (params.stop) scroll.scrollToProgress(stopCentre(track, STOP_IDS.indexOf(params.stop)) / track.total, true);
+
+  // The overlay runs from the first frame, GPU or not: labels, stills, rail, links, touch snap (spec §2).
+  let appRef: App | null = null;
+  const stage = createStage(STOPS);
+  const jumps = createJumps(scroll, track, (opacity) => stage.setVeil(opacity));
+  const rail = createRail(document.getElementById('rail') as HTMLElement, STOPS, (i) => void jumps.go(i));
+  createTouchSnap({
+    progress: () => scroll.progress(),
+    glideTo: (p) => scroll.glideToProgress(p, true),
+    stops: snapStops(track),
+    enabled: () => params.p === undefined,
+  });
+  const target = targetFromLocation(location.hash, location.search);
+  if (target >= 0) jumps.goNow(target);
   else if (params.p !== undefined) scroll.scrollToProgress(params.p, true);
+  window.addEventListener('hashchange', () => {
+    const next = targetFromLocation(location.hash, '');
+    if (next >= 0) void jumps.go(next);
+  });
+  const overlayTick = (nowMs: number) => {
+    scroll.raf(nowMs);
+    const u = appRef?.override ?? scroll.progress() * track.total;
+    const state = frameAt(track, u, caps.reducedMotion);
+    const nearest = nearestStop(track, u);
+    stage.update(state, nearest, params.stills);
+    rail.setCurrent(nearest);
+    requestAnimationFrame(overlayTick);
+  };
+  requestAnimationFrame(overlayTick);
 
   const host = document.getElementById('world') as HTMLElement;
   const manifest = await loadManifest();
@@ -122,6 +153,7 @@ export async function boot(): Promise<App> {
     },
     onFrame: [],
   };
+  appRef = app;
 
   const paths = flightPaths as FlightPath[];
   const ambients = skyAmbients(manifest);
@@ -130,6 +162,7 @@ export async function boot(): Promise<App> {
   const blank = new DataTexture(new Uint8Array([20, 18, 32, 255]), 1, 1, RGBAFormat);
   blank.needsUpdate = true;
   const skies = createSkyStore(manifest, blank);
+  jumps.ready = (i) => skies.ready(i);
   const sky = createSky(light, skies, blank);
   app.addPart(sky);
 
@@ -138,7 +171,6 @@ export async function boot(): Promise<App> {
   let last: FrameState | null = null;
 
   const frame = (nowMs: number, dtS: number): WorldFrame => {
-    scroll.raf(nowMs);
     const u = app.override ?? scroll.progress() * track.total;
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
@@ -191,16 +223,6 @@ export async function boot(): Promise<App> {
 
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
     void loadBase(app, sky, light).catch((error: unknown) => console.warn('world base failed to load', error));
-  } else {
-    // No GPU: keep the overlay moving with the scroll.
-    const tick = (nowMs: number) => {
-      scroll.raf(nowMs);
-      const state = frameAt(track, scroll.progress() * track.total, caps.reducedMotion);
-      last = state;
-      for (const fn of app.onFrame) fn(state, nowMs, 16.7);
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
   }
   void last;
   // Development only: the running app, for checks from the browser console and the headed test browser.

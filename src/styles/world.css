@@ -122,3 +122,50 @@ html.is-stills .world {
 .poster {
   background-image: url("/world/stills/poster.webp");
 }
+
+.stills img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.rail ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.rail a {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.rail a[aria-current="location"] {
+  color: var(--ink);
+}
+
+.rail__hour {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.rail a:hover .rail__hour,
+.rail a:focus-visible .rail__hour,
+.rail a[aria-current="location"] .rail__hour {
+  opacity: 1;
+}
+
+.veil {
+  transition: opacity 400ms ease;
+}
