@@ -23,8 +23,8 @@ def _stub(name):
     return mod
 
 
-def load(hour="golden"):
-    """Run coast.py's world definitions for `hour` and return them as a namespace (ground, SHOTS, SKIES, S, ...)."""
+def load(hour="golden", style="hybrid"):
+    """Run coast.py's world definitions for `hour` (in the renders' hybrid style) and return them as a namespace (ground, SHOTS, SKIES, S, ...)."""
     for name in ("bpy", "bmesh"):
         sys.modules.setdefault(name, _stub(name))
     if "mathutils" not in sys.modules:
@@ -33,7 +33,7 @@ def load(hour="golden"):
     src = open(COAST, encoding="utf-8").read()
     cut = src.index(MARKER)
     saved = sys.argv
-    sys.argv = ["coast.py", "--", "--hour", hour]
+    sys.argv = ["coast.py", "--", "--hour", hour, "--style", style]
     ns = {"__file__": COAST, "__name__": "coast"}
     try:
         exec(compile(src[:cut], COAST, "exec"), ns)
