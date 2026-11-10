@@ -1,0 +1,120 @@
+@font-face {
+  font-family: Satoshi;
+  src: url("/fonts/satoshi-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Fraunces;
+  src: url("/fonts/fraunces-var-latin.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #fbf3ea;
+  --ink-soft: rgb(251 243 234 / 0.72);
+  --night: #1a1220;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--ink);
+  font-family: Satoshi, system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+
+/* Full-screen layers, sized to the large viewport so a phone's hiding toolbar never leaves a band (s02). */
+.poster,
+.world,
+.stills,
+.veil {
+  position: fixed;
+  inset: 0;
+  height: 100lvh;
+}
+
+.poster {
+  background: var(--night) center / cover no-repeat;
+  filter: blur(18px);
+  transform: scale(1.08);
+}
+
+.world {
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+html.is-scene-ready .world {
+  opacity: 1;
+}
+
+html.is-stills .world {
+  display: none;
+}
+
+.stills {
+  pointer-events: none;
+}
+
+.veil {
+  background: var(--night);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.45);
+}
+
+.masthead {
+  position: absolute;
+  top: max(1.5rem, env(safe-area-inset-top));
+  left: 1.5rem;
+  right: 1.5rem;
+}
+
+#name {
+  margin: 0;
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.05;
+}
+
+#line {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
+}
+
+.place {
+  position: absolute;
+  left: 1.5rem;
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  margin: 0;
+  letter-spacing: 0.06em;
+}
+
+.rail {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: auto;
+}
+
+.track {
+  width: 1px;
+  height: 100lvh;
+}

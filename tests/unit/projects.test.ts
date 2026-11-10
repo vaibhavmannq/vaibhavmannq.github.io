@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { projects } from '../../src/content/projects';
-import { parseRoute, projectHash } from '../../src/overlay/router';
 
 describe('projects content (spec §5.7)', () => {
-  it('has unique slugs that make valid deep links', () => {
+  it('has unique, link-safe slugs', () => {
     const slugs = projects.map((project) => project.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
-    for (const slug of slugs) expect(parseRoute(projectHash(slug))).toEqual({ kind: 'project', slug });
+    for (const slug of slugs) expect(slug).toMatch(/^[a-z0-9-]+$/);
   });
 
   it('fills every required field', () => {

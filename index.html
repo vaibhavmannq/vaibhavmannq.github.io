@@ -3,166 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Vaibhav Mann. A moonlit journey across the sea; portfolio in progress." />
-    <meta name="theme-color" content="#020406" />
+    <meta name="description" content="Vaibhav Mann. A night's walk through a coast, drawn live; portfolio in progress." />
+    <meta name="theme-color" content="#1a1220" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preload" href="/fonts/satoshi-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/fraunces-var-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <noscript>
-      <style>
-        .content { position: static; height: auto; pointer-events: auto; }
-        .section { position: static; opacity: 1; margin: 2rem 0; }
-        .welcome-arrives { opacity: 1; }
-        .site-header, .chapter-rail { position: static; translate: none; }
-      </style>
-    </noscript>
     <title>Vaibhav Mann</title>
   </head>
   <body>
+    <div class="poster" id="poster" aria-hidden="true"></div>
     <div class="world" id="world" aria-hidden="true"></div>
+    <div class="stills" id="stills" aria-hidden="true"></div>
+    <div class="veil" id="veil" aria-hidden="true"></div>
 
-    <main class="content" id="content">
-      <p class="scene-status" id="scene-status" role="status">The sea is waking…</p>
-      <!-- Each page shades only where its text is, and fades with its page (sections.ts data-follows). -->
-      <div class="scrim" data-follows="intro" aria-hidden="true"></div>
-      <div class="scrim" data-follows="about" aria-hidden="true"></div>
-      <div class="scrim" data-follows="projects" aria-hidden="true"></div>
-      <div class="scrim" data-follows="contact" aria-hidden="true"></div>
-      <!-- The intro's scroll hint, at the foot of the screen; it fades with the intro. -->
-      <div class="journey-hint" data-follows="intro" aria-hidden="true">
-        <p class="welcome-arrives">Scroll to drift ashore</p>
-      </div>
-      <header class="site-header welcome-arrives" id="site-header">
-        <p class="voyage-log" id="voyage-log">
-          <span>Log</span>
-          <span data-log-when></span>
-          <span class="voyage-log__moon" data-log-moon></span>
-        </p>
-        <nav class="site-nav" aria-label="Main">
-          <a href="#projects" data-go="projects">Work</a>
-          <a href="#about" data-go="about">About</a>
-          <a class="site-nav__email" href="mailto:vaibhavmann.03@gmail.com">Email me</a>
-        </nav>
+    <div class="stage" id="stage">
+      <header class="masthead">
+        <h1 id="name">Vaibhav Mann</h1>
+        <p id="line">I build quiet, moonlit things for the web.</p>
       </header>
-      <nav class="chapter-rail welcome-arrives" id="chapter-rail" aria-label="Chapters">
-        <a href="#intro"><span>I · Adrift</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.08" /></svg></a>
-        <a href="#about"><span>II · The shore</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.25" /></svg></a>
-        <a href="#projects"><span>III · What washed ashore</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.375" /></svg></a>
-        <a href="#contact"><span>IV · The water's edge</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path data-phase="0.5" /></svg></a>
-      </nav>
+      <p class="place" id="place" aria-live="polite"></p>
+      <nav class="rail" id="rail" aria-label="Places"></nav>
+    </div>
 
-      <section class="section" id="intro" data-section="intro" aria-labelledby="intro-title">
-        <div class="section__panel">
-          <p class="section__kicker">
-            <span class="visually-hidden">Chapter one: Adrift</span>
-            <span aria-hidden="true" data-welcome="I · Adrift">Hello, voyager</span>
-          </p>
-          <h1 id="intro-title" tabindex="-1" data-reveal="block">Vaibhav Mann</h1>
-          <p class="section__lede" data-reveal="lines">I build quiet, moonlit things for the web.</p>
-          <p class="section__actions welcome-arrives">
-            <a class="section__cta" href="#projects" data-go="projects">See the work <span aria-hidden="true">→</span></a>
-            <a class="section__email" href="mailto:vaibhavmann.03@gmail.com">vaibhavmann.03@gmail.com</a>
-          </p>
-        </div>
-      </section>
-
-      <section class="section" id="about" data-section="about" aria-labelledby="about-title">
-        <div class="section__panel">
-          <h2 class="section__kicker" id="about-title" tabindex="-1">
-            <span class="visually-hidden">About</span>
-            <span aria-hidden="true" data-kicker="II · The shore">II · The shore</span>
-          </h2>
-          <p data-reveal="lines">
-            I'm learning to shape light, water and code into places you can wander through.
-          </p>
-          <p class="section__stress" data-reveal="lines">
-            Everything here is made by hand: the sea is a shader, and the moon fills as you travel.
-          </p>
-        </div>
-      </section>
-
-      <section class="section" id="projects" data-section="projects" aria-labelledby="projects-title">
-        <div class="section__panel">
-          <p class="section__kicker">
-            <span class="visually-hidden">Chapter three: What washed ashore</span>
-            <span aria-hidden="true" data-kicker="III · What washed ashore">III · What washed ashore</span>
-          </p>
-          <h2 id="projects-title" tabindex="-1" data-reveal="lines">Projects</h2>
-          <ul class="project-list" id="project-list" data-reveal="block"></ul>
-        </div>
-      </section>
-
-      <section class="section" id="contact" data-section="contact" aria-labelledby="contact-title">
-        <div class="section__panel">
-          <p class="section__kicker">
-            <span class="visually-hidden">Chapter four: The water's edge</span>
-            <span aria-hidden="true" data-kicker="IV · The water's edge">IV · The water's edge</span>
-          </p>
-          <h2 id="contact-title" tabindex="-1" data-reveal="lines">Over to you</h2>
-          <ul class="contact-list" data-reveal="block">
-            <li>
-              <span class="contact-list__label">Email</span>
-              <a href="mailto:vaibhavmann.03@gmail.com">vaibhavmann.03@gmail.com</a>
-            </li>
-            <li>
-              <span class="contact-list__label">GitHub</span>
-              <a href="https://github.com/vaibhavmannq" target="_blank" rel="me noopener"
-                >vaibhavmannq<span class="visually-hidden"> on GitHub (opens in a new tab)</span></a
-              >
-            </li>
-            <li>
-              <span class="contact-list__label">LinkedIn</span>
-              <a href="https://www.linkedin.com/in/vaibhav-mann-635542282" target="_blank" rel="me noopener"
-                >Vaibhav Mann<span class="visually-hidden"> on LinkedIn (opens in a new tab)</span></a
-              >
-            </li>
-          </ul>
-          <p class="contact-return" data-reveal="block">
-            <a id="return-to-shore" href="#intro">Return to the shore</a>
-          </p>
-        </div>
-      </section>
-    </main>
-
-    <dialog class="project-dialog" id="project-dialog" aria-labelledby="project-dialog-title" data-lenis-prevent>
-      <div class="project-dialog__body">
-        <div class="project-dialog__bar">
-          <p class="project-dialog__crumb">Projects / <span data-project-crumb></span></p>
-          <button class="project-dialog__close" type="button" data-project-close>Close</button>
-        </div>
-        <div class="project-dialog__media">
-          <figure class="project-dialog__figure">
-            <picture>
-              <source media="(max-width: 699px)" data-project-cover-narrow />
-              <img class="project-dialog__cover" data-project-cover alt="" />
-            </picture>
-            <figcaption class="project-dialog__caption" data-project-caption></figcaption>
-          </figure>
-          <div class="project-dialog__extras" data-project-extras></div>
-        </div>
-        <div class="project-dialog__text-col">
-          <div class="project-dialog__heading">
-            <p class="project-dialog__meta" data-project-meta></p>
-            <h2 class="project-dialog__title" id="project-dialog-title" data-project-title>Project</h2>
-            <p class="project-dialog__aside" data-project-aside></p>
-          </div>
-          <dl class="project-dialog__facts" data-project-facts></dl>
-          <h3 class="project-dialog__label">What it is</h3>
-          <div class="project-dialog__text" data-project-text></div>
-          <h3 class="project-dialog__label">The hard part</h3>
-          <p class="project-dialog__hard" data-project-hard></p>
-          <p class="project-dialog__metric" data-project-metric>
-            <span class="project-dialog__metric-value" data-project-metric-value></span>
-            <span class="visually-hidden"> — </span>
-            <span class="project-dialog__metric-label" data-project-metric-label></span>
-          </p>
-          <p class="project-dialog__links" data-project-links></p>
-        </div>
-      </div>
-    </dialog>
-
-    <div class="journey-track" id="journey-track" aria-hidden="true"></div>
-
+    <div class="track" id="track" aria-hidden="true"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

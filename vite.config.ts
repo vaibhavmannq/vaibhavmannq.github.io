@@ -10,6 +10,6 @@ export default defineConfig({
     // source-mapped debugging without a production build.
     sourcemap: false,
     // Three.js with the WebGPU renderer is ~900 KB minified (~254 KB gzip). That's expected and budgeted in .size-limit.json.
-    chunkSizeWarningLimit: 1100,
+    chunkSizeWarningLimit: 1400,
   },
 });
