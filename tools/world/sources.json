@@ -1,0 +1,19 @@
+{
+  "about": "Source files the world pipeline reads. All are CC0 from https://polyhaven.com (search by name). They stay outside git: put them under WORLD_SRC (default .superpowers/brainstorm/lookdev/assets) in hdri/, models/<name>/ and textures/<name>/. coast.py prefers the 8k skies and falls back to the 4k copies.",
+  "WORLD_SRC": ".superpowers/brainstorm/lookdev/assets",
+  "hdri": [
+    "belfast_sunset_puresky",
+    "citrus_orchard_road_puresky",
+    "evening_road_01_puresky",
+    "industrial_sunset_02_puresky",
+    "kloppenheim_06_puresky",
+    "qwantani_dusk_2_puresky",
+    "qwantani_moonrise_puresky",
+    "qwantani_night_puresky",
+    "qwantani_sunrise_puresky",
+    "syferfontein_0d_clear_puresky",
+    "the_sky_is_on_fire"
+  ],
+  "models": ["coastal_cliff_04", "island_tree_01", "island_tree_02", "island_tree_03", "searsia_burchellii"],
+  "textures": ["coast_sand_03", "damp_beach_sand", "seaside_rock"]
+}
