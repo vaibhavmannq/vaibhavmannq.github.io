@@ -94,7 +94,7 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
     ),
   );
   if (reflection.uvNode) reflection.uvNode = reflection.uvNode.add(n.xz.mul(0.12).div(dist.mul(0.08).add(1)));
-  const body = u.ambSky.mul(vec3(0.05, 0.07, 0.08));
+  const body = (u.ambSky as unknown as Node<'vec3'>).mul(vec3(0.05, 0.07, 0.08));
   const glint = max(dot(reflect(v.negate(), n), u.keyDir), 0)
     .pow(1400)
     .mul(u.keyColor)

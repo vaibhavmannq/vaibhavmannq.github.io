@@ -203,5 +203,7 @@ export async function boot(): Promise<App> {
     requestAnimationFrame(tick);
   }
   void last;
+  // Development only: the running app, for checks from the browser console and the headed test browser.
+  if (import.meta.env.DEV) (window as unknown as { __app: App }).__app = app;
   return app;
 }
