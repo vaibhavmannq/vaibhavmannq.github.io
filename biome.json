@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
+    "includes": ["**", "!public/world", "!src/journey/shots.json", "!src/journey/flightPaths.json"]
   },
   "formatter": {
     "enabled": true,
