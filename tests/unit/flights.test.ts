@@ -47,3 +47,43 @@ describe('sampling a flight', () => {
     expect(Math.hypot(...sampleFlight(points, 0.4).tangent)).toBeCloseTo(1, 6);
   });
 });
+
+describe('the baked flight paths over the real world base', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { createHeightSampler } = await import('../../src/world/heights');
+  const base = JSON.parse(readFileSync('public/world/base/base.json', 'utf8'));
+  const bytes = readFileSync('public/world/base/heights.bin');
+  const heightAt = createHeightSampler(
+    new Uint16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2),
+    base.heights,
+  );
+  const paths = JSON.parse(readFileSync('src/journey/flightPaths.json', 'utf8')) as {
+    from: string;
+    to: string;
+    points: Vec3[];
+  }[];
+
+  it('has the eight flights in journey order', () => {
+    expect(paths.map((p) => `${p.from}>${p.to}`)).toEqual([
+      'golden>sunset',
+      'sunset>dusk',
+      'dusk>bluehour',
+      'bluehour>night',
+      'night>midnight',
+      'midnight>beforedawn',
+      'beforedawn>firstlight',
+      'firstlight>sunrise',
+    ]);
+  });
+
+  it('keeps every flight at least 2 m above the ground between take-off and the final descent', () => {
+    for (const path of paths) {
+      for (let i = 0; i <= 200; i++) {
+        const s = 0.1 + (0.75 * i) / 200;
+        const { pos } = sampleFlight(path.points, s);
+        const clearance = pos[2] - heightAt(pos[0], pos[1]);
+        expect(clearance, `${path.from}>${path.to} at s=${s.toFixed(3)}`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+});
