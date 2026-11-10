@@ -1,5 +1,5 @@
-import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, Vector3 } from 'three/webgpu';
-import { loadManifest } from '../assets/loader';
+import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vector3 } from 'three/webgpu';
+import { fetchBinary, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
 import { createSkyStore, skyAmbients } from '../assets/skies';
 import { type Pose, poseAt } from '../journey/camera';
@@ -13,9 +13,11 @@ import { Governor } from '../quality/governor';
 import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
-import { createLightUniforms, lightValues } from '../world/light';
+import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import type { WorldFrame, WorldPart } from '../world/part';
-import { createSky } from '../world/sky';
+import { createSea, heightTexture } from '../world/sea';
+import { createSky, type Sky } from '../world/sky';
+import { createTerrain } from '../world/terrain';
 import { detectCapabilities } from './capabilities';
 import { createLoop } from './loop';
 import { readParams } from './params';
@@ -52,6 +54,22 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
   if (Math.abs(camera.fov - pose.fov) > 1e-4) {
     camera.fov = pose.fov;
     camera.updateProjectionMatrix();
+  }
+}
+
+async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void> {
+  const [heightsBuf, ringBuf, colour] = await Promise.all([
+    fetchBinary('base/heights.bin'),
+    fetchBinary('base/ring.bin'),
+    new TextureLoader().loadAsync('/world/base/colour.webp'),
+  ]);
+  const meta = app.manifest.base;
+  const heights = new Uint16Array(heightsBuf);
+  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky);
+  const sea = createSea(heightTexture(heights, meta.heights), meta.heights, light, TIERS[app.tier]);
+  for (const part of [terrain, sea]) {
+    await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
+    app.addPart(part);
   }
 }
 
@@ -170,6 +188,9 @@ export async function boot(): Promise<App> {
       for (const fn of app.onFrame) fn(f.state, nowMs, dtS * 1000);
     });
     loop.start(active.renderer);
+
+    // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
+    void loadBase(app, sky, light).catch((error: unknown) => console.warn('world base failed to load', error));
   } else {
     // No GPU: keep the overlay moving with the scroll.
     const tick = (nowMs: number) => {
