@@ -1,4 +1,4 @@
-import { CatmullRomCurve3, Vector3 } from 'three';
+import { CatmullRomCurve3, Vector3 } from 'three/webgpu';
 import type { HeightAt } from '../world/heights';
 import type { StopId, Vec3 } from './types';
 
