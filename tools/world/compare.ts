@@ -44,7 +44,8 @@ for (const size of SIZES) {
         [...document.querySelectorAll('#rail a')].findIndex((a) => a.hasAttribute('aria-current')),
       );
       if (at === STOP_IDS.indexOf(stop as (typeof STOP_IDS)[number])) break;
-      await page.reload({ waitUntil: 'load' });
+      await page.goto('about:blank');
+      await page.goto(`${baseUrl}/?stills=off&stop=${stop}&${query}`, { waitUntil: 'load' });
     }
     await page.screenshot({ path: join(outDir, `${stop}-${size.name}.png`) });
     await page.close();

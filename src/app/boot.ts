@@ -21,6 +21,7 @@ import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap } from '../scroll/touchSnap';
 import { type AuroraData, createAurora } from '../world/aurora';
+import { createCloudSea } from '../world/cloudSea';
 import { createDressing, decodeDressing } from '../world/dressing';
 import { createHeightSampler } from '../world/heights';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
@@ -87,7 +88,8 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void>
   const meta = app.manifest.base;
   const heights = new Uint16Array(heightsBuf);
   const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky);
-  const sea = createSea(heightTexture(heights, meta.heights), meta.heights, light, TIERS[app.tier]);
+  const heightMap = heightTexture(heights, meta.heights);
+  const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   const parts: [string, WorldPart][] = [
     ['terrain', terrain],
     ['sea', sea],
@@ -100,6 +102,7 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void>
   const { night, midnight } = SHOTS;
   if (auroraData && night.aurora && midnight.aurora)
     parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora)]);
+  if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
   // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
   for (const [name, part] of parts) {
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
