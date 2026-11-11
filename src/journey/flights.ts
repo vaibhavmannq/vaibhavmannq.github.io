@@ -32,6 +32,13 @@ export const APPROACH: Partial<Record<FlightKey, Vec3[]>> = {
   ],
 };
 
+/**
+ * Flights where the camera keeps looking the way the stops look and moves sideways, instead of turning to face the
+ * direction of travel. First light → Sunrise: both look out to sea, and nose-first the camera turned east into the unlit
+ * headland, which filled over half the screen (M0 look note, M1 shots).
+ */
+export const SIDEWAYS: ReadonlySet<FlightKey> = new Set<FlightKey>(['firstlight>sunrise']);
+
 const lerp2 = (a: Vec3, b: Vec3, t: number): [number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 
 /** Waypoints between two stops (spec §8.2): low hops in the cove, a high glide on long flights. */

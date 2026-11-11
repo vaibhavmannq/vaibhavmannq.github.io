@@ -63,3 +63,31 @@ describe('reduced motion (spec §8.5, review I4)', async () => {
       expect(near(poseAt(frameAt(track, at(t), true), paths, 16 / 9, 0, true).position, to)).toBe(true);
   });
 });
+
+// M1: flown nose-first, First light → Sunrise turned east into the unlit headland and dark ground filled over half the
+// screen. Both stops look out to sea, so on this flight the camera keeps looking seaward and rises sideways.
+describe('a sideways flight', async () => {
+  const { readFileSync } = await import('node:fs');
+  const paths = JSON.parse(readFileSync('src/journey/flightPaths.json', 'utf8')) as FlightPath[];
+  const track = buildTrack(STOPS);
+  const flight = (i: number, t: number) => {
+    const seg = track.segments.find((s) => s.kind === 'flight' && s.from === i);
+    if (!seg) throw new Error(`no flight ${i}`);
+    return poseAt(frameAt(track, seg.start + (seg.end - seg.start) * t, false), paths, 16 / 9, 0);
+  };
+
+  it('keeps the view between the two stops’ framings, never along the direction of travel', () => {
+    for (const t of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      const pose = flight(7, t);
+      expect(pose.yaw, `t=${t}`).toBeLessThanOrEqual(16.001);
+      expect(pose.yaw, `t=${t}`).toBeGreaterThanOrEqual(-26.001);
+      expect(pose.pitch, `t=${t}`).toBeLessThanOrEqual(2.001);
+      expect(pose.pitch, `t=${t}`).toBeGreaterThanOrEqual(-8.001);
+    }
+  });
+
+  it('leaves the other flights nose-first', () => {
+    // Blue hour (yaw −69) → Night (yaw 0) flies south-east: mid-flight the camera faces that way, far outside both.
+    expect(Math.abs(flight(3, 0.5).yaw)).toBeGreaterThan(90);
+  });
+});
