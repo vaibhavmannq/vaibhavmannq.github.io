@@ -333,8 +333,28 @@ def ground_base(x, y):
     f = sm(13.0, 10.0, rc)                                   # the cave floor, cut level into the hillside
     return h * (1 - f) + np.minimum(h, CAVE_FLOOR) * f
 
+# Outside the keep mask the land gets form for the flights (spec §6): coordinates warp, so every straight mask edge
+# wanders, and ridges and gullies rise on land. Inside the mask f = 0 and the ground is ground_base, bit for bit.
+WARP_AMP, WARP_F = 140.0, 1.0 / 1600.0
+RIDGE_AMP, RIDGE_F, GULLY_AMP, GULLY_F = 45.0, 1.0 / 380.0, 15.0, 1.0 / 520.0
+
+def reshape_warp(x, y):
+    return (WARP_AMP * (2 * fbm(x * WARP_F + 11.0, y * WARP_F + 3.0, 4) - 1),
+            WARP_AMP * (2 * fbm(x * WARP_F + 5.0, y * WARP_F + 17.0, 4) - 1))
+
+def relief(x, y):
+    ridges = 1 - np.abs(2 * fbm(x * RIDGE_F, y * RIDGE_F, 4) - 1)
+    gullies = 1 - np.abs(2 * fbm(x * GULLY_F + 7.0, y * GULLY_F + 3.0, 4) - 1)
+    return RIDGE_AMP * ridges - GULLY_AMP * gullies
+
 def ground(x, y):
-    return ground_base(x, y)
+    x = np.asarray(x, np.float64); y = np.asarray(y, np.float64)
+    f = 1.0 - keep_at(x, y)
+    wx, wy = reshape_warp(x, y)
+    xw, yw = x + f * wx, y + f * wy
+    hb = ground_base(xw, yw)
+    h = hb + f * relief(xw, yw) * sm(3.0, 20.0, hb)          # relief only on land, nothing new at sea
+    return np.where(hb > 3.0, np.maximum(h, 3.0), h)         # gullies never cut land below 3 m (no inland sea)
 
 # ---------------- render setup ----------------
 bpy.ops.wm.read_factory_settings(use_empty=True)

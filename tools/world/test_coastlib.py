@@ -11,10 +11,13 @@ HOURS = {"golden", "sunset", "dusk", "bluehour", "night", "midnight", "beforedaw
 c = coastlib.load()
 ok = 0
 for x, y, z in REF:
+    if float(c.keep_at(x, y)) < 1.0:
+        print(f"({x}, {y}) is outside the camera views: the world pass may reshape it; ground_base keeps the M0 value")
+        continue
     g = float(c.ground(x, y))
     assert abs(g - z) < 2e-4, (x, y, g, z)
     ok += 1
 assert HOURS <= set(c.SHOTS), HOURS - set(c.SHOTS)
 for x, y, z in REF:
     assert abs(float(c.ground_base(x, y)) - z) < 2e-4, ("ground_base", x, y)
-print(f"ok {ok}/{len(REF)}")
+print(f"ok {ok}/{len(REF)} unchanged in the views, {len(REF)}/{len(REF)} in ground_base")
