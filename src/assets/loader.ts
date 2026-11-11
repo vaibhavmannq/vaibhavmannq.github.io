@@ -12,3 +12,9 @@ export async function fetchBinary(path: string, base = '/world/'): Promise<Array
   if (!response.ok) throw new Error(`${path}: ${response.status}`);
   return response.arrayBuffer();
 }
+
+export async function fetchJson<T>(path: string, base = '/world/'): Promise<T> {
+  const response = await fetch(base + path);
+  if (!response.ok) throw new Error(`${path}: ${response.status}`);
+  return (await response.json()) as T;
+}

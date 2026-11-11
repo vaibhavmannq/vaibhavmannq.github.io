@@ -33,10 +33,19 @@ for (const size of SIZES) {
       if (m.type() === 'error') console.log(`[${stop}] ${m.text().slice(0, 300)}`);
     });
     await page.goto(`${baseUrl}/?stills=off&stop=${stop}&${query}`, { waitUntil: 'load' });
-    await page.waitForFunction(() => document.documentElement.classList.contains('is-scene-ready'), undefined, {
-      timeout: 120_000,
-    });
-    await page.waitForTimeout(6000);
+    // The dev server reloads the first page after a source change, and that reload can land on the first stop:
+    // shoot only once the page really rests at the stop asked for.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await page.waitForFunction(() => document.documentElement.classList.contains('is-scene-ready'), undefined, {
+        timeout: 120_000,
+      });
+      await page.waitForTimeout(6000);
+      const at = await page.evaluate(() =>
+        [...document.querySelectorAll('#rail a')].findIndex((a) => a.hasAttribute('aria-current')),
+      );
+      if (at === STOP_IDS.indexOf(stop as (typeof STOP_IDS)[number])) break;
+      await page.reload({ waitUntil: 'load' });
+    }
     await page.screenshot({ path: join(outDir, `${stop}-${size.name}.png`) });
     await page.close();
     console.log(`${stop} ${size.name}`);

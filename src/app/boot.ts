@@ -1,12 +1,13 @@
 import { cameraPosition, densityFogFactor, fog, positionWorld } from 'three/tsl';
 import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vector3 } from 'three/webgpu';
-import { fetchBinary, loadManifest } from '../assets/loader';
+import { fetchBinary, fetchJson, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
 import { createSkyStore, skyAmbients } from '../assets/skies';
 import { type Pose, poseAt } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
+import { SHOTS } from '../journey/shots';
 import { STOPS } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
@@ -19,6 +20,7 @@ import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap } from '../scroll/touchSnap';
+import { type AuroraData, createAurora } from '../world/aurora';
 import { createDressing, decodeDressing } from '../world/dressing';
 import { createHeightSampler } from '../world/heights';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
@@ -43,7 +45,9 @@ export interface App {
   override: number | null;
   tier: Tier;
   setTier(t: Tier): void;
-  addPart(part: WorldPart): void;
+  /** Parts by name, for the benchmarks' on/off switch. */
+  readonly parts: Map<string, WorldPart>;
+  addPart(part: WorldPart, name: string): void;
   /** Called after every rendered frame (HUD, overlay). */
   onFrame: ((frame: FrameState, nowMs: number, dtMs: number) => void)[];
   /** Show the renders at the stops (`?stills=off` and the HUD turn them off). */
@@ -72,24 +76,34 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
 
 async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void> {
   const dressingMeta = app.manifest.base.dressing;
-  const [heightsBuf, ringBuf, colour, dressingBuf] = await Promise.all([
+  const auroraMeta = app.manifest.base.aurora;
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
     dressingMeta ? fetchBinary(dressingMeta.file) : null,
+    auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
   ]);
   const meta = app.manifest.base;
   const heights = new Uint16Array(heightsBuf);
   const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky);
   const sea = createSea(heightTexture(heights, meta.heights), meta.heights, light, TIERS[app.tier]);
-  const parts = [terrain, sea];
+  const parts: [string, WorldPart][] = [
+    ['terrain', terrain],
+    ['sea', sea],
+  ];
   if (dressingMeta && dressingBuf) {
     const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
-    parts.push(createDressing(instances, createHeightSampler(heights, meta.heights)));
+    parts.push(['dressing', createDressing(instances, createHeightSampler(heights, meta.heights))]);
   }
-  for (const part of parts) {
+  // The four unknowns (M2). Each hides itself wherever its hour or place is not in play.
+  const { night, midnight } = SHOTS;
+  if (auroraData && night.aurora && midnight.aurora)
+    parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora)]);
+  // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
+  for (const [name, part] of parts) {
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
-    app.addPart(part);
+    app.addPart(part, name);
   }
 }
 
@@ -146,6 +160,7 @@ export async function boot(): Promise<App> {
   if (!pipeline) html.classList.add('is-stills');
 
   const parts: WorldPart[] = [];
+  const named = new Map<string, WorldPart>();
   let tier: Tier = params.tier ?? bootTier(caps);
   // Loading hitches in the first seconds say nothing about the device (s04: the owner's phone fell to low in its first
   // second and stayed there), so the governor's first 3 s are not judged.
@@ -170,8 +185,10 @@ export async function boot(): Promise<App> {
       applyTier(t);
       governor.reset(t, performance.now());
     },
-    addPart(part) {
+    parts: named,
+    addPart(part, name) {
       parts.push(part);
+      named.set(name, part);
       scene.add(part.object);
       part.setTier(TIERS[tier]);
     },
@@ -197,7 +214,7 @@ export async function boot(): Promise<App> {
   const sky = createSky(light, skies, blank);
   // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
   scene.fogNode = fog(sky.horizonAt(positionWorld.sub(cameraPosition)), densityFogFactor(light.fogDensity));
-  app.addPart(sky);
+  app.addPart(sky, 'sky');
 
   const startedAt = performance.now();
   let last: FrameState | null = null;
