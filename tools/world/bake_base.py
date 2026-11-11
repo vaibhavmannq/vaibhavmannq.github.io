@@ -73,8 +73,11 @@ def main():
 
     col = paint(h, g["step"], X, Y, c.fbm)[::-1]          # north up
     Image.fromarray((np.clip(col, 0, 1) * 255).astype(np.uint8)).save(os.path.join(OUT, "colour.webp"), quality=85, method=6)
-    with open(os.path.join(OUT, "base.json"), "w", encoding="utf-8", newline="\n") as f:
-        json.dump(dict(heights=heights, ring=ring, colour=dict(file="colour.webp", northUp=True)), f, indent=1)
+    meta_path = os.path.join(OUT, "base.json")          # other bakes keep their own keys here (dressing, aurora, cave)
+    meta = json.load(open(meta_path, encoding="utf-8")) if os.path.exists(meta_path) else {}
+    meta.update(heights=heights, ring=ring, colour=dict(file="colour.webp", northUp=True))
+    with open(meta_path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(meta, f, indent=1)
         f.write("\n")
     for name in ("heights.bin", "ring.bin", "colour.webp"):
         print(f"{name:12s} {os.path.getsize(os.path.join(OUT, name)) / 1e3:7.1f} kB")

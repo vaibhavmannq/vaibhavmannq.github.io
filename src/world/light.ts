@@ -1,4 +1,4 @@
-import { densityFogFactor, fog, uniform } from 'three/tsl';
+import { uniform } from 'three/tsl';
 import { Color, DirectionalLight, HemisphereLight, type Scene, Vector3 } from 'three/webgpu';
 import type { SkyAmbient } from '../assets/manifest';
 import { sunDir } from '../journey/hours';
@@ -15,6 +15,8 @@ export const FOG_SCALE = 0.0027;
 export const FOG_COLOUR_SCALE = 0.65;
 export const HEMI_INTENSITY = 2.0;
 export const FILL_SHARE = 0.25;
+/** What a full aurora adds to the light from the sky (the renders' aurora lit the ground: `light=True`). */
+export const AURORA_AMBIENT: RGB = [0.02, 0.1, 0.05];
 
 /** Everything the materials read about the light this frame; three.js axes. */
 export interface LightValues {
@@ -33,11 +35,14 @@ export interface LightValues {
   moonDir: Vec3;
   moonSize: number;
   moonStrength: number;
+  aurora: number;
+  cloud: number;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
   w <= 0 ? a : w >= 1 ? b : [lerp(a[0], b[0], w), lerp(a[1], b[1], w), lerp(a[2], b[2], w)];
 const scale3 = (a: RGB, k: number): RGB => [a[0] * k, a[1] * k, a[2] * k];
+const add3 = (a: RGB, b: RGB, k: number): RGB => (k === 0 ? a : [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k]);
 
 /** Pure: an hour (already blended) and the two skies' ambient light, mixed by how far b's sky has faded in. */
 export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient, skyWeight: number): LightValues {
@@ -46,7 +51,7 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     keyDir: toThree(hour.key.dir),
     keyColor: hour.key.color,
     keyStrength: hour.key.strength * KEY_SCALE,
-    ambSky: mix3(ambA.ambientSky, ambB.ambientSky, skyWeight),
+    ambSky: add3(mix3(ambA.ambientSky, ambB.ambientSky, skyWeight), AURORA_AMBIENT, hour.aurora),
     ambGround: mix3(ambA.ambientGround, ambB.ambientGround, skyWeight),
     fogColor: scale3(hour.fogColor, FOG_COLOUR_SCALE),
     fogDensity: hour.fogAmount * FOG_SCALE,
@@ -59,6 +64,8 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     moonDir: moon ? toThree(sunDir(moon.el, moon.az)) : [0, 1, 0],
     moonSize: moon ? moon.sizeDeg : 0,
     moonStrength: moon ? moon.strength : 0,
+    aurora: hour.aurora,
+    cloud: hour.cloud,
   };
 }
 
@@ -80,6 +87,8 @@ export function createLightUniforms() {
     moonDir: uniform(new Vector3(0, 1, 0)),
     moonSize: uniform(0),
     moonStrength: uniform(0),
+    aurora: uniform(0),
+    cloud: uniform(0),
   };
   const key = new DirectionalLight(0xffffff, 2);
   /** Bounce light from the lit sea and sky opposite the key, so shadowed faces keep their shape (slice). */
@@ -90,10 +99,9 @@ export function createLightUniforms() {
   return {
     ...u,
     lights,
-    /** Adds the lights and the fog to the scene. */
+    /** Adds the lights to the scene. The fog is boot's: distance fades into the sky's own horizon colour (D17). */
     install(scene: Scene) {
       scene.add(...lights);
-      scene.fogNode = fog(u.fogColor, densityFogFactor(u.fogDensity));
     },
     apply(v: LightValues, cameraPosition: Vector3) {
       u.keyDir.value.set(...v.keyDir).normalize();
@@ -111,6 +119,8 @@ export function createLightUniforms() {
       u.moonDir.value.set(...v.moonDir).normalize();
       u.moonSize.value = v.moonSize;
       u.moonStrength.value = v.moonStrength;
+      u.aurora.value = v.aurora;
+      u.cloud.value = v.cloud;
 
       key.color.setRGB(...v.keyColor);
       key.intensity = v.keyStrength;

@@ -71,4 +71,8 @@ export interface HourPreset {
   moon: Moon | null;
   swell: number;
   chop: number;
+  /** 0..1: how much of an aurora this hour has (Night, Deep midnight). */
+  aurora: number;
+  /** 0..1: how much of the sea of cloud lies in the midnight valley. */
+  cloud: number;
 }

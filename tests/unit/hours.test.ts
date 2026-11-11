@@ -25,6 +25,16 @@ describe('hour presets from coast.py (spec §9.1)', () => {
     expect(Math.abs(length(mid.key.dir) - 1)).toBeLessThan(1e-6);
   });
 
+  it('give Night and Midnight an aurora, and only Midnight a cloud deck', () => {
+    expect(HOURS.night.aurora).toBe(1);
+    expect(HOURS.midnight.aurora).toBe(1);
+    expect(HOURS.golden.aurora).toBe(0);
+    expect(HOURS.night.cloud).toBe(0);
+    expect(HOURS.midnight.cloud).toBe(1);
+    expect(blendHours(HOURS.night, HOURS.midnight, 0.5).cloud).toBe(0.5);
+    expect(blendHours(HOURS.bluehour, HOURS.night, 0.25).aurora).toBe(0.25);
+  });
+
   it('fade the moon out when only one side has it', () => {
     const half = blendHours(HOURS.night, HOURS.sunrise, 0.5);
     expect(half.moon?.strength).toBeCloseTo((HOURS.night.moon?.strength ?? 0) / 2, 6);

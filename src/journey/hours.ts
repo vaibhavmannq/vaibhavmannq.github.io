@@ -34,6 +34,8 @@ function preset(id: StopId): HourPreset {
     moon,
     swell: s.swell,
     chop: s.chop,
+    aurora: s.aurora ? 1 : 0,
+    cloud: s.cloudsea ? 1 : 0,
   };
 }
 
@@ -92,5 +94,7 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     moon: blendMoon(a.moon, b.moon, w),
     swell: lerp(a.swell, b.swell, w),
     chop: lerp(a.chop, b.chop, w),
+    aurora: lerp(a.aurora, b.aurora, w),
+    cloud: lerp(a.cloud, b.cloud, w),
   };
 }

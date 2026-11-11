@@ -18,7 +18,8 @@
     "world": "python tools/world/export_hours.py && python tools/world/bake_base.py && python tools/world/prep_sky.py && python tools/world/prep_stills.py && node tools/world/bake_flights.ts && python tools/world/bake_dressing.py && node tools/world/manifest.ts",
     "world:report": "node tools/world/pack_report.ts",
     "world:test": "python tools/world/run_tests.py",
-    "aerials": "node tools/world/aerials.ts"
+    "aerials": "node tools/world/aerials.ts",
+    "compare": "node tools/world/compare.ts"
   },
   "dependencies": {
     "gsap": "3.15.0",
