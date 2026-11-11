@@ -306,6 +306,26 @@ def _ground_world(x, y):
     return h
 
 CAVE_FLOOR = float(_ground_world(*CAVE)) - 3.0
+# ---------------- the world pass (M1): where the nine approved views must not change ----------------
+KEEP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "keep.npz")   # baked by tools/world/bake_keep.py
+_KEEP = None
+def keep_at(x, y):
+    """1 where a camera sees the ground (or the ground could shadow what it sees), falling to 0 over 400 m; 0 outside."""
+    global _KEEP
+    if _KEEP is None:
+        if not os.path.exists(KEEP_FILE):
+            raise FileNotFoundError(f"coast.py needs {KEEP_FILE} beside it (bake: python tools/world/bake_keep.py)")
+        z = np.load(KEEP_FILE)
+        _KEEP = (z["keep"].astype(np.float64) / 255.0, float(z["x0"]), float(z["y0"]), float(z["step"]))
+    k, x0, y0, step = _KEEP
+    ny, nx = k.shape
+    fx = (np.asarray(x, np.float64) - x0) / step; fy = (np.asarray(y, np.float64) - y0) / step
+    inside = (fx >= 0) & (fx <= nx - 1) & (fy >= 0) & (fy <= ny - 1)
+    i = np.clip(np.floor(fx), 0, nx - 2).astype(np.int64); j = np.clip(np.floor(fy), 0, ny - 2).astype(np.int64)
+    u = np.clip(fx - i, 0, 1); v = np.clip(fy - j, 0, 1)
+    val = (k[j, i] * (1 - u) + k[j, i + 1] * u) * (1 - v) + (k[j + 1, i] * (1 - u) + k[j + 1, i + 1] * u) * v
+    return np.where(inside, val, 0.0)
+
 def ground_base(x, y):
     """The M0 ground: the formula the nine approved renders were made with."""
     h = _ground_world(x, y)

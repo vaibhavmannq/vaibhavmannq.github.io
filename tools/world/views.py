@@ -10,7 +10,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SHOTS = os.path.normpath(os.path.join(HERE, "..", "..", "src", "journey", "shots.json"))
 
 Camera = namedtuple("Camera", "x y z yaw pitch lens")
-SKY, SEA, LAND = 0, 1, 2
+SKY, SEA, LAND, CLOUD = 0, 1, 2, 3
+# The nine views are protected exactly within this distance; the hazy background beyond may change (s05 ruling).
+NEAR = 1500.0
 # Aspects the site may show a stop at: 16:9, square (the tallest view by fovFor's rule) and a phone in portrait.
 ASPECTS = (16 / 9, 1.0, 0.46)
 
@@ -79,12 +81,25 @@ def _below_ceiling(ceil, p):
     return out
 
 
-def _march(ground, o, d, t_max, t0=0.5, z_stop=None, bounded=True, watch=None):
+def cloud_planes():
+    """Opaque cloud layers in the approved renders, per stop: (z, x0, x1, y0, y1). Midnight's sea of cloud, at its
+    lowest wave (z - amp), so anything that could show through between the waves still counts as seen."""
+    import coastlib
+    out = {}
+    for name, shot in coastlib.load().SHOTS.items():
+        cs = shot.get("cloudsea")
+        if cs:
+            x0, x1, y0, y1 = cs["box"]
+            out[name] = (float(cs["z"] - cs["amp"]), float(x0), float(x1), float(y0), float(y1))
+    return out
+
+
+def _march(ground, o, d, t_max, t0=0.5, z_stop=None, bounded=True, watch=None, cloud=None):
     """Step every ray until it drops below max(ground, 0). Returns t (inf if none), the ground there and, with
     watch = (same_where, other_ceiling), which rays sampled a point that matters (below either ceiling) where
     same_where says the other ground may differ."""
     n = len(o)
-    t_hit = np.full(n, np.inf); g_hit = np.zeros(n); touched = np.zeros(n, bool)
+    t_hit = np.full(n, np.inf); g_hit = np.zeros(n); touched = np.zeros(n, bool); in_cloud = np.zeros(n, bool)
     t = np.full(n, t0); live = np.arange(n)
     ceil = _ceiling(ground) if bounded else None
     while live.size:
@@ -100,39 +115,55 @@ def _march(ground, o, d, t_max, t0=0.5, z_stop=None, bounded=True, watch=None):
         g = np.zeros(len(p))
         g[near] = np.asarray(ground(p[near, 0], p[near, 1]), np.float64)
         hit = near & (p[:, 2] < np.maximum(g, 0.0))
+        if cloud is not None:
+            cz, cx0, cx1, cy0, cy1 = cloud
+            fog = ~hit & (p[:, 2] < cz) & (p[:, 0] > cx0) & (p[:, 0] < cx1) & (p[:, 1] > cy0) & (p[:, 1] < cy1)
+            in_cloud[live[fog]] = True
+            hit = hit | fog
         t_hit[live[hit]] = t[live[hit]]; g_hit[live[hit]] = g[hit]
         t[live] += np.maximum(0.25, 0.01 * t[live])
         keep = ~hit & (t[live] < t_max)
         if z_stop is not None:
             keep &= p[:, 2] < z_stop
         live = live[keep]
+    if cloud is not None:
+        g_hit[in_cloud] = np.nan
     return (t_hit, g_hit, touched) if watch is not None else (t_hit, g_hit)
 
 
-def cast(ground, origins, dirs, t_max=7000.0, bounded=True):
-    t, g = _march(ground, np.asarray(origins, np.float64), np.asarray(dirs, np.float64), t_max, bounded=bounded)
-    kind = np.where(np.isinf(t), SKY, np.where(g < 0, SEA, LAND)).astype(np.int8)
-    return t, kind
+def _kind(t, g):
+    return np.where(np.isinf(t), SKY, np.where(np.isnan(g), CLOUD, np.where(g < 0, SEA, LAND))).astype(np.int8)
 
 
-def compare(ground_a, ground_b, cams, w=96, same_where=None):
+def cast(ground, origins, dirs, t_max=7000.0, bounded=True, cloud=None):
+    t, g = _march(ground, np.asarray(origins, np.float64), np.asarray(dirs, np.float64), t_max, bounded=bounded, cloud=cloud)
+    return t, _kind(t, g)
+
+
+def compare(ground_a, ground_b, cams, w=96, same_where=None, near=None):
     """Per camera, the share of rays that hit differently. With same_where(x, y) (true where the two grounds are known
-    to be equal), only the rays that sampled ground where they may differ are cast on ground_b."""
+    to be equal), only the rays that sampled ground where they may differ are cast on ground_b. With near, a change
+    counts only if the ray hits within that distance on either ground (the far background may change, s05 ruling)."""
     out = {}
+    clouds = cloud_planes()
     for name, cam in cams.items():
         o, d = ray_grid(cam, w)
+        cl = clouds.get(name)
         if same_where is None:
-            ta, ka = cast(ground_a, o, d); tb, kb = cast(ground_b, o, d)
+            ta, ka = cast(ground_a, o, d, cloud=cl); tb, kb = cast(ground_b, o, d, cloud=cl)
         else:
-            ta, g, touched = _march(ground_a, o, d, 7000.0, watch=(same_where, _ceiling(ground_b)))
-            ka = np.where(np.isinf(ta), SKY, np.where(g < 0, SEA, LAND)).astype(np.int8)
+            ta, g, touched = _march(ground_a, o, d, 7000.0, watch=(same_where, _ceiling(ground_b)), cloud=cl)
+            ka = _kind(ta, g)
             tb, kb = ta.copy(), ka.copy()
             if touched.any():
-                tb[touched], kb[touched] = cast(ground_b, o[touched], d[touched])
+                tb[touched], kb[touched] = cast(ground_b, o[touched], d[touched], cloud=cl)
         both = np.isfinite(ta) & np.isfinite(tb)
         far = np.zeros(len(ta), bool)
         far[both] = np.abs(ta[both] - tb[both]) > 0.01 * ta[both] + 0.3
-        out[name] = float(((ka != kb) | far).mean())
+        diff = (ka != kb) | far
+        if near is not None:
+            diff &= np.minimum(ta, tb) <= near
+        out[name] = float(diff.mean())
     return out
 
 
