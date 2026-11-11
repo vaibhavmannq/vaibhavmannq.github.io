@@ -154,3 +154,18 @@ every element and its **behaviour**, not only rock. The standing source is
 `docs/handover/research/reference-book.md`: an entry per element (look, behaviour, numbers, what gives a fake away);
 every plan task that makes or tunes something cites its entry; each place has one world state (sun or moon angle,
 wind, moon phase) that every moving part reads; look checks give a % for look and a % for behaviour.
+
+**D27 · 2026-11-11 · The owner accepted every recommendation in the s08 checklist (A1–A9), so Amendment 1 is approved
+and my calls in D24–D26 are confirmed.** In short: look-around and spots now, free roaming judged after M8; real
+behaviour with styled colour (a crescent moon where the aurora is strong); a basalt coast; Night rebuilt; new cameras
+at Sunset and Dusk; a night about twice as long with a camera top speed and a ride control; one prompt for sound and
+tilt; fallback stills captured from the finished live site (**replaces D6's Blender render round**); the lantern
+thread. Content: Eventide plus "How this world was built" on the lanterns, the built-with-AI fact stated openly; About
+kept ambiguous; contact links as on the current site; no paid domain. Answers in full:
+`docs/handover/research/owner-checklist.md`.
+
+**D28 · 2026-11-11 · The owner's own references are the first authority for look.** He added 128 photos and clips to
+`.superpowers/refs/` (local only). What they show, element by element, is `docs/handover/research/owner-references.md`;
+it overrides the search-based research where they differ. From his motion video: **the view must answer the pointer at
+once (parallax of about 3 % of the screen between near and far), and something must always be moving on its own.**
+So every stop needs a near layer. Sharpens D25.

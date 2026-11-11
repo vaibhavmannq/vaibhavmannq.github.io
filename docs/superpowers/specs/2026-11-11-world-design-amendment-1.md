@@ -7,8 +7,13 @@
   interactive "like we are in open world" (D25); the journey must be smooth, not "over in a blink" (D26).
 - **Evidence and detail:** `docs/handover/research/` (start at its README). My critique of the nine places:
   `research/design-review-and-proposals.md`. Real places: `research/reference-landforms.md`.
-- **Status:** draft for the owner. Written without a question round ("do it, then show"). Every choice the owner
-  did not make is listed as **my call** in §9.
+- **Status: approved by the owner, 2026-11-11 (D27): every call in §9 accepted, free roaming deferred to after M8,
+  stills captured from the live site.** Written without a question round ("do it, then show").
+- **Updated the same day from the owner's own references (D28,** `research/owner-references.md`**):** pointer
+  parallax is the lead interaction (about 3 % of screen width between near and far, so every stop needs a near
+  layer); Night's first reference is his photo of a fall in a bowl of basalt columns, with split ribbons and a
+  spot behind the falls; the aurora carries a magenta top and pale cores; the cave's skylight is built and its
+  rock near the mouth is lit; where that file and this one differ on a look, that file wins.
 
 ## 1. What stays
 

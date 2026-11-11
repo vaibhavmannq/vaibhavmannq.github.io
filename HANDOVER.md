@@ -71,8 +71,12 @@ no borrowed set pieces (no towers, piano, etc.).
   changed build order (§10: a new M2.5, "the world from reference").
 - **D24 covers everything, look and behaviour:** `docs/handover/research/reference-book.md` is the standing
   reference (an entry per element, real numbers, what gives a fake away). Cite it in every plan task.
-- **Next:** read Amendment 1. The owner answers its §11 (does "open world" mean free roaming?) and does the two
-  watch lists. Then M2 continues: the waterfall is judged for motion, light and cost, not composition; add the
+- **Amendment 1 is approved (D27):** the owner accepted every recommendation; free roaming waits until after M8;
+  the fallback stills come from the live site (no Blender round). Content answers: `research/owner-checklist.md`.
+- **The owner added 128 reference photos and clips** to `.superpowers/refs/` (local, not in git). I viewed all of
+  them; `research/owner-references.md` says what each element should take from them (D28). His motion video
+  means: pointer parallax first, and something always moving.
+- **Next:** read Amendment 1 and `research/owner-references.md`. Then M2 continues: the waterfall is judged for motion, light and cost, not composition; add the
   camera's top speed and the longer scroll (Amendment §7); re-judge aurora and cloud (`research/m2-references.md`
   §5); Tasks 6 and 7.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
