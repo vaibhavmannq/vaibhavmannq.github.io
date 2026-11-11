@@ -56,6 +56,10 @@ export class Governor {
   private lastChange = Number.NEGATIVE_INFINITY;
   /** A slow window closed while the visitor was scrolling: step down as soon as a change is allowed. */
   private pendingDown = false;
+  /** Enough fast moving windows closed while scrolling: step up as soon as a change is allowed. */
+  private pendingUp = false;
+  /** Frames in the open window rendered while the camera moved. */
+  private moving = 0;
   /**
    * The highest tier still allowed. A tier that has proved too slow is never returned to: without this the
    * governor flapped between two tiers forever, because scrolling frames are slower than standing-still
@@ -91,6 +95,8 @@ export class Governor {
     this.windowStart = null;
     this.fastWindows = 0;
     this.pendingDown = false;
+    this.pendingUp = false;
+    this.moving = 0;
     this.startedAt = nowMs;
     this.lastChange = Number.NEGATIVE_INFINITY;
   }
@@ -105,6 +111,8 @@ export class Governor {
     this.windowStart = null;
     this.fastWindows = 0;
     this.pendingDown = false;
+    this.pendingUp = false;
+    this.moving = 0;
   }
 
   /**
@@ -113,16 +121,30 @@ export class Governor {
    * measured, and a slow window that closes mid-scroll is remembered: its step-down is applied on the
    * first sample after scrolling stops (spec §5.6, never mid-scroll). Fast windows keep counting
    * toward a step up.
+   * `moving` says the camera moved for this frame. A fast window counts toward a step up only when most of its frames
+   * moved: frames at rest are cheap and say nothing about flights (s05: the owner's phone stepped up to high at rest,
+   * then fell to low in the first flights). Slow windows count however they were rendered.
    */
-  sample(frameMs: number, nowMs: number, canChange = true): Tier | null {
+  sample(frameMs: number, nowMs: number, canChange = true, moving = true): Tier | null {
     this.startedAt ??= nowMs;
     if (nowMs - this.startedAt < this.options.warmupMs) return null;
     // A window left open across the idle 30 fps mode or a hidden tab is stale, and this frame's
     // interval spans the gap. Start again rather than judge it (journey-flow review I4).
     if (this.windowStart !== null && nowMs - this.windowStart > 2 * this.options.windowMs) {
       this.samples = [];
+      this.moving = 0;
       this.windowStart = null;
       return null;
+    }
+    if (this.pendingUp && !this.pendingDown && canChange && nowMs - this.lastChange >= this.options.cooldownMs) {
+      this.pendingUp = false;
+      this.fastWindows = 0;
+      if (this.mayStepUp(nowMs)) {
+        this.samples = [];
+        this.moving = 0;
+        this.windowStart = nowMs;
+        return this.changeTo(this.tier + 1, nowMs);
+      }
     }
     if (this.pendingDown && canChange && nowMs - this.lastChange >= this.options.cooldownMs) {
       this.pendingDown = false;
@@ -133,10 +155,13 @@ export class Governor {
     }
     if (this.windowStart === null) this.windowStart = nowMs;
     this.samples.push(frameMs);
+    if (moving) this.moving += 1;
     if (nowMs - this.windowStart < this.options.windowMs) return null;
 
     const slowFrames = percentile(this.samples, 0.95);
+    const mostlyMoving = this.moving * 2 > this.samples.length;
     this.samples = [];
+    this.moving = 0;
     this.windowStart = nowMs;
 
     if (nowMs - this.lastChange < this.options.cooldownMs) {
@@ -145,19 +170,26 @@ export class Governor {
     }
     if (slowFrames > this.options.downRatio * this.targetMs) {
       this.fastWindows = 0;
+      this.pendingUp = false;
       if (canChange) return this.changeTo(this.tier - 1, nowMs);
       this.pendingDown = true;
       return null;
     }
     if (slowFrames < this.options.upRatio * this.targetMs) {
+      // A fast window at rest neither vouches for a higher tier nor breaks a run of fast moving ones.
+      if (!mostlyMoving) return null;
       this.fastWindows += 1;
-      if (this.fastWindows >= this.options.upWindowsRequired && canChange && this.mayStepUp(nowMs)) {
-        this.fastWindows = 0;
-        return this.changeTo(this.tier + 1, nowMs);
+      if (this.fastWindows >= this.options.upWindowsRequired) {
+        if (canChange && this.mayStepUp(nowMs)) {
+          this.fastWindows = 0;
+          return this.changeTo(this.tier + 1, nowMs);
+        }
+        if (!canChange && !this.pendingDown) this.pendingUp = true;
       }
       return null;
     }
     this.fastWindows = 0;
+    this.pendingUp = false;
     return null;
   }
 

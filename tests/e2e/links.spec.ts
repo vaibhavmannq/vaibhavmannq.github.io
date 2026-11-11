@@ -35,16 +35,16 @@ test('with no GPU, the name and a still show at the start and the end (Review Fo
 test("a link to a place loads that place's sky first, not Golden's (review I2)", async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'one engine is enough for a loading-order check');
   test.setTimeout(180_000);
+  // Skies are fetched by the decode worker (s05), so they are watched as requests, not in the page's resource timeline.
+  const skies: string[] = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/world/sky/')) skies.push(path);
+  });
   await page.goto('/?stills=off#midnight');
   await page.waitForFunction(() => document.documentElement.classList.contains('is-scene-ready'), undefined, {
     timeout: 150_000,
   });
-  const skies = await page.evaluate(() =>
-    performance
-      .getEntriesByType('resource')
-      .map((e) => new URL(e.name).pathname)
-      .filter((p) => p.startsWith('/world/sky/')),
-  );
   expect(skies).toContain('/world/sky/midnight.jpg');
   expect(skies).not.toContain('/world/sky/golden.jpg');
 });

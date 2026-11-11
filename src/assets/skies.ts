@@ -1,7 +1,17 @@
-import { ImageBitmapLoader, LinearFilter, NoColorSpace, RepeatWrapping, Texture } from 'three/webgpu';
+import {
+  DataTexture,
+  ImageBitmapLoader,
+  LinearFilter,
+  NoColorSpace,
+  RepeatWrapping,
+  RGBAFormat,
+  Texture,
+  UnsignedByteType,
+} from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
 import type { Manifest, SkyAmbient } from './manifest';
+import type { SkyDecodeReply } from './skyDecode.worker';
 
 const LAST = STOP_IDS.length - 1;
 const inRange = (i: number) => i >= 0 && i <= LAST;
@@ -85,6 +95,35 @@ function bitmapLoader(): (url: string) => Promise<Texture> {
     });
 }
 
+/** Raw RGBA rows from the decode worker, already bottom row first, as a texture that uploads them as they are. */
+export function skyTextureFromPixels(pixels: { width: number; height: number; data: Uint8Array }): DataTexture {
+  const t = new DataTexture(pixels.data, pixels.width, pixels.height, RGBAFormat, UnsignedByteType);
+  t.flipY = false;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Skies decoded to raw bytes in a worker (see skyDecode.worker.ts); one worker serves every sky. */
+function workerLoader(): (url: string) => Promise<Texture> {
+  const worker = new Worker(new URL('./skyDecode.worker.ts', import.meta.url), { type: 'module' });
+  const waiting = new Map<number, { resolve: (t: Texture) => void; reject: (e: Error) => void }>();
+  let nextId = 0;
+  worker.onmessage = (event: MessageEvent<SkyDecodeReply>) => {
+    const reply = event.data;
+    const entry = waiting.get(reply.id);
+    if (!entry) return;
+    waiting.delete(reply.id);
+    if ('error' in reply) entry.reject(new Error(reply.error));
+    else entry.resolve(skyTextureFromPixels(reply));
+  };
+  return (url) =>
+    new Promise<Texture>((resolve, reject) => {
+      const id = nextId++;
+      waiting.set(id, { resolve, reject });
+      worker.postMessage({ id, url: new URL(url, location.href).href });
+    });
+}
+
 function release(t: Texture): void {
   t.dispose();
   (t.image as ImageBitmap | null)?.close?.();
@@ -92,7 +131,9 @@ function release(t: Texture): void {
 
 export function createSkyStore(manifest: Manifest, fallback: Texture, options: SkyStoreOptions = {}): SkyStore {
   const base = options.base ?? '/world/';
-  const loadTexture = options.loadTexture ?? bitmapLoader();
+  const loadTexture =
+    options.loadTexture ??
+    (typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' ? workerLoader() : bitmapLoader());
   const retryMs = options.retryMs ?? 3000;
   const now = options.now ?? (() => performance.now());
   const warn = options.warn ?? ((...args: unknown[]) => console.warn(...args));

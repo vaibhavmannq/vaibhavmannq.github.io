@@ -8,12 +8,13 @@ function runWindow(
   frameMs: number,
   startMs: number,
   canChange = true,
+  moving = true,
 ): { change: Tier | null; endMs: number } {
   let change: Tier | null = null;
   let t = startMs;
   for (let i = 0; i < 62; i++) {
     t = startMs + i * (1000 / 60);
-    const result = governor.sample(frameMs, t, canChange);
+    const result = governor.sample(frameMs, t, canChange, moving);
     if (result !== null) change = result;
   }
   return { change, endMs: t + 1000 / 60 };
@@ -243,5 +244,52 @@ describe('Governor start-up and hand-picked tiers (review I3)', () => {
     expect(governor.current).toBe(2);
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t + 2100).endMs;
     expect(governor.current).toBe(2);
+  });
+});
+
+// s05: the owner's phone opened on mid, stepped up to high within seconds because frames at rest are cheap, then fell
+// to mid and low in the first flights and stayed there. Only frames rendered while the camera moves may vouch for a
+// higher tier.
+describe('Governor step-ups judged on moving frames', () => {
+  it('never steps up on frames rendered at rest, however fast', () => {
+    const governor = new Governor(1);
+    let t = 0;
+    for (let i = 0; i < 6; i++) t = runWindow(governor, 16.7, t, true, false).endMs;
+    expect(governor.current).toBe(1);
+  });
+
+  it('steps up after three fast moving windows, on the first frame at rest', () => {
+    const governor = new Governor(1);
+    let t = 0;
+    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
+    expect(governor.current).toBe(1);
+    expect(governor.sample(16.7, t, true, false)).toBe(2);
+  });
+
+  it('lets resting windows between flights neither count nor break the run of fast moving ones', () => {
+    const governor = new Governor(1);
+    let t = 0;
+    t = runWindow(governor, 16.7, t, false, true).endMs;
+    t = runWindow(governor, 16.7, t, false, true).endMs;
+    t = runWindow(governor, 16.7, t, true, false).endMs; // resting at a place
+    expect(governor.current).toBe(1);
+    t = runWindow(governor, 16.7, t, false, true).endMs;
+    expect(governor.sample(16.7, t, true, false)).toBe(2);
+  });
+
+  it('lets a waiting step-down win over a later waiting step-up', () => {
+    const governor = new Governor(1);
+    let t = runWindow(governor, 33, 0, false, true).endMs;
+    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
+    expect(governor.sample(16.7, t, true, false)).toBe(0);
+  });
+
+  it('drops a waiting step-up when a later moving window is slow', () => {
+    const governor = new Governor(1);
+    let t = 0;
+    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
+    t = runWindow(governor, 18.5, t, false, true).endMs; // neither fast nor slow
+    expect(governor.sample(16.7, t, true, false)).toBeNull();
+    expect(governor.current).toBe(1);
   });
 });

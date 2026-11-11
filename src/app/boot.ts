@@ -234,7 +234,7 @@ export async function boot(): Promise<App> {
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
       // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).
       if (!loop.pacer.resumed && app.override === null && params.tier === undefined) {
-        const change = governor.sample(dtS * 1000, nowMs, f.state.resting);
+        const change = governor.sample(dtS * 1000, nowMs, f.state.resting, !f.state.resting);
         if (change !== null) {
           applyTier(change);
           loop.pacer.rearm();

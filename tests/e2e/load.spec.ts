@@ -15,7 +15,15 @@ test('the name and the first view arrive in time on 10 Mbit/s', async ({ page, b
     downloadThroughput: (10e6 / 8) * 0.95,
     uploadThroughput: (5e6 / 8) * 0.95,
   });
+  // When each file finished, in ms since the page started. Requests, not the page's resource timeline: the skies are
+  // fetched by the decode worker (s05), and the throttling above applies to it too (checked at 400 kbit/s).
+  const finished = new Map<string, number>();
+  page.on('requestfinished', (request) => {
+    const t = request.timing();
+    finished.set(new URL(request.url()).pathname, t.startTime + t.responseEnd);
+  });
   await page.goto('/', { waitUntil: 'commit' });
+  const origin = await page.evaluate(() => performance.timeOrigin);
   await expect(page.locator('#name')).toBeVisible({ timeout: 5000 });
   // The browser's own first contentful paint: the name is the page's first content. Timing the test runner's
   // round trip instead measured the runner, which is slow when three browsers test in parallel.
@@ -30,28 +38,8 @@ test('the name and the first view arrive in time on 10 Mbit/s', async ({ page, b
   );
   expect(nameMs).toBeLessThan(1000);
 
-  await page.waitForFunction(
-    (paths) =>
-      paths.every((p) =>
-        (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).some(
-          (e) => new URL(e.name).pathname === p && e.responseEnd > 0,
-        ),
-      ),
-    STAGE_A,
-    { timeout: 15_000 },
-  );
-  const stageAMs = await page.evaluate(
-    (paths) =>
-      Math.max(
-        ...paths.map(
-          (p) =>
-            (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).find(
-              (e) => new URL(e.name).pathname === p,
-            )?.responseEnd ?? Number.POSITIVE_INFINITY,
-        ),
-      ),
-    STAGE_A,
-  );
+  await expect.poll(() => STAGE_A.every((p) => finished.has(p)), { timeout: 15_000 }).toBe(true);
+  const stageAMs = Math.max(...STAGE_A.map((p) => (finished.get(p) ?? Number.POSITIVE_INFINITY) - origin));
   console.log(`name ${Math.round(nameMs)} ms, stage A ${Math.round(stageAMs)} ms`);
   expect(stageAMs).toBeLessThan(3000);
 });

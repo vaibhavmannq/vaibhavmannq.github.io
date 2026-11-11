@@ -34,7 +34,12 @@ export interface Pipeline {
 
 /** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
 export async function createPipeline(host: HTMLElement, forceWebGL: boolean): Promise<Pipeline> {
-  const renderer = new WebGPURenderer({ antialias: false, forceWebGL });
+  const renderer = new WebGPURenderer({
+    antialias: false,
+    forceWebGL,
+    // Opaque: every pixel is drawn, and the compositor need not blend the page under it.
+    alpha: false,
+  });
   await renderer.init();
   renderer.toneMapping = NoToneMapping;
   // The host is sized to the large viewport (world.css), which a phone's toolbar never changes.

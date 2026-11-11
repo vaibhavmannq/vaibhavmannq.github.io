@@ -1,5 +1,6 @@
+import { RGBAFormat, UnsignedByteType } from 'three/webgpu';
 import { describe, expect, it } from 'vitest';
-import { pickSkyTexture, skiesToHold } from '../../src/assets/skies';
+import { pickSkyTexture, skiesToHold, skyTextureFromPixels } from '../../src/assets/skies';
 
 describe('which skies stay loaded (spec §12)', () => {
   it('holds the current stop, the next, the previous, and the one after next', () => {
@@ -131,5 +132,19 @@ describe('the sky store', async () => {
     now = 2500;
     store.update(stopFrame(8));
     expect(c.calls.filter((u) => u.endsWith('sunrise.jpg'))).toHaveLength(2);
+  });
+});
+
+// s05: uploading an ImageBitmap to WebGL2 converted it on the main thread (25–53 ms per 2048 px sky at 6x slowdown, the
+// hitch at every arrival); raw bytes copy in 9 ms. The worker decodes and flips the rows; the texture uploads them as is.
+describe('skyTextureFromPixels', () => {
+  it('wraps decoded RGBA rows in a texture that uploads them unflipped', () => {
+    const data = new Uint8Array(4 * 4 * 2);
+    const t = skyTextureFromPixels({ width: 4, height: 2, data });
+    expect(t.image).toEqual({ width: 4, height: 2, data });
+    expect(t.format).toBe(RGBAFormat);
+    expect(t.type).toBe(UnsignedByteType);
+    expect(t.flipY).toBe(false);
+    expect(t.version).toBeGreaterThan(0);
   });
 });

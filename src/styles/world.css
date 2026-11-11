@@ -123,6 +123,13 @@ html.is-stills .world {
   background-image: url("/world/stills/poster.webp");
 }
 
+/* Once the world has faded in (600 ms), the poster leaves: a full-screen blur left under the canvas made the compositor
+   blur it again on every frame no still covered, so every flight frame (s05 trace: 1.58 vs 0.56 ms per frame). */
+html.is-scene-ready .poster {
+  visibility: hidden;
+  transition: visibility 0s 700ms;
+}
+
 .stills img {
   position: absolute;
   inset: 0;
@@ -130,6 +137,9 @@ html.is-stills .world {
   height: 100%;
   object-fit: cover;
   opacity: 0;
+  /* Its own layer: a fade then only changes how it blends. Without it Chrome repainted the full-screen picture on every
+     frame of every fade (s05, owner's phone over USB, fast flings: 52 fps without, 57.5 with). */
+  will-change: opacity;
 }
 
 .rail ol {
