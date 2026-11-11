@@ -4,8 +4,10 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last rewritten: 2026-11-11, end of session s07 (see `docs/handover/sessions/2026-11-11-s07-m2-started.md`);
-s08 (research only) added one entry to section 2.
+Last updated: 2026-11-11, end of session s08 (research and design only, no code; see
+`docs/handover/sessions/2026-11-11-s08-research.md`). **After the three files of the ritual, also read
+`docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
+The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
 ## 1. What this is
 
