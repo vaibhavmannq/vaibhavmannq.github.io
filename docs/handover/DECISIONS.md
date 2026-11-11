@@ -108,3 +108,42 @@ reference from internet as well, there are some really amazing photographer and 
 Milestone as a Research phase". The references go in `docs/handover/research/` as links with what to take from each.
 Why: the renders are our own guess at an aurora, a cloud sea, a waterfall and a cave; the real ones are the bar.
 Adds to D5 (renders as art direction); the compositions stay.
+
+**D21 · 2026-11-11 · The renders are the floor, not the ceiling.** Owner, s08: "I don't want us to be confined to just
+the render, if you get any inspiration or idea say it". Ideas that go beyond a render (a story thread, real sky
+phenomena, creatures, pointer responses, sound) are welcome, are said out loud, and are shown running behind a switch
+for the owner to keep or drop. (My reading, owner to confirm: cameras and set pieces still do not change without a
+yes per case; the budgets of D9 and D13 still hold.) The running list: `docs/handover/research/inspiration-and-ideas.md`.
+Why: the renders were our first guess at each place; research and inspiration should be able to improve on them.
+Widens D5 and D20.
+
+**D22 · 2026-11-11 · Full creative freedom for the builder, cameras and design included.** Owner, s08, after seeing
+the ideas list: "all of them ... you are free to change the design of cove or anything you wish, even the camera
+angles, I GIVE YOU FULL FREEDOM TO YOUR CREATIVITY AND IMAGINATION". Every idea in
+`docs/handover/research/inspiration-and-ideas.md` is accepted to build. Replaces my caveat in D21 (cameras and set
+pieces needing a yes per case) and loosens D5, D16 and the spec's non-goal "changes to an approved composition".
+What still holds (my reading): the speed bar (D9), the material and draw limits (D13), no game assets or borrowed set
+pieces, D15 (the owner tests only what I call ready), and every change is shown running and can be switched back.
+A changed view is said out loud with before and after, never slipped in.
+
+**D23 · 2026-11-11 · Sound: yes.** Owner, s08: "sound yes". Opt-in (silent until the visitor says yes, a visible
+toggle), loaded only after opt-in so D9 is untouched; one ambience per place, cross-faded with the hours. Its own
+short design before it is built. Replaces the spec's non-goal "Sound".
+
+**D24 · 2026-11-11 · Land forms are built from real reference, not imagined.** Owner, s08: "the views, walls, stone
+cove look out of place because we are imagining it instead of taking reference". Every rock form is built against a
+named real place with photos kept locally; the compare tool shows the photo beside the live view. (My call: the whole
+coast becomes one real kind of place, a northern basalt coast; `docs/handover/research/reference-landforms.md`.)
+Extends D20 from the four unknowns to all land.
+
+**D25 · 2026-11-11 · The world should feel interactive, "like we are in open world".** Owner, s08. (My call, owner to
+confirm: delivered as look-around at every stop plus two to four spots per stop the camera can walk to, each with a
+small discovery; free roaming stays out as in D7 until after M8. If the owner means free roaming, this entry is
+replaced.) Amendment 1 §6.
+
+**D26 · 2026-11-11 · The journey is smooth and unhurried, never "over in a blink of an eye".** Owner, s08. (My call:
+about 41 screens instead of 21, a top speed for the camera however hard the scroll, and a "ride" control that plays
+a flight at its designed length.) Replaces the design's call 1. Amendment 1 §7.
+
+Amendment 1 to the design (`docs/superpowers/specs/2026-11-11-world-design-amendment-1.md`) gathers D21–D26; it is a
+draft until the owner has read it.

@@ -4,7 +4,8 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last rewritten: 2026-11-11, end of session s07 (see `docs/handover/sessions/2026-11-11-s07-m2-started.md`).
+Last rewritten: 2026-11-11, end of session s07 (see `docs/handover/sessions/2026-11-11-s07-m2-started.md`);
+s08 (research only) added one entry to section 2.
 
 ## 1. What this is
 
@@ -53,10 +54,25 @@ no borrowed set pieces (no towers, piano, etc.).
   - **Task 0, Research phase (D20, owner): first pass only.** The reference sheet is still owed.
   - Tasks 1–4 done and committed on `world` (5 commits, **not pushed**): the numbers in `shots.json`, `npm run compare`,
     the Blender export (`npm run world:blender`), the **aurora** (my 86–88 %), the **sea of cloud** (my 78 %).
-  - Task 5, the **waterfall**: code written, tests green, **uncommitted and never seen running**.
+  - Task 5, the **waterfall**: code written, tests green, committed as wip (147a61d), **never seen running**.
   - Task 6 (cave) and Task 7 (cost per part, phone over USB, verdicts, owner's page) not started.
   - Nothing has been measured for speed, on the laptop or the phone. The owner has seen nothing yet.
-- **Next:** finish Task 0 (references), look-check the waterfall, then Tasks 6 and 7.
+- **s08 was research only (no code):** `docs/handover/research/` now holds three.js r186 notes with exact API
+  patterns, the M2 reference sheet (draft, with a watch list for the owner) and notes for M3–M10. **Read
+  `docs/handover/research/README.md` before planning or building.** Log: `sessions/2026-11-11-s08-research.md`.
+- **The owner gave full creative freedom in s08, cameras and design included (D22), accepted every idea in
+  `research/inspiration-and-ideas.md`, and said yes to sound (D23).** My critique of the nine places and what I
+  would change is `research/design-review-and-proposals.md`: Night redesigned, the stacks re-scattered, new
+  cameras at II, III and VII, flights as shots. None of it is built or shown yet, and the spec is not amended.
+- **Also from the owner in s08:** land from real reference, not imagination (D24); the world interactive "like we
+  are in open world" (D25); a smooth, unhurried journey (D26). **All of D21–D26 is gathered in
+  `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` (draft; it wins over the spec where they
+  differ).** It holds Night's redesign brief (§5), look-around and spots (§6), the new pace (§7), and the
+  changed build order (§10: a new M2.5, "the world from reference").
+- **Next:** read Amendment 1. The owner answers its §11 (does "open world" mean free roaming?) and does the two
+  watch lists. Then M2 continues: the waterfall is judged for motion, light and cost, not composition; add the
+  camera's top speed and the longer scroll (Amendment §7); re-judge aurora and cloud (`research/m2-references.md`
+  §5); Tasks 6 and 7.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
