@@ -26,5 +26,19 @@
   "file": "base/dressing.bin",
   "trees": 3085,
   "scrub": 7284
+ },
+ "aurora": {
+  "file": "base/aurora.json"
+ },
+ "cave": {
+  "file": "base/cave.bin",
+  "shellVerts": 8066,
+  "shellTris": 15679,
+  "floorVerts": 1945,
+  "floorTris": 3696,
+  "fungi": 448,
+  "scale": 1000,
+  "openLo": -2.0,
+  "openHi": 2.0
  }
 }

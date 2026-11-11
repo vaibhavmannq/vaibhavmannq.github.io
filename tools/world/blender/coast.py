@@ -216,6 +216,8 @@ if S.get("sky"):
     _f, _el, _phi = SKIES[S["sky"]]; S["hdri"] = _f; S["hsun"] = (_el, _phi)
     S["tilt"] = _el - arg("--sun_el", float(S.get("sun_el", _el)))
 STYLE = arg("--style", "real")
+CAVESEG = arg("--caveseg", 256)   # segments around the cave shell (the site's export uses fewer)
+EXPORT = arg("--export", "")      # a folder: write the site's baked parts there instead of rendering (tools/world/blender/export_parts.py)
 LITE = bool(arg("--lite", 0))   # light previews for this PC: coarser terrain/sea meshes, a thinner short meadow
 WUWA = STYLE == "wuwa"
 HYBRID = STYLE == "hybrid"     # realistic water, plants and rock under the Wuthering Waves sky colouring, made warmer
@@ -1579,7 +1581,7 @@ def build_fireflies(n):
 def build_cave():
     cx, cyy = CAVE; fz = CAVE_FLOOR
     c = Vector((cx, cyy, fz + 4.5)); ax_, ay_, az_ = 12.0, 10.0, 7.5
-    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=256, v_segments=128, radius=1.0)
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=CAVESEG, v_segments=CAVESEG // 2, radius=1.0)
     for v in bm.verts: v.co = Vector((v.co.x * ax_, v.co.y * ay_, v.co.z * az_))
     from mathutils import noise as mnoise
     opn = []
@@ -1809,6 +1811,19 @@ def aurora_mat(name, cfg, strength, seed):
     ad = nt.nodes.new("ShaderNodeAddShader"); L(nt, tr.outputs[0], ad.inputs[0]); L(nt, em.outputs[0], ad.inputs[1]); L(nt, ad.outputs[0], out.inputs["Surface"])
     return m
 
+def aurora_curve(b, band, n):
+    """One curtain's base line in sky angles relative to the view: n + 1 samples of (azimuth, foot elevation, height), degrees.
+    The line folds sideways (it can swing back on itself), sweeps diagonally, and the curtain's height changes along it."""
+    from mathutils import noise as mnoise
+    az0, az1, el0, el1, hel, amp, k = band; out = []
+    for i in range(n + 1):
+        t = i / n; q = Vector((t * 2.6 + b * 5.3, b * 1.7, 0.4))
+        az = az0 + (az1 - az0) * t + amp * 1.6 * mnoise.noise(q)                                   # folds sideways (can swing back)
+        el = el0 + (el1 - el0) * t + amp * mnoise.noise(q * 1.3 + Vector((3.1, 0, 0))) + 0.4 * amp * math.sin(t * math.pi * 1.4 + b)   # sweeps diagonally
+        h = hel * (0.6 + 0.8 * (0.5 + 0.5 * mnoise.noise(q * 2.1 + Vector((0, 4.2, 0)))))
+        out.append((az, el, h))
+    return out
+
 def build_aurora_sky(cfg):
     """Curtains laid out on a dome around the viewer in sky angles: (az0, az1, el0, height, fold, brightness) per band, az relative to
     the view. The base line folds and drifts in elevation, the height changes along the band, and a big fold can swing back on itself."""
@@ -1819,11 +1834,8 @@ def build_aurora_sky(cfg):
         span = abs(az1 - az0) / 60.0
         m = aurora_mat(f"aurora{b}", dict(cfg, len=span), cfg.get("strength", 3.0) * k, 11.0 * b + 3.0)
         verts, faces, uvs = [], [], []
-        for i in range(NU + 1):
-            t = i / NU; q = Vector((t * 2.6 + b * 5.3, b * 1.7, 0.4))
-            az = az0 + (az1 - az0) * t + amp * 1.6 * mnoise.noise(q)                                   # folds sideways (can swing back)
-            el = el0 + (el1 - el0) * t + amp * mnoise.noise(q * 1.3 + Vector((3.1, 0, 0))) + 0.4 * amp * math.sin(t * math.pi * 1.4 + b)   # sweeps diagonally
-            h = hel * (0.6 + 0.8 * (0.5 + 0.5 * mnoise.noise(q * 2.1 + Vector((0, 4.2, 0)))))
+        for i, (az, el, h) in enumerate(aurora_curve(b, (az0, az1, el0, el1, hel, amp, k), NU)):
+            t = i / NU
             for j in range(NV + 1):
                 sv = j / NV; e_ = math.radians(el + h * sv); a_ = math.radians(YAW + az + cfg.get("lean", 2.0) * sv)
                 verts.append((CX + R * math.sin(a_) * math.cos(e_), CY + R * math.cos(a_) * math.cos(e_), CZ + R * math.sin(e_))); uvs.append((t, sv))
@@ -1948,36 +1960,42 @@ def build_camera():
     yaw, pitch = S["look"]
     cam.rotation_euler = sun_dir(pitch, yaw).to_track_quat("-Z", "Y").to_euler()
 
-build_terrain()
-build_sea()
-build_cliffs()
-build_rocks()
-build_shelf()
-if S.get("cam_surface"):
-    CZ = surface_z(CX, CY) + CH; log("camera on surface at", CZ)
-if S.get("cam_cave"):
-    CZ = CAVE_FLOOR + CH
-if GRASS > 0: build_grass()
-build_beach()
-build_tree()
-if S.get("grove"): build_grove()
-if S.get("lgrove"): build_lgrove()
-build_frame_tree()
-build_arch()
-build_caps()
-build_props()
-build_sky()
-build_mist()
-build_extras()
-build_camera()
-log("scene built")
-if SAVE: bpy.ops.wm.save_as_mainfile(filepath=SAVE)
-os.makedirs(os.path.dirname(OUT), exist_ok=True)
-scn.render.filepath = OUT
-bpy.ops.render.render(write_still=True)
-log("RENDERED", OUT)
-if arg("--grade", 1):
+if EXPORT:
     sys.path.insert(0, HERE)
-    import grade
-    grade.grade(OUT, OUT[:-4] if OUT.lower().endswith(".exr") else OUT, S["expo"], S["fog"], S["fog_amt"])
-    log("GRADED", OUT)
+    import export_parts
+    export_parts.run(globals())
+    log("EXPORTED", EXPORT)
+else:
+    build_terrain()
+    build_sea()
+    build_cliffs()
+    build_rocks()
+    build_shelf()
+    if S.get("cam_surface"):
+        CZ = surface_z(CX, CY) + CH; log("camera on surface at", CZ)
+    if S.get("cam_cave"):
+        CZ = CAVE_FLOOR + CH
+    if GRASS > 0: build_grass()
+    build_beach()
+    build_tree()
+    if S.get("grove"): build_grove()
+    if S.get("lgrove"): build_lgrove()
+    build_frame_tree()
+    build_arch()
+    build_caps()
+    build_props()
+    build_sky()
+    build_mist()
+    build_extras()
+    build_camera()
+    log("scene built")
+    if SAVE: bpy.ops.wm.save_as_mainfile(filepath=SAVE)
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    scn.render.filepath = OUT
+    bpy.ops.render.render(write_still=True)
+    log("RENDERED", OUT)
+    if arg("--grade", 1):
+        sys.path.insert(0, HERE)
+        import grade
+        grade.grade(OUT, OUT[:-4] if OUT.lower().endswith(".exr") else OUT, S["expo"], S["fog"], S["fog_amt"])
+        log("GRADED", OUT)

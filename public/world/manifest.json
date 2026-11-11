@@ -24,6 +24,20 @@
    "file": "base/dressing.bin",
    "trees": 3085,
    "scrub": 7284
+  },
+  "aurora": {
+   "file": "base/aurora.json"
+  },
+  "cave": {
+   "file": "base/cave.bin",
+   "shellVerts": 8066,
+   "shellTris": 15679,
+   "floorVerts": 1945,
+   "floorTris": 3696,
+   "fungi": 448,
+   "scale": 1000,
+   "openLo": -2,
+   "openHi": 2
   }
  },
  "skies": {
@@ -146,6 +160,20 @@
   }
  },
  "files": [
+  {
+   "path": "base/aurora.json",
+   "bytes": 13912,
+   "sha256": "304a51f4fb444003f0c7ce05de3b0ee93b1af7dd2d688dcfd83360962ef05228",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "base/cave.bin",
+   "bytes": 197530,
+   "sha256": "fa4efd8ac680464f11cb6c7fafd3d9bd707d06ba41b0fc9010b6048262716282",
+   "stage": "B",
+   "stops": "all"
+  },
   {
    "path": "base/colour.webp",
    "bytes": 7246,

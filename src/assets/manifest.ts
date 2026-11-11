@@ -26,9 +26,24 @@ export interface DressingMeta {
   scrub: number;
 }
 
+/** The cave baked from the Blender scene (tools/world/blender/export_parts.py): the counts that lay out cave.bin. */
+export interface CaveMeta {
+  file: string;
+  shellVerts: number;
+  shellTris: number;
+  floorVerts: number;
+  floorTris: number;
+  fungi: number;
+  /** Int16 units per metre. */
+  scale: number;
+  /** The range the shell's `open` byte covers. */
+  openLo: number;
+  openHi: number;
+}
+
 export interface Manifest {
   version: 1;
-  base: { heights: GridMeta; ring: RingMeta; dressing?: DressingMeta };
+  base: { heights: GridMeta; ring: RingMeta; dressing?: DressingMeta; aurora?: { file: string }; cave?: CaveMeta };
   skies: Partial<Record<StopId, SkyAmbient & { file: string }>>;
   files: FileEntry[];
 }
