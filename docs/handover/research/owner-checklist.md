@@ -23,8 +23,9 @@ Written in s08. Answer in chat or write under each line here; either works. Shor
   layout). Safari stays untested by hand: run the e2e suite on Playwright's WebKit as the stand-in and say so
   plainly at launch.
 - **C:** not yet gone through. **D:** 128 files added; what they show is in `owner-references.md`.
-  `wuwa-moods/` and `sound/` are still empty. Sound sites offered: Pixabay sound effects (usable), Audionautix
-  (terms unread).
+  Wuthering Waves material: already given (15 videos in `V:\Pdf\Project\eventide\`, studied on 2026-11-08; see
+  `owner-references.md` §17). **Sound: pick from Pixabay** (owner, s08). Nothing more is owed by the owner
+  for the research; the linked watch lists in C are optional.
 
 ## A. Decisions (a word each)
 

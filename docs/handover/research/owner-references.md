@@ -184,7 +184,8 @@ and something is always moving on its own.** This is Amendment 1 §6 step 1 (the
 4. **Shadows with something in them:** almost no pure black anywhere in 128 files.
 5. **Real places with a clean, graphic shape** (the lone tree, the arch, the stack).
 
-There is no `wuwa-moods/` or `sound/` content yet. Both would still help.
+`wuwa-moods/` is empty because the owner had already given the Wuthering Waves material: see §17. Sound will be
+picked from Pixabay (§15).
 
 ## 15. Sound sources the owner gave
 
@@ -210,6 +211,33 @@ There is no `wuwa-moods/` or `sound/` content yet. Both would still help.
 | Fireflies | Sparse, low, blinking; a short trail on the bright ones. |
 | Plankton | Sparks at waterlines and breaking ripples only. |
 | Night skies | Teal or navy, lighter at the horizon; a small sharp moon with a halo; a crescent where the aurora is strong. |
+
+## 17. The Wuthering Waves videos (the owner's taste, studied on 2026-11-08)
+
+Fifteen game-capture videos sit in `V:\Pdf\Project\eventide\` (5 GB; local). An earlier session cut them into
+frames and wrote twelve reports: `.superpowers/brainstorm/videos/reports/*.md` (frames in the folders beside them,
+`board.html` as an overview; not in git). I read all twelve in s08. I was wrong to ask the owner for this again.
+They are for **mood, colour and camera only**: every report lists what is the game's own and must not be taken.
+
+What they add to this session's research, or settle:
+
+| Point | From | Effect on our plan |
+|---|---|---|
+| **Night is never black:** shadows no darker than about `#10123a`; indigo and violet; snow and water take the sky's colour; warmth only from small lights. "Shadows violet, not black." | frozen, byebs-vibes, low720 | Same as the owner's photos (§14.4). Make it a rule in the hour presets: a floor on darkness, tinted. |
+| **The firefly lagoon:** teal water glow on near-black, 30–60 yellow-green fireflies at many depths, a waterfall, cobalt flowers, **two warm lanterns as the only warm accent**. | limits 5:34, q1000 2:58 | This is our Night stop, as the game does it. Our project lanterns are that warm accent: keep everything else cool. |
+| **Water-level push-in, then tilt up to the waterfalls.** | aaa 3:54 | The arrival at Night: skim the lagoon, then rise to the falls. |
+| **Hold, then a short blend.** Each place sits in a stable light; the change happens in a short band between places, in under 2 s of viewing. Fog changes more than the sky and sells the change. | weather | Amendment §7's rhythm: do not smear the hour change across a whole long flight; put it in the middle third. |
+| **Dusk is when lights come on; dawn is teal, not grey.** | weather | Dusk's lanterns light one by one as you arrive. First light leans teal-rose. |
+| **Fog sea with dark islands, lens-shaped clouds above, aurora high.** | frozen 1:12 | Midnight, confirmed. |
+| **Cave mouth as the light source, wet floor glints.** | frozen 7:12 | Before dawn, confirmed. |
+| **Clear water:** a dark floor makes it look clear; colour by depth only; a caustic net; one clean foam line on an S-curve; a wet band of sand that mirrors the sky. | epic-blurry-details, water | The cove at Golden, First light and Sunrise. Cheap textures, not simulation. |
+| **Shallow focus, something blurred crossing the lens, the camera near the ground.** | real, aaa | The near layer that pointer parallax needs (§1); a little depth of field at stops only. |
+| **What survives a weak phone:** sky gradients, big silhouettes, two or three hues, flat glowing shapes on dark, a strong grade. What breaks: dark midground mush, bloom, fine grass. | bs144, low720 | The low tier's rules. Spend the budget on sky and silhouette. |
+| **Aditya's site:** the camera arrives somewhere new each section; something is always near the lens; particles drift. Its weak points: a blank loader, a 12 s static hold, everything one lavender tint. | sites | Matches the owner's motion video (§1). |
+
+**One tension, already decided:** the game lets night water and waterfalls glow ("stylised beats realistic").
+The owner chose *real behaviour, styled colour* (A2, D27). So our falls and water are lit by the sky and aurora,
+but that light may be richer and bluer than life; nothing glows by itself except living things and flames.
 
 ## The viewing script
 
