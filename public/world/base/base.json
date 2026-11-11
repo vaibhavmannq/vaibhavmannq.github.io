@@ -21,5 +21,10 @@
  "colour": {
   "file": "colour.webp",
   "northUp": true
+ },
+ "dressing": {
+  "file": "base/dressing.bin",
+  "trees": 3085,
+  "scrub": 7284
  }
 }

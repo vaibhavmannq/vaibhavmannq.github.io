@@ -19,6 +19,11 @@
    "na": 288,
    "lo": -22,
    "hi": 386
+  },
+  "dressing": {
+   "file": "base/dressing.bin",
+   "trees": 3085,
+   "scrub": 7284
   }
  },
  "skies": {
@@ -145,6 +150,13 @@
    "path": "base/colour.webp",
    "bytes": 7246,
    "sha256": "35a68b8381be072773a0d688d439576e9a4f6c92f3d05ed543733709de34344b",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "base/dressing.bin",
+   "bytes": 82952,
+   "sha256": "b147ac0b735f034bd393bdee08502312cf62244d279c4c8b60cd33a490befb06",
    "stage": "B",
    "stops": "all"
   },

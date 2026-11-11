@@ -46,6 +46,6 @@ const files: FileEntry[] = walk(world)
 
 const base = JSON.parse(readFileSync(join(world, 'base/base.json'), 'utf8'));
 const skies = JSON.parse(readFileSync(join(world, 'sky/sky.json'), 'utf8'));
-const manifest: Manifest = { version: 1, base: { heights: base.heights, ring: base.ring }, skies, files };
+const manifest: Manifest = { version: 1, base: { heights: base.heights, ring: base.ring, dressing: base.dressing }, skies, files };
 writeFileSync(join(world, 'manifest.json'), `${JSON.stringify(manifest, null, 1)}\n`);
 console.log(`manifest: ${files.length} files`);

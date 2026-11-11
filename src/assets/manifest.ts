@@ -19,9 +19,16 @@ export interface SkyAmbient {
   ambientGround: RGB;
 }
 
+/** The distant trees and scrub (tools/world/bake_dressing.py): the file and how many of each kind it holds. */
+export interface DressingMeta {
+  file: string;
+  trees: number;
+  scrub: number;
+}
+
 export interface Manifest {
   version: 1;
-  base: { heights: GridMeta; ring: RingMeta };
+  base: { heights: GridMeta; ring: RingMeta; dressing?: DressingMeta };
   skies: Partial<Record<StopId, SkyAmbient & { file: string }>>;
   files: FileEntry[];
 }

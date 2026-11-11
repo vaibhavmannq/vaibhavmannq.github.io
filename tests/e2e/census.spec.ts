@@ -33,6 +33,7 @@ test('every stop stays inside the draw and material budgets', async ({ page, bro
     expect(row.draws, row.stop).toBeGreaterThan(0);
     expect(row.draws, row.stop).toBeLessThanOrEqual(60);
     expect(row.materials, row.stop).toBeLessThanOrEqual(14);
+    expect(row.triangles, row.stop).toBeLessThanOrEqual(2.5e6);
   }
   console.log(JSON.stringify(rows));
 });

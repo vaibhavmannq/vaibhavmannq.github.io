@@ -18,6 +18,8 @@ import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap } from '../scroll/touchSnap';
+import { createDressing, decodeDressing } from '../world/dressing';
+import { createHeightSampler } from '../world/heights';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { createSea, heightTexture } from '../world/sea';
@@ -68,16 +70,23 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
 }
 
 async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void> {
-  const [heightsBuf, ringBuf, colour] = await Promise.all([
+  const dressingMeta = app.manifest.base.dressing;
+  const [heightsBuf, ringBuf, colour, dressingBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
+    dressingMeta ? fetchBinary(dressingMeta.file) : null,
   ]);
   const meta = app.manifest.base;
   const heights = new Uint16Array(heightsBuf);
   const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky);
   const sea = createSea(heightTexture(heights, meta.heights), meta.heights, light, TIERS[app.tier]);
-  for (const part of [terrain, sea]) {
+  const parts = [terrain, sea];
+  if (dressingMeta && dressingBuf) {
+    const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
+    parts.push(createDressing(instances, createHeightSampler(heights, meta.heights)));
+  }
+  for (const part of parts) {
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
     app.addPart(part);
   }
