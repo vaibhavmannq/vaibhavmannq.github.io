@@ -6,6 +6,7 @@ dist/
 .superpowers/
 
 # test & tooling output
+__pycache__/
 test-results/
 playwright-report/
 .lighthouseci/

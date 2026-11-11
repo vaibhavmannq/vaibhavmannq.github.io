@@ -46,6 +46,16 @@ jobs:
       - name: World pack budget
         run: npm run world:report
 
+      - name: Set up Python for the world checks
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: World checks (coast.py, the baked base, the camera views)
+        run: |
+          pip install -r tools/world/requirements.txt
+          npm run world:test
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 

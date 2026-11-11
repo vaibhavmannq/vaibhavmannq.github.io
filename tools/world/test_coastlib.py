@@ -15,4 +15,6 @@ for x, y, z in REF:
     assert abs(g - z) < 2e-4, (x, y, g, z)
     ok += 1
 assert HOURS <= set(c.SHOTS), HOURS - set(c.SHOTS)
+for x, y, z in REF:
+    assert abs(float(c.ground_base(x, y)) - z) < 2e-4, ("ground_base", x, y)
 print(f"ok {ok}/{len(REF)}")

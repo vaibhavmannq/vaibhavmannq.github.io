@@ -306,11 +306,15 @@ def _ground_world(x, y):
     return h
 
 CAVE_FLOOR = float(_ground_world(*CAVE)) - 3.0
-def ground(x, y):
+def ground_base(x, y):
+    """The M0 ground: the formula the nine approved renders were made with."""
     h = _ground_world(x, y)
     rc = np.hypot(np.asarray(x, np.float64) - CAVE[0], np.asarray(y, np.float64) - CAVE[1])
     f = sm(13.0, 10.0, rc)                                   # the cave floor, cut level into the hillside
     return h * (1 - f) + np.minimum(h, CAVE_FLOOR) * f
+
+def ground(x, y):
+    return ground_base(x, y)
 
 # ---------------- render setup ----------------
 bpy.ops.wm.read_factory_settings(use_empty=True)
