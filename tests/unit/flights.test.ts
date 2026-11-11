@@ -91,4 +91,42 @@ describe('the baked flight paths over the real world base', async () => {
       }
     }
   });
+  // Spec §8.2: a flight must not look into a hillside (M0's last flight flew at one). The view's centre ray is cast
+  // 30 m ahead over the baked heights; more than 8 samples in a row blocked by rising ground (of 200) fails, outside the
+  // last tenth of the flight.
+  it('never looks into a hillside for long', async () => {
+    const { buildTrack, frameAt, stopCentre } = await import('../../src/journey/timeline');
+    const { poseAt } = await import('../../src/journey/camera');
+    const { STOPS } = await import('../../src/journey/stops');
+    const track = buildTrack(STOPS);
+    const rad = (d: number) => (d * Math.PI) / 180;
+    const stuck: string[] = [];
+    for (let i = 0; i < paths.length; i++) {
+      const u0 = stopCentre(track, i) + 0.5;
+      const u1 = stopCentre(track, i + 1) - 0.5;
+      let run = 0;
+      for (let k = 1; k < 200; k++) {
+        const u = u0 + ((u1 - u0) * k) / 200;
+        const frame = frameAt(track, u, false);
+        if (frame.kind !== 'flight' || frame.t > 0.9) continue;
+        const pose = poseAt(frame, paths as never, 16 / 9, 0);
+        const [x, y, z] = [pose.position[0], -pose.position[2], pose.position[1]];
+        const dir = [
+          Math.sin(rad(pose.yaw)) * Math.cos(rad(pose.pitch)),
+          Math.cos(rad(pose.yaw)) * Math.cos(rad(pose.pitch)),
+          Math.sin(rad(pose.pitch)),
+        ] as const;
+        // A hillside is ground rising ahead: looking down at lower ground while landing does not count.
+        const under = heightAt(x, y);
+        let blocked = false;
+        for (let t = 1; t <= 30 && !blocked; t += 1) {
+          const g = heightAt(x + dir[0] * t, y + dir[1] * t);
+          blocked = z + dir[2] * t < g && g > under + 2;
+        }
+        run = blocked ? run + 1 : 0;
+        if (run === 9) stuck.push(`${paths[i]?.from}>${paths[i]?.to} from t=${frame.t.toFixed(2)}`);
+      }
+    }
+    expect(stuck).toEqual([]);
+  });
 });
