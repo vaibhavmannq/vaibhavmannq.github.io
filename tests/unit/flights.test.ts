@@ -91,10 +91,10 @@ describe('the baked flight paths over the real world base', async () => {
       }
     }
   });
-  // Spec §8.2: a flight must not look into a hillside (M0's last flight flew at one). The view's centre ray is cast
+  // Spec §8.2, the near part: a flight must not fly at a slope. The view's centre ray is cast
   // 30 m ahead over the baked heights; more than 8 samples in a row blocked by rising ground (of 200) fails, outside the
   // last tenth of the flight.
-  it('never looks into a hillside for long', async () => {
+  it('never flies at rising ground close ahead', async () => {
     const { buildTrack, frameAt, stopCentre } = await import('../../src/journey/timeline');
     const { poseAt } = await import('../../src/journey/camera');
     const { STOPS } = await import('../../src/journey/stops');
@@ -128,5 +128,71 @@ describe('the baked flight paths over the real world base', async () => {
       }
     }
     expect(stuck).toEqual([]);
+  });
+
+  // Final review: the 30 m centre ray above is a near-collision check; it passed M0's First light → Sunrise, where
+  // dark land filled the screen from farther away. This measures what is on screen: a 9 × 5 grid of view rays cast
+  // 400 m, counting those that end on land. More than half the view for over 8 samples in a row (of 200) is listed.
+  // Flights into enclosed places (the crater, the cave) rightly show mostly land, so the rule is asserted only where
+  // the sea is the subject. `noseFirstOnly` flies every flight nose-first, as M0 did.
+  const walledFlights = async (noseFirstOnly: boolean): Promise<string[]> => {
+    const { buildTrack, frameAt, stopCentre } = await import('../../src/journey/timeline');
+    const { poseAt } = await import('../../src/journey/camera');
+    const { SIDEWAYS } = await import('../../src/journey/flights');
+    const { STOPS } = await import('../../src/journey/stops');
+    const track = buildTrack(STOPS);
+    const rad = (d: number) => (d * Math.PI) / 180;
+    const saved = [...SIDEWAYS];
+    if (noseFirstOnly) (SIDEWAYS as Set<string>).clear();
+    const stuck: string[] = [];
+    try {
+      for (let i = 0; i < paths.length; i++) {
+        const u0 = stopCentre(track, i) + 0.5;
+        const u1 = stopCentre(track, i + 1) - 0.5;
+        let run = 0;
+        for (let k = 1; k < 200; k++) {
+          const frame = frameAt(track, u0 + ((u1 - u0) * k) / 200, false);
+          if (frame.kind !== 'flight' || frame.t > 0.9) continue;
+          const pose = poseAt(frame, paths as never, 16 / 9, 0);
+          const [x, y, z] = [pose.position[0], -pose.position[2], pose.position[1]];
+          const tv = Math.tan(rad(pose.fov) / 2);
+          const th = tv * (16 / 9);
+          const [sy, cy, sp, cp] = [
+            Math.sin(rad(pose.yaw)),
+            Math.cos(rad(pose.yaw)),
+            Math.sin(rad(pose.pitch)),
+            Math.cos(rad(pose.pitch)),
+          ];
+          let walled = 0;
+          for (let a = -4; a <= 4; a++)
+            for (let b = -2; b <= 2; b++) {
+              const [h, v] = [(a / 4) * th, (b / 2) * tv];
+              // forward + right·h + up·v, in coast axes (yaw 0 = +y, positive east)
+              const d = [sy * cp + cy * h - sy * sp * v, cy * cp - sy * h - cy * sp * v, sp + cp * v] as const;
+              const n = Math.hypot(...d);
+              for (let t = 4; t <= 400; t += 4) {
+                const g = heightAt(x + (d[0] / n) * t, y + (d[1] / n) * t);
+                if (z + (d[2] / n) * t < g) {
+                  if (g > 0) walled += 1; // land, not sea
+                  break;
+                }
+              }
+            }
+          run = walled > 22 ? run + 1 : 0;
+          if (run === 9) stuck.push(`${paths[i]?.from}>${paths[i]?.to} from t=${frame.t.toFixed(2)}`);
+        }
+      }
+    } finally {
+      for (const key of saved) (SIDEWAYS as Set<string>).add(key);
+    }
+    return stuck;
+  };
+
+  it('keeps land under half the view from First light to Sunrise (both stops look out to sea)', async () => {
+    expect((await walledFlights(false)).filter((s) => s.startsWith('firstlight>sunrise'))).toEqual([]);
+  });
+
+  it('would catch M0’s last flight: flown nose-first, land fills over half the view', async () => {
+    expect((await walledFlights(true)).some((s) => s.startsWith('firstlight>sunrise'))).toBe(true);
   });
 });

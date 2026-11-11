@@ -1,4 +1,4 @@
-import type { InstancedMesh } from 'three/webgpu';
+import { type InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import { describe, expect, it } from 'vitest';
 import { createDressing, decodeDressing } from '../../src/world/dressing';
 import type { GridMeta } from '../../src/world/heights';
@@ -33,5 +33,28 @@ describe('distant dressing (spec §6)', () => {
     const tris = meshes.map((m) => (m.geometry.getAttribute('position').count / 3) | 0);
     expect(tris[0]).toBeLessThanOrEqual(24);
     expect(tris[1]).toBeLessThanOrEqual(12);
+  });
+
+  // Final review: on a slope the downhill rim of a wide scrub mound floated (23 % of them by over half a metre).
+  it('sinks every clump until its whole rim is in the ground, on a slope', () => {
+    const slope = (x: number, y: number) => 100 + 0.35 * x + 0.2 * y; // about 22°
+    const part = createDressing(decodeDressing(bytes, meta, grid), slope);
+    const meshes = part.object.children as InstancedMesh[];
+    const m = new Matrix4();
+    const p = new Vector3();
+    const q = new Quaternion();
+    const scale = new Vector3();
+    meshes.forEach((mesh, kind) => {
+      const rim = kind === 0 ? 0.42 : 0.9;
+      for (let i = 0; i < mesh.count; i++) {
+        mesh.getMatrixAt(i, m);
+        m.decompose(p, q, scale);
+        for (let a = 0; a < 16; a++) {
+          const x = p.x + Math.cos((a / 16) * 2 * Math.PI) * rim * scale.x;
+          const z = p.z + Math.sin((a / 16) * 2 * Math.PI) * rim * scale.x;
+          expect(p.y, `kind ${kind} instance ${i}`).toBeLessThanOrEqual(slope(x, -z) + 0.05);
+        }
+      }
+    });
   });
 });

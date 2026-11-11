@@ -72,10 +72,14 @@ function geometry(positions: number[], colour: Color): BufferGeometry {
 const TREE = new Color(0.018, 0.032, 0.015);
 const SCRUB = new Color(0.04, 0.044, 0.022);
 
+/** Base radius of each kind, for a clump one unit tall and one unit wide. */
+const TREE_RIM = 0.42;
+const SCRUB_RIM = 0.9;
+
 /** A tree clump one unit tall: two stacked five-sided cones (10 triangles). */
-const treeGeometry = () => geometry([...pyramid(5, 0.42, 0, 0.7), ...pyramid(5, 0.3, 0.35, 1)], TREE);
+const treeGeometry = () => geometry([...pyramid(5, TREE_RIM, 0, 0.7), ...pyramid(5, 0.3, 0.35, 1)], TREE);
 /** A scrub bush one unit tall and wider than high: a six-sided mound (6 triangles). */
-const scrubGeometry = () => geometry(pyramid(6, 0.9, 0, 1), SCRUB);
+const scrubGeometry = () => geometry(pyramid(6, SCRUB_RIM, 0, 1), SCRUB);
 
 /** Distant trees and scrub: one instanced mesh per kind, one shared material (spec §6, D13). */
 export function createDressing(instances: readonly DressingInstance[], heightAt: HeightAt): WorldPart {
@@ -90,9 +94,16 @@ export function createDressing(instances: readonly DressingInstance[], heightAt:
     const mine = instances.filter((i) => i.kind === kind);
     const mesh = new InstancedMesh(kind === 0 ? treeGeometry() : scrubGeometry(), material, mine.length);
     mine.forEach((inst, i) => {
-      // Sunk a little, so the 8 m ground's flat triangles never leave a clump floating on a slope.
-      const y = heightAt(inst.x, inst.y) - 0.15 * inst.scale;
+      // Sunk until the whole rim is in the ground: on a slope the downhill side of a wide mound floated (final review:
+      // 23 % of the scrub by over half a metre). The lowest ground under the rim, then a little more.
       const wide = kind === 0 ? inst.scale : inst.scale * 1.3;
+      const rim = (kind === 0 ? TREE_RIM : SCRUB_RIM) * wide;
+      let lowest = heightAt(inst.x, inst.y);
+      for (let k = 0; k < 8; k++) {
+        const t = (k / 8) * 2 * Math.PI;
+        lowest = Math.min(lowest, heightAt(inst.x + Math.cos(t) * rim * 1.1, inst.y + Math.sin(t) * rim * 1.1));
+      }
+      const y = lowest - 0.08 * inst.scale;
       m.compose(new Vector3(inst.x, y, -inst.y), q.setFromAxisAngle(up, inst.yaw), new Vector3(wide, inst.scale, wide));
       mesh.setMatrixAt(i, m);
     });

@@ -7,7 +7,9 @@ async function largestRowStep(page: import('@playwright/test').Page): Promise<nu
   return page.evaluate(async (b64) => {
     const blob = await (await fetch(`data:image/png;base64,${b64}`)).blob();
     const bitmap = await createImageBitmap(blob);
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('no 2d context');
     context.drawImage(bitmap, 0, 0);
@@ -33,10 +35,7 @@ async function largestRowStep(page: import('@playwright/test').Page): Promise<nu
   }, png.toString('base64'));
 }
 
-// M0 look note (deferred minor M11): on high flights a hard line showed where the sea's far edge met the sky. The sky
-// below the horizon now fades to the fog colour the far sea already has. Checked over open sea, Dusk → Blue hour.
-test('no hard line at the horizon on a high flight over the sea', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'one engine is enough');
+async function checkHorizon(page: import('@playwright/test').Page, label: string): Promise<void> {
   await page.goto('/?stills=off&tier=low');
   await page.waitForFunction(() => document.documentElement.classList.contains('is-scene-ready'), undefined, {
     timeout: 90_000,
@@ -48,7 +47,24 @@ test('no hard line at the horizon on a high flight over the sea', async ({ page,
       t,
     );
     const step = await largestRowStep(page);
-    console.log(`Dusk → Blue hour at ${t}: largest row step ${step.toFixed(3)}`);
+    console.log(`${label}, Dusk → Blue hour at ${t}: largest row step ${step.toFixed(3)}`);
     expect(step, `t=${t}`).toBeLessThanOrEqual(0.02);
   }
+}
+
+// M0 look note (deferred minor M11): on high flights a hard line showed where the sea's far edge met the sky. Distance
+// now fades into the sky's own soft horizon colour. Checked over open sea, Dusk → Blue hour.
+test('no hard line at the horizon on a high flight over the sea', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'one engine is enough');
+  await checkHorizon(page, 'worker');
+});
+
+// Final review: browsers without OffscreenCanvas (Safari before 16.4) decode skies on the main thread; that path must
+// give the same soft horizon, not the photo's dark nadir.
+test('no hard line at the horizon without OffscreenCanvas either', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'one engine is enough');
+  await page.addInitScript(() => {
+    delete (window as unknown as { OffscreenCanvas?: unknown }).OffscreenCanvas;
+  });
+  await checkHorizon(page, 'fallback');
 });

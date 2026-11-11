@@ -1,3 +1,5 @@
-numpy
-opencv-python
-pillow
+# Pinned: the world checks compare floats exactly, so a new numpy must be a deliberate change.
+numpy==2.2.6
+pillow==12.2.0
+# Headless: only the bake tools use it, and CI has no display libraries.
+opencv-python-headless==4.13.*

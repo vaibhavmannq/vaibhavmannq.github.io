@@ -1,17 +1,17 @@
 import {
   DataTexture,
-  ImageBitmapLoader,
   LinearFilter,
   NoColorSpace,
   RepeatWrapping,
   RGBAFormat,
-  Texture,
+  type Texture,
   UnsignedByteType,
 } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
 import type { Manifest, SkyAmbient } from './manifest';
 import type { SkyDecodeReply } from './skyDecode.worker';
+import { paintHorizon } from './skyHorizon';
 
 const LAST = STOP_IDS.length - 1;
 const inRange = (i: number) => i >= 0 && i <= LAST;
@@ -81,18 +81,29 @@ export interface SkyStoreOptions {
   onLoaded?: (texture: Texture) => void;
 }
 
-/** ImageBitmapLoader decodes the 2048 px JPEGs off the main thread (an <img> decoded them on the first draw, mid-flight:
- * a 51 ms frame, M0 measurement). The bitmap is flipped while decoding, so the texture is not. */
-function bitmapLoader(): (url: string) => Promise<Texture> {
-  const loader = new ImageBitmapLoader();
-  loader.setOptions({ imageOrientation: 'flipY' });
-  return (url) =>
-    loader.loadAsync(url).then((bitmap) => {
-      const t = new Texture(bitmap);
-      t.flipY = false;
-      t.needsUpdate = true;
-      return t;
-    });
+/**
+ * The same decoding as the worker, on the main thread with an ordinary canvas: for browsers without OffscreenCanvas
+ * (Safari before 16.4). Slower to upload there, but the sky is the same: rows flipped, soft horizon painted (final
+ * review: this path used to skip the painting, and distance faded into the photo's dark nadir).
+ */
+function canvasLoader(): (url: string) => Promise<Texture> {
+  return async (url) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${response.status} ${url}`);
+    const bitmap = await createImageBitmap(await response.blob());
+    const { width, height } = bitmap;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('no 2d context');
+    context.setTransform(1, 0, 0, -1, 0, height);
+    context.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const data = new Uint8Array(context.getImageData(0, 0, width, height).data.buffer);
+    paintHorizon({ width, height, data });
+    return skyTextureFromPixels({ width, height, data });
+  };
 }
 
 /** Raw RGBA rows from the decode worker, already bottom row first, as a texture that uploads them as they are. */
@@ -133,7 +144,7 @@ export function createSkyStore(manifest: Manifest, fallback: Texture, options: S
   const base = options.base ?? '/world/';
   const loadTexture =
     options.loadTexture ??
-    (typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' ? workerLoader() : bitmapLoader());
+    (typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' ? workerLoader() : canvasLoader());
   const retryMs = options.retryMs ?? 3000;
   const now = options.now ?? (() => performance.now());
   const warn = options.warn ?? ((...args: unknown[]) => console.warn(...args));
