@@ -8,7 +8,7 @@
    "nx": 401,
    "ny": 501,
    "lo": -22,
-   "hi": 347
+   "hi": 353
   },
   "ring": {
    "cx": -400,
@@ -18,7 +18,7 @@
    "nr": 120,
    "na": 288,
    "lo": -22,
-   "hi": 355
+   "hi": 386
   }
  },
  "skies": {
@@ -143,22 +143,22 @@
  "files": [
   {
    "path": "base/colour.webp",
-   "bytes": 5954,
-   "sha256": "fd9c9dfd1e2fa8fc2cf7c6c8aab5cdded194cc5176aabf829bbd5952d59d292c",
+   "bytes": 7246,
+   "sha256": "35a68b8381be072773a0d688d439576e9a4f6c92f3d05ed543733709de34344b",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "base/heights.bin",
    "bytes": 401802,
-   "sha256": "30f96ae387eec038d5af7c5518cb609e7d5f776b683a138df899449748e5867d",
+   "sha256": "d0525feb8a60206abc4e62b1643cde2efadedd8eabe0e031312ea70d0d6c1e21",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "base/ring.bin",
    "bytes": 69120,
-   "sha256": "0a6510b1e30ef616fba7fbd4ed8e657bf337882664114b53502d2719ffe8857b",
+   "sha256": "1596a883aec9d4f49c04e07fa5ce86b3cf1dc0fe51453ae5cc1ad403e489685e",
    "stage": "B",
    "stops": "all"
   },

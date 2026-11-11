@@ -33,17 +33,21 @@ def sm(a, b, x):
     return t * t * (3 - 2 * t)
 
 
-def paint(h, step):
+def paint(h, step, X, Y, fbm):
     gy, gx = np.gradient(h, step)
     slope = np.degrees(np.arctan(np.hypot(gx, gy)))
     col = MEADOW[None, None, :] * np.ones(h.shape + (3,))
     mix = lambda base, c, w: base * (1 - w[..., None]) + c[None, None, :] * w[..., None]
+    # From the air a single green reads as paint: meadow and scrub mottle in ~250 m patches, with a finer tint over it.
+    col = mix(col, SCRUB, 0.5 * sm(0.42, 0.62, fbm(X * 0.004, Y * 0.004)))
+    col = col * (0.92 + 0.16 * fbm(X * 0.02 + 3.0, Y * 0.02 + 8.0))[..., None]
     col = mix(col, SCRUB, sm(30, 60, h))
     col = mix(col, BARE, sm(160, 220, h))
     col = mix(col, SAND, sm(2.0, 0.8, h))
     col = mix(col, WET, sm(0.6, 0.1, h) * sm(-0.4, 0.0, h))
     col = mix(col, SEABED, sm(0.0, -0.6, h))
     col = mix(col, ROCK, sm(28, 42, slope) * sm(-0.5, 1.0, h))
+    col = col * (1.0 - 0.25 * sm(45, 55, slope) * sm(-0.5, 1.0, h))[..., None]      # cliff faces: darker rock
     return col
 
 
@@ -67,7 +71,7 @@ def main():
     qr.tofile(os.path.join(OUT, "ring.bin"))
     ring = dict(r, lo=rlo, hi=rhi)
 
-    col = paint(h, g["step"])[::-1]          # north up
+    col = paint(h, g["step"], X, Y, c.fbm)[::-1]          # north up
     Image.fromarray((np.clip(col, 0, 1) * 255).astype(np.uint8)).save(os.path.join(OUT, "colour.webp"), quality=85, method=6)
     with open(os.path.join(OUT, "base.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(dict(heights=heights, ring=ring, colour=dict(file="colour.webp", northUp=True)), f, indent=1)

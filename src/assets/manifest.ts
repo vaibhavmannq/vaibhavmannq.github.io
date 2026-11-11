@@ -29,10 +29,12 @@ export interface Manifest {
 export interface Budgets {
   stageABytes: number;
   perStopBytes: number;
+  /** The files every stop shares (heights, ring, colour map, dressing). */
+  baseBytes: number;
 }
 
 /** Spec §14: the first view's world files stay under 1.2 MB (1.6 MB with code); each stop adds at most 3 MB. */
-export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 3e6 };
+export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 3e6, baseBytes: 1.0e6 };
 
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 
@@ -54,6 +56,8 @@ export function checkBudgets(m: Manifest, b: Budgets): { ok: boolean; lines: str
     lines.push(`${stop} ${mb(bytes)} of ${mb(b.perStopBytes)}${over ? ' — over' : ''}`);
   }
   const shared = m.files.filter((f) => f.stops === 'all').reduce((sum, f) => sum + f.bytes, 0);
-  lines.push(`world base (shared by every stop) ${mb(shared)}`);
+  const baseOver = shared > b.baseBytes;
+  ok &&= !baseOver;
+  lines.push(`world base (shared by every stop) ${mb(shared)} of ${mb(b.baseBytes)}${baseOver ? ' — over' : ''}`);
   return { ok, lines };
 }
