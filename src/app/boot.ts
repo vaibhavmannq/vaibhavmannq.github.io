@@ -1,3 +1,4 @@
+import { cameraPosition, densityFogFactor, fog, positionWorld } from 'three/tsl';
 import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vector3 } from 'three/webgpu';
 import { fetchBinary, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
@@ -194,6 +195,8 @@ export async function boot(): Promise<App> {
   // With no GPU nothing shows the skies, so jumps never wait for them (review I5).
   if (pipeline) jumps.ready = (i) => skies.ready(i);
   const sky = createSky(light, skies, blank);
+  // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
+  scene.fogNode = fog(sky.horizonAt(positionWorld.sub(cameraPosition)), densityFogFactor(light.fogDensity));
   app.addPart(sky);
 
   const startedAt = performance.now();

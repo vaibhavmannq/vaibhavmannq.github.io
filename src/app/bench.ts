@@ -28,6 +28,8 @@ declare global {
     __flight(tier: (typeof TIER_NAMES)[number], seconds: number): Promise<FlightResult>;
     /** One frame at every stop: draws, triangles and distinct materials (spec §14). */
     __census(): Promise<CensusRow[]>;
+    /** Hold the camera on flight `flight` (from stop `flight`) at fraction `t`; resolves after three rendered frames. */
+    __flightPose(flight: number, t: number): Promise<void>;
   }
 }
 
@@ -102,6 +104,14 @@ export function installBench(app: App): void {
       over50: intervals.filter((x) => x > 50).length,
       slow,
     };
+  };
+
+  window.__flightPose = async (flight, t) => {
+    await app.stageB;
+    const seg = app.track.segments.find((s) => s.kind === 'flight' && s.from === flight);
+    if (!seg) throw new Error(`no flight ${flight}`);
+    app.override = seg.start + (seg.end - seg.start) * t;
+    await afterRenders(app, 3);
   };
 
   window.__census = async () => {

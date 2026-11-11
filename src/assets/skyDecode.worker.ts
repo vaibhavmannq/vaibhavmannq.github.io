@@ -13,6 +13,8 @@ export type SkyDecodeReply =
   | { id: number; width: number; height: number; data: Uint8Array }
   | { id: number; error: string };
 
+import { paintHorizon } from './skyHorizon';
+
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 
 scope.onmessage = async (event: MessageEvent<SkyDecodeRequest>) => {
@@ -29,6 +31,7 @@ scope.onmessage = async (event: MessageEvent<SkyDecodeRequest>) => {
     context.drawImage(bitmap, 0, 0);
     bitmap.close();
     const data = new Uint8Array(context.getImageData(0, 0, width, height).data.buffer);
+    paintHorizon({ width, height, data });
     scope.postMessage({ id, width, height, data } satisfies SkyDecodeReply, [data.buffer]);
   } catch (error) {
     scope.postMessage({ id, error: String(error) } satisfies SkyDecodeReply);

@@ -16,6 +16,7 @@ import {
   smoothstep,
   step,
   texture,
+  vec2,
   vec3,
 } from 'three/tsl';
 import { BackSide, Mesh, MeshBasicNodeMaterial, type Node, SphereGeometry, type Texture } from 'three/webgpu';
@@ -35,24 +36,33 @@ const decode = (e: V3): V3 => {
 /** A hash of a 3D cell: a repeatable random number per cell. */
 const hash3 = (c: V3): F => fract(sin(dot(c, vec3(127.1, 311.7, 74.7))).mul(43758.5453));
 
+/** Where the painted horizon rows are read: inside the bottom HORIZON_ROWS (6) rows of a 1024-row photo. */
+const HORIZON_V = 2.5 / 1024;
+
 export interface Sky extends WorldPart {
   /** The sky colour seen along a direction (three.js axes), for reflections in water and wet sand. */
   colorAt(dir: V3): V3;
+  /** The sky's soft colour at the horizon in the compass direction of `dir`: what distant things fade into. */
+  horizonAt(dir: V3): V3;
 }
 
 export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sky {
   const texA = texture(first);
   const texB = texture(first);
 
-  const colorAt = (dir: V3): V3 => {
-    const st = equirectUV(dir);
+  const colorAt = (dir: V3, row?: number): V3 => {
+    const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
     return mix(decode(texA.sample(st).rgb), decode(texB.sample(st).rgb), u.skyWeight)
       .mul(u.skyGain)
       .mul(u.skyTint);
   };
 
+  // Far things fade into the sky's soft horizon colour in their compass direction (horizonAt, used as the scene's fog),
+  // and the sky below the horizon is that same colour: the far sea and land meet the sky with no line, whatever the
+  // hour (M0 look note). The soft colours are painted into each photo's bottom rows when it is decoded (skyHorizon.ts).
+  const horizonAt = (d: V3): V3 => colorAt(normalize(vec3(d.x, 0, d.z)), HORIZON_V);
   const dir = normalize(positionWorld.sub(cameraPosition));
-  let col = colorAt(dir);
+  let col = mix(colorAt(dir), horizonAt(dir), smoothstep(0.0, -0.025, dir.y));
 
   // The sun's disc, only while the key light is the sun (at night the key is the moon, drawn below).
   const isSun = float(1).sub(step(0.001, u.moonStrength));
@@ -85,6 +95,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   return {
     object: mesh,
     colorAt,
+    horizonAt,
     update(f) {
       skies.update(f.state);
       texA.value = skies.get(f.state.a);
