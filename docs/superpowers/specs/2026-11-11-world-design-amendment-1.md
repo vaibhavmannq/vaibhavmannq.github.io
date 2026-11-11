@@ -25,7 +25,19 @@ The renders stay the guide for **mood and colour** at every place.
 
 A changed view is always shown beside the old one, with a switch back, and named in the session log.
 
-## 3. Land from reference (D24; adds to spec §9.6 and §15)
+## 3. Everything from reference (D24; adds to spec §9 and §15)
+
+**The owner widened this the same day: every element and how it behaves, not only rock.** The standing source is
+`docs/handover/research/reference-book.md` (light, wind, water, falls, fog, aurora, living lights, lanterns,
+plants, creatures, sound). Three rules follow:
+- Every plan task that makes or tunes an element cites its entry and the numbers taken from it.
+- **One world state per place** in the hour preset: sun or moon angle, wind direction and force (Beaufort), moon
+  phase. Grass, leaves, mist, cloud drift, ripples, lanterns and sound all read it, so they agree.
+- A look check gives two scores: looks like the reference, behaves like the reference.
+The book's last section lists what the current build gets wrong by these rules (a bright moon with a full aurora,
+grass waving over mirror water, constant waterfall speed, steady plankton glow, fungi as lamps).
+
+For the land:
 
 - The coast is one real kind of place: **a northern basalt coast** (`research/reference-landforms.md` §1).
 - Every land form is built against a named real place, with photos kept locally (not in git).

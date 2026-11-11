@@ -147,3 +147,10 @@ a flight at its designed length.) Replaces the design's call 1. Amendment 1 §7.
 
 Amendment 1 to the design (`docs/superpowers/specs/2026-11-11-world-design-amendment-1.md`) gathers D21–D26; it is a
 draft until the owner has read it.
+
+D24 widened by the owner the same day: "real reference for everything that we create ... whether it's the waterfall,
+fog, aurora etc. ... and how they would react in a real world scenario so it doesn't feel foreign". So D24 covers
+every element and its **behaviour**, not only rock. The standing source is
+`docs/handover/research/reference-book.md`: an entry per element (look, behaviour, numbers, what gives a fake away);
+every plan task that makes or tunes something cites its entry; each place has one world state (sun or moon angle,
+wind, moon phase) that every moving part reads; look checks give a % for look and a % for behaviour.

@@ -69,6 +69,8 @@ no borrowed set pieces (no towers, piano, etc.).
   `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` (draft; it wins over the spec where they
   differ).** It holds Night's redesign brief (§5), look-around and spots (§6), the new pace (§7), and the
   changed build order (§10: a new M2.5, "the world from reference").
+- **D24 covers everything, look and behaviour:** `docs/handover/research/reference-book.md` is the standing
+  reference (an entry per element, real numbers, what gives a fake away). Cite it in every plan task.
 - **Next:** read Amendment 1. The owner answers its §11 (does "open world" mean free roaming?) and does the two
   watch lists. Then M2 continues: the waterfall is judged for motion, light and cost, not composition; add the
   camera's top speed and the longer scroll (Amendment §7); re-judge aurora and cloud (`research/m2-references.md`

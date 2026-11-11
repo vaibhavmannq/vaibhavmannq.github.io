@@ -9,6 +9,7 @@ does not spend its budget searching the web for things already found here.
 | `m2-references.md` | finishing M2 Task 0 and re-judging the aurora, cloud sea, waterfall and cave |
 | `milestones-m3-m10.md` | planning M3 to M10: techniques, references, known traps and open questions per milestone |
 | `design-review-and-proposals.md` | **before M2 Task 5 goes further and before M3 is planned:** my critique of the nine places and the changes D22 allows (Night redesigned, stacks re-scattered, cameras at II/III/VII, flights as shots, sound) |
+| `reference-book.md` | **before making or tuning anything:** how each element looks and behaves in the real world, with numbers (light, wind, water, falls, fog, aurora, fireflies, plankton, lanterns, plants), and what the current build gets wrong (D24) |
 | `reference-landforms.md` | building or judging any rock, cliff, stack, falls or cave: the real places to work from and the rules real coasts obey (D24) |
 | `inspiration-and-ideas.md` | looking for what would lift a place above its render (D21): a story thread, real sky phenomena, life, pointer responses, sound |
 
