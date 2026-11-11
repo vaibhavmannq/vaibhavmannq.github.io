@@ -29,6 +29,7 @@ import type { WorldFrame, WorldPart } from '../world/part';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
 import { createTerrain } from '../world/terrain';
+import { createWaterfall } from '../world/waterfall';
 import { installBench } from './bench';
 import { detectCapabilities } from './capabilities';
 import { createLoop } from './loop';
@@ -103,6 +104,7 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void>
   if (auroraData && night.aurora && midnight.aurora)
     parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora)]);
   if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
+  if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
   // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
   for (const [name, part] of parts) {
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
