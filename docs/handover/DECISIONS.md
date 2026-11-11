@@ -101,3 +101,10 @@ D16 confirmed by the owner, 2026-11-11, after the hands-on phone test of M1: "fe
 **D19 · 2026-11-11 · The handover notes and plans are committed and pushed with the work; the no-AI rule covers commits and
 commit messages only.** Owner: "add handover and plans to github - don't worry about ai, it shouldn't show in commits
 or it's message that's all". Replaced: s03's "handover notes stay local".
+
+**D20 · 2026-11-11 · M2 gets a Research phase: before a look is called done, it is judged against real references
+(photographers and videographers of the real thing), not only against our own render.** Owner, mid-build: "take
+reference from internet as well, there are some really amazing photographer and videographer", then "add it in
+Milestone as a Research phase". The references go in `docs/handover/research/` as links with what to take from each.
+Why: the renders are our own guess at an aurora, a cloud sea, a waterfall and a cave; the real ones are the bar.
+Adds to D5 (renders as art direction); the compositions stay.

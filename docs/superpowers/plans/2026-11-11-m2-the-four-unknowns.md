@@ -87,6 +87,25 @@ So: **slow, uneven, never looping visibly.** Each part's motion constants below 
 
 ---
 
+### Task 0: Research phase (owner, 2026-11-11: "take reference from internet as well, there are some really amazing photographers and videographers")
+
+Added while the build was under way (D20); it gates the look verdicts, not the code already written. **Status: first
+pass only** (six web searches, text results; summarised in "What like the real thing means here" above). Still owed:
+
+- [ ] **Per unknown, 3–5 named references that were actually watched or looked at** (not search summaries): real-time
+  aurora film (Thierry Legault, Alan Dyer, Alexis Coram, Jon Kerr, "Soaring: Lights Over Norway"); moonlit cloud
+  inversions (Grand Canyon full-inversion time-lapses, Skyglow, Michael Frye's fog work); waterfalls at night and in
+  moonlight (long exposure and real-time video); sea caves looking out at dawn, and glow-worm caves (Shaun Jeffers,
+  Joseph Michael, Charles Brooks).
+- [ ] **A reference sheet per unknown** in `docs/handover/research/m2-references.md`: link, what it shows, and the
+  one or two things to take from it (shape, colour, speed of motion, what the eye is drawn to). Links only, no
+  copied pictures (the repo is public).
+- [ ] **Live technique references**: how shipped real-time work draws each one (three.js / WebGPU demos, game
+  breakdowns), with the cost each technique is known for. The first pass found none for TSL; search again, narrower.
+- [ ] **Re-judge** the aurora (Task 3) and the cloud deck (Task 4) against the references as well as the renders,
+  and write what changes (motion constants, ray fineness, the deck's texture) into the ledger before tuning further.
+- [ ] Show the owner the reference sheet with the four comparisons (Task 7 step 6): they say what "amazing" means.
+
 ### Task 1: The numbers and the looking tool
 
 **Files:** modify `tools/world/export_hours.py`, `tools/world/bake_base.py`, `src/journey/{types,hours,shots}.ts`,

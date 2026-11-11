@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last rewritten: 2026-11-11, end of session s06 (see `docs/handover/sessions/2026-11-11-s06-m1-world-pass.md`).
+Last rewritten: 2026-11-11, end of session s07 (see `docs/handover/sessions/2026-11-11-s07-m2-started.md`).
 
 ## 1. What this is
 
@@ -47,9 +47,16 @@ no borrowed set pieces (no towers, piano, etc.).
   recorded; fresh whole-branch review done, its four important findings fixed. Details, numbers, my % per flight:
   `docs/handover/sessions/2026-11-11-s06-m1-world-pass.md`. Every ruling and deferred minor:
   `docs/handover/ledgers/2026-11-11-m1-the-world-pass.md` (M0's is beside it).
-- **Next: M2, the four unknowns** (aurora, sea of cloud, waterfall, cave), one view each, each with a % against its
-  render and a measured cost (spec §18). It needs its plan first (`docs/superpowers/plans/`). Take the deferred minors
-  that touch the same files along (ledgers).
+- **M2, the four unknowns: started in s07, stopped part-way on the owner's word.** Plan:
+  `docs/superpowers/plans/2026-11-11-m2-the-four-unknowns.md`; ledger (every ruling, every %):
+  `docs/handover/ledgers/2026-11-11-m2-the-four-unknowns.md`; log: `docs/handover/sessions/2026-11-11-s07-m2-started.md`.
+  - **Task 0, Research phase (D20, owner): first pass only.** The reference sheet is still owed.
+  - Tasks 1–4 done and committed on `world` (5 commits, **not pushed**): the numbers in `shots.json`, `npm run compare`,
+    the Blender export (`npm run world:blender`), the **aurora** (my 86–88 %), the **sea of cloud** (my 78 %).
+  - Task 5, the **waterfall**: code written, tests green, **uncommitted and never seen running**.
+  - Task 6 (cave) and Task 7 (cost per part, phone over USB, verdicts, owner's page) not started.
+  - Nothing has been measured for speed, on the laptop or the phone. The owner has seen nothing yet.
+- **Next:** finish Task 0 (references), look-check the waterfall, then Tasks 6 and 7.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
@@ -90,6 +97,7 @@ on a tier shows its render with light overlays instead of the live scene.
 | What | Where |
 |---|---|
 | Session logs (one per session) | `docs/handover/sessions/` |
+| Reference research (links, what to take from each; D20) | `docs/handover/research/` |
 | Decisions, numbered, append-only | `docs/handover/DECISIONS.md` |
 | Scene work detail (Blender, renders, tools, per-hour notes) | `.superpowers/brainstorm/videos/HANDOVER.md` (+ dated logs beside it; NOT in git) |
 | Blender scene script and tools | `.superpowers/brainstorm/lookdev/real/` (`coast.py`, `tools/`, `make_pack.py`) |
