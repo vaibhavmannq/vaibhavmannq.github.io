@@ -2,6 +2,7 @@ import {
   attribute,
   cameraPosition,
   float,
+  mix,
   normalize,
   positionLocal,
   sin,
@@ -26,10 +27,16 @@ export const SHEET_ROWS = 40;
 export const SHEET_COLS = 10;
 export const FOAM_SEGMENTS = 32;
 export const SPRAY_COUNT = 28;
-/** How strongly the moon and the sky light the water, tuned against the Night render. */
-const MOON_GAIN = 0.22;
-const SKY_GAIN = 1.4;
-const WATER: [number, number, number] = [0.72, 0.77, 0.82];
+/**
+ * How strongly the moon and the sky light the water. s09 look: the sheet measured (192, 204, 209) against the render's
+ * (169, 180, 194), and lamp-white; the reference book (§3) says a fall at night is as bright as its light, so the gains
+ * came down 12 % and the water turned grey-green (the aurora's own green arrives through `ambSky`).
+ */
+const MOON_GAIN = 0.19;
+const SKY_GAIN = 1.24;
+const WATER: [number, number, number] = [0.68, 0.76, 0.76];
+/** Clear, darker water at the lip (glassy, it shows the rock behind it), before it breaks white. */
+const GLASS: [number, number, number] = [0.36, 0.44, 0.45];
 const G = 9.8;
 
 /**
@@ -86,7 +93,8 @@ export function fallsGeometry(f: FallsShot): BufferGeometry {
     const first = pos.length / 3;
     const x = f.x + (random() + random() - 1) * f.spray[0] * 0.4;
     const y = f.yPool + 1 + (random() - 0.6) * f.spray[1] * 0.5;
-    const z = f.sprayZ + random() * 5;
+    // low, at the foot: s09 found a puff floating in front of the upper sheet (it started up to 12 m high)
+    const z = f.sprayZ + random() * 2.5;
     const seed = random();
     for (const [cx, cy] of [
       [-1, -1],
@@ -127,7 +135,11 @@ export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
   const size = seed.mul(7).add(7);
   const toCam = cameraPosition.sub(positionLocal);
   const right = normalize(vec3(toCam.z, 0, toCam.x.negate()));
-  const spread = right.mul(info.z.mul(size)).add(vec3(0, 1, 0).mul(info.w.mul(size).mul(0.7).add(life.mul(5))));
+  // mist lies flat and spreads as it rises (reference book §3: it rises from the foot and drifts), 0.4 m/s
+  const grow = life.mul(0.6).add(0.7);
+  const spread = right
+    .mul(info.z.mul(size).mul(grow))
+    .add(vec3(0, 1, 0).mul(info.w.mul(size).mul(0.38).add(life.mul(3.2))));
   const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: DoubleSide });
   material.positionNode = positionLocal.add(spread.mul(isSpray));
 
@@ -143,7 +155,12 @@ export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
   const streaks = remap(coarse.mul(0.65).add(fine.mul(0.35)), 0.36, 0.6, 0.12, 0.95);
   const streams = remap(fbm2(vec2(across.mul(2.2).add(4.2), clock.mul(0.03)), 1), 0.38, 0.6, 0.3, 1);
   const sides = remap(across, 0, 0.18).mul(remap(across, 1, 0.82));
-  const sheet = streaks.mul(streams).mul(sides);
+  // The lip is glassy: one smooth sheet that breaks white over the first few metres (reference book §3). In "time
+  // fallen" the pattern is crowded near the lip (water there is slow), which s09 saw as flickering specks.
+  const broken = remap(down, 0.02, 0.28);
+  // Surges: thicker water follows thinner down the fall, a few seconds apart, travelling at the water's own speed.
+  const surge = remap(fbm2(vec2(across.mul(1.3), fallen.mul(0.32)), 2), 0.3, 0.7, 0.86, 1.1);
+  const sheet = streaks.mul(broken).add(float(0.7).mul(broken.oneMinus())).mul(streams).mul(sides).mul(surge);
 
   // the foam: churning outward from where the water lands, gone by the disc's rim
   const p = uv();
@@ -164,7 +181,9 @@ export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
   const light: V3 = (u.ambSky as unknown as V3)
     .mul(SKY_GAIN)
     .add((u.keyColor as unknown as V3).mul(u.keyStrength).mul(MOON_GAIN));
-  material.colorNode = vec3(...WATER).mul(light);
+  // the sheet goes from clear at the lip to white below; foam and spray are white water
+  const white = isSheet.mul(broken).add(float(1).sub(isSheet));
+  material.colorNode = mix(vec3(...GLASS), vec3(...WATER), white).mul(light);
   material.opacityNode = (sheet.mul(isSheet) as F).add(foam.mul(isFoam)).add(puff.mul(isSpray)).clamp(0, 1);
 
   const geometry = fallsGeometry(f);

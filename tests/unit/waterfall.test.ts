@@ -33,6 +33,14 @@ describe('the waterfall (spec §9.9)', () => {
     expect(g.index?.count).toBe((SHEET_ROWS * SHEET_COLS * 2 + FOAM_SEGMENTS * 3 + SPRAY_COUNT * 2) * 3);
   });
 
+  it('starts its mist low, at the foot, never in front of the upper sheet (reference book §3, s09 look)', () => {
+    for (let i = 0; i < info.count; i++) {
+      if (info.getX(i) !== 2) continue;
+      expect(pos.getY(i)).toBeLessThanOrEqual(f.sprayZ + 2.5);
+      expect(pos.getY(i)).toBeGreaterThanOrEqual(f.sprayZ);
+    }
+  });
+
   it('lays the foam on the water around where the sheet lands', () => {
     const centre = sheetVerts;
     expect(pos.getY(centre)).toBeCloseTo(0.04, 4);
