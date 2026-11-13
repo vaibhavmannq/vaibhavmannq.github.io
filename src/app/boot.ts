@@ -7,6 +7,7 @@ import { type Pose, poseAt } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
+import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { SHOTS } from '../journey/shots';
 import { STOPS } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
@@ -14,6 +15,7 @@ import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
 import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
 import { createRail } from '../overlay/rail';
+import { createRide } from '../overlay/ride';
 import { createStage } from '../overlay/stage';
 import { DEFAULT_GOVERNOR, Governor } from '../quality/governor';
 import { bootTier, TIERS, type Tier } from '../quality/tiers';
@@ -45,6 +47,8 @@ export interface App {
   readonly camera: PerspectiveCamera;
   /** Journey position in screens; set by the benchmark to drive the camera without Lenis. */
   override: number | null;
+  /** Where the camera is on the journey this frame, in screens (it follows the scroll with a top speed). */
+  cameraU(nowMs: number): number;
   tier: Tier;
   setTier(t: Tier): void;
   /** Parts by name, for the benchmarks' on/off switch. */
@@ -121,6 +125,22 @@ export async function boot(): Promise<App> {
   if (trackEl) trackEl.style.height = `${(track.total + 1) * 100}lvh`;
   const scroll = createScroll();
 
+  // The camera's place on the journey follows the scroll with damping and a top speed (Amendment 1 §7). Worked out
+  // once per animation frame, so the overlay and the world, which run in two callbacks, agree.
+  let camU = Number.NaN;
+  let camAt = -1;
+  const cameraU = (nowMs: number): number => {
+    const target = scroll.progress() * track.total;
+    if (Number.isNaN(camU) || caps.reducedMotion) camU = target;
+    else if (nowMs !== camAt) camU = follow(track, camU, target, Math.min(0.1, Math.max(0, (nowMs - camAt) / 1000)));
+    if (nowMs !== camAt) scroll.holdNear(camU / track.total, LEAD_SCREENS / track.total);
+    camAt = nowMs;
+    return camU;
+  };
+  scroll.onJump = (p) => {
+    camU = p * track.total;
+  };
+
   // The overlay runs from the first frame, GPU or not: labels, stills, rail, links, touch snap (spec §2).
   let appRef: App | null = null;
   const stage = createStage(STOPS);
@@ -128,7 +148,11 @@ export async function boot(): Promise<App> {
   const rail = createRail(document.getElementById('rail') as HTMLElement, STOPS, (i) => void jumps.go(i));
   createTouchSnap({
     progress: () => scroll.progress(),
-    glideTo: (p) => scroll.glideToProgress(p, true),
+    // A swipe that stops short carries on to the next place at the ride's pace, never cutting a flight short.
+    glideTo: (p) => {
+      const from = cameraU(performance.now());
+      scroll.glideToProgress(p, true, Math.max(500, rideMs(track, from, p * track.total)));
+    },
     stops: snapStops(track),
     enabled: () => params.p === undefined,
   });
@@ -139,9 +163,18 @@ export async function boot(): Promise<App> {
     const next = targetFromLocation(location.hash, '');
     if (next >= 0) void jumps.go(next);
   });
+  const ride = createRide(
+    document.getElementById('ride') as HTMLButtonElement,
+    STOPS,
+    track,
+    scroll,
+    () => cameraU(performance.now()),
+    () => params.p === undefined,
+  );
   const overlayTick = (nowMs: number) => {
     scroll.raf(nowMs);
-    const u = appRef?.override ?? scroll.progress() * track.total;
+    const u = appRef?.override ?? cameraU(nowMs);
+    ride.update(u);
     const state = frameAt(track, u, caps.reducedMotion);
     const nearest = nearestStop(track, u);
     stage.update(state, nearest, appRef?.stills ?? params.stills);
@@ -184,6 +217,7 @@ export async function boot(): Promise<App> {
     scene,
     camera,
     override: null,
+    cameraU,
     tier,
     /** A tier picked by hand (HUD, benchmark): the governor takes it as its own (review I3). */
     setTier(t) {
@@ -225,7 +259,7 @@ export async function boot(): Promise<App> {
   let last: FrameState | null = null;
 
   const frame = (nowMs: number, dtS: number): WorldFrame => {
-    const u = app.override ?? scroll.progress() * track.total;
+    const u = app.override ?? cameraU(nowMs);
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
     const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion);

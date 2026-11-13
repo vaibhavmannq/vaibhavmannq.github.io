@@ -1,15 +1,25 @@
 import { clamp01, smootherstep, smoothstep } from '../shared/math';
 import type { Stop } from './types';
 
-/** Scroll length of a stop, in screen heights (spec §8.1). */
-export const STOP_SCREENS = 1.0;
+/** Scroll length of a stop, in screen heights (Amendment 1 §7: was 1.0). */
+export const STOP_SCREENS = 1.5;
 
-/** Scroll length of a flight: longer flights get more scroll, within 1 to 2.2 screens (spec §8.1). */
-export const flightScreens = (distanceM: number): number => Math.min(2.2, Math.max(1.0, 0.8 + distanceM / 900));
+/**
+ * Scroll length of a flight: longer flights get more scroll, within 2 to 6 screens. Amendment 1 §7 (D26: "never over
+ * in a blink of an eye"): the night is about 41 screens, up from 21 (spec §8.1 had 0.8 + d / 900 within 1 to 2.2).
+ */
+export const flightScreens = (distanceM: number): number => Math.min(6, Math.max(2, 1.5 + distanceM / 400));
 
 export type Segment =
   | { kind: 'stop'; stop: number; start: number; end: number }
-  | { kind: 'flight'; from: number; to: number; start: number; end: number };
+  | {
+      kind: 'flight';
+      from: number;
+      to: number;
+      start: number;
+      end: number /** metres, camera to camera */;
+      distance: number;
+    };
 
 export interface Track {
   segments: readonly Segment[];
@@ -45,14 +55,15 @@ export function buildTrack(stops: readonly Stop[]): Track {
     u += STOP_SCREENS;
     const next = stops[i + 1];
     if (!next) return;
-    const length = flightScreens(Math.hypot(next.cam[0] - stop.cam[0], next.cam[1] - stop.cam[1]));
-    segments.push({ kind: 'flight', from: i, to: i + 1, start: u, end: u + length });
+    const distance = Math.hypot(next.cam[0] - stop.cam[0], next.cam[1] - stop.cam[1]);
+    const length = flightScreens(distance);
+    segments.push({ kind: 'flight', from: i, to: i + 1, start: u, end: u + length, distance });
     u += length;
   });
   return { segments, total: u };
 }
 
-function segmentAt(track: Track, u: number): Segment {
+export function segmentAt(track: Track, u: number): Segment {
   const found = track.segments.find((s) => u < s.end) ?? track.segments[track.segments.length - 1];
   if (!found) throw new Error('empty track');
   return found;
@@ -95,7 +106,9 @@ export function frameAt(track: Track, u: number, reducedMotion: boolean): FrameS
     b: s.to,
     t,
     resting: false,
-    hourWeight: smootherstep(t),
+    // Hold the light, then turn it in the middle third (owner-references §17, from the game's weather study: each
+    // place sits in a stable light and the change happens in a short band between places).
+    hourWeight: smootherstep(clamp01((t - 1 / 3) * 3)),
     skyWeight: smoothstep(0.3, 0.7, t),
     stillWeight,
     fade: 0,

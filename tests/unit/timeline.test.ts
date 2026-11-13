@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { STOPS } from '../../src/journey/stops';
-import { buildTrack, flightScreens, frameAt, nearestStop, type Segment, stopCentre } from '../../src/journey/timeline';
+import {
+  buildTrack,
+  flightScreens,
+  frameAt,
+  nearestStop,
+  type Segment,
+  STOP_SCREENS,
+  stopCentre,
+} from '../../src/journey/timeline';
 
 const track = buildTrack(STOPS);
 
@@ -12,24 +20,30 @@ function segment(i: number): Segment {
 /** u at fraction t through segment i. */
 const within = (i: number, t: number) => segment(i).start + (segment(i).end - segment(i).start) * t;
 
-describe('flight lengths (spec §8.1)', () => {
-  it('follow clamp(0.8 + d / 900, 1, 2.2)', () => {
-    expect(flightScreens(146)).toBe(1.0);
-    expect(flightScreens(1735)).toBe(2.2);
-    expect(Math.abs(flightScreens(1053) - 1.97)).toBeLessThan(0.005);
+describe('flight lengths (Amendment 1 §7)', () => {
+  it('follow clamp(1.5 + d / 400, 2, 6)', () => {
+    expect(flightScreens(146)).toBe(2);
+    expect(flightScreens(3000)).toBe(6);
+    expect(flightScreens(1735)).toBeCloseTo(5.8375, 6);
+    expect(STOP_SCREENS).toBe(1.5);
   });
 });
 
 describe('the track', () => {
-  it('is about 21 screens: nine stops and eight flights, end to end', () => {
-    expect(track.total).toBeGreaterThanOrEqual(21.2);
-    expect(track.total).toBeLessThanOrEqual(21.4);
+  it('is about 41 screens: nine stops and eight flights, end to end', () => {
+    expect(track.total).toBeGreaterThanOrEqual(40.5);
+    expect(track.total).toBeLessThanOrEqual(41);
     expect(track.segments).toHaveLength(17);
     track.segments.forEach((s, i) => {
       expect(s.kind).toBe(i % 2 === 0 ? 'stop' : 'flight');
       if (i > 0) expect(s.start).toBe(segment(i - 1).end);
     });
     expect(segment(16).end).toBe(track.total);
+  });
+
+  it("knows each flight's length in metres", () => {
+    const f = segment(7); // IV -> V, the longest
+    expect(f.kind === 'flight' && f.distance).toBeGreaterThan(1700);
   });
 
   it('clamps scroll outside the track to the first and last stop', () => {
@@ -57,6 +71,12 @@ describe('the track', () => {
     expect(f).toMatchObject({ kind: 'flight', a: 2, b: 3, resting: false, fade: 0 });
     expect(f.hourWeight).toBeCloseTo(0.5, 6);
     expect(f.skyWeight).toBeCloseTo(0.5, 6);
+  });
+
+  it('holds the light, then turns it in the middle third of a flight (owner-references §17: hold, then a short blend)', () => {
+    expect(frameAt(track, within(5, 0.3), false).hourWeight).toBe(0);
+    expect(frameAt(track, within(5, 0.7), false).hourWeight).toBe(1);
+    expect(frameAt(track, within(5, 0.4), false).hourWeight).toBeGreaterThan(0);
   });
 
   it('fades the still out at the start of a flight and back in at its end', () => {

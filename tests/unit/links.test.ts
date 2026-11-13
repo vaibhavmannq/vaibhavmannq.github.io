@@ -45,6 +45,10 @@ describe('a fade jump', () => {
       raf: () => {},
       scrollToProgress: () => {},
       glideToProgress: () => {},
+      gliding: () => false,
+      touching: () => false,
+      holdNear: () => {},
+      onJump: null,
       setLocked: () => {},
       destroy: () => {},
     };

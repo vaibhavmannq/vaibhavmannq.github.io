@@ -1,3 +1,4 @@
+import { rideMs } from '../journey/pace';
 import { stopIndex } from '../journey/stops';
 import { nearestStop, stopCentre, type Track } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
@@ -44,7 +45,9 @@ export function createJumps(
     async go(index) {
       const from = nearestStop(track, scroll.progress() * track.total);
       if (jumpPlan(from, index) === 'glide') {
-        scroll.glideToProgress(at(index), true);
+        // a neighbour is a ride, at the flight's designed length (Amendment 1 §7)
+        const u = scroll.progress() * track.total;
+        scroll.glideToProgress(at(index), true, rideMs(track, u, stopCentre(track, index)));
         return;
       }
       setVeil(1);
