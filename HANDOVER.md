@@ -82,12 +82,13 @@ no borrowed set pieces (no towers, piano, etc.).
   but invisible until stops get near layers); aurora and cloud re-judged against the owner's photos (both 68 %);
   **the cave built** (Task 6, 74 % vs render); **costs measured on the laptop** and the cave/aurora/cloud made
   cheaper (Before dawn 60 fps at mid; flight at mid 59 fps, 0 frames over 50 ms; Midnight at mid still 47 fps, a
-  scene cost for M6). Every number: the M2 ledger, "Session s09". **Phone not measured: no phone was connected** (adb is at `%LOCALAPPDATA%\Android\platform-toolsdb.exe`).
+  scene cost for M6). Every number: the M2 ledger, "Session s09". **Phone measured at the end (WebGPU and WebGL2): 60 fps at every M2 stop and through the whole night on all tiers, 0 frames over 50 ms. M2 closed on my side; all four approaches kept.**
 - **M2.5 plan written:** `docs/superpowers/plans/2026-11-13-m2.5-the-world-from-reference.md` (world state, stacks,
   the arch that does not exist live yet, tide bands, glitter and moon, look-around, Golden's lantern and spots,
   nearest-first loading, phone). Waiting for the owner's read and choice of execution.
-- **Next:** owner plugs the phone in over USB (phone half of M2 = M2.5 Task 9); owner reviews the M2.5 plan; then
-  M2.5 Task 1. Measuring tools from s09: `.superpowers/m2/cost.mjs` (GPU ms per part, needs the prod build and
+- **Next:** the owner's hands-on feel test of the s09 build (pace, Next ride, cave); owner reviews the M2.5 plan;
+  then M2.5 Task 1. Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, set adb reverse and
+  forward right before each run, drive the tab already open (`.superpowers/m2/phone.mjs`). Measuring tools from s09: `.superpowers/m2/cost.mjs` (GPU ms per part, needs the prod build and
   `?gpu`), `video.mjs` (25 fps clip to read motion), `atp.mjs` (frames at journey shares), `pacecheck.mjs`.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
