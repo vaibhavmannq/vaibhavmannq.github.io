@@ -2,14 +2,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { ArchMeta } from '../../src/assets/manifest';
-import { poseAt } from '../../src/journey/camera';
-import type { FlightPath } from '../../src/journey/flights';
 import { STOPS } from '../../src/journey/stops';
 import { buildTrack, frameAt } from '../../src/journey/timeline';
 import { STOP_IDS } from '../../src/journey/types';
 import { ARCH_SEEN_FROM, ARCH_SEEN_ON, archInPlay, decodeArch } from '../../src/world/arch';
 import { HEADLAND_PACK } from '../../src/world/headland';
-import { framing } from './framing';
+import { clearance, framing } from './framing';
 
 const base = JSON.parse(readFileSync('public/world/base/base.json', 'utf8'));
 const meta = base.arch as ArchMeta | undefined;
@@ -86,27 +84,9 @@ describe('the arch (M2.5 Task 3b)', () => {
     expect(drawn.filter((k) => !seen.has(k))).toEqual([]);
   });
 
-  it('stands clear of every flight: no camera sample within 6 m of its rock', () => {
-    const paths = JSON.parse(readFileSync('src/journey/flightPaths.json', 'utf8')) as FlightPath[];
-    const track = buildTrack(STOPS);
-    let nearest = Number.POSITIVE_INFINITY;
-    for (const seg of track.segments) {
-      const n = seg.kind === 'stop' ? 1 : 400;
-      for (let k = 0; k < n; k++) {
-        const u = seg.start + ((seg.end - seg.start) * (k + 0.5)) / n;
-        const p = poseAt(frameAt(track, u, false), paths, 16 / 9, 0).position;
-        const [cx, cy, cz] = [p[0] - meta.x, -p[2] - meta.y, p[1]];
-        if (Math.hypot(cx, cy) > 150) continue;
-        for (let i = 0; i < meta.verts; i += 7) {
-          const d = Math.hypot(
-            (arch.position[i * 3] ?? 0) - cx,
-            (arch.position[i * 3 + 1] ?? 0) - cy,
-            (arch.position[i * 3 + 2] ?? 0) - cz,
-          );
-          nearest = Math.min(nearest, d);
-        }
-      }
-    }
-    expect(nearest).toBeGreaterThan(6);
+  it('stands clear of every stop camera and flight: no sample within 6 m of its rock, none inside it', () => {
+    const { nearest, where, inside } = clearance(arch.position, arch.index, meta);
+    expect(inside).toEqual([]);
+    expect(nearest, where).toBeGreaterThan(6);
   });
 });

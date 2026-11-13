@@ -7,7 +7,7 @@ import { buildTrack, frameAt } from '../../src/journey/timeline';
 import { STOP_IDS } from '../../src/journey/types';
 import { HEADLAND_PACK } from '../../src/world/headland';
 import { decodeStacks, STACKS_SEEN_FROM, STACKS_SEEN_ON, stacksInPlay } from '../../src/world/stacks';
-import { cameraSamples, framing, pointTriangle } from './framing';
+import { clearance, framing } from './framing';
 
 const base = JSON.parse(readFileSync('public/world/base/base.json', 'utf8'));
 const meta = base.stacks as StacksMeta | undefined;
@@ -84,57 +84,7 @@ describe('the headland stacks (M2.5 Task 3c)', () => {
   // Review Focus 1: the same margin as the arch's. Exact distances to the triangles near the camera, and a camera is
   // never inside the rock (a vertical ray from it crosses the closed mesh an even number of times).
   it('stands clear of every stop camera and flight: no sample within 6 m of its rock, none inside it', () => {
-    const tris = stacks.index;
-    const n = tris.length / 3;
-    const cen = new Float32Array(n * 3);
-    const rad = new Float32Array(n);
-    const P = (k: number) => at(k);
-    for (let t = 0; t < n; t++) {
-      const [a, b, c] = [P(tris[t * 3] ?? 0), P(tris[t * 3 + 1] ?? 0), P(tris[t * 3 + 2] ?? 0)];
-      for (let j = 0; j < 3; j++) cen[t * 3 + j] = ((a[j] ?? 0) + (b[j] ?? 0) + (c[j] ?? 0)) / 3;
-      const cc = [cen[t * 3] ?? 0, cen[t * 3 + 1] ?? 0, cen[t * 3 + 2] ?? 0];
-      rad[t] = Math.max(
-        ...[a, b, c].map((v) => Math.hypot(v[0] - (cc[0] ?? 0), v[1] - (cc[1] ?? 0), v[2] - (cc[2] ?? 0))),
-      );
-    }
-    const lo = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
-    const hi = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
-    for (let i = 0; i < meta.verts; i++) {
-      const [x, y] = at(i);
-      lo[0] = Math.min(lo[0] ?? 0, x);
-      lo[1] = Math.min(lo[1] ?? 0, y);
-      hi[0] = Math.max(hi[0] ?? 0, x);
-      hi[1] = Math.max(hi[1] ?? 0, y);
-    }
-    let nearest = Number.POSITIVE_INFINITY;
-    let where = '';
-    const inside: string[] = [];
-    for (const { key, p } of cameraSamples(400)) {
-      if (p[0] < (lo[0] ?? 0) - 20 || p[0] > (hi[0] ?? 0) + 20 || p[1] < (lo[1] ?? 0) - 20 || p[1] > (hi[1] ?? 0) + 20)
-        continue;
-      let crossings = 0;
-      for (let t = 0; t < n; t++) {
-        const d = Math.hypot(p[0] - (cen[t * 3] ?? 0), p[1] - (cen[t * 3 + 1] ?? 0), p[2] - (cen[t * 3 + 2] ?? 0));
-        const [a, b, c] = [P(tris[t * 3] ?? 0), P(tris[t * 3 + 1] ?? 0), P(tris[t * 3 + 2] ?? 0)];
-        if (d - (rad[t] ?? 0) < Math.min(nearest, 12)) {
-          const e = pointTriangle(p, a, b, c);
-          if (e < nearest) {
-            nearest = e;
-            where = `${key} at (${p.map((v) => v.toFixed(1)).join(', ')})`;
-          }
-        }
-        // a vertical ray up from the camera: does it pass through this triangle (above the camera)?
-        const s1 = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
-        const s2 = (c[0] - b[0]) * (p[1] - b[1]) - (c[1] - b[1]) * (p[0] - b[0]);
-        const s3 = (a[0] - c[0]) * (p[1] - c[1]) - (a[1] - c[1]) * (p[0] - c[0]);
-        if ((s1 > 0 && s2 > 0 && s3 > 0) || (s1 < 0 && s2 < 0 && s3 < 0)) {
-          const area = s1 + s2 + s3;
-          const z = (a[2] * s2 + b[2] * s3 + c[2] * s1) / area;
-          if (z > p[2]) crossings++;
-        }
-      }
-      if (crossings % 2 === 1) inside.push(key);
-    }
+    const { nearest, where, inside } = clearance(stacks.position, stacks.index, meta);
     expect(inside).toEqual([]);
     expect(nearest, where).toBeGreaterThan(6);
   });

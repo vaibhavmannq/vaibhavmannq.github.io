@@ -261,11 +261,23 @@ def test_stacks():
     W = P + np.array([m["x"], m["y"], 0.0])                                  # coast axes
     rk = c.stack_rocks()
     # the part holds every HEADLAND piece within its footprint: every vertex is on some piece's shelf disc (with the
-    # skirt's rounding), and every rock of the line is there at its height
+    # skirt's rounding) or on a skerry, and every rock of the line is there at its height
     discs = np.array([pc["disc"] for pc in c.HEADLAND])
     near = np.min(np.hypot(W[:, :1] - discs[:, 0], W[:, 1:2] - discs[:, 1]) - discs[:, 2], axis=1)
-    assert near.max() < 2.0, near.max()
+    sk = np.array([(t[0], t[1], t[2][0]) for t in c.SKERRIES])
+    on_sk = np.min(np.hypot(W[:, :1] - sk[:, 0], W[:, 1:2] - sk[:, 1]) - sk[:, 2], axis=1) < 0.5
+    assert near[~on_sk].max() < 2.0, near[~on_sk].max()
     comps = components(T, P)
+    # fix round 3c-1: skerries (6-12 groups of low rocks off the shelves, 0.3-2 m above the sea) and a talus of angular
+    # blocks heaped on every foot >= 8 m (separate pieces on the shelf discs, beside the fallen blocks)
+    cxy = np.array([W[c_, :2].mean(0) for c_ in comps]); ctop = np.array([W[c_, 2].max() for c_ in comps])
+    off = np.min(np.hypot(cxy[:, :1] - discs[:, 0], cxy[:, 1:2] - discs[:, 1]) - discs[:, 2], axis=1) > 0
+    assert len(c.SKERRIES) <= off.sum() and 6 <= len({tuple(np.round(t[:2], -1)) for t in c.SKERRIES}), off.sum()
+    assert ((ctop[off] >= 0.25) & (ctop[off] <= 2.1)).all(), ctop[off]
+    tall = sum(k["h"] >= 8.0 for k in rk)
+    fallen = sum(len(pc["blocks"]) for pc in c.HEADLAND)
+    small = (~off) & (ctop < c.FOOT_TOP + 12.0) & np.array([len(c_) < 200 for c_ in comps])
+    assert small.sum() >= fallen + 10 * tall, (small.sum(), fallen, tall)
     whose = np.zeros(len(P), np.int64)
     for i, c_ in enumerate(comps): whose[c_] = i
     eq = lambda Ts, z: math.sqrt(section(W, Ts, z)[0] / math.pi)
@@ -287,6 +299,13 @@ def test_stacks():
         if k["form"] == "spire":
             row["tip"] = round(eq(Ts, 0.75 * k["h"]) / k["r"], 2)
             assert row["tip"] <= 0.3, row
+            # a tilted blade (fix round 3c-1): its top stands off its axis toward its facing, and is broken off,
+            # not a point (the rock in its top 1.5 m spans some metres)
+            f = math.radians(k["face"]); fu = np.array([math.cos(f), math.sin(f)])
+            hi_ = own[W[own, 2] > top - 1.5]
+            row["off"] = round(float((W[hi_, :2].mean(0) - ax_(top)) @ fu) / k["r"], 2)
+            row["crest"] = round(float(np.ptp(W[hi_, :2] @ fu)), 1)
+            assert row["off"] >= 0.25 and row["crest"] >= 1.5, row
         if k["form"] == "wedge":
             f = math.radians(k["face"]); fu = np.array([math.cos(f), math.sin(f)])
             zs = np.linspace(0.35 * k["h"], 0.9 * k["h"], 12)

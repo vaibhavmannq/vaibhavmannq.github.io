@@ -145,6 +145,16 @@ for k in rk:
     assert req(k, 3.0) - req(k, 0.45) >= 0.5, (k["form"], k["h"])  # the notch is still cut in it
     if k["form"] == "spire":                                         # the top third narrows to <= 0.3 x its radius
         assert req(k, 0.75 * k["h"]) <= 0.3 * k["r"], (k["h"], req(k, 0.75 * k["h"]) / k["r"])
+        # fix round 3c-1 (owner photo 12): a tilted blade, not a cone. A shoulder steps in on its back a third to a
+        # half of the way down while its front edge runs on; the tip stands over the front, off its axis; the needle
+        # is broken off at the top (a cut across a section, not a point)
+        f = math.radians(k["face"]); fu = np.array([math.cos(f), math.sin(f)])
+        ext = lambda z: (c.stack_section(k, z) - axis(k, z)) @ fu
+        back = ext(0.7 * k["h"]).min() - ext(0.45 * k["h"]).min(); front = ext(0.7 * k["h"]).max() - ext(0.45 * k["h"]).max()
+        assert back >= 0.4 * k["r"] and abs(front) <= 0.25 * k["r"], (k["h"], back / k["r"], front / k["r"])
+        assert k["tip"] >= 0.3 * k["r"], (k["h"], k["tip"] / k["r"])
+        cut = c.stack_section(k, k["h"] * 0.995); tops = c.stack_top(k, cut[:, 0], cut[:, 1])
+        assert np.ptp(np.hypot(*(cut - cut.mean(0)).T)) > 0.0 and np.ptp(tops) >= 0.5, (k["h"], np.ptp(tops))
     if k["form"] == "wedge":                                         # one side slopes at 50-65 deg, the other is sheer
         f = math.radians(k["face"]); fu = np.array([math.cos(f), math.sin(f)])
         zs = np.linspace(0.35 * k["h"], 0.9 * k["h"], 12)
@@ -165,9 +175,34 @@ for k in rk:
         assert flat >= 0.5 and low >= 0.1, (flat, low)
 assert all(c.stack_top(k, k["x"], k["y"]) <= k["h"] + 0.2 for k in rk if k["form"] in c.CUT_TOP)   # no cut top over the line's height
 
+# the talus (fix round 3c-1): every foot >= 8 m is heaped with angular blocks, all on the piece's shelf disc
+discs_of = [pc["disc"] for pc in H for _ in pc["rocks"]]
+for k, d in zip(rk, discs_of):
+    tl = c.stack_talus(k, d)
+    if k["h"] < 8.0: assert tl == []; continue
+    assert len(tl) >= 10, (k["form"], k["h"], len(tl))
+    assert all(math.hypot(t[0] - d[0], t[1] - d[1]) + 0.6 * t[2][0] <= d[2] for t in tl)
+    assert all(1.0 <= t[2][0] <= 7.0 and 0.0 < t[5] < c.FOOT_TOP + 12.0 for t in tl), [(t[2][0], t[5]) for t in tl]
+
+# skerries (fix round 3c-1, owner photo 12): 6-12 groups of low angular rocks, 0.3-2 m above the sea, a few metres
+# across, seaward of the arch at uneven distances from the line, off every shelf
+sk = c.SKERRIES
+groups = []
+for t in sk:
+    g = next((g for g in groups if math.hypot(t[0] - g[0][0], t[1] - g[0][1]) < 10.0), None)
+    (g.append(t) if g else groups.append([t]))
+assert 6 <= len(groups) <= 12, len(groups)
+assert all(0.3 <= t[5] <= 2.0 for t in sk) and all(2.0 <= g[0][2][0] <= 6.0 for g in groups), [(t[2][0], t[5]) for t in sk]
+assert all(s_of(*t[:2]) > c.ARCH_LEG for t in sk)
+offs = [abs(o_of(*g[0][:2]) - c.line_curve(s_of(*g[0][:2]))) for g in groups]
+assert min(offs) <= 25.0 and max(offs) >= 50.0, offs
+assert all(math.hypot(t[0] - d[0], t[1] - d[1]) - d[2] - t[2][0] / 2 >= 0.5 for t in sk for d in discs_of)
+assert all(float(c.ground_base(*g[0][:2])) < -0.2 for g in groups)
+
 # Blender builds every piece; the data is seeded: a second load gives the same line
 assert all(r in c.ROCKS for r in line_rocks)
 assert len(c.ROCK_SEEDS) == len(c.ROCKS) and len(set(c.ROCK_SEEDS)) == len(c.ROCK_SEEDS)
 assert coastlib.load().HEADLAND == H
 print(f"ok headland: remnants {[r[3] for pc in L for r in pc['rocks']]}, {len(S)} pieces seaward, stacks {hs}, stumps {stumps}, "
-      f"reef {reef[3]} m, gaps {[round(g, 1) for g in gaps]}, o {min(os_):.0f}..{max(os_):.0f} m, {len(c.SHELVES)} shelves")
+      f"reef {reef[3]} m, gaps {[round(g, 1) for g in gaps]}, o {min(os_):.0f}..{max(os_):.0f} m, {len(c.SHELVES)} shelves, "
+      f"{len(groups)} skerry groups ({len(sk)} rocks)")

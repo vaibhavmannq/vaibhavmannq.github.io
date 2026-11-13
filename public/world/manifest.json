@@ -50,12 +50,12 @@
   },
   "stacks": {
    "file": "stops/headland/stacks.bin",
-   "verts": 50170,
-   "tris": 94104,
+   "verts": 52274,
+   "tris": 94264,
    "indexBytes": 2,
    "scale": 100,
-   "x": -1154.2,
-   "y": 1333
+   "x": -1124.9,
+   "y": 1311.3
   }
  },
  "skies": {
@@ -406,8 +406,8 @@
   },
   {
    "path": "stops/headland/stacks.bin",
-   "bytes": 1166664,
-   "sha256": "90bac4c3eeca81eea0bf327ae6e410bdc5e5969716bd9e1c8e7c67c4d00b547e",
+   "bytes": 1192872,
+   "sha256": "f46ece6332c16f4eb1118d33990f20ef30ce85f3f0d9d9fc3223651b86b8a379",
    "stage": "B",
    "stops": [
     "golden",

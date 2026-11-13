@@ -253,6 +253,8 @@ def run(g):
     if S.get("cave"): export_cave(g, folder); did = True
     only = g.get("ONLY", "")                     # --only <part>: one part, while its shape is being worked on
     if only:
-        {"arch": export_arch, "stacks": export_stacks}[only](g, folder); return
+        parts = {"arch": export_arch, "stacks": export_stacks}
+        if only not in parts: raise SystemExit(f"--only {only!r}: no such part (use one of {', '.join(parts)})")
+        parts[only](g, folder); return
     if g["HOUR"] == "bluehour": export_arch(g, folder); export_stacks(g, folder); did = True
     if not did: raise SystemExit(f"nothing to export for hour {g['HOUR']}")

@@ -443,8 +443,10 @@ def line_so(x, y):
     return (x - ax) * LINE_U[0] + (y - ay) * LINE_U[1], (x - ax) * LINE_P[0] + (y - ay) * LINE_P[1]
 
 # The line is not ruled straight: it follows the old headland's gentle curve, up to +-40 m across, so from Dusk the
-# pieces overlap at different depths instead of standing in a row (owner cove-and-stacks 12).
-LINE_BEND, LINE_BEND_L = 38.0, 300.0
+# pieces overlap at different depths instead of standing in a row (owner cove-and-stacks 12). It bends away from Blue
+# hour's camera (fix round 3c-1): seen from under the arch, the pieces seaward recede and overlap in depth, as the
+# photo's spires do, instead of standing at even gaps across the frame.
+LINE_BEND, LINE_BEND_L = -38.0, 300.0
 LINE_BEND_S0 = ARCH_LEG + 4.0   # the bend starts just past the arch's seaward foot (the line slides with the foot, its shape kept)
 def line_curve(s): return LINE_BEND * math.sin(math.pi * (s - LINE_BEND_S0) / LINE_BEND_L)
 
@@ -452,8 +454,8 @@ def line_curve(s): return LINE_BEND * math.sin(math.pi * (s - LINE_BEND_S0) / LI
 # Heights 66 (arch) > 50 > 39 > 28 | 25 > 19 > 13.5 > 11: each 0.71-0.89 of the one before. The split's halves stand
 # 2.5 m apart on one shelf. Then two stumps and a reef 0.5 m above the sea.
 _PIECES = (("stack", 19.0, -3.0, ((14.0, 50.0, 0.02),)),
-           ("stack", 36.0, 2.0, ((11.0, 39.0, -0.03),)),
-           ("split", 12.5, -6.0, ((8.0, 28.0, 0.0), (6.5, 25.0, 0.01))),
+           ("stack", 6.0, 2.0, ((11.0, 39.0, -0.03),)),            # close behind the first: they overlap from Blue hour
+           ("split", 12.5, 2.0, ((8.0, 28.0, 0.0), (6.5, 25.0, 0.01))),
            ("stack", 29.0, 3.0, ((7.0, 19.0, 0.09),)),           # leaning
            ("stack", 10.0, -2.0, ((6.0, 13.5, -0.02),)),
            ("stack", 44.0, 0.0, ((5.5, 11.0, -0.11),)),          # leaning
@@ -579,23 +581,31 @@ _FORMS = ((("broken", 120.0),),                     # the small remnant beside t
           (("spire", 35.0),),                       # the first stack: the tallest spire, its tip off-centre
           (("wedge", 35.0),),                       # a wedge, its slope across the views
           (("spire", 200.0), ("broken", 300.0)),    # the split pair: a spire and its broken half
-          (("spire", 10.0),),                       # the leaning spire, its shoulder on the lean's side
+          (("spire", 250.0),),                      # the leaning spire, its blade turned the other way from the first
           (("wedge", 215.0),),                      # a small wedge sloping the other way
           (("broken", 160.0),),                     # the last stack, leaning, its top fallen in
           (("stump", 0.0),), (("stump", 90.0),), (("reef", 30.0),))
 assert len(_FORMS) == len(HEADLAND) and all(len(f) == len(pc["rocks"]) for f, pc in zip(_FORMS, HEADLAND))
 for _pc, _f in zip(HEADLAND, _FORMS): _pc["forms"] = list(_f)
 STACK_FOOT = 1.45        # the foot's radius over the radius at mid-height (brief: 1.3-1.6; reference-landforms §2's talus)
+SPIRE_FOOT = 1.4         # a spire's (its weathering swells its foot a little more than the others')
 FOOT_R = 1.1             # the foot's radius as a share of the rock's r (rock_prof at the waterline)
 FOOT_ROOM = 3.0          # the foot stays this far inside its shelf's disc (the shelf and its blocks stay seen)
 FOOT_TOP = 3.0           # the apron keeps its full width up to here, then rises into the wall at about 40 deg
-SPIRE_TIP = 0.45         # a spire's tip stands this share of its radius off its axis, toward its facing (owner photo 12)
+# A spire is a tilted blade (owner photo 12, fix round 3c-1): long along its facing, thin across; a shoulder steps in
+# on its back between SPIRE_SHOULDER of its height (a third to a half of the way down), the part above narrows to
+# SPIRE_UPPER of the width and keeps its front edge, so the tip stands over the front, off its axis; the needle
+# would end at SPIRE_END x h but is broken off at h by a cut falling SPIRE_BREAK degrees toward its back.
+SPIRE_SHOULDER = (0.58, 0.66)
+SPIRE_UPPER = 0.5
+SPIRE_END = 1.3
+SPIRE_BREAK = 50.0
 WEDGE_SLOPE = (56.0, 59.0)   # the slope of a large / a small wedge's sloping side, degrees (brief: 50-65)
 # per form: the section's superellipse exponent (2 round, higher boxier), its elongation along the facing, and how
 # much it tapers to the top (a share of its radius)
-STACK_SECTIONS = dict(spire=(2.4, 1.15, 0.25), wedge=(2.8, 1.1, 0.15), block=(3.6, 1.3, 0.08), broken=(2.6, 1.25, 0.2),
+STACK_SECTIONS = dict(spire=(2.4, 1.5, 0.2), wedge=(2.8, 1.1, 0.15), block=(3.6, 1.3, 0.08), broken=(2.6, 1.25, 0.2),
                       stump=(2.2, 1.2, 0.0), reef=(2.0, 1.5, 0.0), shelf=(2.0, 1.0, 0.0))
-CUT_TOP = ("block", "broken", "wedge", "reef", "shelf")   # forms whose top is a cut surface (the solid runs on 8 % higher)
+CUT_TOP = ("block", "broken", "wedge", "reef", "shelf", "spire")   # forms whose top is a cut surface (the solid runs on higher)
 
 def _superellipse(n, p):
     """n points round a superellipse of exponent p (2 a circle, higher boxier): angles, unit half-widths."""
@@ -604,23 +614,25 @@ def _superellipse(n, p):
 
 def stack_body(form, t):
     """A form's size at height share t (of its rock's r), before the foot, the lobes and the notch."""
-    t = np.clip(t, 0.0, 1.0); taper = STACK_SECTIONS[form][2]
-    if form == "spire":                     # a column to 0.45 of its height, then a needle (concave flanks)
-        return np.where(t <= 0.45, 1.0 - taper * t, (1.0 - taper * 0.45) * np.clip((1 - t) / 0.55, 0, 1) ** 1.7)
+    t = np.clip(t, 0.0, SPIRE_END if form == "spire" else 1.0); taper = STACK_SECTIONS[form][2]
+    if form == "spire":                     # a column, a shoulder, then a needle (concave flanks) broken off at h
+        needle = np.clip((SPIRE_END - t) / (SPIRE_END - SPIRE_SHOULDER[1]), 0, 1) ** 2.1
+        return (1.0 - taper * np.minimum(t, 1.0)) * (1 - (1 - SPIRE_UPPER) * sm(*SPIRE_SHOULDER, t)) * needle
     if form == "stump": return (1.0 - 0.35 * t * t) * np.sqrt(np.clip(1 - t ** 6, 0, 1))   # low and rounded
     return 1.0 - taper * t
 
 def _section_raw(k, z, n):
     """A rock's outline at height z without its foot or notch: points in its facing frame, and the frame's centre."""
     r, h, form, seed = k["re"], k["h"], k["form"], k["seed"]
-    t = max(z, 0.0) / max(h, 0.5); b = float(stack_body(form, t)); p, e, _ = STACK_SECTIONS[form]
+    t = max(z, 0.0) / max(h, 0.5); b = float(stack_body(form, t if form == "spire" else min(t, 1.0))); p, e, _ = STACK_SECTIONS[form]
     a, ux, uy = _superellipse(n, p)
     hx, hy, xc = r * e * b, r / e * b, 0.0
     if form == "wedge":                     # the sheer side stays at -W; the slope side comes in from +W at the slope,
         tn = math.tan(math.radians(k["slope"]))   # which runs from its crest down to a quarter of its height
         W = 0.5 * (0.12 * r + 0.75 * h / tn) * (1 - 0.15 * t); X1 = min(W, -W + 0.12 * r + (h - z) / tn)
         hx, xc = (X1 + W) / 2, (X1 - W) / 2; hy = hy * (1 - 0.7 * min(t, 1.0) ** 2)
-    if form == "spire": xc = SPIRE_TIP * r * float(sm(0.45, 1.0, t))
+    if form == "spire":                     # the part above the shoulder keeps the front edge: the tip over the front
+        hx0 = r * e * (1.0 - STACK_SECTIONS["spire"][2] * min(t, 1.0)); xc = 0.85 * (hx0 - hx)
     if form in CUT_TOP and z > h:           # closes the solid above its cut top
         d = math.sqrt(max(0.0, 1 - ((z - h) / (k["H"] - h)) ** 2)); hx, hy = hx * d, hy * d
     lobes = (1 + 0.06 * np.cos(3 * a + seed * 1.3) + 0.04 * np.cos(5 * a + seed * 2.3)
@@ -639,9 +651,9 @@ def stack_section(k, z, n=96):
     x its radius at mid-height, up to FOOT_TOP, then a talus rising into the wall), the wave-cut notch, its lean."""
     P, c = _section_raw(k, z, n)
     if k["h"] >= 8.0:                       # stumps and the reef are all foot
-        rise = max(1.5, 0.85 * max(0.0, STACK_FOOT * k["M"] - k["R3"]))
+        rise = max(1.5, 0.85 * max(0.0, k["foot"] * k["M"] - k["R3"]))
         w = float(sm(FOOT_TOP + rise, FOOT_TOP, z)); req = _req(P)
-        P = c + (P - c) * (1 + (STACK_FOOT * k["M"] / max(req, 1e-6) - 1) * w)
+        P = c + (P - c) * (1 + (k["foot"] * k["M"] / max(req, 1e-6) - 1) * w)
     if k["form"] != "shelf":                # the wave-cut notch (the shelves are the platform it leaves)
         req = _req(P); P = c + (P - c) * max(1 - rock_notch(z, k["r"]) / max(req, 1e-6), 0.2)
     f = math.radians(k["face"]); u, v = np.array([math.cos(f), math.sin(f)]), np.array([-math.sin(f), math.cos(f)])
@@ -666,6 +678,8 @@ def stack_top(k, X, Y):
         fall = math.tan(math.radians(20.0)) * np.clip(xl + rx, 0, None)
         return h - fall - 0.12 * h * sm(0.35 * rx - 0.5, 0.35 * rx + 0.5, xl + jag)
     if form == "wedge": return np.full(X.shape, h)
+    if form == "spire":                     # the needle broken off: a cut falling toward the blade's back
+        return h - math.tan(math.radians(SPIRE_BREAK)) * np.clip(k["tip"] - xl, 0, None) - 0.15 * np.abs(jag)
     return h + 0.12 * (vnoise(X * 0.4 + seed, Y * 0.4) - 0.5) * 2               # the reef and the shelves: rough flats
 
 def _stack_rock(x, y, r, h, lean, form, face, seed, disc=None):
@@ -673,14 +687,16 @@ def _stack_rock(x, y, r, h, lean, form, face, seed, disc=None):
     is drawn at (re), its radius at mid-height (M) and at FOOT_TOP (R3)."""
     k = dict(x=float(x), y=float(y), r=float(r), h=float(h), lean=float(lean), form=form, face=float(face), seed=int(seed),
              slope=WEDGE_SLOPE[0] if r > 8.0 else WEDGE_SLOPE[1])
-    k["H"] = h * 1.08 if form in CUT_TOP else h
+    k["H"] = h * (SPIRE_END if form == "spire" else 1.08) if form in CUT_TOP else h
+    k["foot"] = SPIRE_FOOT if form == "spire" else STACK_FOOT
     if form == "shelf": k["H"] = h + 0.6
     # the form is sized so its foot fills the line's footprint (the data's r, as rock_prof's 1.1 r at the waterline:
     # the shelf and the fallen blocks are laid out round it): its mid-height radius is 1.1 r / STACK_FOOT
     k["re"] = float(r)
     if form not in ("shelf", "wedge") and h >= 8.0:
-        for _ in range(4): k["re"] *= FOOT_R * r / STACK_FOOT / _req(_section_raw(k, h / 2, 96)[0])
+        for _ in range(4): k["re"] *= FOOT_R * r / k["foot"] / _req(_section_raw(k, h / 2, 96)[0])
     k["M"] = _req(_section_raw(k, h / 2, 96)[0]); k["R3"] = _req(_section_raw(k, FOOT_TOP, 96)[0])
+    k["tip"] = float(_section_raw(k, h, 8)[1][0])
     # and never wider than its shelf: the foot stays FOOT_ROOM inside the disc (the weathering's lumps go on it)
     for _ in range(8 if disc is not None else 0):
         F = stack_section(k, 1.5, 96); over = float(np.hypot(F[:, 0] - disc[0], F[:, 1] - disc[1]).max()) - (disc[2] - FOOT_ROOM)
@@ -688,6 +704,7 @@ def _stack_rock(x, y, r, h, lean, form, face, seed, disc=None):
         reach = float(np.hypot(F[:, 0] - x, F[:, 1] - y).max())
         k["re"] *= (reach - over) / reach
         k["M"] = _req(_section_raw(k, h / 2, 96)[0]); k["R3"] = _req(_section_raw(k, FOOT_TOP, 96)[0])
+        k["tip"] = float(_section_raw(k, h, 8)[1][0])
     return k
 
 def stack_rocks():
@@ -702,6 +719,64 @@ def stack_shelves():
     """The wave-cut shelves as discs to build (one solid per shelf, its discs united): shelf index and the disc rock."""
     return [(si, _stack_rock(sx, sy, R, sh["z"], 0.0, "shelf", 0.0, 300 + 7 * si + j))
             for si, sh in enumerate(SHELVES) for j, (sx, sy, R) in enumerate(sh["discs"])]
+
+# The talus (fix round 3c-1; reference-landforms §2: "a cliff foot is a heap of fallen column pieces"; owner photo 12):
+# the flared foot is heaped with angular blocks, so it reads as rockfall, not a smooth skirt. Per rock >= 8 m: about
+# one block per TALUS_EVERY x its size round the foot, each TALUS_SIZE x its mid-height radius (1-7 m), half sunk in
+# the apron between the water and the top of the talus, kept on the shelf's disc.
+TALUS_EVERY, TALUS_SIZE = 0.75, (0.2, 0.45)
+
+def stack_talus(k, disc):
+    """A rock's talus blocks: (x, y, dims, yaw, tilt, top z, seed), as block_hull takes them."""
+    if k["h"] < 8.0: return []
+    rng = np.random.default_rng(k["seed"] + 7000); out = []
+    rise = max(1.5, 0.85 * max(0.0, k["foot"] * k["M"] - k["R3"]))
+    lo, hi = (float(np.clip(k["M"] * f, 1.0, 7.0)) for f in TALUS_SIZE)
+    foot = stack_section(k, 1.5, 96); cx, cy = foot.mean(0)
+    want = int(np.hypot(*np.diff(np.vstack([foot, foot[:1]]), axis=0).T).sum() / (TALUS_EVERY * (lo + hi) / 2))
+    for _ in range(want * 6):
+        if len(out) == want: break
+        size = lo + (hi - lo) * rng.random() ** 1.5
+        zc = rng.uniform(0.2, FOOT_TOP + 0.7 * rise)
+        ring = stack_section(k, zc, 48); q = ring[int(rng.integers(len(ring)))]
+        d = q - [cx, cy]; d = d / max(float(np.hypot(*d)), 1e-6)
+        bx, by = q + d * 0.35 * size
+        if math.hypot(bx - disc[0], by - disc[1]) + 0.6 * size > disc[2] - 0.3: continue
+        if any(math.hypot(bx - o[0], by - o[1]) < 0.4 * (size + o[2][0]) and abs(zc - o[5]) < size for o in out): continue
+        dims = (size, size * rng.uniform(0.6, 0.95), size * rng.uniform(0.5, 0.85))
+        out.append((float(bx), float(by), tuple(float(v) for v in dims), float(rng.uniform(0, math.pi)),
+                    float(rng.uniform(-0.45, 0.45)), float(zc + 0.4 * dims[2]), int(rng.integers(1 << 30))))
+    return out
+
+# Skerries (fix round 3c-1; owner photo 12: low rocks awash all round the stacks, near and far from the line): 6-12
+# low angular rocks 0.3-2 m above the sea and 2-6 m across, some with a smaller piece beside them, scattered among
+# the pieces seaward of the arch at uneven distances from the line, never on a shelf. Each: x, y, dims, yaw, tilt, top
+# z, seed (block_hull), the first of each group its main rock.
+SKERRY_COUNT = 9
+
+def _skerries():
+    rng = np.random.default_rng(41); out = []; mains = []
+    s_end = max(pc["s"] for pc in HEADLAND)
+    discs = [pc["disc"] for pc in HEADLAND]
+    for _ in range(4000):
+        if len(mains) == SKERRY_COUNT: break
+        s = rng.uniform(ARCH_LEG + 15.0, s_end + 25.0)
+        off = rng.choice((-1.0, 1.0)) * (10.0 + 70.0 * rng.random() ** 1.3)
+        x, y = line_xy(s, line_curve(s) + off); size = rng.uniform(2.0, 6.0)
+        if any(math.hypot(x - d[0], y - d[1]) < d[2] + size + 3.0 for d in discs): continue
+        if any(math.hypot(x - m[0], y - m[1]) < 18.0 for m in mains): continue
+        if float(ground_base(x, y)) > -0.2: continue                     # at sea, not on the flats' edge
+        mains.append((x, y, size))
+        group = [(x, y, size, rng.uniform(0.3, 2.0))]
+        for _ in range(int(rng.integers(0, 3))):                          # a smaller piece or two beside it
+            a = rng.uniform(0, 2 * math.pi); sz = size * rng.uniform(0.3, 0.6); d = size * 0.5 + sz * 0.6
+            group.append((x + d * math.cos(a), y + d * math.sin(a), sz, rng.uniform(0.3, min(1.2, group[0][3]))))
+        for (gx, gy, sz, top) in group:
+            dims = (sz, sz * rng.uniform(0.55, 0.9), max(top + 1.5, sz * rng.uniform(0.4, 0.7)))
+            out.append((float(gx), float(gy), tuple(float(v) for v in dims), float(rng.uniform(0, math.pi)),
+                        float(rng.uniform(-0.2, 0.2)), float(top), int(rng.integers(1 << 30))))
+    return out
+SKERRIES = _skerries()
 
 def stack_rings(k, step=0.5):
     """The heights of a rock's mesh rings: from below the flats to the top of its solid, dense through the notch."""
@@ -1407,9 +1482,10 @@ def arch_crowns(P, Nrm, up=(0.2, 0.5)):
     w = w * sm(4.0, 2.5, target - z)                       # a cell reaching far down a slope is left alone: no spikes
     return z + w * (target - z)
 
-def block_hull(bs, bq, dims, yaw, tilt, top, seed):
+def block_hull(bs, bq, dims, yaw, tilt, top, seed, shared=False):
     """A fallen block as an angular hull (flat faces, sharp edges): a box's corners each cut back at random and a few
-    points on its faces, turned and tilted, the highest point at `top`, centred on (bs, bq): verts, faces."""
+    points on its faces, turned and tilted, the highest point at `top`, centred on (bs, bq): verts, faces. `shared`:
+    the faces share their corners (a quarter of the vertices; shaded smooth, for the many small talus blocks)."""
     import bmesh
     rng = np.random.default_rng(seed)
     pts = [np.array([sx, sy, sz]) * (1 - rng.uniform(0.0, 0.35, 3)) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
@@ -1427,7 +1503,9 @@ def block_hull(bs, bq, dims, yaw, tilt, top, seed):
     bmesh.ops.delete(bm, geom=[g for g in res["geom_interior"] if isinstance(g, bmesh.types.BMVert)], context="VERTS")
     bmesh.ops.triangulate(bm, faces=list(bm.faces))
     verts, faces = [], []
-    for f in bm.faces:                                                   # each face its own corners: flat shading
+    if shared:
+        bm.verts.index_update(); verts = [tuple(v.co) for v in bm.verts]; faces = [tuple(v.index for v in f.verts) for f in bm.faces]
+    for f in ([] if shared else bm.faces):                               # each face its own corners: flat shading
         o_ = len(verts); verts += [tuple(l.vert.co) for l in f.loops]; faces.append(tuple(range(o_, o_ + len(f.loops))))
     bm.free()
     return verts, faces
@@ -1611,10 +1689,15 @@ def build_stacks(max_tris=96_000):
         lump = np.array([mnoise.noise(Vector((x / 16.0 + sd, y / 16.0, z / 12.0))) * 3.4 + mnoise.noise(Vector((x / 7.0 + 5, y / 7.0 + sd, z / 6.0))) * 1.3
                          for x, y, z in P]) * kk
         lump += np.array([mnoise.noise(Vector((x / 2.5, y / 2.5 + 3, z / 2.5 + sd))) for x, y, z in P]) * 0.25
+        band = np.floor(P[:, 2] - P[:, 2].min()).astype(int)                       # the lumps move each 1 m band in and out
+        lump -= (np.bincount(band, lump) / np.maximum(np.bincount(band), 1))[band]  # but keep its area: the foot's flare holds
         P = P + N * (lump * (1 - 0.6 * np.clip(N[:, 2], 0, 1)) * sm(-2.0, 2.0, P[:, 2]) * (0.4 + 0.6 * sm(3.0, 8.0, P[:, 2])))[:, None]
         _set_co(o, P)
-        # column ends step the tops; on a spire's or a wedge's steep flanks only the near-level ledges (no terraces)
-        P, N = _mesh_arrays(o); P[:, 2] = arch_crowns(P, N, (0.6, 0.85) if k["form"] in ("spire", "wedge") else (0.2, 0.5)); _set_co(o, P)
+        # column ends step the tops; a spire's flanks are stepped by them too (owner photo 12), a wedge's slope only
+        # at its near-level ledges (no terraces down its face)
+        up = {"spire": (0.35, 0.65), "wedge": (0.6, 0.85)}.get(k["form"], (0.2, 0.5))
+        P, N = _mesh_arrays(o)                                                       # (not where the rock is a thin blade:
+        P[:, 2] += (arch_crowns(P, N, up) - P[:, 2]) * np.clip(np.interp(P[:, 2], zr, rz) / 3.0 - 0.3, 0, 1); _set_co(o, P)   # it would swell it)
         P, N = _mesh_arrays(o)
         P = P + N * (arch_columns(P, N, entablature=False) * np.clip(np.interp(P[:, 2], zr, rz) / 6.0, 0.3, 1.0))[:, None]
         _set_co(o, P)
@@ -1624,14 +1707,20 @@ def build_stacks(max_tris=96_000):
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs: o.select_set(True)
     bpy.context.view_layer.objects.active = objs[0]; bpy.ops.object.join(); o = objs[0]; o.name = "stacks"
-    # the fallen blocks at the stacks' feet: angular, flat-shaded, joined after the decimation as their own pieces
+    # the fallen blocks at the stacks' feet, the talus heaped on each foot and the skerries: angular, flat-shaded,
+    # joined after the decimation as their own pieces
     bv, bf, nb = [], [], 0
+    hulls = []
     for pc in HEADLAND:
         for (bx, by, br, bh) in pc["blocks"]:
             rng = np.random.default_rng(1200 + nb)
             dims = (2 * br, 2 * br * rng.uniform(0.6, 0.95), 2 * br * rng.uniform(0.55, 0.95))
-            pv, pf = block_hull(bx, by, dims, float(rng.uniform(0, math.pi)), float(rng.uniform(-0.35, 0.35)), bh, 1300 + nb)
-            o_ = len(bv); bv += pv; bf += [tuple(i + o_ for i in f) for f in pf]; nb += 1
+            hulls.append((bx, by, dims, float(rng.uniform(0, math.pi)), float(rng.uniform(-0.35, 0.35)), bh, 1300 + nb)); nb += 1
+    talus = [t for k, d in zip(stack_rocks(), [pc["disc"] for pc in HEADLAND for _ in pc["rocks"]]) for t in stack_talus(k, d)]
+    for i_, hb in enumerate(hulls + SKERRIES + talus):
+        pv, pf = block_hull(*hb, shared=i_ >= len(hulls) + len(SKERRIES))
+        o_ = len(bv); bv += pv; bf += [tuple(i + o_ for i in f) for f in pf]
+    log("stack hulls: fallen", nb, "talus", len(talus), "skerries", len(SKERRIES))
     ntri = sum(len(p.vertices) - 2 for p in o.data.polygons); want = max_tris - len(bf)
     log("stacks remeshed", ntri, "tris; blocks", nb, len(bf), "tris")
     if ntri > want:

@@ -52,11 +52,11 @@
  },
  "stacks": {
   "file": "stops/headland/stacks.bin",
-  "verts": 50170,
-  "tris": 94104,
+  "verts": 52274,
+  "tris": 94264,
   "indexBytes": 2,
   "scale": 100,
-  "x": -1154.2,
-  "y": 1333.0
+  "x": -1124.9,
+  "y": 1311.3
  }
 }

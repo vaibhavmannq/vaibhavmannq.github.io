@@ -145,3 +145,79 @@ export function pointTriangle(p: number[], a: number[], b: number[], c: number[]
   const den = 1 / (va + vb + vc);
   return dist(at(ab, vb * den, ac, vc * den));
 }
+
+/**
+ * How close the camera comes to a rock part on the journey (stop cameras and `perFlight` samples per flight): the
+ * exact distance to the nearest triangle, where it happens, and the samples that sit inside the closed mesh (a vertical
+ * ray up from the camera crosses it an odd number of times). `position` is the decoded part (coast axes around
+ * `origin`); vertices and per-triangle bounding spheres are laid out once, and samples outside the part's box (plus
+ * 20 m) are skipped.
+ */
+export function clearance(
+  position: Float32Array,
+  index: Uint32Array,
+  origin: { x: number; y: number },
+  perFlight = 400,
+): { nearest: number; where: string; inside: string[] } {
+  const nv = position.length / 3;
+  const V = new Float64Array(nv * 3);
+  const lo = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
+  const hi = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
+  for (let i = 0; i < nv; i++) {
+    const x = (position[i * 3] ?? 0) + origin.x;
+    const y = (position[i * 3 + 1] ?? 0) + origin.y;
+    V[i * 3] = x;
+    V[i * 3 + 1] = y;
+    V[i * 3 + 2] = position[i * 3 + 2] ?? 0;
+    lo[0] = Math.min(lo[0] ?? 0, x);
+    lo[1] = Math.min(lo[1] ?? 0, y);
+    hi[0] = Math.max(hi[0] ?? 0, x);
+    hi[1] = Math.max(hi[1] ?? 0, y);
+  }
+  const vert = (k: number) => [V[k * 3] ?? 0, V[k * 3 + 1] ?? 0, V[k * 3 + 2] ?? 0];
+  const nt = index.length / 3;
+  const tri = Array.from({ length: nt }, (_, t) => [
+    vert(index[t * 3] ?? 0),
+    vert(index[t * 3 + 1] ?? 0),
+    vert(index[t * 3 + 2] ?? 0),
+  ]);
+  const sphere = tri.map(([a = [], b = [], c = []]) => {
+    const m = [0, 1, 2].map((j) => ((a[j] ?? 0) + (b[j] ?? 0) + (c[j] ?? 0)) / 3);
+    const r = Math.max(
+      ...[a, b, c].map((v) =>
+        Math.hypot((v[0] ?? 0) - (m[0] ?? 0), (v[1] ?? 0) - (m[1] ?? 0), (v[2] ?? 0) - (m[2] ?? 0)),
+      ),
+    );
+    return [m[0] ?? 0, m[1] ?? 0, m[2] ?? 0, r] as const;
+  });
+  let nearest = Number.POSITIVE_INFINITY;
+  let where = '';
+  const inside: string[] = [];
+  for (const { key, p } of cameraSamples(perFlight)) {
+    if (p[0] < (lo[0] ?? 0) - 20 || p[0] > (hi[0] ?? 0) + 20 || p[1] < (lo[1] ?? 0) - 20 || p[1] > (hi[1] ?? 0) + 20)
+      continue;
+    let crossings = 0;
+    for (let t = 0; t < nt; t++) {
+      const [a = [], b = [], c = []] = tri[t] ?? [];
+      const [mx, my, mz, r] = sphere[t] ?? [0, 0, 0, 0];
+      if (Math.hypot(p[0] - mx, p[1] - my, p[2] - mz) - r < nearest) {
+        const e = pointTriangle(p, a, b, c);
+        if (e < nearest) {
+          nearest = e;
+          where = `${key} at (${p.map((v) => v.toFixed(1)).join(', ')})`;
+        }
+      }
+      const [ax = 0, ay = 0, az = 0] = a;
+      const [bx = 0, by = 0, bz = 0] = b;
+      const [cx = 0, cy = 0, cz = 0] = c;
+      const s1 = (bx - ax) * (p[1] - ay) - (by - ay) * (p[0] - ax);
+      const s2 = (cx - bx) * (p[1] - by) - (cy - by) * (p[0] - bx);
+      const s3 = (ax - cx) * (p[1] - cy) - (ay - cy) * (p[0] - cx);
+      if ((s1 > 0 && s2 > 0 && s3 > 0) || (s1 < 0 && s2 < 0 && s3 < 0)) {
+        if ((az * s2 + bz * s3 + cz * s1) / (s1 + s2 + s3) > p[2]) crossings++;
+      }
+    }
+    if (crossings % 2 === 1) inside.push(key);
+  }
+  return { nearest, where, inside };
+}
