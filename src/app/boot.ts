@@ -3,11 +3,12 @@ import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vecto
 import { fetchBinary, fetchJson, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
 import { createSkyStore, skyAmbients } from '../assets/skies';
-import { type Pose, poseAt } from '../journey/camera';
+import { fovFor, type Pose, poseAt } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
+import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
 import { SHOTS } from '../journey/shots';
 import { STOPS } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
@@ -60,6 +61,8 @@ export interface App {
   stills: boolean;
   /** Resolves when stage B (the world base) is in the scene. */
   stageB: Promise<void>;
+  /** Per stop, the distance to the nearest thing in view (pointer parallax); 10 m until the ground has loaded. */
+  nearM: number[];
 }
 
 const html = document.documentElement;
@@ -92,6 +95,10 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void>
   ]);
   const meta = app.manifest.base;
   const heights = new Uint16Array(heightsBuf);
+  const heightAt = createHeightSampler(heights, meta.heights);
+  app.nearM = STOPS.map((s) =>
+    nearDistance(s.cam, s.landscape.yaw, s.landscape.pitch, fovFor(s.landscape.lens, 16 / 9), heightAt),
+  );
   const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
@@ -101,7 +108,7 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void>
   ];
   if (dressingMeta && dressingBuf) {
     const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
-    parts.push(['dressing', createDressing(instances, createHeightSampler(heights, meta.heights))]);
+    parts.push(['dressing', createDressing(instances, heightAt)]);
   }
   // The four unknowns (M2). Each hides itself wherever its hour or place is not in play.
   const { night, midnight } = SHOTS;
@@ -234,6 +241,7 @@ export async function boot(): Promise<App> {
     onFrame: [],
     stills: params.stills,
     stageB: Promise.resolve(),
+    nearM: STOPS.map(() => 10),
   };
   appRef = app;
 
@@ -258,11 +266,43 @@ export async function boot(): Promise<App> {
   const startedAt = performance.now();
   let last: FrameState | null = null;
 
+  // Pointer parallax (D28): a mouse or pen moves the view at once; touch scrolls, and gets tilt later (D27).
+  const pointer: [number, number] = [0, 0];
+  const slide: [number, number] = [0, 0];
+  window.addEventListener(
+    'pointermove',
+    (event) => {
+      if (event.pointerType === 'touch') return;
+      pointer[0] = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+      pointer[1] = 1 - (event.clientY / Math.max(1, window.innerHeight)) * 2;
+    },
+    { passive: true },
+  );
+  document.documentElement.addEventListener('pointerleave', () => {
+    pointer[0] = 0;
+    pointer[1] = 0;
+  });
+
   const frame = (nowMs: number, dtS: number): WorldFrame => {
     const u = app.override ?? cameraU(nowMs);
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
     const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion);
+    if (!caps.reducedMotion) {
+      const near = app.nearM[state.t < 0.5 ? state.a : state.b] ?? 10;
+      const [right, up] = parallaxOffset(pointer, near, pose.fov, camera.aspect);
+      const w = parallaxWeight(state);
+      const k = 1 - Math.exp(-PARALLAX_RATE * dtS);
+      slide[0] += (right * w - slide[0]) * k;
+      slide[1] += (up * w - slide[1]) * k;
+      // sideways in the camera's own frame (coast axes: right of yaw is (cos, -sin)); three.js: x, y up, z = -north
+      const yaw = (pose.yaw * Math.PI) / 180;
+      pose.position = [
+        pose.position[0] + Math.cos(yaw) * slide[0],
+        pose.position[1] + slide[1],
+        pose.position[2] + Math.sin(yaw) * slide[0],
+      ];
+    }
     aimCamera(camera, pose);
     const hour = blendHours(
       HOURS[STOP_IDS[state.a] ?? 'golden'],
