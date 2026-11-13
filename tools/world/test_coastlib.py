@@ -30,29 +30,46 @@ H = c.HEADLAND
 s_of = lambda x, y: (x - ox) * u[0] + (y - oy) * u[1]
 o_of = lambda x, y: (x - ox) * p[0] + (y - oy) * p[1]
 def edge(a, b): return min(math.hypot(ra[0] - rb[0], ra[1] - rb[1]) - ra[2] - rb[2] for ra in a["rocks"] for rb in b["rocks"])
-
-# the pieces run seaward from the arch, which stays the land-most and tallest: stacks, then stumps, then a reef
 ss = [pc["s"] for pc in H]
-assert ss == sorted(ss) and ss[0] > 56.0, ss
-kinds = [pc["kind"] for pc in H]
+assert ss == sorted(ss), ss
+assert all(abs(s_of(*r[:2]) - pc["s"]) < 20 for pc in H for r in pc["rocks"])
+L = [pc for pc in H if pc["kind"] == "remnant"]                  # landward of the arch, between it and the land
+S = [pc for pc in H if pc["kind"] != "remnant"]                  # seaward of the arch: the falling sequence
+
+# D3, the arch is never alone: a broad parent mass and a smaller piece beside it stand between the land and the arch.
+# They are what is left of the land side: "falls seaward" runs from the arch out and does not apply to them.
+assert len(L) == 2 and all(pc["s"] < -c.ARCH_LEG for pc in L) and H[:2] == L, [pc["kind"] for pc in H]
+big, small = sorted((pc["rocks"][0] for pc in L), key=lambda r: -r[3])
+assert 20.0 <= big[2] <= 28.0 and 50.0 <= big[3] <= 65.0 and big[3] > S[0]["rocks"][0][3], big
+assert small[2] < big[2] and small[3] < big[3] and edge(L[0], L[1]) < 40.0, (small, big)
+line_rocks = [r for pc in H for r in pc["rocks"]]
+assert not [r for r in c.ROCKS if s_of(*r[:2]) < 0 and abs(o_of(*r[:2])) < 60 and r[3] > 5.0 and r not in line_rocks], "a tall stray rock landward of the arch"
+assert not [r for r in c.ROCKS if s_of(*r[:2]) > 0 and abs(o_of(*r[:2])) < 80 and r[3] > 2.5 and r not in line_rocks], "rubble taller than the stumps"
+
+# seaward the pieces run out from the arch: stacks, then stumps, then a reef
+assert S[0]["s"] > c.ARCH_LEG
+kinds = [pc["kind"] for pc in S]
 assert kinds[-1] == "reef" and kinds.count("reef") == 1, kinds
 n_st = sum(k in ("stack", "split") for k in kinds)
 assert all(k in ("stack", "split") for k in kinds[:n_st]) and all(k == "stump" for k in kinds[n_st:-1]) and n_st < len(kinds) - 2, kinds
-assert all(abs(s_of(*r[:2]) - pc["s"]) < 20 for pc in H for r in pc["rocks"])
-assert not [r for r in c.ROCKS if s_of(*r[:2]) < 0 and abs(o_of(*r[:2])) < 60 and r[3] > 5.0], "a tall rock landward of the arch"
-assert not [r for r in c.ROCKS if s_of(*r[:2]) > 0 and abs(o_of(*r[:2])) < 80 and r[3] > 2.5 and not any(r in pc["rocks"] for pc in H)], "rubble taller than the stumps"
+
+# the line wanders on a gentle curve, up to +-40 m across, not in a ruled row and not by jitter
+first = [pc["rocks"][0] for pc in S]
+assert all(abs(o_of(*r[:2]) - c.line_curve(s_of(*r[:2]))) <= 6.5 for r in first), [round(o_of(*r[:2]) - c.line_curve(s_of(*r[:2])), 1) for r in first]
+os_ = [o_of(*r[:2]) for pc in S for r in pc["rocks"]]
+assert max(abs(o) for o in os_) <= 40.0 and max(os_) - min(os_) >= 40.0, os_
 
 # "stacks fall in height seaward": each <= 0.8x the one landward of it, +-15 % (the arch's top is the first)
-hs = [r[3] for pc in H if pc["kind"] in ("stack", "split") for r in sorted(pc["rocks"], key=lambda r: s_of(*r[:2]))]
+hs = [r[3] for pc in S if pc["kind"] in ("stack", "split") for r in sorted(pc["rocks"], key=lambda r: s_of(*r[:2]))]
 prev = c.ARCH_TOP
 for h in hs:
     assert 0.8 * 0.85 <= h / prev <= 0.8 * 1.15, (h, prev, h / prev)
     prev = h
-stumps = [pc["rocks"][0][3] for pc in H if pc["kind"] == "stump"]
+stumps = [pc["rocks"][0][3] for pc in S if pc["kind"] == "stump"]
 assert all(h <= 4.0 for h in stumps) and stumps == sorted(stumps, reverse=True) and stumps[0] < 0.5 * hs[-1], stumps
 
 # "no two gaps alike": the open water between neighbouring pieces, no two within 20 % of each other
-gaps = [edge(H[i], H[i + 1]) for i in range(len(H) - 1)]
+gaps = [edge(S[i], S[i + 1]) for i in range(len(S) - 1)]
 assert min(gaps) > 5.0, gaps
 for i in range(len(gaps)):
     for j in range(i + 1, len(gaps)):
@@ -87,19 +104,31 @@ for pc in H:
         band = rings[(rings >= -0.6) & (rings <= min(h, 1.5))]
         assert len(band) >= 4 and np.diff(band).max() <= 0.2, (r, h, band)
 
-# every piece stands on a shelf (radius + 4-8 m, z -0.5..0.3) with 3-8 fallen blocks at its foot
+# every piece stands on a shelf: its own disc (reach + 4-8 m) and 3-8 fallen blocks at its foot; discs that would
+# overlap are one shelf at one height (z -0.5..0.3), so no two shelves overlap
 for pc in H:
-    sx, sy, R, sz = pc["shelf"]
+    sx, sy, R = pc["disc"]; sz = c.SHELVES[pc["shelf"]]["z"]
     reach = max(math.hypot(x - sx, y - sy) + r for (x, y, r, h, l) in pc["rocks"])
     assert 4.0 <= R - reach <= 8.0 and -0.5 <= sz <= 0.3, (pc["kind"], R - reach, sz)
+    assert pc["disc"] in c.SHELVES[pc["shelf"]]["discs"]
     assert 3 <= len(pc["blocks"]) <= 8, len(pc["blocks"])
     for (bx, by, br, bh) in pc["blocks"]:
         assert 0.4 <= br <= 2.5 and sz < bh <= sz + 3.5, (br, bh, sz)
         assert math.hypot(bx - sx, by - sy) + br <= R
-        assert all(math.hypot(bx - x, by - y) >= 1.1 * r + br for q in H for (x, y, r, h, l) in q["rocks"])
+        assert all(math.hypot(bx - x, by - y) >= 1.1 * r + br for (x, y, r, h, l) in line_rocks)
+apart = lambda a, b: math.hypot(a[0] - b[0], a[1] - b[1]) >= a[2] + b[2]
+for i, si in enumerate(c.SHELVES):
+    for sj in c.SHELVES[i + 1:]:
+        assert all(apart(a, b) for a in si["discs"] for b in sj["discs"]), "two shelves overlap"
+    seen = [si["discs"][0]]                                           # one shelf is one connected platform
+    for _ in si["discs"]:
+        seen += [d for d in si["discs"] if d not in seen and any(not apart(d, e) for e in seen)]
+    assert len(seen) == len(si["discs"])
+assert sum(len(sh["discs"]) for sh in c.SHELVES) == len(H) and any(len(sh["discs"]) > 1 for sh in c.SHELVES)
 
 # Blender builds every piece; the data is seeded: a second load gives the same line
-assert all(r in c.ROCKS for pc in H for r in pc["rocks"])
+assert all(r in c.ROCKS for r in line_rocks)
 assert len(c.ROCK_SEEDS) == len(c.ROCKS) and len(set(c.ROCK_SEEDS)) == len(c.ROCK_SEEDS)
 assert coastlib.load().HEADLAND == H
-print(f"ok headland: {len(H)} pieces, stacks {hs}, stumps {stumps}, reef {reef[3]} m, gaps {[round(g, 1) for g in gaps]}")
+print(f"ok headland: remnants {[r[3] for pc in L for r in pc['rocks']]}, {len(S)} pieces seaward, stacks {hs}, stumps {stumps}, "
+      f"reef {reef[3]} m, gaps {[round(g, 1) for g in gaps]}, o {min(os_):.0f}..{max(os_):.0f} m, {len(c.SHELVES)} shelves")

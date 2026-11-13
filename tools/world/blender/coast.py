@@ -359,7 +359,7 @@ def ground(x, y):
     return np.where(hb > 3.0, np.maximum(h, 3.0), h)         # gullies never cut land below 3 m (no inland sea)
 
 # ---------------- the old headland line: sea stacks, stumps, a reef (pure data; Blender builds it in build_rocks) ----------------
-# The arch is the last standing piece of an old headland; land lies landward along its spine (-s), open sea seaward (+s).
+# The arch is the last arch of an old headland; land lies landward along its spine (-s), open sea seaward (+s).
 # Real coasts (reference-landforms §2; owner cove-and-stacks 12, cliffs-and-columns 1 and 5): seaward of the arch the
 # pieces get lower and more broken (each stack about 0.8x the one before it), the gaps are uneven, a few lean, one has
 # split along a joint, and the line ends in stumps and a reef awash. Every piece stands on its wave-cut shelf with
@@ -376,45 +376,78 @@ def line_so(x, y):
     ax, ay = ARCH["pos"]
     return (x - ax) * LINE_U[0] + (y - ay) * LINE_U[1], (x - ax) * LINE_P[0] + (y - ay) * LINE_P[1]
 
-# (kind, open water before it (m, edge to edge; no two alike), offset across the line, rocks: (r, h, lean)...)
+# The line is not ruled straight: it follows the old headland's gentle curve, up to +-40 m across, so from Dusk the
+# pieces overlap at different depths instead of standing in a row (owner cove-and-stacks 12).
+LINE_BEND, LINE_BEND_S0, LINE_BEND_L = 38.0, 60.0, 300.0
+def line_curve(s): return LINE_BEND * math.sin(math.pi * (s - LINE_BEND_S0) / LINE_BEND_L)
+
+# Seaward of the arch: (kind, open water before it (m, edge to edge; no two alike), offset off the curve, rocks: (r, h, lean)...)
 # Heights 66 (arch) > 50 > 39 > 28 | 25 > 19 > 13.5 > 11: each 0.71-0.89 of the one before. The split's halves stand
 # 2.5 m apart on one shelf. Then two stumps and a reef 0.5 m above the sea.
-_PIECES = (("stack", 19.0, -6.0, ((14.0, 50.0, 0.02),)),
-           ("stack", 36.0, 7.0, ((11.0, 39.0, -0.03),)),
-           ("split", 12.5, 2.0, ((8.0, 28.0, 0.0), (6.5, 25.0, 0.01))),
-           ("stack", 29.0, 14.0, ((7.0, 19.0, 0.09),)),           # leaning
-           ("stack", 10.0, 6.0, ((6.0, 13.5, -0.02),)),
-           ("stack", 44.0, -9.0, ((5.5, 11.0, -0.11),)),          # leaning
-           ("stump", 15.5, -4.0, ((6.0, 3.2, 0.0),)),
-           ("stump", 23.5, 6.0, ((4.5, 1.6, 0.0),)),
-           ("reef", 54.0, 15.0, ((8.0, 0.5, 0.0),)))
+_PIECES = (("stack", 19.0, -3.0, ((14.0, 50.0, 0.02),)),
+           ("stack", 36.0, 2.0, ((11.0, 39.0, -0.03),)),
+           ("split", 12.5, -6.0, ((8.0, 28.0, 0.0), (6.5, 25.0, 0.01))),
+           ("stack", 29.0, 3.0, ((7.0, 19.0, 0.09),)),           # leaning
+           ("stack", 10.0, -2.0, ((6.0, 13.5, -0.02),)),
+           ("stack", 44.0, 0.0, ((5.5, 11.0, -0.11),)),          # leaning
+           ("stump", 15.5, 2.0, ((6.0, 3.2, 0.0),)),
+           ("stump", 23.5, -3.0, ((4.5, 1.6, 0.0),)),
+           ("reef", 54.0, 4.0, ((8.0, 0.5, 0.0),)))
 SPLIT_GAP, SPLIT_TURN = 2.5, math.radians(35.0)                       # the split runs 35 deg off the line
+# Landward of the arch, between it and the land (D3: the arch is never alone): the headland's broad parent mass and a
+# smaller piece beside it. They are what is left of the land side, so "falls seaward" does not apply to them.
+_REMNANTS = (("remnant", -132.0, 8.0, ((25.0, 58.0, 0.0),)),
+             ("remnant", -178.0, -27.0, ((10.0, 27.0, 0.02),)))
 
 def _headland():
     rng = np.random.default_rng(23); out = []; prev = None
-    for kind, gap, o, rocks in _PIECES:
-        r0 = rocks[0][0]
-        if prev is None: s = ARCH_LEG + gap + r0
-        else:                                                         # exactly `gap` of open water from the last piece's seaward rock
-            ps, po = line_so(prev[0], prev[1]); d = prev[2] + gap + r0
-            s = ps + math.sqrt(max(d * d - (o - po) ** 2, 1.0))
+    for kind, s, o, rocks in _REMNANTS:
+        x, y = line_xy(s, o); r, h, l = rocks[0]
+        out.append(dict(kind=kind, rocks=[(float(x), float(y), r, h, l)]))
+    for kind, gap, do, rocks in _PIECES:
+        r0 = rocks[0][0]; s = ARCH_LEG + gap + r0
+        for _ in range(12):                                          # on the curve, exactly `gap` of open water from the last piece
+            o = line_curve(s) + do
+            if prev is not None:
+                ps, po = line_so(prev[0], prev[1]); d = prev[2] + gap + r0
+                s = ps + math.sqrt(max(d * d - (o - po) ** 2, 1.0))
+        o = line_curve(s) + do
+        if prev is not None:
+            ps, po = line_so(prev[0], prev[1]); d = prev[2] + gap + r0; s = ps + math.sqrt(max(d * d - (o - po) ** 2, 1.0))
         x, y = line_xy(s, o); placed = [(float(x), float(y), r0, rocks[0][1], rocks[0][2])]
         if len(rocks) > 1:
             r1, h1, l1 = rocks[1]; d = r0 + SPLIT_GAP + r1
             x1, y1 = line_xy(s + d * math.cos(SPLIT_TURN), o + d * math.sin(SPLIT_TURN)); placed.append((float(x1), float(y1), r1, h1, l1))
         prev = placed[-1][:3]
-        # the shelf: the wave-cut platform the piece stands on, a little above or below the flats around it
-        w = sum(q[2] for q in placed)
-        cx = sum(q[0] * q[2] for q in placed) / w; cy = sum(q[1] * q[2] for q in placed) / w
-        reach = max(math.hypot(q[0] - cx, q[1] - cy) + q[2] for q in placed)
-        rmax = max(q[2] for q in placed); bmax = min(2.0, 0.08 * rmax + 0.5)
-        R = reach + rng.uniform(max(4.0, min(7.0, 0.15 * rmax + 2 * bmax + 0.5)), 8.0)
-        sz = float(np.clip(max(rng.uniform(-0.5, 0.3), float(_ground_world(cx, cy)) + 0.1), -0.5, 0.3))
-        out.append(dict(kind=kind, s=float(line_so(cx, cy)[0]), rocks=placed, shelf=(float(cx), float(cy), float(R), sz), blocks=[]))
-    # fallen blocks: 3-8 per piece, on its shelf at the foot of its rocks, clear of every rock in the line
+        out.append(dict(kind=kind, rocks=placed))
+    # each piece's disc of wave-cut shelf: its reach + 4-8 m, room left at its foot for the fallen blocks
+    for pc in out:
+        q_ = pc["rocks"]; w = sum(q[2] for q in q_)
+        cx = sum(q[0] * q[2] for q in q_) / w; cy = sum(q[1] * q[2] for q in q_) / w
+        reach = max(math.hypot(q[0] - cx, q[1] - cy) + q[2] for q in q_)
+        rmax = max(q[2] for q in q_); bmax = min(2.0, 0.08 * rmax + 0.5)
+        pc.update(s=float(line_so(cx, cy)[0]), disc=(float(cx), float(cy), float(reach + rng.uniform(max(4.0, min(7.0, 0.15 * rmax + 2 * bmax + 0.5)), 8.0))), blocks=[])
+    out.sort(key=lambda pc: pc["s"])
+    # discs that overlap are one shelf at one height: the platform runs on between neighbours (reviewer, fix round 1)
+    group = list(range(len(out)))
+    def root(i):
+        while group[i] != i: i = group[i]
+        return i
+    for i in range(len(out)):
+        for j in range(i + 1, len(out)):
+            a, b = out[i]["disc"], out[j]["disc"]
+            if math.hypot(a[0] - b[0], a[1] - b[1]) < a[2] + b[2]: group[root(j)] = root(i)
+    shelves = []
+    for g in sorted({root(i) for i in range(len(out))}):
+        members = [i for i in range(len(out)) if root(i) == g]
+        seabed = max(float(_ground_world(*out[i]["disc"][:2])) for i in members)
+        z = float(np.clip(max(rng.uniform(-0.5, 0.3), seabed + 0.1), -0.5, 0.3))   # a little above or below the flats around it
+        for i in members: out[i]["shelf"] = len(shelves)
+        shelves.append(dict(z=z, discs=[out[i]["disc"] for i in members], pieces=members))
+    # fallen blocks: 3-8 per piece, on its disc at the foot of its rocks, clear of every rock in the line
     every = [q for pc in out for q in pc["rocks"]]
     for pc in out:
-        cx, cy, R, sz = pc["shelf"]; want = int(rng.integers(3, 9)); blocks = pc["blocks"]
+        cx, cy, R = pc["disc"]; sz = shelves[pc["shelf"]]["z"]; want = int(rng.integers(3, 9)); blocks = pc["blocks"]
         for _ in range(400):
             if len(blocks) == want: break
             q = pc["rocks"][int(rng.integers(len(pc["rocks"])))]
@@ -423,21 +456,21 @@ def _headland():
             bx, by = q[0] + d * math.cos(a), q[1] + d * math.sin(a)
             if math.hypot(bx - cx, by - cy) + br > R: continue
             if any(math.hypot(bx - e[0], by - e[1]) < 1.15 * e[2] + br for e in every): continue
-            if any(math.hypot(bx - b[0], by - b[1]) < b[2] + br for b in blocks): continue
+            if any(math.hypot(bx - b[0], by - b[1]) < b[2] + br for p_ in out for b in p_["blocks"]): continue
             blocks.append((float(bx), float(by), float(br), float(sz + br * rng.uniform(0.7, 1.3))))
-    return out
-HEADLAND = _headland()
+    return out, shelves
+HEADLAND, SHELVES = _headland()
 
 def _rock_list():
     """Every rock Blender builds as a column, and its mesh seed (the rocks off the line keep their old seeds)."""
     out, seeds = [], []
     for k, q in enumerate(q for pc in HEADLAND for q in pc["rocks"]): out.append(q); seeds.append(1000 + k)
     out.append(line_xy(-25, -80) + (10, 13, 0.0)); seeds.append(8)       # an outlier beside the arch, 80 m off the line
-    s_reef = HEADLAND[-1]["s"]; rr = np.random.default_rng(21)
+    s_reef = HEADLAND[-1]["s"]; rr = np.random.default_rng(21); discs = [pc["disc"] for pc in HEADLAND]
     for i in range(16):                                                   # low rubble on the old platform: never beyond the reef, never on a shelf
         s = rr.uniform(-420, 330); o = rr.normal(0, 55); r, h = rr.uniform(2.5, 7), rr.uniform(0.8, 4.5)
         x, y = line_xy(s, o)
-        if s > s_reef - 10 or any(math.hypot(x - pc["shelf"][0], y - pc["shelf"][1]) < pc["shelf"][2] + r for pc in HEADLAND): continue
+        if s > s_reef - 10 or any(math.hypot(x - d[0], y - d[1]) < d[2] + r for d in discs): continue
         out.append((x, y, r, min(h, 2.5) if s > 0 else h, 0.0)); seeds.append(9 + i)   # seaward, lower than the line's stumps
     # a mid-sea group between the cove and the arch, so the open water has a stepping stone
     rest = [(-210, 520, 9, 28, 0.05), (-245, 560, 6, 17, -0.06), (-180, 578, 4, 9, 0.0), (-268, 505, 3, 4, 0.0), (-150, 540, 2.5, 2, 0.0)]
@@ -1175,13 +1208,14 @@ def build_rocks():
     for k, ((x, y, r, h, lean), seed) in enumerate(zip(ROCKS, ROCK_SEEDS)):
         rock_column(f"stack{k}", x, y, r, h, lean, seed)
     # the headland line's wave-cut shelves and the blocks fallen at the stacks' feet
-    nb = 0
-    for k, pc in enumerate(HEADLAND):
-        sx, sy, R, sz = pc["shelf"]
-        rock_column(f"lshelf{k}", sx, sy, R, sz, 0.0, 300 + k, flat=True)
+    nb = nd = 0
+    for sh in SHELVES:                                                   # one height per shelf; overlapping discs make one platform
+        for (sx, sy, R) in sh["discs"]:
+            rock_column(f"lshelf{nd}", sx, sy, R, sh["z"], 0.0, 300 + nd, flat=True); nd += 1
+    for pc in HEADLAND:
         for (bx, by, br, bh) in pc["blocks"]:
             rock_column(f"lblock{nb}", bx, by, br, bh, 0.0, 1200 + nb); nb += 1
-    log("rocks", len(ROCKS), "shelves", len(HEADLAND), "blocks", nb)
+    log("rocks", len(ROCKS), "shelves", len(SHELVES), "discs", nd, "blocks", nb)
 
 # the wave-cut shelf at the foot of the right headland: dark wet rock with still pools that mirror the sky
 SHELF = (8.0, 45.0, 9.0, 13.0)       # centre x, y, half-size x, y
