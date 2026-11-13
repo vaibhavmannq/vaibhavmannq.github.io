@@ -3,7 +3,7 @@ import { readParams } from '../../src/app/params';
 
 describe('URL flags (spec §17)', () => {
   it('reads nothing from an empty query', () => {
-    expect(readParams('')).toEqual({ hud: false, stills: true, webgl: false, nogl: false });
+    expect(readParams('')).toEqual({ hud: false, stills: true, webgl: false, nogl: false, auroraActive: false });
   });
 
   it('reads the tier by name', () => {

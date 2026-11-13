@@ -83,7 +83,7 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
   }
 }
 
-async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void> {
+async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: boolean): Promise<void> {
   const dressingMeta = app.manifest.base.dressing;
   const auroraMeta = app.manifest.base.aurora;
   const [heightsBuf, ringBuf, colour, dressingBuf, auroraData] = await Promise.all([
@@ -113,7 +113,7 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms): Promise<void>
   // The four unknowns (M2). Each hides itself wherever its hour or place is not in play.
   const { night, midnight } = SHOTS;
   if (auroraData && night.aurora && midnight.aurora)
-    parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora)]);
+    parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora, auroraActive)]);
   if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
   if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
   // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
@@ -136,9 +136,15 @@ export async function boot(): Promise<App> {
   // once per animation frame, so the overlay and the world, which run in two callbacks, agree.
   let camU = Number.NaN;
   let camAt = -1;
+  let lastTarget = Number.NaN;
   const cameraU = (nowMs: number): number => {
     const target = scroll.progress() * track.total;
-    if (Number.isNaN(camU) || caps.reducedMotion) camU = target;
+    // A jump of more than a screen in one frame that no wheel, key or finger made is a teleport (the browser restoring
+    // a position on reload, a scrollbar drag, find in page): the camera jumps with it instead of flying there.
+    const teleport =
+      nowMs !== camAt && Math.abs(target - lastTarget) > 1 && nowMs - scroll.lastInputMs() > 250 && !scroll.gliding();
+    lastTarget = target;
+    if (Number.isNaN(camU) || caps.reducedMotion || teleport) camU = target;
     else if (nowMs !== camAt) camU = follow(track, camU, target, Math.min(0.1, Math.max(0, (nowMs - camAt) / 1000)));
     if (nowMs !== camAt) scroll.holdNear(camU / track.total, LEAD_SCREENS / track.total);
     camAt = nowMs;
@@ -164,6 +170,8 @@ export async function boot(): Promise<App> {
     enabled: () => params.p === undefined,
   });
   const target = targetFromLocation(location.hash, location.search);
+  // A link to a place wins over the browser's restored position on reload.
+  if (target >= 0 && 'scrollRestoration' in history) history.scrollRestoration = 'manual';
   if (target >= 0) jumps.goNow(target);
   else if (params.p !== undefined) scroll.scrollToProgress(params.p, true);
   window.addEventListener('hashchange', () => {
@@ -353,7 +361,7 @@ export async function boot(): Promise<App> {
     loop.start(active.renderer);
 
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
-    app.stageB = loadBase(app, sky, light)
+    app.stageB = loadBase(app, sky, light, params.auroraActive)
       .then(() => governor.reset(app.tier, performance.now()))
       .catch((error: unknown) => console.warn('world base failed to load', error));
   }

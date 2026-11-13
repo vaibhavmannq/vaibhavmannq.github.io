@@ -151,14 +151,44 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   const v = normalize(toCam);
 
   const tops = smoothstep(cfg.z - cfg.amp * 0.5, cfg.z + cfg.amp * 0.7, positionWorld.y);
-  const base = mix(vec3(...cfg.low), vec3(...cfg.high), tops);
+  // s09, against the owner's cloud-sea photo 3: the deck is thousands of small rounded lumps with bright tops and blue
+  // shadow between, not a few smooth swells. Lumps about 16 m and 7 m across, drawn in light only (the mesh stays at
+  // 8 m), each lit on its side toward the moon; gone where a lump is under about two pixels (no far shimmer).
+  // Shaded from the noise's height (round bright tops, shadow pooling between), not |noise|, whose zero lines s09 saw
+  // as dark veins (marble, not cotton).
+  const lumpAt = (p: V2): F =>
+    mx_noise_float(p.mul(1 / 16))
+      .mul(0.65)
+      .add(mx_noise_float(p.mul(1 / 6.7).add(vec2(5.2, 1.3))).mul(0.35))
+      .mul(0.5)
+      .add(0.5);
+  const lp = wxy.sub(drift.mul(0.15));
+  const lump = lumpAt(lp);
+  const toMoon = normalize(vec2(u.moonDir.x, u.moonDir.z.negate()).add(vec2(0.0001, 0)));
+  const facing = lump
+    .sub(lumpAt(lp.add(toMoon.mul(2.5))))
+    .mul(4)
+    .clamp(-1, 1);
+  const lumps = smoothstep(4, 1.2, pixel);
+  const crease = mix(float(0.85), smoothstep(0.2, 0.62, lump).mul(0.55).add(0.45), lumps);
+  const shade = crease.mul(float(1).add(facing.mul(0.35).mul(lumps)));
+  // the valleys between the big swells sit in shadow (m2-references §2.2)
+  const valley = smoothstep(cfg.z - cfg.amp * 0.35, cfg.z + cfg.amp * 0.45, positionWorld.y);
+  const shadowTint = vec3(0.5, 0.58, 0.9);
+  const lit = mix(float(0.5), float(1), valley.mul(shade).clamp(0, 1.3));
+  const base = mix(vec3(...cfg.low), vec3(...cfg.high), tops)
+    .mul(mix(shadowTint, vec3(1, 1, 1), lit.clamp(0, 1)))
+    .mul(lit);
   // Soft all the way round, as light inside cloud is: even the side away from the moon keeps a third of it.
   const wrap = dot(n, u.moonDir).mul(0.5).add(0.5).clamp(0, 1).mul(0.65).add(0.35);
   const moonlight = (u.keyColor as unknown as V3).mul(u.keyStrength);
+  // light through the thin crests when looking toward the moon: wider than a rim, strongest on the lump tops
   const rim = float(1)
     .sub(max(dot(n, v), 0))
-    .pow(3)
-    .mul(max(dot(v.negate(), u.moonDir), 0).pow(2));
+    .pow(1.6)
+    .mul(max(dot(v.negate(), u.moonDir), 0).pow(2))
+    .mul(tops.mul(0.6).add(0.4))
+    .mul(crease);
   // The sky's light, half drained of its colour: cloud is white, and the aurora's green must not dye the deck.
   const sky = u.ambSky as unknown as V3;
   const skyLight = mix(sky, vec3(dot(sky, vec3(0.2126, 0.7152, 0.0722))), 0.5);

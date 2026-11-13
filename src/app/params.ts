@@ -18,6 +18,8 @@ export interface Params {
   webgl: boolean;
   /** `?nogl`: behave as if no GPU path exists (tests the stills fallback). */
   nogl: boolean;
+  /** `?aurora=active`: the aurora's faster state, an option for the owner (m2-references §5.1). */
+  auroraActive: boolean;
 }
 
 export function readParams(search: string): Params {
@@ -27,6 +29,7 @@ export function readParams(search: string): Params {
     stills: q.get('stills') !== 'off',
     webgl: q.has('webgl'),
     nogl: q.has('nogl'),
+    auroraActive: q.get('aurora') === 'active',
   };
   const tier = TIER_NAMES.indexOf(q.get('tier') as (typeof TIER_NAMES)[number]);
   if (tier >= 0) params.tier = tier as Tier;

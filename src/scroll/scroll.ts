@@ -18,6 +18,8 @@ export interface ScrollController {
   gliding(): boolean;
   /** A finger is on the screen. */
   touching(): boolean;
+  /** When the visitor last used a wheel, a key or a finger (performance.now ms). */
+  lastInputMs(): number;
   /** Keep the scroll within `lead` (0..1 of the track) of `p`: it may not run ahead of the camera (Amendment 1 §7). */
   holdNear(p: number, lead: number): void;
   /** Called after an instant jump (a link, a fade), so the camera can jump with it instead of flying there. */
@@ -50,6 +52,9 @@ export function createScroll(): ScrollController {
     window.addEventListener(type, stopGlide, { passive: true });
   }
   let finger = false;
+  let inputAt = Number.NEGATIVE_INFINITY;
+  for (const type of ['wheel', 'keydown', 'touchstart', 'touchmove'] as const)
+    window.addEventListener(type, () => (inputAt = performance.now()), { passive: true });
   window.addEventListener('touchstart', () => (finger = true), { passive: true });
   for (const type of ['touchend', 'touchcancel'] as const)
     window.addEventListener(type, () => (finger = false), { passive: true });
@@ -65,6 +70,7 @@ export function createScroll(): ScrollController {
     onJump: null,
     gliding: () => glideFrame !== 0,
     touching: () => finger,
+    lastInputMs: () => inputAt,
     holdNear: (p, lead) => {
       if (glideFrame !== 0 || finger || lenis.limit <= 0) return;
       const now = progressFrom(lenis.scroll, lenis.limit);
