@@ -82,11 +82,11 @@ no borrowed set pieces (no towers, piano, etc.).
   but invisible until stops get near layers); aurora and cloud re-judged against the owner's photos (both 68 %);
   **the cave built** (Task 6, 74 % vs render); **costs measured on the laptop** and the cave/aurora/cloud made
   cheaper (Before dawn 60 fps at mid; flight at mid 59 fps, 0 frames over 50 ms; Midnight at mid still 47 fps, a
-  scene cost for M6). Every number: the M2 ledger, "Session s09". **Phone not measured: adb is not installed here.**
+  scene cost for M6). Every number: the M2 ledger, "Session s09". **Phone not measured: no phone was connected** (adb is at `%LOCALAPPDATA%\Android\platform-toolsdb.exe`).
 - **M2.5 plan written:** `docs/superpowers/plans/2026-11-13-m2.5-the-world-from-reference.md` (world state, stacks,
   the arch that does not exist live yet, tide bands, glitter and moon, look-around, Golden's lantern and spots,
   nearest-first loading, phone). Waiting for the owner's read and choice of execution.
-- **Next:** owner installs platform-tools (phone half of M2 = M2.5 Task 9); owner reviews the M2.5 plan; then
+- **Next:** owner plugs the phone in over USB (phone half of M2 = M2.5 Task 9); owner reviews the M2.5 plan; then
   M2.5 Task 1. Measuring tools from s09: `.superpowers/m2/cost.mjs` (GPU ms per part, needs the prod build and
   `?gpu`), `video.mjs` (25 fps clip to read motion), `atp.mjs` (frames at journey shares), `pacecheck.mjs`.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
