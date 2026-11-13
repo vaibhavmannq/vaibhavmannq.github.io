@@ -358,6 +358,115 @@ def ground(x, y):
     h = hb + f * relief(xw, yw) * sm(3.0, 20.0, hb)          # relief only on land, nothing new at sea
     return np.where(hb > 3.0, np.maximum(h, 3.0), h)         # gullies never cut land below 3 m (no inland sea)
 
+# ---------------- the old headland line: sea stacks, stumps, a reef (pure data; Blender builds it in build_rocks) ----------------
+# The arch is the last standing piece of an old headland; land lies landward along its spine (-s), open sea seaward (+s).
+# Real coasts (reference-landforms §2; owner cove-and-stacks 12, cliffs-and-columns 1 and 5): seaward of the arch the
+# pieces get lower and more broken (each stack about 0.8x the one before it), the gaps are uneven, a few lean, one has
+# split along a joint, and the line ends in stumps and a reef awash. Every piece stands on its wave-cut shelf with
+# fallen blocks at its foot and a notch cut at the waterline.
+ARCH_TOP = 66.0                 # build_arch's H at scale 1: the line's first height step is measured from it
+_sp = math.radians(ARCH["rotz"] - 69.0 + 21.0)                             # the arch's spine direction
+LINE_U = (math.sin(_sp), math.cos(_sp)); LINE_P = (LINE_U[1], -LINE_U[0])  # seaward along the line, and across it
+ARCH_LEG = 56.0                 # the seaward leg's foot reaches this far along the line at the waterline
+
+def line_xy(s, o):
+    ax, ay = ARCH["pos"]
+    return ax + LINE_U[0] * s + LINE_P[0] * o, ay + LINE_U[1] * s + LINE_P[1] * o
+def line_so(x, y):
+    ax, ay = ARCH["pos"]
+    return (x - ax) * LINE_U[0] + (y - ay) * LINE_U[1], (x - ax) * LINE_P[0] + (y - ay) * LINE_P[1]
+
+# (kind, open water before it (m, edge to edge; no two alike), offset across the line, rocks: (r, h, lean)...)
+# Heights 66 (arch) > 50 > 39 > 28 | 25 > 19 > 13.5 > 11: each 0.71-0.89 of the one before. The split's halves stand
+# 2.5 m apart on one shelf. Then two stumps and a reef 0.5 m above the sea.
+_PIECES = (("stack", 19.0, -6.0, ((14.0, 50.0, 0.02),)),
+           ("stack", 36.0, 7.0, ((11.0, 39.0, -0.03),)),
+           ("split", 12.5, 2.0, ((8.0, 28.0, 0.0), (6.5, 25.0, 0.01))),
+           ("stack", 29.0, 14.0, ((7.0, 19.0, 0.09),)),           # leaning
+           ("stack", 10.0, 6.0, ((6.0, 13.5, -0.02),)),
+           ("stack", 44.0, -9.0, ((5.5, 11.0, -0.11),)),          # leaning
+           ("stump", 15.5, -4.0, ((6.0, 3.2, 0.0),)),
+           ("stump", 23.5, 6.0, ((4.5, 1.6, 0.0),)),
+           ("reef", 54.0, 15.0, ((8.0, 0.5, 0.0),)))
+SPLIT_GAP, SPLIT_TURN = 2.5, math.radians(35.0)                       # the split runs 35 deg off the line
+
+def _headland():
+    rng = np.random.default_rng(23); out = []; prev = None
+    for kind, gap, o, rocks in _PIECES:
+        r0 = rocks[0][0]
+        if prev is None: s = ARCH_LEG + gap + r0
+        else:                                                         # exactly `gap` of open water from the last piece's seaward rock
+            ps, po = line_so(prev[0], prev[1]); d = prev[2] + gap + r0
+            s = ps + math.sqrt(max(d * d - (o - po) ** 2, 1.0))
+        x, y = line_xy(s, o); placed = [(float(x), float(y), r0, rocks[0][1], rocks[0][2])]
+        if len(rocks) > 1:
+            r1, h1, l1 = rocks[1]; d = r0 + SPLIT_GAP + r1
+            x1, y1 = line_xy(s + d * math.cos(SPLIT_TURN), o + d * math.sin(SPLIT_TURN)); placed.append((float(x1), float(y1), r1, h1, l1))
+        prev = placed[-1][:3]
+        # the shelf: the wave-cut platform the piece stands on, a little above or below the flats around it
+        w = sum(q[2] for q in placed)
+        cx = sum(q[0] * q[2] for q in placed) / w; cy = sum(q[1] * q[2] for q in placed) / w
+        reach = max(math.hypot(q[0] - cx, q[1] - cy) + q[2] for q in placed)
+        rmax = max(q[2] for q in placed); bmax = min(2.0, 0.08 * rmax + 0.5)
+        R = reach + rng.uniform(max(4.0, min(7.0, 0.15 * rmax + 2 * bmax + 0.5)), 8.0)
+        sz = float(np.clip(max(rng.uniform(-0.5, 0.3), float(_ground_world(cx, cy)) + 0.1), -0.5, 0.3))
+        out.append(dict(kind=kind, s=float(line_so(cx, cy)[0]), rocks=placed, shelf=(float(cx), float(cy), float(R), sz), blocks=[]))
+    # fallen blocks: 3-8 per piece, on its shelf at the foot of its rocks, clear of every rock in the line
+    every = [q for pc in out for q in pc["rocks"]]
+    for pc in out:
+        cx, cy, R, sz = pc["shelf"]; want = int(rng.integers(3, 9)); blocks = pc["blocks"]
+        for _ in range(400):
+            if len(blocks) == want: break
+            q = pc["rocks"][int(rng.integers(len(pc["rocks"])))]
+            br = rng.uniform(0.5, min(2.0, 0.08 * q[2] + 0.5)); a = rng.uniform(0, 2 * math.pi)
+            d = 1.15 * q[2] + br + rng.uniform(0, 1) ** 1.5 * max(0.0, R - 1.15 * q[2] - 2 * br)
+            bx, by = q[0] + d * math.cos(a), q[1] + d * math.sin(a)
+            if math.hypot(bx - cx, by - cy) + br > R: continue
+            if any(math.hypot(bx - e[0], by - e[1]) < 1.15 * e[2] + br for e in every): continue
+            if any(math.hypot(bx - b[0], by - b[1]) < b[2] + br for b in blocks): continue
+            blocks.append((float(bx), float(by), float(br), float(sz + br * rng.uniform(0.7, 1.3))))
+    return out
+HEADLAND = _headland()
+
+def _rock_list():
+    """Every rock Blender builds as a column, and its mesh seed (the rocks off the line keep their old seeds)."""
+    out, seeds = [], []
+    for k, q in enumerate(q for pc in HEADLAND for q in pc["rocks"]): out.append(q); seeds.append(1000 + k)
+    out.append(line_xy(-25, -80) + (10, 13, 0.0)); seeds.append(8)       # an outlier beside the arch, 80 m off the line
+    s_reef = HEADLAND[-1]["s"]; rr = np.random.default_rng(21)
+    for i in range(16):                                                   # low rubble on the old platform: never beyond the reef, never on a shelf
+        s = rr.uniform(-420, 330); o = rr.normal(0, 55); r, h = rr.uniform(2.5, 7), rr.uniform(0.8, 4.5)
+        x, y = line_xy(s, o)
+        if s > s_reef - 10 or any(math.hypot(x - pc["shelf"][0], y - pc["shelf"][1]) < pc["shelf"][2] + r for pc in HEADLAND): continue
+        out.append((x, y, r, min(h, 2.5) if s > 0 else h, 0.0)); seeds.append(9 + i)   # seaward, lower than the line's stumps
+    # a mid-sea group between the cove and the arch, so the open water has a stepping stone
+    rest = [(-210, 520, 9, 28, 0.05), (-245, 560, 6, 17, -0.06), (-180, 578, 4, 9, 0.0), (-268, 505, 3, 4, 0.0), (-150, 540, 2.5, 2, 0.0)]
+    # reefs off the cliff-top tip, where the swell breaks
+    rest += [(15.5, 133.5, 5.0, 13.0, 0.0), (21.0, 136.0, 4.0, 12.0, 0.02)]      # the cliff face continues in rock at the plateau's east end
+    rest += [(-47.0, 139.0, 5.5, 11.5, 0.02), (-53.0, 147.0, 4.0, 7.0, -0.04), (-58.5, 134.0, 3.2, 3.5, 0.0), (-50.0, 129.0, 2.2, 1.6, 0.0), (-62.0, 143.0, 2.0, 1.0, 0.0)]
+    rest += [(x, y + PROM_DY, r, h, l) for (x, y, r, h, l) in ((-72, 122, 9, 0.5, 0.0), (-90, 150, 8, 0.9, 0.0), (-60, 140, 5, 0.3, 0.0), (-108, 178, 11, 2.5, 0.0), (-124, 160, 6, 0.6, 0.0))]
+    out += rest; seeds += list(range(25, 25 + len(rest)))
+    return out, seeds
+ROCKS, ROCK_SEEDS = _rock_list()
+
+# A rock column's radius up its height, without the noise rock_column adds: sheer sides, a slight taper, a rounded top
+# lip, and the wave-cut notch at the waterline (reference-landforms §2 rule 5: 0.6-1.5 m deep, between low and high water).
+NOTCH_Z, NOTCH_W = 0.45, 0.45   # centred in z -0.3..+1.2, most of its depth inside that band
+def rock_prof(z, h, t):
+    return (1.10 - (0.25 + 0.12 * min(1.0, max(0.0, (h - 20.0) / 30.0))) * max(0.0, z / max(h, 1.0))) * max(0.0, 1 - max(0.0, (t - 0.94) / 0.06) ** 2) ** 0.5
+def rock_notch(z, r):
+    return min(min(max(0.6 + 0.06 * r, 0.6), 1.5), 0.3 * r) * math.exp(-((z - NOTCH_Z) / NOTCH_W) ** 2)
+def rock_radius(z, r, h, base):
+    return max(r * rock_prof(z, h, (z - base) / max(h - base, 1e-6)) - rock_notch(z, r), 0.05 * r)
+def rock_rings(base, h):
+    """The heights of the mesh rings: 30 even ones, plus one every 0.15 m through the notch band so the notch is cut."""
+    zs = sorted([base + (h - base) * i / 30 for i in range(31)] + [float(z) for z in np.arange(-1.2, 2.1, 0.15) if base < z < h - 0.05])
+    keep = [zs[0]]
+    for z in zs[1:]:
+        if z - keep[-1] > 0.04: keep.append(z)
+    keep[-1] = h
+    return keep
+
 # ---------------- render setup ----------------
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scn = bpy.context.scene
@@ -1014,36 +1123,16 @@ def build_arch():
     me.materials.append(rock_material())
 
 # ---------------- the eroded coastline: sea stacks, reefs, the tide-pool shelf ----------------
-# The arch is the last standing piece of an old headland: its spine runs on as stacks and stumps, with reefs around them.
-def _rock_list():
-    ax, ay = ARCH["pos"]; sp = math.radians(ARCH["rotz"] - 69.0 + 21.0)       # the arch's spine direction
-    u = (math.sin(sp), math.cos(sp)); p = (u[1], -u[0])
-    rr = np.random.default_rng(21); out = []
-    # uneven spacing on purpose: a big parent block, a tight pair, a gap, a leaning stack, stumps; not a row of pawns
-    for s, o, r, h, lean in ((-115, 14, 24, 62, 0.02), (-168, -30, 11, 38, -0.05), (-190, -8, 7, 30, 0.03), (-300, 30, 9, 21, 0.09),
-                             (-360, 0, 9, 6, 0.0), (95, -14, 16, 47, -0.03), (150, 4, 7, 19, 0.12), (270, 10, 12, 9, 0.0), (-25, -80, 10, 13, 0.0)):
-        out.append((ax + u[0] * s + p[0] * o, ay + u[1] * s + p[1] * o, r, h, lean))
-    for _ in range(16):                                                       # low reef rocks and stumps around them
-        s = rr.uniform(-420, 330); o = rr.normal(0, 55)
-        out.append((ax + u[0] * s + p[0] * o, ay + u[1] * s + p[1] * o, rr.uniform(2.5, 7), rr.uniform(0.8, 4.5), 0.0))
-    # a mid-sea group between the cove and the arch, so the open water has a stepping stone
-    out += [(-210, 520, 9, 28, 0.05), (-245, 560, 6, 17, -0.06), (-180, 578, 4, 9, 0.0), (-268, 505, 3, 4, 0.0), (-150, 540, 2.5, 2, 0.0)]
-    # reefs off the cliff-top tip, where the swell breaks
-    out += [(15.5, 133.5, 5.0, 13.0, 0.0), (21.0, 136.0, 4.0, 12.0, 0.02)]      # the cliff face continues in rock at the plateau's east end
-    out += [(-47.0, 139.0, 5.5, 11.5, 0.02), (-53.0, 147.0, 4.0, 7.0, -0.04), (-58.5, 134.0, 3.2, 3.5, 0.0), (-50.0, 129.0, 2.2, 1.6, 0.0), (-62.0, 143.0, 2.0, 1.0, 0.0)]
-    out += [(x, y + PROM_DY, r, h, l) for (x, y, r, h, l) in ((-72, 122, 9, 0.5, 0.0), (-90, 150, 8, 0.9, 0.0), (-60, 140, 5, 0.3, 0.0), (-108, 178, 11, 2.5, 0.0), (-124, 160, 6, 0.6, 0.0))]
-    return out
-ROCKS = _rock_list()
-
-def rock_column(name, x, y, r, h, lean, seed):
+# (the headland line's data, ROCKS and the column profile live above the render setup: they load without Blender)
+def rock_column(name, x, y, r, h, lean, seed, flat=False):
+    """A rock standing out of the sea. flat: a shelf or platform, its top level (no tilt, no broken step)."""
     from mathutils import noise as mnoise
     base = min(float(ground(x, y)), 0.0) - 3.0
-    rings, seg = 30, 64; verts = []
-    for i in range(rings + 1):
-        t = i / rings; z = base + (h - base) * t
-        # sheer sides, a slight taper, a flat (sometimes tilted) top cut by a short rounded lip
-        prof = (1.10 - (0.25 + 0.12 * min(1.0, max(0.0, (h - 20.0) / 30.0))) * max(0.0, z / max(h, 1.0))) * max(0.0, 1 - max(0.0, (t - 0.94) / 0.06) ** 2) ** 0.5
-        prof *= 1.0 - 0.16 * math.exp(-((z - 1.2) / 2.4) ** 2)                                   # wave-cut notch
+    zs = rock_rings(base, h); rings, seg = len(zs) - 1, 64; verts = []
+    for z in zs:
+        t = (z - base) / (h - base)
+        # sheer sides, a slight taper, a flat (sometimes tilted) top cut by a short rounded lip; the notch is cut after the noise
+        prof = rock_prof(z, h, t); notch = rock_notch(z, r)
         ledge = r * 0.22 + 0.4
         for j in range(seg):
             a = 2 * math.pi * j / seg; ca, sa = math.cos(a), math.sin(a)
@@ -1053,11 +1142,11 @@ def rock_column(name, x, y, r, h, lean, seed):
             neck = (0.20 + 0.08 * min(1.0, max(0.0, (h - 20.0) / 30.0))) * mnoise.noise(Vector((seed * 3.3, 0.0, z / max(r, 1.0) * 0.45)))          # waist and bulge up the height
             flute = 0.07 * mnoise.noise(Vector((ca * 4.0, sa * 4.0, z * 0.08 + seed)))              # vertical gullies
             k = 1 + lobes + neck + flute + 0.16 * mnoise.noise(q) + 0.06 * mnoise.noise(q * 3.1) + 0.6 * step_
-            rad = r * prof * k
-            w_top = max(0.0, (t - 0.82) / 0.18)
+            rad = max(r * prof * k - notch, 0.05 * r)                                         # wave-cut notch at the waterline
+            w_top = 0.0 if flat else max(0.0, (t - 0.82) / 0.18)
             tilt = (ca * math.cos(seed * 1.7) + sa * math.sin(seed * 1.7)) * 0.22 * r                # a sloping, broken top, never flat
             zz = z + w_top * (tilt + 0.25 * r * mnoise.noise(Vector((ca * 2.2, sa * 2.2, seed * 5.0))))
-            if h > 8.0 and mnoise.noise(Vector((ca * 1.3, sa * 1.3, seed * 3.1))) > 0.2: zz -= w_top * 0.22 * r   # a broken step in the top
+            if h > 8.0 and not flat and mnoise.noise(Vector((ca * 1.3, sa * 1.3, seed * 3.1))) > 0.2: zz -= w_top * 0.22 * r   # a broken step in the top
             verts.append((x + ca * rad + lean * h * t * t, y + sa * rad, zz))
     top = len(verts); verts.append((x + lean * h, y, h + 0.03 * r))
     faces = []
@@ -1083,9 +1172,16 @@ def build_rocks():
         rock_column(f"xrock{k}", x, y, r, h, lean, 500 + k)
     for k, (x, y, r, h, lean) in enumerate(S.get("cliff_rocks", ())):
         rock_column(f"crock{k}", x, y, r, h, lean, 700 + k)
-    for k, (x, y, r, h, lean) in enumerate(ROCKS):
-        rock_column(f"stack{k}", x, y, r, h, lean, k)
-    log("rocks", len(ROCKS))
+    for k, ((x, y, r, h, lean), seed) in enumerate(zip(ROCKS, ROCK_SEEDS)):
+        rock_column(f"stack{k}", x, y, r, h, lean, seed)
+    # the headland line's wave-cut shelves and the blocks fallen at the stacks' feet
+    nb = 0
+    for k, pc in enumerate(HEADLAND):
+        sx, sy, R, sz = pc["shelf"]
+        rock_column(f"lshelf{k}", sx, sy, R, sz, 0.0, 300 + k, flat=True)
+        for (bx, by, br, bh) in pc["blocks"]:
+            rock_column(f"lblock{nb}", bx, by, br, bh, 0.0, 1200 + nb); nb += 1
+    log("rocks", len(ROCKS), "shelves", len(HEADLAND), "blocks", nb)
 
 # the wave-cut shelf at the foot of the right headland: dark wet rock with still pools that mirror the sky
 SHELF = (8.0, 45.0, 9.0, 13.0)       # centre x, y, half-size x, y
