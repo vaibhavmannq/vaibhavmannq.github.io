@@ -1,6 +1,5 @@
 import {
   cameraPosition,
-  cos,
   dot,
   equirectUV,
   float,
