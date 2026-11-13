@@ -24,7 +24,7 @@ OPEN_LO, OPEN_HI = -2.0, 2.0  # the `open` field is stored over this range
 HOLE = 0.45                   # triangles with all three corners more open than this are inside the hole: not exported
 ARCH_SCALE = 100              # arch.bin: Int16 units per metre (the arch reaches ~60 m from its origin)
 SKY_RAYS = 48                 # rays per point for the arch's sky light
-ARCH_TRIS = 60_000            # the site's arch (ruling R15: it lives in the headland pack, under the 3 MB per-place
+ARCH_TRIS = 60_000            # the site's arch (ruling R15: it lives in the headland pack, under the 5 MB per-place (D30)
                               # budget); enough for the stepped crowns; the column joints are drawn per pixel
 STACKS_SCALE = 100            # stacks.bin: Int16 units per metre (the line reaches ~300 m from its middle)
 STACKS_TRIS = 96_000          # the stacks part (brief: <= 150 k, aim <= 100 k; the place budget is 3 MB)

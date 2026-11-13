@@ -16,7 +16,7 @@ const manifest = (files: FileEntry[]): Manifest => ({ version: 1, base, skies: {
 
 describe('the pack budget check (spec §14)', () => {
   it('uses the spec budgets', () => {
-    expect(BUDGETS).toEqual({ stageABytes: 1.2e6, perStopBytes: 3e6, baseBytes: 1.0e6 });
+    expect(BUDGETS).toEqual({ stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 1.0e6 }); // D30: 5 MB per place
   });
 
   it('passes a pack inside every budget', () => {
@@ -34,10 +34,10 @@ describe('the pack budget check (spec §14)', () => {
   });
 
   it('counts each stop by the files that list it, and fails the one over budget', () => {
-    expect(checkBudgets(manifest([file('stops/night/a', 2.9e6, 'B', ['night'])]), BUDGETS).ok).toBe(true);
+    expect(checkBudgets(manifest([file('stops/night/a', 4.9e6, 'B', ['night'])]), BUDGETS).ok).toBe(true);
     const over = checkBudgets(
       manifest([
-        file('stops/night/a', 2.0e6, 'B', ['night']),
+        file('stops/night/a', 4.0e6, 'B', ['night']),
         file('stops/night/b', 1.1e6, 'B', ['night', 'midnight']),
       ]),
       BUDGETS,

@@ -81,7 +81,7 @@ export interface Budgets {
 }
 
 /** Spec §14: the first view's world files stay under 1.2 MB (1.6 MB with code); each stop adds at most 3 MB. */
-export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 3e6, baseBytes: 1.0e6 };
+export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 1.0e6 };
 
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 
