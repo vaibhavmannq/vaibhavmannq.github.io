@@ -46,10 +46,12 @@ export interface TouchSnapOptions {
   stops: readonly number[];
   /** False while a dialog is open and under test hooks (`?p=`). */
   enabled: () => boolean;
+  /** True when the last touch turned the head instead of scrolling (look-around): it never snaps (plan M2.5 Review Focus 3). */
+  turnedHead?: () => boolean;
 }
 
 /** Wires touchSnapTarget to touch scrolling. Mouse wheels, trackpads and keys never snap. */
-export function createTouchSnap({ progress, glideTo, stops, enabled }: TouchSnapOptions): void {
+export function createTouchSnap({ progress, glideTo, stops, enabled, turnedHead }: TouchSnapOptions): void {
   let startP = 0;
   let touching = false;
   // A touch has happened since the last settle, so the next rest is the end of a swipe.
@@ -60,7 +62,7 @@ export function createTouchSnap({ progress, glideTo, stops, enabled }: TouchSnap
     window.clearTimeout(timer);
     if (touching || !pending) return;
     pending = false;
-    if (!enabled()) return;
+    if (!enabled() || turnedHead?.()) return;
     const target = touchSnapTarget(progress(), startP, stops);
     if (target !== null) glideTo(target);
   };

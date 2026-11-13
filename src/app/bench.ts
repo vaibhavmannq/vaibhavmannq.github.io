@@ -38,6 +38,8 @@ declare global {
     __parts(off: string[]): void;
     /** Rest at a stop for `seconds` at a tier: frame times, and the GPU's own ms per frame when `?gpu` is on. */
     __hold(stop: StopId, seconds: number, tier: (typeof TIER_NAMES)[number]): Promise<HoldResult>;
+    /** The head's look-around turn now, degrees (plan M2.5 Task 6). */
+    __look(): { yaw: number; pitch: number };
   }
 }
 

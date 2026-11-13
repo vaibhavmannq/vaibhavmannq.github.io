@@ -49,6 +49,8 @@ body {
 }
 
 .world {
+  /* sideways drags turn the head (plan M2.5 Task 6); vertical ones scroll the journey; pinch still zooms */
+  touch-action: pan-y pinch-zoom;
   opacity: 0;
   transition: opacity 600ms ease;
 }

@@ -7,6 +7,7 @@ import { fovFor, type Pose, poseAt } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
+import { createLook } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
 import { SHOTS } from '../journey/shots';
@@ -189,6 +190,8 @@ export async function boot(): Promise<App> {
   const stage = createStage(STOPS);
   const jumps = createJumps(scroll, track, (opacity) => stage.setVeil(opacity));
   const rail = createRail(document.getElementById('rail') as HTMLElement, STOPS, (i) => void jumps.go(i));
+  /** Set by look-around when a touch turns the head; such a touch never snaps the scroll. */
+  const gesture = { turned: false };
   createTouchSnap({
     progress: () => scroll.progress(),
     // A swipe that stops short carries on to the next place at the ride's pace, never cutting a flight short.
@@ -198,6 +201,7 @@ export async function boot(): Promise<App> {
     },
     stops: snapStops(track),
     enabled: () => params.p === undefined,
+    turnedHead: () => gesture.turned,
   });
   const target = targetFromLocation(location.hash, location.search);
   // A link to a place wins over the browser's restored position on reload.
@@ -324,11 +328,59 @@ export async function boot(): Promise<App> {
     pointer[1] = 0;
   });
 
+  // Look-around (plan M2.5 Task 6; Amendment 1 §6): drag on the world to turn the head. A mouse drags with the button
+  // held; a touch drag turns the head when its first 12 px run more sideways than up or down (the world layer is
+  // `touch-action: pan-y`, so the browser keeps vertical drags for scrolling and never scrolls on a sideways one).
+  const look = createLook();
+  let head = { yaw: 0, pitch: 0 };
+  window.__look = () => ({ ...head });
+  const worldLayer = document.getElementById('world');
+  let grab: { id: number; x: number; y: number; touch: boolean; turning: boolean } | null = null;
+  window.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!worldLayer?.contains(event.target as Node) || (event.pointerType === 'mouse' && event.button !== 0)) return;
+      const touch = event.pointerType === 'touch';
+      grab = { id: event.pointerId, x: event.clientX, y: event.clientY, touch, turning: !touch };
+      gesture.turned = false;
+    },
+    { passive: true },
+  );
+  window.addEventListener(
+    'pointermove',
+    (event) => {
+      if (!grab || event.pointerId !== grab.id) return;
+      const dx = event.clientX - grab.x;
+      const dy = event.clientY - grab.y;
+      if (!grab.turning) {
+        if (Math.hypot(dx, dy) < 12) return;
+        if (Math.abs(dx) <= Math.abs(dy)) {
+          grab = null; // a vertical drag: the browser scrolls
+          return;
+        }
+        grab.turning = true;
+        gesture.turned = true;
+      }
+      look.drag(dx, dy, Math.max(1, window.innerWidth));
+      grab.x = event.clientX;
+      grab.y = event.clientY;
+    },
+    { passive: true },
+  );
+  const letGo = (event: PointerEvent) => {
+    if (grab && event.pointerId === grab.id) grab = null;
+  };
+  window.addEventListener('pointerup', letGo, { passive: true });
+  window.addEventListener('pointercancel', letGo, { passive: true });
+
   const frame = (nowMs: number, dtS: number): WorldFrame => {
     const u = app.override ?? cameraU(nowMs);
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
     const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion);
+    head = look.update(state.resting && !caps.reducedMotion, dtS);
+    pose.yaw += head.yaw;
+    pose.pitch += head.pitch;
     if (!caps.reducedMotion) {
       const near = app.nearM[state.t < 0.5 ? state.a : state.b] ?? 10;
       const [right, up] = parallaxOffset(pointer, near, pose.fov, camera.aspect);
