@@ -1,6 +1,15 @@
 import { lerp } from '../shared/math';
 import { SHOTS } from './shots';
-import { type HourPreset, type KeyLight, type Moon, STOP_IDS, type StopId, type Vec3, type WorldState } from './types';
+import {
+  type HourPreset,
+  type KeyLight,
+  type Moon,
+  type RGB,
+  STOP_IDS,
+  type StopId,
+  type Vec3,
+  type WorldState,
+} from './types';
 
 /** coast.py's sun_dir(): toward a light at elevation `el`, azimuth `az` (degrees). */
 export function sunDir(el: number, az: number): Vec3 {
@@ -18,6 +27,23 @@ function keyLight(id: StopId): KeyLight {
   if (s.moon) return { dir: sunDir(s.moon[1], s.moon[0]), color: MOON_LIGHT, strength: s.moon[4] };
   return { dir: sunDir(s.sun_el, s.sun_az), color: s.sun_col, strength: 0 };
 }
+
+/**
+ * Each hour's shadow floor, sRGB on screen (plan M2.5 Task 4: violet at dusk, teal-blue at night, grey rose at first
+ * light; owner-references §14.4 "shadows with something in them", §17 "no darker than about #10123a"). Each sits just
+ * above #10123a's luminance; daylight floors stay warm so they never show as haze.
+ */
+export const SHADOW_FLOOR: Record<StopId, RGB> = {
+  golden: [0.12, 0.09, 0.12],
+  sunset: [0.13, 0.08, 0.13],
+  dusk: [0.11, 0.08, 0.17],
+  bluehour: [0.07, 0.09, 0.17],
+  night: [0.06, 0.1, 0.15],
+  midnight: [0.06, 0.1, 0.15],
+  beforedawn: [0.07, 0.1, 0.14],
+  firstlight: [0.12, 0.09, 0.1],
+  sunrise: [0.12, 0.09, 0.11],
+};
 
 function preset(id: StopId): HourPreset {
   const s = SHOTS[id];
@@ -39,6 +65,7 @@ function preset(id: StopId): HourPreset {
     world: s.world,
     aurora: s.aurora ? 1 : 0,
     cloud: s.cloudsea ? 1 : 0,
+    shadowFloor: SHADOW_FLOOR[id],
   };
 }
 
@@ -133,5 +160,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     world: blendWorld(a.world, b.world, w),
     aurora: lerp(a.aurora, b.aurora, w),
     cloud: lerp(a.cloud, b.cloud, w),
+    shadowFloor: mix3(a.shadowFloor, b.shadowFloor, w),
   };
 }

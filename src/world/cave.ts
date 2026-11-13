@@ -8,6 +8,7 @@ import {
   mix,
   mx_noise_float,
   normalize,
+  normalWorld,
   positionWorld,
   smoothstep,
   step,
@@ -36,6 +37,7 @@ import { toThree, type Vec3 } from '../journey/types';
 import type { LightUniforms } from './light';
 import { fbm2, remap } from './noise';
 import type { WorldPart } from './part';
+import { tideBands } from './rock';
 import type { Sky } from './sky';
 
 type F = Node<'float'>;
@@ -238,7 +240,9 @@ export function createCave(parts: CaveParts, cave: CaveShot, sky: Sky, u: LightU
     .colorAt(r as unknown as V3)
     .mul(through)
     .mul(0.6);
-  const colour = mix(rockLit, mirrored, wet.mul(fresnel.mul(0.6).add(0.4)));
+  // the sea reaches the mouth: tide bands on the shell's steep faces (rock.ts), per pixel (a few smoothsteps)
+  const banded = rockLit.mul(tideBands(wz, normalWorld.y.abs(), float(1).sub(isFloor)));
+  const colour = mix(banded, mirrored, wet.mul(fresnel.mul(0.6).add(0.4)));
 
   const material = new MeshBasicNodeMaterial({ side: DoubleSide, alphaTest: 0.5 });
   material.colorNode = colour;

@@ -27,6 +27,21 @@ export function auroraDim(phase: number): number {
   return f <= 0.2 ? 1 : lerp(1, 0.5, (f - 0.2) / 0.3);
 }
 
+/** Far layers pale at night (design review §3.3): the fog thickens 1.6× once the sun is 18° down (reference book §1). */
+export const NIGHT_HAZE = 1.6;
+
+const sstep = (e0: number, e1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+
+/** The hour's shadow floor in linear light, for the grade (see SHADOW_FLOOR in hours.ts). */
+export function shadowFloor(hour: HourPreset): RGB {
+  const f = hour.shadowFloor;
+  return [toLinear(f[0]), toLinear(f[1]), toLinear(f[2])];
+}
+
 /** Everything the materials read about the light this frame; three.js axes. */
 export interface LightValues {
   keyDir: Vec3;
@@ -46,6 +61,7 @@ export interface LightValues {
   moonStrength: number;
   aurora: number;
   cloud: number;
+  shadowFloor: RGB;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
@@ -63,7 +79,7 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     ambSky: add3(mix3(ambA.ambientSky, ambB.ambientSky, skyWeight), AURORA_AMBIENT, hour.aurora),
     ambGround: mix3(ambA.ambientGround, ambB.ambientGround, skyWeight),
     fogColor: scale3(hour.fogColor, FOG_COLOUR_SCALE),
-    fogDensity: hour.fogAmount * FOG_SCALE,
+    fogDensity: hour.fogAmount * FOG_SCALE * (1 + (NIGHT_HAZE - 1) * sstep(-6, -18, hour.world.sunEl)),
     exposure: hour.exposure * EXPOSURE_SCALE,
     skyGain: hour.skyGain,
     // coast.py's hybrid style multiplies the sky by (1, 1, 1), whatever sky_tint says
@@ -75,6 +91,7 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     moonStrength: moon ? moon.strength : 0,
     aurora: hour.aurora,
     cloud: hour.cloud,
+    shadowFloor: shadowFloor(hour),
   };
 }
 
@@ -98,6 +115,7 @@ export function createLightUniforms() {
     moonStrength: uniform(0),
     aurora: uniform(0),
     cloud: uniform(0),
+    shadowFloor: uniform(new Color(0.008, 0.008, 0.02)),
   };
   const key = new DirectionalLight(0xffffff, 2);
   /** Bounce light from the lit sea and sky opposite the key, so shadowed faces keep their shape (slice). */
@@ -130,6 +148,7 @@ export function createLightUniforms() {
       u.moonStrength.value = v.moonStrength;
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
+      u.shadowFloor.value.setRGB(...v.shadowFloor);
 
       key.color.setRGB(...v.keyColor);
       key.intensity = v.keyStrength;

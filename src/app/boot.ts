@@ -114,7 +114,11 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
     nearDistance(s.cam, s.landscape.yaw, s.landscape.pitch, fovFor(s.landscape.lens, 16 / 9), heightAt),
   );
   const cut = caveShot && caveBuf ? { x: caveShot.x, y: caveShot.y, rx: 12.2, ry: 10.2 } : undefined;
-  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut);
+  // Night's lagoon is fed by the falls, not the sea: no tide bands there (rock.ts). Its middle lies between the pool
+  // and the camera; 120 m reaches the bowl's walls.
+  const nightFalls = SHOTS.night.falls;
+  const lagoon = nightFalls ? { x: nightFalls.x, y: (nightFalls.poolY + SHOTS.night.cam[1]) / 2, r: 120 } : undefined;
+  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   const parts: [string, WorldPart][] = [

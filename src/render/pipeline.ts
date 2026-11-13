@@ -1,6 +1,7 @@
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import {
   acesFilmicToneMapping,
+  dot,
   float,
   pass,
   saturation,
@@ -77,6 +78,11 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
           .mul(vec2(screenSize.x.div(screenSize.y), 1))
           .length();
         g = g.mul(float(1).sub(smoothstep(0.45, 1.15, q).pow(1.6).mul(0.24)));
+        // The shadow floor (plan M2.5 Task 4; owner-references §17): the darkest pixels lift to the hour's tinted floor
+        // and anything 4× brighter than it is untouched; the lift's slope stays under 1, so the order of tones holds.
+        const lum = (c: Node<'vec3'>) => dot(c, vec3(0.2126, 0.7152, 0.0722));
+        const floor = light.shadowFloor as unknown as Node<'vec3'>;
+        g = g.add(floor.mul(float(1).sub(smoothstep(0, lum(floor).mul(4), lum(g)))));
         return vec4(sRGBTransferOETF(g) as Node<'vec3'>, 1);
       };
       plain = grade(color as unknown as Node<'vec4'>);

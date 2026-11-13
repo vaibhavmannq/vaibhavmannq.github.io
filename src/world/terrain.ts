@@ -5,6 +5,7 @@ import {
   mix,
   mx_noise_float,
   normalize,
+  normalWorld,
   positionWorld,
   reflect,
   smoothstep,
@@ -25,6 +26,7 @@ import {
 } from 'three/webgpu';
 import type { GridMeta, RingMeta } from './heights';
 import type { WorldPart } from './part';
+import { type FreshWater, seaWetNode, tideBands } from './rock';
 import type { Sky } from './sky';
 
 const dequant = (q: number, lo: number, hi: number) => lo + (q * (hi - lo)) / 65535;
@@ -128,6 +130,7 @@ export function createTerrain(
   meta: { heights: GridMeta; ring: RingMeta },
   sky: Sky,
   cut?: { x: number; y: number; rx: number; ry: number },
+  fresh?: FreshWater,
 ): WorldPart {
   colour.colorSpace = SRGBColorSpace;
   const material = new MeshStandardNodeMaterial();
@@ -136,7 +139,10 @@ export function createTerrain(
   const variation = mx_noise_float(vec3(wxy.mul(0.02), 1.0))
     .mul(0.18)
     .add(1.0);
-  material.colorNode = texture(colour, uv()).rgb.mul(variation);
+  // tide bands where the ground is a sea cliff (rock.ts; flat sand keeps its colour)
+  material.colorNode = texture(colour, uv())
+    .rgb.mul(variation)
+    .mul(tideBands(z, normalWorld.y, seaWetNode(wxy, fresh)));
   // Wet sand near the waterline mirrors the sky, only near the camera (s02: far sheen drew white lines on every shore).
   const wet = smoothstep(0.42, 0.31, z).mul(smoothstep(-0.4, 0.0, z));
   const v = normalize(cameraPosition.sub(positionWorld));

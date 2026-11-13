@@ -21,6 +21,7 @@ import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
 import { ARCH_SEEN_FROM, ARCH_SEEN_ON } from './headland';
 import type { WorldPart } from './part';
+import { tideBands } from './rock';
 
 type F = Node<'float'>;
 type V2 = Node<'vec2'>;
@@ -199,7 +200,8 @@ export function createRockMaterial(): MeshStandardNodeMaterial {
     .mul(float(1).sub(joint.mul(JOINT_DARK)))
     .mul(float(1).sub(drum.mul(DRUM_DARK)));
   const material = new MeshStandardNodeMaterial();
-  material.colorNode = base.mul(mix(float(1), light, wall));
+  // tide bands at the waterline (rock.ts, ruling R2: the arch and the stacks too); moss is never banded
+  material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, float(1).sub(moss)));
   material.roughnessNode = float(0.9);
   material.metalnessNode = float(0);
   return material;

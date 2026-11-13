@@ -90,4 +90,6 @@ export interface HourPreset {
   aurora: number;
   /** 0..1: how much of the sea of cloud lies in the midnight valley. */
   cloud: number;
+  /** The darkest a shadow may show, sRGB on screen after the grade (owner-references §17: never black, tinted). */
+  shadowFloor: RGB;
 }
