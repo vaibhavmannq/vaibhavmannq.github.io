@@ -1,4 +1,4 @@
-import { attribute, exp, float, mix, uniform, uv, vec2, vec3 } from 'three/tsl';
+import { attribute, exp, float, mix, uniform, uv, varying, vec2, vec3 } from 'three/tsl';
 import {
   AdditiveBlending,
   BufferAttribute,
@@ -143,17 +143,20 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
       rough,
     );
 
-  const warp = remap(along(5, 0, 0, 2, 0.45, 0.012), 0.3, 0.7).mul(c.warp);
+  // s09 cost table (Midnight at mid: 4.3 ms): what varies slowly along a band is worked out per vertex (131 per band)
+  // and blended; only the fine rays stay per pixel.
+  const vs = (n: F): F => varying(n) as unknown as F;
+  const warp = vs(remap(along(5, 0, 0, 2, 0.45, 0.012), 0.3, 0.7).mul(c.warp));
   const vw = v.sub(warp);
   const foot = remap(vw, 0, c.foot);
   // s09, against the owner's aurora photos: rays are soft columns of very different widths, not a comb of thin bright
   // spikes. Wide soft rays carry most of the light; the fine ones ride on them at a lower contrast; ends are blunt.
-  const wide = remap(along(c.rays * 0.45, 0.5, 5.3, 2, 0.5, 0.03), 0.28, 0.75);
+  const wide = vs(remap(along(c.rays * 0.45, 0.5, 5.3, 2, 0.5, 0.03), 0.28, 0.75));
   const fineRays = remap(along(c.rays * RAY_FINE, 0.8, 3.1, 3, 0.45, 0.05), 0.25, 0.85);
   const rays = remap(wide.mul(0.56).add(fineRays.mul(0.44)), 0.12, 0.9, c.ray_min, 1);
-  const rayLength = remap(along(c.rays * 0.3 * RAY_FINE, 0, 7.7, 2, 0.5, 0.02), 0.3, 0.7, 0.4, 1);
+  const rayLength = vs(remap(along(c.rays * 0.3 * RAY_FINE, 0, 7.7, 2, 0.5, 0.02), 0.3, 0.7, 0.4, 1));
   const fade = float(1).sub(vw.div(rayLength)).clamp(0, 1).pow(1.15);
-  const knots = remap(along(4, 0, 2.3, 3, 0.6, 0.02), 0.32, 0.72).pow(1.4);
+  const knots = vs(remap(along(4, 0, 2.3, 3, 0.6, 0.02), 0.32, 0.72).pow(1.4));
   const edge = remap(u, 0, 0.08).mul(remap(u, 1, 0.92));
   // the lower edge stays the sharp line, but the brightest part is a fold a little above it (owner-references §2)
   const lift = remap(vw, 0, 0.14, 0.62, 1);
@@ -166,7 +169,7 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
   const cored = mix(colour, vec3(...MINT), remap(curtain.mul(knots), 0.5, 1).mul(0.55));
   // a magenta-pink glow above the green, as in the owner's photos 1, 5, 7, 13 (oxygen's red high up, mixed)
   // patchy along the band, and gone before the ribbon's top edge (s09: a strong even wash showed the mesh's edge)
-  const patches = remap(along(1.6, 0, 9.1, 2, 0.5, 0.01), 0.42, 0.72);
+  const patches = vs(remap(along(1.6, 0, 9.1, 2, 0.5, 0.01), 0.42, 0.72));
   const top = remap(vw, 0.3, 0.58)
     .mul(remap(vw, 0.92, 0.6))
     .mul(foot)

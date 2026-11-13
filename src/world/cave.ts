@@ -13,6 +13,7 @@ import {
   step,
   uniform,
   uv,
+  varying,
   vec2,
   vec3,
 } from 'three/tsl';
@@ -180,20 +181,20 @@ export function createCave(parts: CaveParts, cave: CaveShot, sky: Sky, u: LightU
   const camInside = uniform(0);
   const clockU = uniform(0);
 
+  // s09 cost table: the first version ran ~15 noise reads per pixel over a full screen (11.5 ms on the laptop at mid).
+  // Everything that varies slowly is now worked out per vertex (shell vertices are ~0.3 m apart, the floor's 0.4 m)
+  // and blended across each triangle; per pixel stay only the mouth's cut test and the puddles' reflection.
+  const vs = <T extends Node>(n: T): T => varying(n) as unknown as T;
   // the mouth: cut where the export says open, its edge broken by noise (alpha test, no blending)
-  const ragged = open.add(
-    fbm2(vec2(wxy.x.add(wz), wxy.y.sub(wz)).mul(0.9), 3, 0.6)
-      .sub(0.5)
-      .mul(0.3),
+  const ragged = vs(
+    open.add(
+      fbm2(vec2(wxy.x.add(wz), wxy.y.sub(wz)).mul(0.9), 3, 0.6)
+        .sub(0.5)
+        .mul(0.3),
+    ) as F,
   );
-  // rock: mottled at two scales (s09: |noise| crack lines read as cartoon squiggles; real cracks wait for M7's scan)
+  // rock: mottled (s09: |noise| crack lines read as cartoon squiggles; real cracks wait for M7's scan)
   const mottle = fbm2(vec2(wxy.x.mul(1.3).add(wz.mul(0.7)), wxy.y.mul(1.3).sub(wz.mul(0.9))), 3, 0.55);
-  const grain = mx_noise_float(vec3(wxy.mul(6), wz.mul(6)))
-    .mul(0.5)
-    .add(0.5);
-  const rock = vec3(...ROCK)
-    .mul(mottle.mul(0.7).add(0.65))
-    .mul(grain.mul(0.25).add(0.85));
   const mouthDir = normalize(
     vec3(...toThree([Math.sin((cave.az * Math.PI) / 180), Math.cos((cave.az * Math.PI) / 180), 0.12])),
   );
@@ -206,16 +207,22 @@ export function createCave(parts: CaveParts, cave: CaveShot, sky: Sky, u: LightU
   // seen from outside (flying in), the shell takes the scene's own ambient light
   const outside = (u.ambSky as unknown as V3).mul(0.55);
   const lit = mix(outside, light, camInside);
-  let colour: V3 = rock.mul(lit);
-  // the floor: dark wet rock, and puddles that mirror the mouth (wet = noise, and the pool's ellipse)
+  const rockLit = vs(
+    vec3(...ROCK)
+      .mul(mottle.mul(0.7).add(0.65))
+      .mul(lit)
+      .mul(mix(float(1), float(0.7), isFloor)) as V3,
+  );
+  // the floor: puddles (noise, and the pool's ellipse) and its broken edge, per vertex
   const puddle = smoothstep(0.43, 0.5, fbm2(wxy.mul(0.45), 3, 0.5));
   const pool = smoothstep(1, 0.8, wxy.sub(vec2(cave.pool.x, cave.pool.y)).div(cave.pool.r).length());
-  const wet = puddle.max(pool).mul(isFloor);
+  const wet = vs(puddle.max(pool).mul(isFloor) as F);
+  const fromCentre = wxy.sub(vec2(cave.x, cave.y)).length();
+  const beyondEdge = vs(fromCentre.sub(float(9.1).add(fbm2(wxy.mul(0.7), 2, 0.5).sub(0.5).mul(1.2))) as F);
+
+  // per pixel: the mirrored view ray; where it leaves through the mouth the puddle shows the sky that way
   const toCam = normalize(cameraPosition.sub(positionWorld));
   const fresnel = float(0.04).add(float(0.96).mul(float(1).sub(toCam.y.max(0)).pow(5)));
-  const floorRock = rock.mul(0.7).mul(lit);
-  colour = mix(colour, floorRock, isFloor);
-  // the mirrored view ray: where it leaves through the mouth the puddle shows the sky that way (mouthMask in TSL)
   const ripple = vec3(mx_noise_float(vec3(wxy.mul(3), clockU.mul(0.4))).mul(0.03), 0, 0);
   const r = normalize(vec3(toCam.x.negate(), toCam.y, toCam.z.negate()).add(ripple));
   const rAz = atan(r.x, r.z.negate()).mul(180 / Math.PI);
@@ -226,21 +233,17 @@ export function createCave(parts: CaveParts, cave: CaveShot, sky: Sky, u: LightU
     .mod(360)
     .sub(180);
   const e = vec2(daz.div(MOUTH.halfAz), rEl.sub(MOUTH.el).div(MOUTH.halfEl)).length();
-  const edgeNoise = mx_noise_float(vec3(rAz.mul(0.25), rEl.mul(0.25), 3.1)).mul(0.08);
-  const through = float(1).sub(e.add(edgeNoise)).div(0.12).clamp(0, 1);
+  const through = float(1).sub(e).div(0.12).clamp(0, 1);
   const mirrored = sky
     .colorAt(r as unknown as V3)
     .mul(through)
     .mul(0.6);
-  colour = mix(colour, mirrored, wet.mul(fresnel.mul(0.6).add(0.4)));
+  const colour = mix(rockLit, mirrored, wet.mul(fresnel.mul(0.6).add(0.4)));
 
   const material = new MeshBasicNodeMaterial({ side: DoubleSide, alphaTest: 0.5 });
   material.colorNode = colour;
-  // The floor is a disc of 0.4 m squares: its edge is cut on a broken line inside the last row, not left as stairs (s09).
-  const fromCentre = wxy.sub(vec2(cave.x, cave.y)).length();
-  const floorEdge = float(9.1).add(fbm2(wxy.mul(0.7), 2, 0.5).sub(0.5).mul(1.2));
   const shellCut = smoothstep(-0.02, 0.02, ragged).mul(float(1).sub(isFloor));
-  const floorCut = step(floorEdge, fromCentre).mul(isFloor);
+  const floorCut = step(0, beyondEdge).mul(isFloor);
   material.opacityNode = float(1).sub(shellCut).sub(floorCut) as F;
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = false;

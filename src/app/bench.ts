@@ -30,6 +30,12 @@ declare global {
     __census(): Promise<CensusRow[]>;
     /** Hold the camera on flight `flight` (from stop `flight`) at fraction `t`; resolves after three rendered frames. */
     __flightPose(flight: number, t: number): Promise<void>;
+    /** When each part joined the scene, ms after navigation start, and when the scene was first shown. */
+    __joined(): Record<string, number>;
+    /** Hold the named parts hidden until called again (plan M2 Task 7's on/off switch). */
+    __parts(off: string[]): void;
+    /** Rest at a stop for `seconds` at a tier: frame times, and the GPU's own ms per frame when `?gpu` is on. */
+    __hold(stop: StopId, seconds: number, tier: (typeof TIER_NAMES)[number]): Promise<HoldResult>;
   }
 }
 
@@ -65,7 +71,67 @@ function countMaterials(app: App): number {
   return seen.size;
 }
 
+export interface HoldResult {
+  frames: number;
+  fps: number;
+  p95: number;
+  max: number;
+  /** Median and 95th percentile GPU ms per frame; null without `?gpu` or where the backend has no timer. */
+  gpuMs: number | null;
+  gpuP95: number | null;
+}
+
+const pct = (xs: number[], q: number): number => {
+  const s = [...xs].sort((a, b) => a - b);
+  return Math.round((s[Math.min(s.length - 1, Math.floor(s.length * q))] ?? 0) * 100) / 100;
+};
+
 export function installBench(app: App): void {
+  window.__joined = () => Object.fromEntries([...app.joined].map(([k, v]) => [k, Math.round(v)]));
+
+  window.__parts = (off) => {
+    app.partsOff = new Set(off);
+  };
+
+  window.__hold = async (stop, seconds, tierName) => {
+    const tier = TIER_NAMES.indexOf(tierName) as Tier;
+    if (tier >= 0) app.setTier(tier);
+    await app.stageB;
+    app.override = stopCentre(app.track, STOP_IDS.indexOf(stop));
+    for (let i = 0; i < 30; i++) await nextFrame();
+    const intervals: number[] = [];
+    const gpu: number[] = [];
+    const renderer = app.pipeline?.renderer;
+    const timed = renderer !== undefined && (renderer.backend as { trackTimestamp?: boolean }).trackTimestamp === true;
+    const collect = (_: unknown, __: number, dtMs: number) => {
+      intervals.push(dtMs);
+      if (timed)
+        void renderer
+          .resolveTimestampsAsync('render')
+          .then((ms) => {
+            if (typeof ms === 'number' && ms > 0) gpu.push(ms);
+          })
+          .catch(() => undefined);
+    };
+    app.onFrame.push(collect);
+    const start = performance.now();
+    while (performance.now() - start < seconds * 1000) {
+      window.dispatchEvent(new PointerEvent('pointermove'));
+      await nextFrame();
+    }
+    app.onFrame.splice(app.onFrame.indexOf(collect), 1);
+    app.override = null;
+    const total = intervals.reduce((s, x) => s + x, 0);
+    return {
+      frames: intervals.length,
+      fps: Math.round((intervals.length / Math.max(1, total)) * 1000 * 10) / 10,
+      p95: pct(intervals, 0.95),
+      max: pct(intervals, 1),
+      gpuMs: gpu.length ? pct(gpu, 0.5) : null,
+      gpuP95: gpu.length ? pct(gpu, 0.95) : null,
+    };
+  };
+
   window.__flight = async (tierName, seconds) => {
     const tier = TIER_NAMES.indexOf(tierName) as Tier;
     if (tier >= 0) app.setTier(tier);

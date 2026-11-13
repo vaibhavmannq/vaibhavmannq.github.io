@@ -1,8 +1,10 @@
 import {
   cameraPosition,
   dot,
+  Fn,
   float,
   fwidth,
+  If,
   max,
   min,
   mix,
@@ -95,6 +97,7 @@ export function cloudGrid(box: CloudShot['box'], stepM: number): BufferGeometry 
 export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta, u: LightUniforms): WorldPart {
   const clock = uniform(0);
   const weight = uniform(0);
+  const detail = uniform(1);
   const [x0, x1, y0, y1] = cfg.box;
 
   /** Height above the deck's level at coast (x, y): a long swell plus sharper crests, both drifting. */
@@ -139,14 +142,9 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   // Finer billows only tilt the light, and fade out where one is smaller than two pixels (no shimmer far away).
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const pixel = fwidth(wxy).length();
-  const fine = smoothstep(0.5, 0.1, pixel.mul(0.12));
   const drift = vec2(clock.mul(0.1), clock.mul(0.03));
-  const tilt = vec3(
-    mx_noise_float(wxy.mul(0.07).sub(drift)),
-    0,
-    mx_noise_float(wxy.mul(0.07).sub(drift).add(vec2(31.7, 11.3))),
-  ).mul(fine.mul(0.2));
-  const n = normalize(smoothNormal.add(tilt));
+  // (s09: the old 'tilt' noise, two reads per pixel, is replaced by the lumps' own moon-facing shading below)
+  const n = normalize(smoothNormal);
   const toCam = cameraPosition.sub(positionWorld);
   const v = normalize(toCam);
 
@@ -165,10 +163,20 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   const lp = wxy.sub(drift.mul(0.15));
   const lump = lumpAt(lp);
   const toMoon = normalize(vec2(u.moonDir.x, u.moonDir.z.negate()).add(vec2(0.0001, 0)));
-  const facing = lump
-    .sub(lumpAt(lp.add(toMoon.mul(2.5))))
-    .mul(4)
-    .clamp(-1, 1);
+  // s09 cost table: the side of each lump toward the moon costs two more noise reads per pixel (Midnight at mid ran
+  // 47 fps); only the high tier pays for it. A uniform branch: every pixel takes the same way, so the GPU skips it.
+  const facing = Fn(() => {
+    const f = float(0).toVar();
+    If(detail.greaterThan(0.5), () => {
+      f.assign(
+        lump
+          .sub(lumpAt(lp.add(toMoon.mul(2.5))))
+          .mul(4)
+          .clamp(-1, 1),
+      );
+    });
+    return f;
+  })();
   const lumps = smoothstep(4, 1.2, pixel);
   const crease = mix(float(0.85), smoothstep(0.2, 0.62, lump).mul(0.55).add(0.45), lumps);
   const shade = crease.mul(float(1).add(facing.mul(0.35).mul(lumps)));
@@ -223,7 +231,9 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
       weight.value = deckWeight(f.hour.cloud, f.pose.position[1], cfg);
       mesh.visible = weight.value > 0.001 && !far;
     },
-    setTier() {},
+    setTier(t) {
+      detail.value = t.bloom && t.scale >= 1 ? 1 : 0;
+    },
     dispose() {
       geometry.dispose();
       material.dispose();

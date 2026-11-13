@@ -55,6 +55,10 @@ export interface App {
   setTier(t: Tier): void;
   /** Parts by name, for the benchmarks' on/off switch. */
   readonly parts: Map<string, WorldPart>;
+  /** Parts held hidden by the benchmark (`__parts`). */
+  partsOff: Set<string>;
+  /** When each part joined the scene (performance.now ms), for the benchmarks. */
+  readonly joined: Map<string, number>;
   addPart(part: WorldPart, name: string): void;
   /** Called after every rendered frame (HUD, overlay). */
   onFrame: ((frame: FrameState, nowMs: number, dtMs: number) => void)[];
@@ -212,7 +216,7 @@ export async function boot(): Promise<App> {
   let pipeline: Pipeline | null = null;
   if (!params.nogl) {
     try {
-      pipeline = await createPipeline(host, params.webgl);
+      pipeline = await createPipeline(host, params.webgl, params.gpu);
     } catch (error) {
       console.warn('No GPU path; showing the stills.', error);
     }
@@ -247,9 +251,12 @@ export async function boot(): Promise<App> {
       governor.reset(t, performance.now());
     },
     parts: named,
+    partsOff: new Set(),
+    joined: new Map(),
     addPart(part, name) {
       parts.push(part);
       named.set(name, part);
+      app.joined.set(name, performance.now());
       scene.add(part.object);
       part.setTier(TIERS[tier]);
     },
@@ -353,6 +360,10 @@ export async function boot(): Promise<App> {
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
       for (const part of parts) part.update(f);
+      for (const name of app.partsOff) {
+        const held = named.get(name);
+        if (held) held.object.visible = false;
+      }
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
       // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).

@@ -33,10 +33,12 @@ export interface Pipeline {
 }
 
 /** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
-export async function createPipeline(host: HTMLElement, forceWebGL: boolean): Promise<Pipeline> {
+export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpuTimer = false): Promise<Pipeline> {
   const renderer = new WebGPURenderer({
     antialias: false,
     forceWebGL,
+    // `?gpu`: the GPU's own time per frame, for the cost table (plan M2 Task 7); off for visitors.
+    trackTimestamp: gpuTimer,
     // Opaque: every pixel is drawn, and the compositor need not blend the page under it.
     alpha: false,
   });

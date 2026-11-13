@@ -20,6 +20,8 @@ export interface Params {
   nogl: boolean;
   /** `?aurora=active`: the aurora's faster state, an option for the owner (m2-references §5.1). */
   auroraActive: boolean;
+  /** `?gpu`: track the GPU's time per frame (benchmarks only). */
+  gpu: boolean;
 }
 
 export function readParams(search: string): Params {
@@ -30,6 +32,7 @@ export function readParams(search: string): Params {
     webgl: q.has('webgl'),
     nogl: q.has('nogl'),
     auroraActive: q.get('aurora') === 'active',
+    gpu: q.has('gpu'),
   };
   const tier = TIER_NAMES.indexOf(q.get('tier') as (typeof TIER_NAMES)[number]);
   if (tier >= 0) params.tier = tier as Tier;
