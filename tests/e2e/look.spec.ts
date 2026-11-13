@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test';
 // Plan M2.5 Task 6, Review Focus 3: on a phone, a sideways drag turns the head and never scrolls; an upward drag
 // scrolls the journey as before.
 test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+// the touches are sent through Chrome's own protocol (the only engine where a scripted touch drives real scrolling)
+test.skip(({ browserName }) => browserName !== 'chromium', 'touch input through CDP is Chromium-only');
 
 async function drag(page: import('@playwright/test').Page, dx: number, dy: number) {
   const cdp = await page.context().newCDPSession(page);
