@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-13, end of session s09 (M2 continued; see `docs/handover/sessions/2026-11-13-s09-m2-continued.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-13, end of session s11 (M2.5 built; see `docs/handover/sessions/2026-11-13-s11-m2.5-built.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-11, after s06)
+## 2. Where we are (2026-11-13, after s11)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -83,13 +83,32 @@ no borrowed set pieces (no towers, piano, etc.).
   **the cave built** (Task 6, 74 % vs render); **costs measured on the laptop** and the cave/aurora/cloud made
   cheaper (Before dawn 60 fps at mid; flight at mid 59 fps, 0 frames over 50 ms; Midnight at mid still 47 fps, a
   scene cost for M6). Every number: the M2 ledger, "Session s09". **Phone measured at the end (WebGPU and WebGL2): 60 fps at every M2 stop and through the whole night on all tiers, 0 frames over 50 ms. M2 closed on my side; all four approaches kept.**
-- **M2.5 plan written:** `docs/superpowers/plans/2026-11-13-m2.5-the-world-from-reference.md` (world state, stacks,
-  the arch that does not exist live yet, tide bands, glitter and moon, look-around, Golden's lantern and spots,
-  nearest-first loading, phone). Waiting for the owner's read and choice of execution.
-- **Next:** the owner's hands-on feel test of the s09 build (pace, Next ride, cave); owner reviews the M2.5 plan;
-  then M2.5 Task 1. Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, set adb reverse and
-  forward right before each run, drive the tab already open (`.superpowers/m2/phone.mjs`). Measuring tools from s09: `.superpowers/m2/cost.mjs` (GPU ms per part, needs the prod build and
-  `?gpu`), `video.mjs` (25 fps clip to read motion), `atp.mjs` (frames at journey shares), `pacecheck.mjs`.
+- **M2.5 plan written** (`docs/superpowers/plans/2026-11-13-m2.5-the-world-from-reference.md`); the owner chose
+  subagent-driven execution. **s10 (2026-11-13): Tasks 1–3 done on `world`, not pushed** (ledger:
+  `docs/handover/ledgers/2026-11-13-m2.5-the-world-from-reference.md`; working copy with briefs and reports in
+  `.superpowers/sdd/2026-11-13-m2.5-the-world-from-reference/`):
+  - Task 1: `npm run compare` shows the owner's photos as a third column (`.superpowers/refs/compare.json`).
+    Before set for M2.5: `.superpowers/m25/before/`.
+  - Task 2: one world state per hour (sun/moon height, moon phase, wind from the sea, Beaufort force); spray,
+    cloud drift (0.4 × wind), sea chop and aurora dimming read it. Behaviour 80 %, look unchanged on purpose.
+  - Task 3: **found that the live site has no stacks and no arch** (Blender only). The headland line is now pure,
+    tested data in coast.py (falls seaward, uneven gaps, split pair, stumps, reef, shelves, fallen blocks, a
+    remnant landward of the arch). Layout 58 % vs the owner's `cove-and-stacks` 12; still flat-topped posts.
+  - **D29:** stacks and arch come in as Blender meshes; **Task 3c** added to the plan (spires, wedges, flared feet).
+- **s11 (2026-11-13): M2.5 Tasks 3b–9 built on `world` (8ae305a..91d9b1d), not pushed.** 3b/3c subagent-driven,
+  4–9 inline (owner: save tokens). The live world now has the lopsided arch and the headland stacks (Blender meshes in
+  a place pack `public/world/stops/headland/`), tide bands, tinted shadow floors, night haze, glitter roads, a real
+  crescent moon (the s07 bug was GPU `cos` precision), look-around (drag), Golden's paper lantern (parallax slide
+  measured **3.0 %** of the width) and two spots to walk to. **D30: 5 MB per place.** Phone over USB: 60 fps
+  everywhere, 0 frames over 50 ms. Open: laptop flights stutter with the rock in view (1–9 frames > 50 ms), the
+  lantern still reads as a box, the final whole-branch review was not run (R33). Owner's page:
+  https://claude.ai/artifact/9JhoxnNjFJcFhm8Ukape4A
+- **Next:** the owner's hands-on test (list on that page; FEEDBACK has been empty since s09), then ask to push;
+  offer the final review; trace the flight stutters; then M3. Phone setup that works: serve `vite preview --host
+  127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
+  (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab
+  (the phone's browser is Brave). Measuring tools: `.superpowers/m2/` (s09) and `.superpowers/m25/*.mjs` (s11:
+  `laptop.mjs` holds/flights/census, `flight.mjs [off-parts]`, `joins.mjs`, `phone-cove.mjs`, `t7/slide2.mjs`).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.

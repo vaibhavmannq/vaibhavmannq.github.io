@@ -169,3 +169,18 @@ kept ambiguous; contact links as on the current site; no paid domain. Answers in
 it overrides the search-based research where they differ. From his motion video: **the view must answer the pointer at
 once (parallax of about 3 % of the screen between near and far), and something must always be moving on its own.**
 So every stop needs a near layer. Sharpens D25.
+
+**D29 · 2026-11-13 · (my call, owner told in chat) The sea stacks and the arch come into the live world as meshes
+exported from Blender, not through the height field; M2.5 gains a Task 3c for the stacks.** Found in s10: the live
+site had no stacks at all (they lived only in the Blender scene, below coast.py's render-setup marker); the dark
+blocks at Golden are headland ground. On the 8 m height field a 7 m stack would be a pyramid and no undercut notch
+is possible. So: Task 3 made the stacks pure, tested data (the real headland sequence); Task 3b exports the arch;
+Task 3c exports the stacks, shelves and fallen blocks as one merged mesh in the shared rock material (one draw,
+≤ 150 k triangles), with spires, wedges and flared feet from the owner's `cove-and-stacks` 12. If the census or the
+phone says no, the fallback is said out loud. Replaces the M2.5 plan's "rebake with `npm run world`" for Task 3.
+
+**D30 · 2026-11-13 · New download per place: ≤ 5 MB (was ≈ 3 MB in D9).** Owner, s11, on hearing the arch and the
+stacks (1.9 MB of rock) left the cove places about 0.9 MB for trees, flowers, lanterns and near layers: "increase the
+limit". The number is my call: at 10 Mbit/s 5 MB takes about 4 s, inside D9's "each stop complete under 5 s". The
+first-view (stage A ≤ 1.2 MB) and world-base (≤ 1.0 MB) budgets do not change. Enforced in `src/assets/manifest.ts`
+`BUDGETS.perStopBytes` (CI: `npm run world:report`). Replaces D9's "about 3 MB per stop".

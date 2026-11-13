@@ -92,6 +92,8 @@ in water with no meeting line.
 - So: First light's mist is radiation fog or sea smoke: a flat-topped layer a metre or two deep, almost still,
   thinning as the sun arrives at Sunrise. It never streams. The far shore's tops stand clear above it.
 - Midnight's cloud sea is valley fog: flat on the large scale, slow, lapping at slopes, **fills only low ground**.
+- Its drift (s10 ruling R8) [mine]: valley fog lies in the still, cold air under an inversion, so it moves slower
+  than the wind on the ridge above it: the live deck drifts at 0.4 of the place's wind (about 1 m/s at force 2).
 - Fog takes the colour of the light on it: pink at first light, silver under the moon [mine].
 - **Gives it away:** fog as an even grey wash; fog moving fast on a calm night; fog with a hard edge; a cloud
   sea that sits at different heights in connected valleys.

@@ -382,7 +382,7 @@ round (D6), together with any camera view the world pass changed.
 |---|---|---|
 | Name on screen | < 1 s on 10 Mbit/s | e2e (throttled) |
 | First view (stage A of Golden, with code) | ≤ 1.6 MB; < 3 s on 10 Mbit/s | pack report + e2e (throttled) |
-| New download per place | ≤ 3 MB | pack report (CI) |
+| New download per place | ≤ 5 MB (D30; was 3 MB) | pack report (CI) |
 | Whole night, everything | ≈ 20 MB (estimate) | pack report |
 | JavaScript (gzip) | ≤ 400 KB (old site 330 KB; adds three's WebGPU build and the meshopt decoder) | size-limit (CI) |
 | Each place complete after heading for it | < 5 s on 10 Mbit/s | e2e (throttled) |
