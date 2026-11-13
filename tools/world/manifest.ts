@@ -48,7 +48,14 @@ const base = JSON.parse(readFileSync(join(world, 'base/base.json'), 'utf8'));
 const skies = JSON.parse(readFileSync(join(world, 'sky/sky.json'), 'utf8'));
 const manifest: Manifest = {
   version: 1,
-  base: { heights: base.heights, ring: base.ring, dressing: base.dressing, aurora: base.aurora, cave: base.cave },
+  base: {
+    heights: base.heights,
+    ring: base.ring,
+    dressing: base.dressing,
+    aurora: base.aurora,
+    cave: base.cave,
+    arch: base.arch,
+  },
   skies,
   files,
 };

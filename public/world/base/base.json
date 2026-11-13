@@ -40,5 +40,14 @@
   "scale": 1000,
   "openLo": -2.0,
   "openHi": 2.0
+ },
+ "arch": {
+  "file": "base/arch.bin",
+  "verts": 10796,
+  "tris": 21560,
+  "indexBytes": 2,
+  "scale": 100,
+  "x": -1171.4,
+  "y": 1218.9
  }
 }

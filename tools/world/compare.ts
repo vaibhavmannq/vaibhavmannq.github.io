@@ -1,7 +1,7 @@
 /**
  * The look check (spec §15): each stop live, beside its render (run: npm run compare -- <baseUrl> <outDir> [stops]
  * [query]). Per stop a 1920x1080 frame and a 412x915 phone frame, stills off, on this machine's GPU (headed Chrome),
- * six seconds after the scene is ready. Writes <outDir>/index.html. `stops` is a comma list (default: all nine);
+ * six seconds after the scene and its stage B parts are ready. Writes <outDir>/index.html. `stops` is a comma list (default: all nine);
  * `query` is added to the URL (default: tier=high). When .superpowers/refs/compare.json ({ "<stop>": ["<folder>/<file>"] })
  * names the owner's photos for a stop, they fill a third column beside the render and the live shot, at the shots' height (several share the column side by side); a missing file reads "no reference".
  */
@@ -40,6 +40,8 @@ for (const size of SIZES) {
       await page.waitForFunction(() => document.documentElement.classList.contains('is-scene-ready'), undefined, {
         timeout: 120_000,
       });
+      // Stage B's parts (the cave, the arch) join after the scene is first shown: shoot only once they are in.
+      await page.evaluate(() => (window as unknown as { __stageB?: () => Promise<void> }).__stageB?.());
       await page.waitForTimeout(6000);
       const at = await page.evaluate(() =>
         [...document.querySelectorAll('#rail a')].findIndex((a) => a.hasAttribute('aria-current')),

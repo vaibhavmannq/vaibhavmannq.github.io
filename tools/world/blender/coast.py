@@ -358,16 +358,53 @@ def ground(x, y):
     h = hb + f * relief(xw, yw) * sm(3.0, 20.0, hb)          # relief only on land, nothing new at sea
     return np.where(hb > 3.0, np.maximum(h, 3.0), h)         # gullies never cut land below 3 m (no inland sea)
 
+# ---------------- the arch's shape (pure data; Blender builds the mesh in build_arch) ----------------
+# Owner cliffs-and-columns 1 (Gatklettur) and reference-landforms §2 ("arches are lopsided because rock is not
+# uniform"): a thick landward leg, a block over twice the seaward leg's width, waisted near the water and swelling
+# to a domed moss-topped crown that overhangs landward; a thin seaward leg that leans; the span thick where it leaves
+# the block and thinning toward the sea; the opening off-centre in the whole mass; columns in the sides; the
+# wave-cut notch at the waterline; fallen blocks in the water beneath the opening.
+# Arch axes: s along the spine (seaward +, the headland line's direction), q along the hole axis, z up; the origin is
+# ARCH["pos"] at sea level. Blue hour's camera stands on the hole axis (s = 0), so the opening is centred near s = 0.
+# A leg: its foot's centre s, half-widths along s and q, crown height, its width near the water and up high (shares
+# of the half-widths), and how far its centre has moved along s by the crown (lean).
+ARCH_LAND = dict(s=-35.0, rs=18.0, rq=15.0, top=64.0, waist=0.84, bulge=1.02, lean=-4.0)
+ARCH_SEA = dict(s=26.0, rs=6.5, rq=8.0, top=53.0, waist=1.0, bulge=0.92, lean=-3.0)
+# the span's centreline runs from s0 (inside the block) to s1 (inside the thin leg), from z0 to z1 and rising by
+# `rise` between; its half thickness thins from half0 to half1, with haunches (thicker downward only) at each end;
+# its half depth along the hole axis
+ARCH_SPAN = dict(s0=-24.0, s1=24.0, z0=48.0, z1=45.0, rise=3.0, half0=6.5, half1=4.5, haunch0=12.0, haunch1=6.0, depth=7.0)
+ARCH_OPEN = (-1.0, 22.0)         # the opening's centre along the spine and its mid-height (its top is ~44 m)
+ARCH_FOOT = 1.2                  # the feet flare to this much of the leg's width at the waterline (a talus apron)
+ARCH_SKIRT = -4.0                # the rock runs on below the flats (ankle-deep water on ground ~-0.25 m): no floating foot
+ARCH_TOP = ARCH_LAND["top"]      # the highest rock: the headland line's first height step is measured from it
+ARCH_LEG = ARCH_SEA["s"] + ARCH_SEA["rs"] * ARCH_FOOT   # the seaward leg's foot reaches this far along the line at the waterline
+# fallen blocks beneath the opening (s, q, half-sizes along s and q, top z, turn in degrees): one large block of
+# broken columns and smaller pieces, as in the photo's boulders under the hole; each rests on the bed below the flats
+ARCH_BLOCKS = ((9.0, -5.0, 3.6, 2.4, 2.8, 25.0), (-5.0, 6.0, 1.8, 1.5, 1.6, 70.0), (14.0, 7.0, 1.6, 1.3, 1.3, 140.0),
+               (3.0, -12.0, 1.4, 1.2, 1.2, 10.0), (-10.0, -6.0, 1.2, 1.0, 1.0, 100.0), (16.0, -10.0, 1.3, 1.0, 1.4, 55.0),
+               (5.0, 2.0, 0.9, 0.7, 0.7, 30.0))
+
+def arch_leg_scale(z, leg):
+    """A leg's width at height z as a share of its half-widths: from its waist near the water to its bulge up high,
+    the domed crown, the flared foot; the notch is cut separately (rock_notch, in metres)."""
+    t = max(0.0, z) / leg["top"]
+    body = leg["waist"] + (leg["bulge"] - leg["waist"]) * float(sm(0.12, 0.75, t))
+    dome = max(0.0, 1 - max(0.0, (t - 0.8) / 0.2) ** 2) ** 0.5               # the crown rounds over in its top fifth
+    return body * max(dome, 0.35) * (1.0 + (ARCH_FOOT - 1.0) * float(sm(5.0, 0.0, z)))
+
+def arch_leg_centre(z, leg):
+    """Where a leg's centre is along the spine at height z (it leans)."""
+    return leg["s"] + leg["lean"] * max(0.0, z) / leg["top"]
+
 # ---------------- the old headland line: sea stacks, stumps, a reef (pure data; Blender builds it in build_rocks) ----------------
 # The arch is the last arch of an old headland; land lies landward along its spine (-s), open sea seaward (+s).
 # Real coasts (reference-landforms §2; owner cove-and-stacks 12, cliffs-and-columns 1 and 5): seaward of the arch the
 # pieces get lower and more broken (each stack about 0.8x the one before it), the gaps are uneven, a few lean, one has
 # split along a joint, and the line ends in stumps and a reef awash. Every piece stands on its wave-cut shelf with
 # fallen blocks at its foot and a notch cut at the waterline.
-ARCH_TOP = 66.0                 # build_arch's H at scale 1: the line's first height step is measured from it
 _sp = math.radians(ARCH["rotz"] - 69.0 + 21.0)                             # the arch's spine direction
 LINE_U = (math.sin(_sp), math.cos(_sp)); LINE_P = (LINE_U[1], -LINE_U[0])  # seaward along the line, and across it
-ARCH_LEG = 56.0                 # the seaward leg's foot reaches this far along the line at the waterline
 
 def line_xy(s, o):
     ax, ay = ARCH["pos"]
@@ -378,7 +415,8 @@ def line_so(x, y):
 
 # The line is not ruled straight: it follows the old headland's gentle curve, up to +-40 m across, so from Dusk the
 # pieces overlap at different depths instead of standing in a row (owner cove-and-stacks 12).
-LINE_BEND, LINE_BEND_S0, LINE_BEND_L = 38.0, 60.0, 300.0
+LINE_BEND, LINE_BEND_L = 38.0, 300.0
+LINE_BEND_S0 = ARCH_LEG + 4.0   # the bend starts just past the arch's seaward foot (the line slides with the foot, its shape kept)
 def line_curve(s): return LINE_BEND * math.sin(math.pi * (s - LINE_BEND_S0) / LINE_BEND_L)
 
 # Seaward of the arch: (kind, open water before it (m, edge to edge; no two alike), offset off the curve, rocks: (r, h, lean)...)
@@ -1107,53 +1145,135 @@ def _rock_material():
     L(nt, bp.outputs[0], sock(bs, "Normal")); L(nt, bs.outputs[0], out.inputs["Surface"])
     return m
 
-def build_arch():
-    """The sea arch, swept along a flat-topped curve: two legs of different weight, a thinner slab-like top that is
-    deeper (along the hole axis) than it is tall, flared feet, rock beds and blocky jointing. Not a torus."""
+def _superellipse(n, p):
+    """n points round a superellipse of exponent p (2 a circle, higher boxier): angles, unit half-widths."""
+    a = np.linspace(0, 2 * math.pi, n, endpoint=False); c, s_ = np.cos(a), np.sin(a)
+    return a, np.sign(c) * np.abs(c) ** (2 / p), np.sign(s_) * np.abs(s_) ** (2 / p)
+
+def _tube(rings):
+    """Quads between equal rings (each an (n, 3) array) and a fan over each end: a closed mesh as (verts, faces)."""
+    R = np.stack(rings); nr, n = R.shape[:2]; verts = list(map(tuple, R.reshape(-1, 3))); faces = []
+    for i in range(nr - 1):
+        for j in range(n):
+            a = i * n + j; b = i * n + (j + 1) % n; faces.append((a, b, b + n, a + n))
+    for ring, flip in ((0, True), (nr - 1, False)):
+        ci = len(verts); verts.append(tuple(R[ring].mean(0)))
+        for j in range(n):
+            a = ring * n + j; b = ring * n + (j + 1) % n
+            faces.append((b, a, ci) if flip else (a, b, ci))
+    return verts, faces
+
+def arch_parts():
+    """The arch's pieces in arch axes (s, q, z) before they are merged: the two legs, the span, the fallen blocks.
+    Each is a closed mesh; build_arch unites them in a voxel remesh, so they may overlap."""
     from mathutils import noise as mnoise
-    c = Vector((*ARCH["pos"], 0.0)); k_ = ARCH["scale"]
-    rz = math.radians(ARCH["rotz"])
-    u = Vector((math.cos(rz), math.sin(rz), 0.0))          # along the spine (the arch's span)
-    n = Vector((-math.sin(rz), math.cos(rz), 0.0))         # the hole axis
-    span, H = 40.0 * k_, 66.0 * k_
-    RINGS, SEG = 96, 56
-    def path(t):                                           # t 0..1 from leg A foot over the top to leg B foot
-        th = math.pi * (1 - t)
-        cs, sn = math.cos(th), math.sin(th)
-        x = span * math.copysign(abs(cs) ** 0.75, cs)
-        z = -6.0 + (H + 6.0) * abs(sn) ** 0.55                # steep legs, a broad flattish top
-        return x, z
-    verts = []
-    for i in range(RINGS + 1):
-        t = i / RINGS
-        x0, z0 = path(max(0.0, t - 0.002)); x1, z1 = path(min(1.0, t + 0.002))
-        tx, tz = x1 - x0, z1 - z0; l = math.hypot(tx, tz) or 1.0; tx, tz = tx / l, tz / l
-        nx, nz = -tz, tx                                   # in-plane normal
-        x, z = path(t)
-        leg = 1 - abs(math.sin(math.pi * t))               # 1 at the feet, 0 at the top
-        side = 1.0 if t < 0.5 else 0.78                    # leg A heavier than leg B
-        a = (9.5 + 9.0 * leg ** 1.6 * side) * k_           # thickness in the arch plane
-        b = (17.0 + 6.0 * leg * side) * k_                 # depth along the hole axis: a slab, not a tube
-        foot = max(0.0, (6.0 - (z + 6.0)) / 6.0) if z < 0 else 0.0
-        a *= 1 + 0.6 * foot; b *= 1 + 0.4 * foot           # flared feet
-        for j in range(SEG):
-            ph = 2 * math.pi * j / SEG; cp, sp_ = math.cos(ph), math.sin(ph)
-            q = Vector((cp * 1.5, sp_ * 1.5, t * 9.0))
-            k = 1 + 0.16 * mnoise.noise(q) + 0.07 * mnoise.noise(q * 2.7) + 0.10 * math.cos(3 * ph + 1.3) * leg
-            k += 0.06 * (1.0 if ((z / 3.2 + 0.5 * mnoise.noise(q * 0.6)) % 1.0) < 0.35 else 0.0)   # rock beds as ledges
-            px = x + nx * a * cp * k; pz = z + nz * a * cp * k; py = b * sp_ * k
-            w = c + u * px + n * py; verts.append((w.x, w.y, pz))
-    faces = [(i * SEG + j, i * SEG + (j + 1) % SEG, (i + 1) * SEG + (j + 1) % SEG, (i + 1) * SEG + j) for i in range(RINGS) for j in range(SEG)]
-    me = bpy.data.meshes.new("arch"); me.from_pydata(verts, [], faces); me.update()
-    for p_ in me.polygons: p_.use_smooth = True
+    from mathutils import Vector
+    parts = []
+    for k, leg in enumerate((ARCH_LAND, ARCH_SEA)):
+        a, ux, uy = _superellipse(128, 3.2)
+        zs = sorted(set([float(z) for z in np.arange(ARCH_SKIRT, leg["top"], 0.6)] + [float(z) for z in np.arange(-1.2, 2.1, 0.15)] + [leg["top"]]))
+        rings = []
+        for z in zs:
+            sc = arch_leg_scale(z, leg)
+            lobes = 1 + 0.05 * np.cos(3 * a + 1.7 * k) + 0.035 * np.cos(5 * a + 0.6 + k) + 0.05 * mnoise.noise(Vector((k * 5.3, 0.0, z * 0.04)))
+            lobes = lobes + 0.09 * np.array([mnoise.noise(Vector((math.cos(v) * 1.2 + k * 3, math.sin(v) * 1.2, z / 11.0))) for v in a])
+            x = leg["rs"] * sc * ux * lobes; y = leg["rq"] * sc * uy * lobes
+            r = np.hypot(x, y); cut = np.maximum(1 - rock_notch(z, min(leg["rs"], leg["rq"])) / np.maximum(r, 1e-6), 0.2)
+            rings.append(np.stack([arch_leg_centre(z, leg) + x * cut, y * cut, np.full_like(x, z)], -1))
+        parts.append(_tube(rings))
+    sp = ARCH_SPAN; a, ux, uy = _superellipse(72, 2.6); rings = []
+    for t in np.linspace(0, 1, 96):
+        end = max(0.0, 1 - min(t, 1 - t) / 0.3) ** 2                 # 1 where the span runs into a leg
+        e = (sp["haunch0"] if t < 0.5 else sp["haunch1"]) * end       # the haunch: thicker downward only
+        zc = sp["z0"] + (sp["z1"] - sp["z0"]) * t + sp["rise"] * math.sin(math.pi * t) - e / 2
+        half = sp["half0"] + (sp["half1"] - sp["half0"]) * t + e / 2; b = sp["depth"] + 3.0 * end
+        s_ = sp["s0"] + (sp["s1"] - sp["s0"]) * t
+        rings.append(np.stack([np.full_like(ux, s_), b * ux, zc + half * uy], -1))
+    parts.append(_tube(rings))
+    for (bs, bq, hs, hq, top, yaw) in ARCH_BLOCKS:
+        a, ux, uy = _superellipse(24, 3.0); rings = []; hz = (top + 1.5) / 2; zc = top - hz
+        cy_, sy_ = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+        for ph in np.linspace(-math.pi / 2, math.pi / 2, 14)[1:-1]:
+            w = abs(math.cos(ph)) ** (2 / 3.0); h = math.copysign(abs(math.sin(ph)) ** (2 / 3.0), ph)
+            x, y = hs * w * ux, hq * w * uy
+            rings.append(np.stack([bs + cy_ * x - sy_ * y, bq + sy_ * x + cy_ * y, np.full_like(x, zc + hz * h)], -1))
+        parts.append(_tube(rings))
+    return parts
+
+def arch_columns(P, Nrm):
+    """Basalt columns (reference-landforms §2; owner cliffs-and-columns 1): a jittered cell pattern across the
+    horizontal plane, so the sides break into upright prisms 2-3 m across (at this arch's scale) with a groove
+    between them, each standing a little proud or back, cut across into drums; around the span the columns are
+    thinner and more chaotic (the entablature). The pattern leans and fans a little with height, so no wall reads as
+    built. Returns the push along each vertex normal, metres."""
+    x, y, z = P[:, 0], P[:, 1], P[:, 2]
+    lean = 0.07 * z
+    px = x + lean * (fbm(x * 0.02 + 3.0, y * 0.02, 3) - 0.5) * 2; py = y + lean * (fbm(x * 0.02, y * 0.02 + 7.0, 3) - 0.5) * 2
+    def cells(size, jit, salt):
+        gx, gy = px / size, py / size; ix, iy = np.floor(gx), np.floor(gy)
+        f1 = np.full(len(P), 9.0); f2 = np.full(len(P), 9.0); idv = np.zeros(len(P))
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                cx_, cy_ = ix + dx, iy + dy
+                ox = cx_ + 0.5 + jit * (hsh(cx_ + salt, cy_) - 0.5); oy = cy_ + 0.5 + jit * (hsh(cx_, cy_ + salt) - 0.5)
+                d = np.hypot(gx - ox, gy - oy)
+                closer = d < f1
+                f2 = np.where(closer, f1, np.minimum(f2, d)); idv = np.where(closer, hsh(cx_ * 1.31 + salt, cy_ * 0.77), idv); f1 = np.minimum(f1, d)
+        return (f2 - f1) * size, idv
+    e1, id1 = cells(2.6, 0.55, 0.0)
+    e2, id2 = cells(1.5, 0.9, 13.0)
+    upper = sm(ARCH_SPAN["z1"] - 12.0, ARCH_SPAN["z1"] - 4.0, z)
+    edge = e1 * (1 - upper) + e2 * upper; cid = id1 * (1 - upper) + id2 * upper
+    groove = -0.6 * (1 - sm(0.0, 0.5, edge))
+    proud = 0.8 * (cid - 0.5)
+    drum = frac((z + cid * 11.0) / (2.6 + 2.2 * frac(cid * 7.3)))
+    crack = -0.2 * (1 - sm(0.0, 0.06, np.minimum(drum, 1 - drum)))
+    side = 1 - np.abs(Nrm[:, 2]) ** 2                                   # full on walls, slight on the moss-covered tops
+    return (groove + proud + crack) * (0.25 + 0.75 * side) * sm(-1.0, 1.0, z)
+
+def build_arch(voxel=0.5, max_tris=120_000):
+    """The sea arch from the pure data above the render setup (ARCH_LAND, ARCH_SEA, ARCH_SPAN, ARCH_BLOCKS): the
+    pieces united in a voxel remesh, weathered into lumps, cut into basalt columns, decimated to at most `max_tris`
+    triangles. Built in world coordinates; the export reads it back around ARCH["pos"]."""
+    from mathutils import noise as mnoise
+    from mathutils import Vector
+    ax, ay = ARCH["pos"]; rz = math.radians(ARCH["rotz"]); k_ = ARCH["scale"]
+    u = np.array([math.cos(rz), math.sin(rz)]); n = np.array([-math.sin(rz), math.cos(rz)])
+    verts, faces = [], []
+    for pv, pf in arch_parts():
+        o_ = len(verts); verts += pv; faces += [tuple(i + o_ for i in f) for f in pf]
+    A = np.array(verts) * k_
+    W = np.stack([ax + A[:, 0] * u[0] + A[:, 1] * n[0], ay + A[:, 0] * u[1] + A[:, 1] * n[1], A[:, 2]], -1)
+    me = bpy.data.meshes.new("arch"); me.from_pydata([tuple(v) for v in W], [], faces); me.update()
     o = bpy.data.objects.new("arch", me); scn.collection.objects.link(o)
-    ss = o.modifiers.new("s", "SUBSURF"); ss.levels = 0; ss.render_levels = 1
-    for nm_, (sc, st) in enumerate(((20.0, 4.5), (9.0, 2.6), (2.2, 0.7))):
-        tx_ = bpy.data.textures.new(f"archn{nm_}", "CLOUDS"); tx_.noise_scale = sc; tx_.noise_depth = 4
-        dm = o.modifiers.new(f"d{nm_}", "DISPLACE"); dm.texture = tx_; dm.strength = st; dm.texture_coords = "GLOBAL"; dm.mid_level = 0.5
-    tv = bpy.data.textures.new("archvor", "VORONOI"); tv.noise_scale = 6.0; tv.distance_metric = "MINKOVSKY_FOUR"
-    dv = o.modifiers.new("dv", "DISPLACE"); dv.texture = tv; dv.strength = 2.4; dv.texture_coords = "GLOBAL"; dv.mid_level = 0.6
-    me.materials.append(rock_material())
+    rm = o.modifiers.new("rm", "REMESH"); rm.mode = "VOXEL"; rm.voxel_size = voxel; rm.adaptivity = 0.0
+    def bake():
+        bpy.context.view_layer.update(); dg = bpy.context.evaluated_depsgraph_get()
+        m2 = bpy.data.meshes.new_from_object(o.evaluated_get(dg)); old = o.data
+        for md in list(o.modifiers): o.modifiers.remove(md)
+        o.data = m2; bpy.data.meshes.remove(old)
+    bake()
+    def arrays():
+        me_ = o.data; nv = len(me_.vertices)
+        P = np.zeros(nv * 3); me_.vertices.foreach_get("co", P); N = np.zeros(nv * 3); me_.vertex_normals.foreach_get("vector", N)
+        return P.reshape(-1, 3), N.reshape(-1, 3)
+    # weathering: lumps along the normals at three scales (bulges, ribs, knobs); the crowns stay flat-ish
+    P, N = arrays()
+    lump = np.array([mnoise.noise(Vector((x / 16.0, y / 16.0, z / 12.0))) * 3.4 + mnoise.noise(Vector((x / 7.0 + 5, y / 7.0, z / 6.0))) * 1.3
+                     + mnoise.noise(Vector((x / 2.5, y / 2.5 + 3, z / 2.5))) * 0.25 for x, y, z in P])
+    P = P + N * (lump * (1 - 0.6 * np.clip(N[:, 2], 0, 1)) * sm(-2.0, 2.0, P[:, 2]))[:, None]
+    o.data.vertices.foreach_set("co", P.ravel()); o.data.update()
+    P, N = arrays()
+    P = P + N * arch_columns(P, N)[:, None]
+    o.data.vertices.foreach_set("co", P.ravel()); o.data.update()
+    ntri = sum(len(p.vertices) - 2 for p in o.data.polygons)
+    log("arch remeshed", ntri, "tris")
+    if ntri > max_tris:
+        dm = o.modifiers.new("dec", "DECIMATE"); dm.ratio = max_tris / ntri * 0.98; bake()
+    for p_ in o.data.polygons: p_.use_smooth = True
+    o.data.materials.append(rock_material())
+    log("arch", len(o.data.vertices), "verts", sum(len(p.vertices) - 2 for p in o.data.polygons), "tris")
+    return o
 
 # ---------------- the eroded coastline: sea stacks, reefs, the tide-pool shelf ----------------
 # (the headland line's data, ROCKS and the column profile live above the render setup: they load without Blender)
@@ -1661,7 +1781,8 @@ def build_caps():
     bpy.context.view_layer.update(); dg = bpy.context.evaluated_depsgraph_get(); r = np.random.default_rng(71); n = 0
     tops = [(x, y, rr, h) for (x, y, rr, h, l) in ROCKS if h >= 12 and math.hypot(x - CX, y - CY) < cfg.get("reach", 600)]
     tops += [(x, y, rr, h) for (x, y, rr, h, l) in S.get("cliff_rocks", ()) if h >= 12]
-    ax, ay = ARCH["pos"]; tops.append((ax, ay, 26.0, 60.0))
+    for leg in (ARCH_LAND, ARCH_SEA):                                    # the arch's crown and its seaward shoulder
+        lx, ly = line_xy(leg["s"], 0.0); tops.append((lx, ly, min(leg["rs"], leg["rq"]), leg["top"] - 4.0))
     for (x, y, rr, h) in tops:
         for _ in range(cfg.get("per", 14)):
             a = r.uniform(0, 2 * math.pi); d = rr * 0.75 * math.sqrt(r.random())

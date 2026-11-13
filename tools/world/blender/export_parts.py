@@ -6,9 +6,11 @@ exported depends on the hour:
   an hour with an aurora   <folder>/aurora.json   each curtain's base line (the folds use Blender's own noise)
   the cave's hour          <folder>/cave.bin      the cave shell with its ragged mouth, the floor, the light that
                                                   reaches each point from the mouth, and the glowing fungi
+  Blue hour (the arch's)   <folder>/arch.bin      the lopsided sea arch and the blocks fallen beneath it, with the
+                                                  share of the sky each point sees
 
-Both add their key to <folder>/base.json. The file layouts are read by src/world/aurora.ts and src/world/cave.ts and
-checked without Blender by tools/world/test_parts.py.
+Each adds its key to <folder>/base.json. The file layouts are read by src/world/aurora.ts, src/world/cave.ts and
+src/world/arch.ts and checked without Blender by tools/world/test_parts.py.
 """
 import json, math, os
 import numpy as np
@@ -18,6 +20,11 @@ SCALE = 1000                  # cave.bin: Int16 units per metre
 MOUTH_POINTS = 24
 OPEN_LO, OPEN_HI = -2.0, 2.0  # the `open` field is stored over this range
 HOLE = 0.45                   # triangles with all three corners more open than this are inside the hole: not exported
+ARCH_SCALE = 100              # arch.bin: Int16 units per metre (the arch reaches ~60 m from its origin)
+SKY_RAYS = 48                 # rays per point for the arch's sky light
+ARCH_TRIS = 22_000            # the site's arch: the world base's byte budget (1.0 MB, spec §14) leaves ~0.23 MB; the
+                              # silhouette and weathering survive, the column joints are drawn per pixel (src/world/arch.ts)
+SEA_BOUNCE = 0.3              # what a ray that leaves downward brings back from the sea and the flats (they mirror the sky dimly)
 
 
 def _meta(folder, **keys):
@@ -124,9 +131,51 @@ def export_cave(g, folder):
     g["log"]("cave", len(V), "shell verts", len(shell_tris), "tris;", len(F), "floor verts;", len(fungi), "fungi;", len(blob), "bytes")
 
 
+def _hemisphere(n):
+    """n cosine-weighted directions about +z (a golden-angle spiral): x, y, z."""
+    i = np.arange(n) + 0.5; r = np.sqrt(i / n); a = i * math.pi * (3 - math.sqrt(5))
+    return np.stack([r * np.cos(a), r * np.sin(a), np.sqrt(1 - r * r)], -1)
+
+
+def export_arch(g, folder):
+    """arch.bin: Int16 positions (coast axes around ARCH pos at sea level, 1/ARCH_SCALE m), one byte of sky light per
+    vertex (padded to 4 bytes), then the triangles (Uint16 when the vertices fit, else Uint32: meta indexBytes). The light is the share of a cosine-weighted hemisphere about
+    each point's normal that reaches open sky (a ray that leaves downward meets the sea: SEA_BOUNCE; one that meets
+    the rock: nothing), so the inside of the opening, the undersides and the corners go dark."""
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    ax, ay = g["ARCH"]["pos"]
+    o = g["build_arch"](max_tris=ARCH_TRIS)
+    me = o.data; me.calc_loop_triangles()
+    nv = len(me.vertices)
+    V = np.zeros(nv * 3); me.vertices.foreach_get("co", V); V = V.reshape(-1, 3)
+    N = np.zeros(nv * 3); me.vertex_normals.foreach_get("vector", N); N = N.reshape(-1, 3)
+    T = np.zeros(len(me.loop_triangles) * 3, np.int64); me.loop_triangles.foreach_get("vertices", T); T = T.reshape(-1, 3)
+    bvh = BVHTree.FromPolygons([Vector(v) for v in V], [tuple(int(i) for i in t) for t in T])
+    # a frame about each normal, and the hemisphere's rays in it
+    h = _hemisphere(SKY_RAYS)
+    helper = np.where(np.abs(N[:, 2:3]) < 0.9, np.array([[0.0, 0.0, 1.0]]), np.array([[1.0, 0.0, 0.0]]))
+    t1 = np.cross(helper, N); t1 /= np.linalg.norm(t1, axis=1, keepdims=True); t2 = np.cross(N, t1)
+    light = np.zeros(nv)
+    for i in range(nv):
+        D = h[:, :1] * t1[i] + h[:, 1:2] * t2[i] + h[:, 2:3] * N[i]
+        p0 = Vector(V[i] + N[i] * 0.05); acc = 0.0
+        for d in D:
+            if bvh.ray_cast(p0, Vector(d), 500.0)[0] is None: acc += 1.0 if d[2] > 0 else SEA_BOUNCE
+        light[i] = acc / SKY_RAYS
+    local = V - np.array([ax, ay, 0.0])
+    lb = np.round(np.clip(light, 0, 1) * 255).astype(np.uint8).tobytes()
+    ib = 2 if nv <= 65536 else 4                                                 # Uint16 triangles when they fit
+    blob = b"".join([np.round(local * ARCH_SCALE).astype("<i2").tobytes(), lb, b"\0" * (-(nv * 7) % 4), T.astype(f"<u{ib}").tobytes()])
+    with open(os.path.join(folder, "arch.bin"), "wb") as f: f.write(blob)
+    _meta(folder, arch=dict(file="base/arch.bin", verts=nv, tris=len(T), indexBytes=ib, scale=ARCH_SCALE, x=ax, y=ay))
+    g["log"]("arch", nv, "verts", len(T), "tris; light", round(float(light.min()), 2), "..", round(float(light.max()), 2), ";", len(blob), "bytes")
+
+
 def run(g):
     folder = os.path.abspath(g["EXPORT"]); os.makedirs(folder, exist_ok=True)
     S = g["S"]; did = False
     if S.get("aurora") and S["aurora"].get("sky_bands"): export_aurora(g, folder); did = True
     if S.get("cave"): export_cave(g, folder); did = True
+    if g["HOUR"] == "bluehour": export_arch(g, folder); did = True
     if not did: raise SystemExit(f"nothing to export for hour {g['HOUR']}")

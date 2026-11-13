@@ -23,6 +23,7 @@ import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap } from '../scroll/touchSnap';
+import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { createCave, decodeCave } from '../world/cave';
 import { createCloudSea } from '../world/cloudSea';
@@ -92,13 +93,15 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
   const dressingMeta = app.manifest.base.dressing;
   const auroraMeta = app.manifest.base.aurora;
   const caveMeta = app.manifest.base.cave;
-  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf] = await Promise.all([
+  const archMeta = app.manifest.base.arch;
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf, archBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
     dressingMeta ? fetchBinary(dressingMeta.file) : null,
     auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
     caveMeta ? fetchBinary(caveMeta.file) : null,
+    archMeta ? fetchBinary(archMeta.file) : null,
   ]);
   const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
@@ -127,6 +130,9 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
   if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
   if (caveShot && caveMeta && caveBuf)
     parts.push(['cave', createCave(decodeCave(caveBuf, caveMeta), caveShot, sky, light)]);
+  // The coast's rock: one material for every rock part (the arch now, the stacks next).
+  if (archMeta && archBuf)
+    parts.push(['arch', createArch(decodeArch(archBuf, archMeta), archMeta, createRockMaterial())]);
   // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
   for (const [name, part] of parts) {
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);

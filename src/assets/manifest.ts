@@ -41,9 +41,30 @@ export interface CaveMeta {
   openHi: number;
 }
 
+/** The arch baked from the Blender scene (export_parts.py `export_arch`): the counts that lay out arch.bin. */
+export interface ArchMeta {
+  file: string;
+  verts: number;
+  tris: number;
+  /** 2: Uint16 triangles, 4: Uint32. */
+  indexBytes: 2 | 4;
+  /** Int16 units per metre. */
+  scale: number;
+  /** The arch's origin, coast x and y (coast.py's ARCH pos); positions are around it at sea level. */
+  x: number;
+  y: number;
+}
+
 export interface Manifest {
   version: 1;
-  base: { heights: GridMeta; ring: RingMeta; dressing?: DressingMeta; aurora?: { file: string }; cave?: CaveMeta };
+  base: {
+    heights: GridMeta;
+    ring: RingMeta;
+    dressing?: DressingMeta;
+    aurora?: { file: string };
+    cave?: CaveMeta;
+    arch?: ArchMeta;
+  };
   skies: Partial<Record<StopId, SkyAmbient & { file: string }>>;
   files: FileEntry[];
 }

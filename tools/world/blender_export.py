@@ -1,6 +1,6 @@
 """Run coast.py's export mode in Blender for the parts the site bakes from the scene (run: npm run world:blender).
 
-Writes public/world/base/aurora.json and cave.bin (see tools/world/blender/export_parts.py). Needs Blender (set BLENDER
+Writes public/world/base/aurora.json, cave.bin and arch.bin (see tools/world/blender/export_parts.py). Needs Blender (set BLENDER
 to its executable if it is not in the usual place) and the Poly Haven sources (WORLD_SRC, as for the renders). The
 outputs are committed: CI has no Blender and only checks them (tools/world/test_parts.py).
 """
@@ -9,7 +9,7 @@ import os, shutil, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 OUT = os.path.join(ROOT, "public", "world", "base")
-RUNS = [["--hour", "night"], ["--hour", "midnight"], ["--hour", "beforedawn", "--caveseg", "128"]]
+RUNS = [["--hour", "night"], ["--hour", "midnight"], ["--hour", "beforedawn", "--caveseg", "128"], ["--hour", "bluehour"]]
 
 
 def blender():

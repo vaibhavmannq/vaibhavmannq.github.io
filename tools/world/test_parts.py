@@ -1,8 +1,10 @@
-"""Check the parts baked from the Blender scene (aurora.json, cave.bin) against shots.json, without Blender."""
+"""Check the parts baked from the Blender scene (aurora.json, cave.bin, arch.bin) against shots.json and coast.py's
+pure data, without Blender."""
 import json, math, os, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 BASE = os.path.join(ROOT, "public", "world", "base")
 shots = json.load(open(os.path.join(ROOT, "src", "journey", "shots.json"), encoding="utf-8"))
@@ -74,7 +76,97 @@ def test_cave():
     assert frad.min() >= 1
 
 
+def read_arch():
+    """arch.bin (export_parts.py `export_arch`): Int16 positions (coast axes, around ARCH pos, 1/scale m), the baked
+    light as one byte per vertex (padded to 4 bytes), then the triangles (Uint16 or Uint32: meta indexBytes)."""
+    if "arch" not in meta:
+        sys.exit("base.json has no arch: run `npm run world:blender` (needs Blender) and commit the result")
+    m = meta["arch"]
+    buf = open(need(os.path.join(BASE, "arch.bin")), "rb").read()
+    P = np.frombuffer(buf, "<i2", m["verts"] * 3, 0).reshape(-1, 3) / m["scale"]
+    off = m["verts"] * 6
+    light = np.frombuffer(buf, np.uint8, m["verts"], off); off += m["verts"]; off += -off % 4
+    T = np.frombuffer(buf, f"<u{m['indexBytes']}", m["tris"] * 3, off).reshape(-1, 3); off += T.nbytes; T = T.astype(np.int64)
+    assert off == len(buf), (off, len(buf))
+    return m, P, light, T
+
+
+def arch_frame():
+    """coast.py's arch axes: s along the spine (seaward +), q along the hole axis."""
+    import coastlib
+    c = coastlib.load("bluehour")
+    rz = math.radians(c.ARCH["rotz"])
+    return c, np.array([math.cos(rz), math.sin(rz)]), np.array([-math.sin(rz), math.cos(rz)])
+
+
+def ray_hits(P, T, o, d):
+    """Moller-Trumbore against every triangle: the distances along the ray (o + t d, t > 0) where it hits."""
+    a, b, c_ = P[T[:, 0]], P[T[:, 1]], P[T[:, 2]]
+    e1, e2 = b - a, c_ - a
+    pv = np.cross(d, e2); det = (e1 * pv).sum(1)
+    ok = np.abs(det) > 1e-12; inv = np.where(ok, 1.0 / np.where(ok, det, 1.0), 0.0)
+    tv = o - a; u = (tv * pv).sum(1) * inv
+    qv = np.cross(tv, e1); v = (qv * d).sum(1) * inv; t = (qv * e2).sum(1) * inv
+    hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0)
+    return t[hit]
+
+
+def slice_width(P, T, z, S):
+    """Where the plane at height z cuts the mesh: the points of the cut, as their s along the spine."""
+    zs = P[T, 2]                                          # (n, 3)
+    out = []
+    for i, j in ((0, 1), (1, 2), (2, 0)):
+        za, zb = zs[:, i], zs[:, j]
+        cross = (za - z) * (zb - z) < 0
+        w = (z - za[cross]) / (zb[cross] - za[cross])
+        out.append(S[T[cross, i]] * (1 - w) + S[T[cross, j]] * w)
+    return np.concatenate(out)
+
+
+def test_arch():
+    m, P, light, T = read_arch()
+    c, u, n = arch_frame()
+    ax, ay = c.ARCH["pos"]
+    assert (m["x"], m["y"]) == (ax, ay), (m["x"], m["y"])
+    assert T.max() < len(P) and m["tris"] <= 150_000, m["tris"]
+    S, Q, Z = P[:, :2] @ u, P[:, :2] @ n, P[:, 2]
+    s0, zm = c.ARCH_OPEN
+    # the arch has a hole (ruling R5): a ray along the hole axis, through the opening's centre at its mid-height, hits
+    # no rock; the same ray through either leg, and through the span above the opening, does
+    def ray(s, z):
+        o = np.array([*(u * s - n * 200.0), z]); d = np.array([*n, 0.0])
+        return ray_hits(P, T, o, d)
+    assert len(ray(s0, zm)) == 0, ("the opening is blocked", ray(s0, zm))
+    for s, z, what in ((c.ARCH_LAND["s"], zm, "land leg"), (c.ARCH_SEA["s"], zm, "sea leg"),
+                       (s0, (c.ARCH_SPAN["z0"] + c.ARCH_SPAN["z1"]) / 2 + c.ARCH_SPAN["rise"], "span")):
+        assert len(ray(s, z)) >= 2, what
+    # the legs differ in thickness by >= 1.6x (owner cliffs-and-columns 1: a thick landward leg, a thin seaward one):
+    # the width along the spine where planes at three heights cut each leg
+    for z in (6.0, 16.0, 26.0):
+        cut = slice_width(P, T, z, S)
+        land, sea = cut[cut < s0], cut[cut > s0]
+        wl, ws = land.max() - land.min(), sea.max() - sea.min()
+        assert wl >= 1.6 * ws, (z, wl, ws)
+    # the opening is off-centre in the whole mass: its centre is >= 8 m seaward of the middle of the rock's spine
+    assert s0 - (S.min() + S.max()) / 2 >= 8.0, (s0, S.min(), S.max())
+    # the highest rock is ARCH_TOP (the headland line's heights step down from it) and the seaward leg's foot reaches
+    # ARCH_LEG along the line at the waterline (the first stack's gap is measured from it)
+    assert abs(Z.max() - c.ARCH_TOP) < 3.0, (Z.max(), c.ARCH_TOP)
+    wl_ = np.abs(Z) < 0.3
+    assert abs(S[wl_].max() - c.ARCH_LEG) < 3.0, (S[wl_].max(), c.ARCH_LEG)
+    # a skirt: the rock runs on below the flats (no floating foot), and a fallen block breaks the water beneath the opening
+    assert Z.min() < float(c.ground(ax, ay)) - 2.0, Z.min()
+    under = (np.abs(S - s0) < 9.0) & (np.abs(Q) < 14.0)
+    block = under & (Z < 5.0)
+    assert block.sum() >= 20 and Z[block].max() > 1.2, (block.sum(), Z[block].max() if block.any() else None)
+    assert not (under & (Z > 6.0) & (Z < zm + 6.0)).any(), "rock stands in the opening"
+    # the baked light: some rock in deep shade (inside the opening's corners, under the span), some open to the sky
+    assert light.min() < 90 and light.max() > 230, (light.min(), light.max())
+
+
 if __name__ == "__main__":
     test_aurora()
     test_cave()
-    print("ok parts: aurora", meta["aurora"], "cave", {k: meta["cave"][k] for k in ("shellVerts", "shellTris", "floorVerts", "fungi")})
+    test_arch()
+    print("ok parts: aurora", meta["aurora"], "cave", {k: meta["cave"][k] for k in ("shellVerts", "shellTris", "floorVerts", "fungi")},
+          "arch", {k: meta["arch"][k] for k in ("verts", "tris")})
