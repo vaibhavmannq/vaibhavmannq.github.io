@@ -87,5 +87,5 @@ describe('the headland stacks (M2.5 Task 3c)', () => {
     const { nearest, where, inside } = clearance(stacks.position, stacks.index, meta);
     expect(inside).toEqual([]);
     expect(nearest, where).toBeGreaterThan(6);
-  });
+  }, 30_000); // ~9 s under the full parallel suite: exact point-triangle distances over every flight sample
 });

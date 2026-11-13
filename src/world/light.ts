@@ -42,6 +42,52 @@ export function shadowFloor(hour: HourPreset): RGB {
   return [toLinear(f[0]), toLinear(f[1]), toLinear(f[2])];
 }
 
+/**
+ * The moon's styled angular diameter (plan M2.5 Task 5: the real 0.52° is lost on a phone; owner night-sky-and-moon
+ * 4, 5, 8: a small sharp disc with a soft halo).
+ */
+export const MOON_SIZE_DEG = 1.6;
+
+/**
+ * Pure twin of the sky's moon test: 1 inside a disc of angular radius `r` (radians), 0 outside, for d = cos(angle to
+ * its centre). Squared angles (2·(1 − d) ≈ angle²), never cos(r) on the GPU: WGSL's cos is only good to about 5e-4,
+ * which erased a 0.45° disc entirely (the s07 "no moon at Midnight" bug).
+ */
+export function moonCover(d: number, r: number): number {
+  const x = 2 * (1 - d);
+  return 1 - sstep((0.95 * r) ** 2, (1.05 * r) ** 2, x);
+}
+
+/**
+ * How sharp the sun's or moon's road on the water is: the glint lobe's power for the sea's chop (reference book §3:
+ * calmer water gives a narrower road). 220 at force 1's chop (0.55), as plan Task 5 sets; ~400 on a mirror, ~150 at force 2.
+ */
+export function glitterPower(chop: number): number {
+  return (220 * 0.55) / chop;
+}
+
+const norm3 = (v: Vec3): Vec3 => {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+};
+
+/**
+ * Where the crescent's dark disc sits (three.js axes): the moon's own direction turned by 2·r·(lit fraction) straight
+ * up the sky, so the lit limb faces the sun below the horizon [mine: at our hours the sun is 30° down and under the
+ * moon]. A full moon's dark disc lies a whole diameter away, outside the disc.
+ */
+function moonShadow(moonDir: Vec3, sizeDeg: number, lit: number): Vec3 {
+  const m = norm3(moonDir);
+  const up: Vec3 = [-m[0] * m[1], 1 - m[1] * m[1], -m[2] * m[1]];
+  const a = norm3(up);
+  const s = 2 * (((sizeDeg / 2) * Math.PI) / 180) * lit;
+  return norm3([
+    m[0] * Math.cos(s) + a[0] * Math.sin(s),
+    m[1] * Math.cos(s) + a[1] * Math.sin(s),
+    m[2] * Math.cos(s) + a[2] * Math.sin(s),
+  ]);
+}
+
 /** Everything the materials read about the light this frame; three.js axes. */
 export interface LightValues {
   keyDir: Vec3;
@@ -59,6 +105,10 @@ export interface LightValues {
   moonDir: Vec3;
   moonSize: number;
   moonStrength: number;
+  /** the crescent's dark disc: a disc of the moon's size centred here hides that part of it */
+  moonShadowDir: Vec3;
+  /** 0 new … 1 full: the share of the disc that is lit */
+  moonLit: number;
   aurora: number;
   cloud: number;
   shadowFloor: RGB;
@@ -72,6 +122,8 @@ const add3 = (a: RGB, b: RGB, k: number): RGB => (k === 0 ? a : [a[0] + b[0] * k
 /** Pure: an hour (already blended) and the two skies' ambient light, mixed by how far b's sky has faded in. */
 export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient, skyWeight: number): LightValues {
   const moon = hour.moon;
+  const moonDir: Vec3 = moon ? toThree(sunDir(moon.el, moon.az)) : [0, 1, 0];
+  const moonLit = (1 - Math.cos(2 * Math.PI * hour.world.moonPhase)) / 2;
   return {
     keyDir: toThree(hour.key.dir),
     keyColor: hour.key.color,
@@ -86,9 +138,11 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     skyTint: [1, 1, 1],
     skyWeight,
     stars: hour.stars,
-    moonDir: moon ? toThree(sunDir(moon.el, moon.az)) : [0, 1, 0],
-    moonSize: moon ? moon.sizeDeg : 0,
+    moonDir,
+    moonSize: moon ? MOON_SIZE_DEG : 0,
     moonStrength: moon ? moon.strength : 0,
+    moonShadowDir: moonShadow(moonDir, MOON_SIZE_DEG, moonLit),
+    moonLit,
     aurora: hour.aurora,
     cloud: hour.cloud,
     shadowFloor: shadowFloor(hour),
@@ -113,6 +167,8 @@ export function createLightUniforms() {
     moonDir: uniform(new Vector3(0, 1, 0)),
     moonSize: uniform(0),
     moonStrength: uniform(0),
+    moonShadowDir: uniform(new Vector3(0, 1, 0)),
+    moonLit: uniform(1),
     aurora: uniform(0),
     cloud: uniform(0),
     shadowFloor: uniform(new Color(0.008, 0.008, 0.02)),
@@ -146,6 +202,8 @@ export function createLightUniforms() {
       u.moonDir.value.set(...v.moonDir).normalize();
       u.moonSize.value = v.moonSize;
       u.moonStrength.value = v.moonStrength;
+      u.moonShadowDir.value.set(...v.moonShadowDir).normalize();
+      u.moonLit.value = v.moonLit;
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
       u.shadowFloor.value.setRGB(...v.shadowFloor);

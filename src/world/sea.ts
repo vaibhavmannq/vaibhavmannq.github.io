@@ -8,6 +8,7 @@ import {
   max,
   mix,
   mx_noise_float,
+  mx_noise_vec3,
   normalize,
   positionWorld,
   reflect,
@@ -31,10 +32,12 @@ import {
   type Node,
   PlaneGeometry,
   RedFormat,
+  Vector2,
 } from 'three/webgpu';
+import { windVector } from '../journey/hours';
 import type { TierSettings } from '../quality/tiers';
 import type { GridMeta } from './heights';
-import type { LightUniforms } from './light';
+import { glitterPower, type LightUniforms } from './light';
 import type { WorldPart } from './part';
 
 /** Six analytic ripples: direction x, direction z, amplitude, frequency (the slice's). */
@@ -63,6 +66,9 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   const reflection = reflector({ resolutionScale: tier.reflect });
   reflection.target.rotateX(-Math.PI / 2);
   const chop = uniform(1);
+  const glitterPow = uniform(glitterPower(0.55));
+  /** the glitter's drift: 0.05 m/s along the wind (three.js x, z) */
+  const drift = uniform(new Vector2(0, 0));
 
   const p = vec2(positionWorld.x, positionWorld.z);
   const pixel = fwidth(p).length();
@@ -95,10 +101,26 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   );
   if (reflection.uvNode) reflection.uvNode = reflection.uvNode.add(n.xz.mul(0.12).div(dist.mul(0.08).add(1)));
   const body = (u.ambSky as unknown as Node<'vec3'>).mul(vec3(0.05, 0.07, 0.08));
-  const glint = max(dot(reflect(v.negate(), n), u.keyDir), 0)
-    .pow(1400)
-    .mul(u.keyColor)
-    .mul(14.0);
+  // The sun's or moon's road as glitter (plan M2.5 Task 5; reference book §3: thousands of separate glints from wave
+  // facets; a calmer sea gives a narrower road). Each facet gets its own small random slope and glints only when it
+  // mirrors the sun or moon exactly; the spread of slopes sets the road's width (glitterPower's lobe: σ ≈ 0.04 at
+  // force 1, less on a mirror). Facets drift 0.05 m/s with the wind. Two sizes (25 cm near, 2 m far); each fades to the
+  // road's mean where one facet is under two pixels (Review Focus 4: no far shimmer). Ruling R23: the plan's single
+  // 0.6 cycles/m read as cartoon spots under a 0.75 m-high camera.
+  const sigma = chop.mul(0.04 / 0.55);
+  const r0 = reflect(v.negate(), n);
+  const mean = max(dot(r0, u.keyDir), 0).pow(glitterPow).mul(0.35);
+  const facetGlint = (freq: number, seed: number) => {
+    const q = p.add(drift.mul(time));
+    const t = mx_noise_vec3(vec3(q.mul(freq), time.mul(0.6).add(seed)));
+    const nf = normalize(n.add(vec3(t.x, 0, t.y).mul(sigma.mul(2.2))));
+    const hit = max(dot(reflect(v.negate(), nf), u.keyDir), 0)
+      .pow(1800)
+      .mul(5.0);
+    const facetPx = float(1 / freq).div(pixel.max(1e-4));
+    return mix(mean, hit, smoothstep(2.0, 4.0, facetPx));
+  };
+  const glint = max(facetGlint(4.0, 0), facetGlint(0.5, 11)).mul(u.keyColor).mul(6.0);
   let col = mix(body, reflection.rgb, fresnel).add(glint);
 
   // Shore: depth from the heights, foam at the edge, a sheet in the swash, transparent shallows (slice).
@@ -143,6 +165,10 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
     update(f) {
       // reference book §2 (Beaufort, "on water"): the chop grows with the force, 0.3 calm to 1.3 at force 4
       chop.value = 0.3 + 0.25 * f.hour.world.beaufort;
+      glitterPow.value = glitterPower(chop.value);
+      const [wx, wy] = windVector(f.hour.world);
+      const wl = Math.hypot(wx, wy) || 1;
+      drift.value.set((wx / wl) * 0.05, (-wy / wl) * 0.05);
       // The plane follows the camera so it always reaches the horizon.
       sea.position.x = f.pose.position[0];
       sea.position.z = f.pose.position[2];

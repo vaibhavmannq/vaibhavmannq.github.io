@@ -3,7 +3,17 @@ import { describe, expect, it } from 'vitest';
 import type { SkyAmbient } from '../../src/assets/manifest';
 import { HOURS } from '../../src/journey/hours';
 import type { HourPreset } from '../../src/journey/types';
-import { auroraDim, createLightUniforms, FOG_SCALE, lightValues, NIGHT_HAZE, shadowFloor } from '../../src/world/light';
+import {
+  auroraDim,
+  createLightUniforms,
+  FOG_SCALE,
+  glitterPower,
+  lightValues,
+  MOON_SIZE_DEG,
+  moonCover,
+  NIGHT_HAZE,
+  shadowFloor,
+} from '../../src/world/light';
 
 const ambA: SkyAmbient = { ambientSky: [0.5, 0.4, 0.3], ambientGround: [0.1, 0.1, 0.1] };
 const ambB: SkyAmbient = { ambientSky: [0.1, 0.2, 0.3], ambientGround: [0.0, 0.0, 0.2] };
@@ -92,5 +102,42 @@ describe('the moon and the aurora (reference book §1: a bright moon washes an a
     expect(auroraDim(0.5)).toBeCloseTo(0.5, 9);
     expect(auroraDim(0.85)).toBeCloseTo(auroraDim(0.15), 9);
     expect(auroraDim(0.35)).toBeCloseTo(0.75, 9);
+  });
+});
+
+describe('a real moon (plan M2.5 Task 5; owner night-sky-and-moon 3, 4, 5, 8)', () => {
+  it('draws a styled 1.6° disc at Midnight and Night', () => {
+    for (const h of [HOURS.midnight, HOURS.night]) {
+      const v = lightValues(h, ambA, ambB, 0);
+      expect(v.moonStrength, h.id).toBeGreaterThan(0);
+      expect(v.moonSize, h.id).toBeGreaterThanOrEqual(MOON_SIZE_DEG);
+    }
+    expect(MOON_SIZE_DEG).toBe(1.6);
+  });
+
+  it('tests the disc on squared angles, so a 0.8° radius survives float32 (WGSL cos is only good to 5e-4)', () => {
+    const r = (0.8 * Math.PI) / 180;
+    const at = (deg: number) => moonCover(Math.fround(Math.cos((deg * Math.PI) / 180)), r);
+    expect(at(0)).toBe(1);
+    expect(at(0.7)).toBe(1);
+    expect(at(0.9)).toBe(0);
+  });
+
+  it('lights a crescent where the aurora is strong: its dark disc sits above, the lit limb faces the sun below', () => {
+    const v = lightValues(HOURS.midnight, ambA, ambB, 0);
+    const lit = (1 - Math.cos(2 * Math.PI * HOURS.midnight.world.moonPhase)) / 2;
+    expect(v.moonShadowDir[1]).toBeGreaterThan(v.moonDir[1]); // shifted up in the sky
+    const sep = Math.acos(
+      v.moonShadowDir[0] * v.moonDir[0] + v.moonShadowDir[1] * v.moonDir[1] + v.moonShadowDir[2] * v.moonDir[2],
+    );
+    expect(sep).toBeCloseTo(2 * (((MOON_SIZE_DEG / 2) * Math.PI) / 180) * lit, 4);
+  });
+});
+
+describe('sun and moon roads as glitter (plan M2.5 Task 5; reference book §3)', () => {
+  it('narrows the road on calmer water', () => {
+    expect(glitterPower(0.3)).toBeGreaterThan(glitterPower(0.55));
+    expect(glitterPower(0.55)).toBeCloseTo(220, 6);
+    expect(glitterPower(0.8)).toBeLessThan(220);
   });
 });

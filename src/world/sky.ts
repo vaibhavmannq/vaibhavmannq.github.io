@@ -69,10 +69,20 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   const sunDisc = smoothstep(0.999984, 0.999994, dot(dir, u.keyDir)).mul(40.0).mul(min(u.keyStrength, 1)).mul(isSun);
   col = col.add(u.keyColor.mul(sunDisc));
 
-  // The moon: a soft disc of its own angular size.
+  // The moon (owner night-sky-and-moon 3, 4, 5, 8): a small sharp disc, lit as a crescent by its phase, the dark part
+  // faintly grey (earthshine), a soft halo that lights the sky and cloud beside it. Tested on squared angles
+  // (light.ts moonCover): WGSL's cos is only good to ~5e-4, which erased the disc before (s07 bug).
   const radius = u.moonSize.mul(Math.PI / 360);
-  const moon = smoothstep(cos(radius.mul(1.15)), cos(radius.mul(0.85)), dot(dir, u.moonDir));
-  col = col.add(vec3(1.0, 0.98, 0.94).mul(moon).mul(u.moonStrength).mul(0.1));
+  const r2a = radius.mul(0.95).pow(2);
+  const r2b = radius.mul(1.05).pow(2);
+  const toMoon = float(1).sub(dot(dir, u.moonDir)).mul(2);
+  const disc = float(1).sub(smoothstep(r2a, r2b, toMoon));
+  const moonDark = float(1).sub(smoothstep(r2a, r2b, float(1).sub(dot(dir, u.moonShadowDir)).mul(2)));
+  const moonLitPart = disc.mul(float(1).sub(moonDark));
+  const earthshine = disc.mul(moonDark).mul(0.035);
+  const halo = toMoon.max(0).sqrt().div(radius.mul(4)).negate().exp().mul(u.moonLit.mul(0.7).add(0.3)).mul(0.18);
+  col = col.add(vec3(1.0, 0.98, 0.94).mul(moonLitPart.add(earthshine)).mul(u.moonStrength).mul(0.1));
+  col = col.add(vec3(0.75, 0.82, 1.0).mul(halo).mul(u.moonStrength).mul(0.1));
 
   // Stars: one point per random cell, high in the sky and only where the sky is dark (coast.py's star_mask idea).
   const p = dir.mul(260.0);
