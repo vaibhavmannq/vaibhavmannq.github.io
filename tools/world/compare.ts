@@ -3,7 +3,7 @@
  * [query]). Per stop a 1920x1080 frame and a 412x915 phone frame, stills off, on this machine's GPU (headed Chrome),
  * six seconds after the scene is ready. Writes <outDir>/index.html. `stops` is a comma list (default: all nine);
  * `query` is added to the URL (default: tier=high). When .superpowers/refs/compare.json ({ "<stop>": ["<folder>/<file>"] })
- * names the owner's photos for a stop, they sit in a third column at the same height; a missing file reads "no reference".
+ * names the owner's photos for a stop, they fill a third column beside the render and the live shot, at the shots' height (several share the column side by side); a missing file reads "no reference".
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
@@ -65,14 +65,13 @@ const refColumn = (stop: string) =>
     .map((name) =>
       existsSync(join(refsDir, name))
         ? `<figure class="ref"><img src="${encodeURI(relative(resolve(outDir), join(refsDir, name)).split(sep).join('/'))}" alt="reference, ${name}"><figcaption>${name}</figcaption></figure>`
-        : `<p class="ref">no reference (${name})</p>`,
+        : `<figure class="ref"><p>no reference (${name})</p></figure>`,
     )
     .join('');
 const rows = stops
   .map(
     (stop) => `<figure><figcaption>${stop}</figcaption>
-<div class="wide"><img src="${rel}/${stop}.webp" alt="render, ${stop}"><img src="${stop}-wide.png" alt="live, ${stop}"></div>
-${refs[stop] ? `<div class="refs">${refColumn(stop)}</div>` : ''}
+<div class="wide${refs[stop] ? ' has-refs' : ''}"><img src="${rel}/${stop}.webp" alt="render, ${stop}"><img src="${stop}-wide.png" alt="live, ${stop}">${refs[stop] ? `<div class="refs">${refColumn(stop)}</div>` : ''}</div>
 <div class="phone"><img src="${stop}-phone.png" alt="live on a phone, ${stop}"></div></figure>`,
   )
   .join('\n');
@@ -81,8 +80,9 @@ writeFileSync(
   `<!doctype html><meta charset="utf-8"><title>Look check: render and live</title>
 <style>body{margin:16px;background:#14101a;color:#eee;font:14px system-ui}figure{margin:0 0 28px}
 .wide{display:grid;grid-template-columns:1fr 1fr;gap:8px}img{width:100%;display:block}.phone{width:206px;margin-top:8px}
-.refs{display:flex;gap:8px;margin-top:8px;height:300px}.refs .ref{margin:0;height:100%;display:flex;flex-direction:column}
-.refs img{width:auto;height:280px;object-fit:contain}.refs figcaption{font-size:11px;opacity:.7}</style>
+.wide.has-refs{grid-template-columns:1fr 1fr 1fr}.refs{aspect-ratio:16/9;display:flex;gap:4px;min-width:0}
+.refs .ref{margin:0;flex:1;min-width:0;height:100%;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+.refs img{height:100%;object-fit:contain}.refs figcaption{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:2px 4px;background:#000a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style>
 <h1>Render (left), live (right), live on a phone (below)</h1>
 ${rows}
 `,
