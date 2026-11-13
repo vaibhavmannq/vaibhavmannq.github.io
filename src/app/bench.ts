@@ -40,6 +40,8 @@ declare global {
     __hold(stop: StopId, seconds: number, tier: (typeof TIER_NAMES)[number]): Promise<HoldResult>;
     /** The head's look-around turn now, degrees (plan M2.5 Task 6). */
     __look(): { yaw: number; pitch: number };
+    /** Golden's lantern on screen, CSS pixels (plan M2.5 Task 7: its parallax slide is measured). */
+    __lanternPx(): [number, number];
   }
 }
 

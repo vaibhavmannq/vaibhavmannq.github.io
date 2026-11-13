@@ -1,0 +1,16 @@
+[
+  {
+    "id": "water-edge",
+    "stop": "golden",
+    "label": "Walk down to the water's edge",
+    "points": [[9.5, -4.0, 0.9151], [8.9, -1.2, 0.95], [8.0, 1.8, 0.9], [7.1, 4.6, 0.85]],
+    "look": [-24, -1]
+  },
+  {
+    "id": "lantern",
+    "stop": "golden",
+    "label": "Kneel by the lantern",
+    "points": [[9.5, -4.0, 0.9151], [9.45, -3.16, 0.95], [8.61, -2.32, 0.75]],
+    "look": [-33, -14]
+  }
+]

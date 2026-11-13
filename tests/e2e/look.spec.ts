@@ -33,9 +33,15 @@ test('a sideways drag turns the head and leaves the scroll alone; an upward drag
   }
 
   await drag(page, -180, 4);
-  await page.waitForTimeout(2000); // headless frames are slow: let the head ease and any snap glide finish
-  const head = await page.evaluate(() => (window as unknown as { __look(): { yaw: number; pitch: number } }).__look());
-  expect(Math.abs(head.yaw)).toBeGreaterThan(10);
+  // headless frames are slow and stall while new views compile: wait for the eased turn, not a fixed time
+  await expect
+    .poll(
+      async () =>
+        Math.abs((await page.evaluate(() => (window as unknown as { __look(): { yaw: number } }).__look())).yaw),
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(10);
+  await page.waitForTimeout(1000); // and for any snap glide that would follow a scroll gesture
   expect(await page.evaluate(() => window.scrollY)).toBe(y0);
 
   // read the scroll as the finger lifts: a swipe this short then glides back to the stop (touchSnap's MIN_TRAVEL)

@@ -3,7 +3,7 @@ import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vecto
 import { fetchBinary, fetchJson, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
 import { createSkyStore, skyAmbients } from '../assets/skies';
-import { fovFor, type Pose, poseAt } from '../journey/camera';
+import { fovFor, type Pose, poseAt, shortestYaw } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
@@ -11,7 +11,8 @@ import { createLook } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
 import { SHOTS } from '../journey/shots';
-import { STOPS } from '../journey/stops';
+import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot } from '../journey/spots';
+import { STOPS, stopIndex } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
 import { installHud } from '../overlay/hud';
@@ -23,17 +24,19 @@ import { DEFAULT_GOVERNOR, Governor } from '../quality/governor';
 import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
-import { createTouchSnap } from '../scroll/touchSnap';
+import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { createCave, decodeCave } from '../world/cave';
 import { createCloudSea } from '../world/cloudSea';
 import { createDressing, decodeDressing } from '../world/dressing';
 import { createHeightSampler } from '../world/heights';
+import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
+import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
 import { createTerrain } from '../world/terrain';
 import { createWaterfall } from '../world/waterfall';
@@ -307,6 +310,57 @@ export async function boot(): Promise<App> {
   // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
   scene.fogNode = fog(sky.horizonAt(positionWorld.sub(cameraPosition)), densityFogFactor(light.fogDensity));
   app.addPart(sky, 'sky');
+  // Golden's paper lantern, the first near layer (plan M2.5 Task 7), and the glints of its spots: no download, so
+  // they join with the first view.
+  const lantern = createLantern();
+  app.addPart(lantern, 'lantern');
+  const glints = createSpotGlints(SPOTS);
+  app.addPart(glints, 'spots');
+  const goldenCam = STOPS[0]?.cam ?? [0, 0, 0];
+  /** ruling R3: the lantern is the nearest thing in Golden's view, so the parallax slides it ~3 % of the width */
+  const lanternNear = Math.hypot(LANTERN_AT[0] - goldenCam[0], LANTERN_AT[1] - goldenCam[1]);
+  let walk: { spot: SpotPath; startMs: number; durMs: number } | null = null;
+  let walkW = 0;
+  let spotPose: Pose | null = null;
+  const startWalk = (spot: SpotPath | undefined) => {
+    if (!spot || walk) return;
+    walk = { spot, startMs: performance.now(), durMs: SPOT_WALK_MS(spot) };
+    glints.setWalking(true);
+  };
+  const spotsEl = document.getElementById('spots');
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-spot]'))
+    b.addEventListener('click', () => startWalk(SPOTS.find((s) => s.id === b.dataset.spot)));
+  const toScreen = (v: Vector3) => {
+    const p = v.clone().project(camera);
+    return [((p.x + 1) / 2) * window.innerWidth, ((1 - p.y) / 2) * window.innerHeight, p.z] as const;
+  };
+  window.__lanternPx = () => {
+    const [x, y] = toScreen(lantern.centre);
+    return [x, y];
+  };
+  /** Leave a spot: the camera eases back to the stop (a click on empty world, or Esc). */
+  const endWalk = () => {
+    if (!walk) return false;
+    walk = null;
+    glints.setWalking(false);
+    return true;
+  };
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') endWalk();
+  });
+  /** A tap or click on the world: a glint starts its walk; the lantern becomes the visitor's; elsewhere, back. */
+  const pick = (x: number, y: number) => {
+    if (glints.object.visible)
+      for (const g of glints.at) {
+        const [gx, gy, gz] = toScreen(g.position);
+        if (gz < 1 && Math.hypot(gx - x, gy - y) < 40) return startWalk(g.spot);
+      }
+    if (lantern.object.visible) {
+      const [lx, ly, lz] = toScreen(lantern.centre);
+      if (lz < 1 && Math.hypot(lx - x, ly - y) < 60) return lantern.claim();
+    }
+    endWalk();
+  };
 
   const startedAt = performance.now();
   let last: FrameState | null = null;
@@ -335,13 +389,13 @@ export async function boot(): Promise<App> {
   let head = { yaw: 0, pitch: 0 };
   window.__look = () => ({ ...head });
   const worldLayer = document.getElementById('world');
-  let grab: { id: number; x: number; y: number; touch: boolean; turning: boolean } | null = null;
+  let grab: { id: number; x: number; y: number; touch: boolean; turning: boolean; moved: number } | null = null;
   window.addEventListener(
     'pointerdown',
     (event) => {
       if (!worldLayer?.contains(event.target as Node) || (event.pointerType === 'mouse' && event.button !== 0)) return;
       const touch = event.pointerType === 'touch';
-      grab = { id: event.pointerId, x: event.clientX, y: event.clientY, touch, turning: !touch };
+      grab = { id: event.pointerId, x: event.clientX, y: event.clientY, touch, turning: !touch, moved: 0 };
       gesture.turned = false;
     },
     { passive: true },
@@ -361,6 +415,7 @@ export async function boot(): Promise<App> {
         grab.turning = true;
         gesture.turned = true;
       }
+      grab.moved += Math.hypot(dx, dy);
       look.drag(dx, dy, Math.max(1, window.innerWidth));
       grab.x = event.clientX;
       grab.y = event.clientY;
@@ -370,7 +425,14 @@ export async function boot(): Promise<App> {
   const letGo = (event: PointerEvent) => {
     if (grab && event.pointerId === grab.id) grab = null;
   };
-  window.addEventListener('pointerup', letGo, { passive: true });
+  window.addEventListener(
+    'pointerup',
+    (event) => {
+      if (grab && event.pointerId === grab.id && grab.moved < 6) pick(event.clientX, event.clientY);
+      letGo(event);
+    },
+    { passive: true },
+  );
   window.addEventListener('pointercancel', letGo, { passive: true });
 
   const frame = (nowMs: number, dtS: number): WorldFrame => {
@@ -378,11 +440,37 @@ export async function boot(): Promise<App> {
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
     const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion);
+    // A spot's walk (plan M2.5 Task 7): along its baked path at 1.2 m/s, eased at both ends; scrolling on leaves from
+    // wherever you are, easing back to the journey's path.
+    const here = walk && state.resting && state.a === stopIndex(walk.spot.stop);
+    if (walk && !here) {
+      walk = null;
+      glints.setWalking(false);
+    }
+    if (walk) {
+      const k = Math.min(1, (nowMs - walk.startMs) / walk.durMs);
+      spotPose = sampleSpot(walk.spot, easeInOutSine(k), camera.aspect);
+    }
+    walkW += ((walk ? 1 : 0) - walkW) * (1 - Math.exp(-8 * dtS));
+    if (spotPose && walkW > 0.001) {
+      const w = walkW;
+      pose.position = [
+        pose.position[0] + (spotPose.position[0] - pose.position[0]) * w,
+        pose.position[1] + (spotPose.position[1] - pose.position[1]) * w,
+        pose.position[2] + (spotPose.position[2] - pose.position[2]) * w,
+      ];
+      pose.yaw = shortestYaw(pose.yaw, spotPose.yaw, w);
+      pose.pitch += (spotPose.pitch - pose.pitch) * w;
+    }
+    if (spotsEl) spotsEl.hidden = !(state.resting && state.a === 0 && !walk);
     head = look.update(state.resting && !caps.reducedMotion, dtS);
     pose.yaw += head.yaw;
     pose.pitch += head.pitch;
     if (!caps.reducedMotion) {
-      const near = app.nearM[state.t < 0.5 ? state.a : state.b] ?? 10;
+      const atStop = state.t < 0.5 ? state.a : state.b;
+      // At Golden the lantern sets the slide: it moves ~3 % of the width (owner, s11; the sand at the frame's foot,
+      // nearer, moves a little more). Elsewhere the nearest ground in view does.
+      const near = atStop === 0 && !walk ? lanternNear : (app.nearM[atStop] ?? 10);
       const [right, up] = parallaxOffset(pointer, near, pose.fov, camera.aspect);
       const w = parallaxWeight(state);
       const k = 1 - Math.exp(-PARALLAX_RATE * dtS);
@@ -397,6 +485,12 @@ export async function boot(): Promise<App> {
       ];
     }
     aimCamera(camera, pose);
+    if (lantern.object.visible) {
+      const [lx, ly] = toScreen(lantern.centre);
+      const px = ((pointer[0] + 1) / 2) * window.innerWidth;
+      const py = ((1 - pointer[1]) / 2) * window.innerHeight;
+      lantern.setHover(Math.hypot(lx - px, ly - py) < 70);
+    }
     const hour = blendHours(
       HOURS[STOP_IDS[state.a] ?? 'golden'],
       HOURS[STOP_IDS[state.b] ?? 'golden'],

@@ -240,3 +240,24 @@ html.is-scene-ready .poster {
 .hud button[aria-pressed="true"] {
   background: #d8f5d0;
 }
+
+/* Spots' HTML twins (plan M2.5 Task 7; spec §10): off screen until focused by keyboard, so screen readers and keys
+   reach what the glints in the scene offer to the pointer. */
+.spots[hidden] {
+  display: none;
+}
+.spot {
+  position: absolute;
+  left: -9999px;
+  pointer-events: auto;
+}
+.spot:focus-visible {
+  left: 1.5rem;
+  bottom: 4.5rem;
+  font: inherit;
+  color: inherit;
+  background: rgb(20 14 30 / 0.7);
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+}
