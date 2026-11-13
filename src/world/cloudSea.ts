@@ -50,6 +50,8 @@ const MOON_GAIN = 0.26;
 const SKY_GAIN = 0.8;
 /** The billows' height as a share of `amp`: gentler than coast.py's 0.45, whose crests Blender's soft light flattened. */
 const CREST_SHARE = 0.26;
+/** Valley fog lies under an inversion and moves slower than the ridge wind above it (reference book §4: slow), so the deck drifts at this share of the wind. */
+export const DECK_WIND_SHARE = 0.4;
 
 /** The highest the deck can reach, metres. */
 export const cloudTop = (cfg: CloudShot): number => cfg.z + TOP_SHARE * cfg.amp;
@@ -94,7 +96,7 @@ export function cloudGrid(box: CloudShot['box'], stepM: number): BufferGeometry 
  * The sea of cloud under the midnight ridge (spec §9.10): one grid at the render's level, raised into a slow swell
  * with billowed crests in the vertex shader (coast.py's `build_cloudsea` shape), lit by the moon with a soft wrap and
  * a rim toward it, thinning to nothing where the hills rise through it. Moonlit cloud inversions roll like a slow
- * ocean and are almost still in real time: the swell drifts well under a metre a second.
+ * ocean: the whole deck drifts with the one wind at DECK_WIND_SHARE of its speed, about 1 m/s at Beaufort 2.
  */
 export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta, u: LightUniforms): WorldPart {
   /** How far the wind has carried the deck, coast metres (reference book §2: the cloud deck drifts with the one wind). */
@@ -221,8 +223,8 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
     object: mesh,
     update(f) {
       const [wx, wy] = windVector(f.hour.world);
-      carried.value.x += wx * f.dtS;
-      carried.value.y += wy * f.dtS;
+      carried.value.x += wx * DECK_WIND_SHARE * f.dtS;
+      carried.value.y += wy * DECK_WIND_SHARE * f.dtS;
       const far = Math.hypot(f.pose.position[0] - cx, f.pose.position[2] - cz) > 4000;
       weight.value = deckWeight(f.hour.cloud, f.pose.position[1], cfg);
       mesh.visible = weight.value > 0.001 && !far;

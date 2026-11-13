@@ -568,7 +568,7 @@
   "cave": null,
   "world": {
    "sunEl": -30,
-   "moonEl": 8,
+   "moonEl": 22,
    "moonPhase": 0.12,
    "windAz": 5,
    "beaufort": 0
@@ -748,7 +748,7 @@
   "cave": null,
   "world": {
    "sunEl": -30,
-   "moonEl": 14,
+   "moonEl": 7,
    "moonPhase": 0.12,
    "windAz": 330,
    "beaufort": 2
