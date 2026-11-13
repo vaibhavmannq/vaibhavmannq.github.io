@@ -4,8 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-11, end of session s08 (research and design only, no code; see
-`docs/handover/sessions/2026-11-11-s08-research.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-13, end of session s09 (M2 continued; see `docs/handover/sessions/2026-11-13-s09-m2-continued.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -78,9 +77,18 @@ no borrowed set pieces (no towers, piano, etc.).
 - **The owner added 128 reference photos and clips** to `.superpowers/refs/` (local, not in git). I viewed all of
   them; `research/owner-references.md` says what each element should take from them (D28). His motion video
   means: pointer parallax first, and something always moving.
-- **Next:** read Amendment 1 and `research/owner-references.md`. Then M2 continues: the waterfall is judged for motion, light and cost, not composition; add the
-  camera's top speed and the longer scroll (Amendment §7); re-judge aurora and cloud (`research/m2-references.md`
-  §5); Tasks 6 and 7.
+- **s09 (2026-11-13): M2 continued, 9 commits on `world`, not pushed.** The waterfall seen and fixed (78 % look);
+  the new pace built (41 screens, camera top speed, a **Next** ride button and keys); pointer parallax built (works,
+  but invisible until stops get near layers); aurora and cloud re-judged against the owner's photos (both 68 %);
+  **the cave built** (Task 6, 74 % vs render); **costs measured on the laptop** and the cave/aurora/cloud made
+  cheaper (Before dawn 60 fps at mid; flight at mid 59 fps, 0 frames over 50 ms; Midnight at mid still 47 fps, a
+  scene cost for M6). Every number: the M2 ledger, "Session s09". **Phone not measured: adb is not installed here.**
+- **M2.5 plan written:** `docs/superpowers/plans/2026-11-13-m2.5-the-world-from-reference.md` (world state, stacks,
+  the arch that does not exist live yet, tide bands, glitter and moon, look-around, Golden's lantern and spots,
+  nearest-first loading, phone). Waiting for the owner's read and choice of execution.
+- **Next:** owner installs platform-tools (phone half of M2 = M2.5 Task 9); owner reviews the M2.5 plan; then
+  M2.5 Task 1. Measuring tools from s09: `.superpowers/m2/cost.mjs` (GPU ms per part, needs the prod build and
+  `?gpu`), `video.mjs` (25 fps clip to read motion), `atp.mjs` (frames at journey shares), `pacecheck.mjs`.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
