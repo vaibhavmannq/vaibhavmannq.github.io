@@ -103,8 +103,10 @@ no borrowed set pieces (no towers, piano, etc.).
   everywhere, 0 frames over 50 ms. Open: laptop flights stutter with the rock in view (1–9 frames > 50 ms), the
   lantern still reads as a box, the final whole-branch review was not run (R33). Owner's page:
   https://claude.ai/artifact/9JhoxnNjFJcFhm8Ukape4A
-- **Next:** the owner's hands-on test (list on that page; FEEDBACK has been empty since s09), then ask to push;
-  offer the final review; trace the flight stutters; then M3. Phone setup that works: serve `vite preview --host
+- **Next (s12, in this order):** (1) the M2.5 final whole-branch review (one opus reviewer; package with the SDD
+  skill's `review-package` from b36a4ac to HEAD; point it at the ledger's Ruling/minor lines and the plan's Review
+  Focus); one fix pass with TDD; (2) trace the laptop flight stutters with the rock in view; (3) the owner's
+  hands-on test (list in the s11 log); then M3. `world` is pushed (76d1caa). Phone setup that works: serve `vite preview --host
   127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
   (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab
   (the phone's browser is Brave). Measuring tools: `.superpowers/m2/` (s09) and `.superpowers/m25/*.mjs` (s11:
