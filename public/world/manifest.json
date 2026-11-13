@@ -40,9 +40,9 @@
    "openHi": 2
   },
   "arch": {
-   "file": "base/arch.bin",
-   "verts": 10796,
-   "tris": 21560,
+   "file": "stops/headland/arch.bin",
+   "verts": 30602,
+   "tris": 59200,
    "indexBytes": 2,
    "scale": 100,
    "x": -1171.4,
@@ -169,13 +169,6 @@
   }
  },
  "files": [
-  {
-   "path": "base/arch.bin",
-   "bytes": 204932,
-   "sha256": "202d93720cfafb1948ce27f137fbd0663117991791aa87f70f2eba6232a013b9",
-   "stage": "B",
-   "stops": "all"
-  },
   {
    "path": "base/aurora.json",
    "bytes": 13912,
@@ -387,6 +380,19 @@
    "stage": "B",
    "stops": [
     "sunset"
+   ]
+  },
+  {
+   "path": "stops/headland/arch.bin",
+   "bytes": 722424,
+   "sha256": "b64b3c3d107714f551d9074eae17b50d951a75ba876c864ba5e46e57b6acd63e",
+   "stage": "B",
+   "stops": [
+    "golden",
+    "sunset",
+    "dusk",
+    "bluehour",
+    "sunrise"
    ]
   }
  ]

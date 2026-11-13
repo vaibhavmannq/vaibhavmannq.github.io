@@ -77,18 +77,39 @@ def test_cave():
 
 
 def read_arch():
-    """arch.bin (export_parts.py `export_arch`): Int16 positions (coast axes, around ARCH pos, 1/scale m), the baked
-    light as one byte per vertex (padded to 4 bytes), then the triangles (Uint16 or Uint32: meta indexBytes)."""
+    """arch.bin (export_parts.py `export_arch`, in the headland pack): Int16 positions (coast axes, around ARCH pos,
+    1/scale m), Int16 column coordinates, the baked light and the moss as one byte per vertex each (padded to 4 bytes), then the triangles
+    (Uint16 or Uint32: meta indexBytes)."""
     if "arch" not in meta:
         sys.exit("base.json has no arch: run `npm run world:blender` (needs Blender) and commit the result")
     m = meta["arch"]
-    buf = open(need(os.path.join(BASE, "arch.bin")), "rb").read()
+    assert m["file"] == "stops/headland/arch.bin", m["file"]          # ruling R15: rocks live in the place pack
+    buf = open(need(os.path.join(BASE, "..", *m["file"].split("/"))), "rb").read()
     P = np.frombuffer(buf, "<i2", m["verts"] * 3, 0).reshape(-1, 3) / m["scale"]
     off = m["verts"] * 6
-    light = np.frombuffer(buf, np.uint8, m["verts"], off); off += m["verts"]; off += -off % 4
+    col = np.frombuffer(buf, "<i2", m["verts"] * 2, off).reshape(-1, 2) / m["scale"]; off += m["verts"] * 4
+    light = np.frombuffer(buf, np.uint8, m["verts"], off); off += m["verts"]
+    moss = np.frombuffer(buf, np.uint8, m["verts"], off); off += m["verts"]; off += -off % 4
     T = np.frombuffer(buf, f"<u{m['indexBytes']}", m["tris"] * 3, off).reshape(-1, 3); off += T.nbytes; T = T.astype(np.int64)
     assert off == len(buf), (off, len(buf))
-    return m, P, light, T
+    assert np.abs(col - P[:, :2]).max() < 45.0, np.abs(col - P[:, :2]).max()     # a column's foot is near its point
+    return m, P, light, moss, T
+
+
+def components(T, P):
+    """The mesh's connected pieces (vertices at the same place are one: flat-shaded faces have their own corners):
+    lists of vertex indices."""
+    _, weld = np.unique(np.round(P * 100).astype(np.int64), axis=0, return_inverse=True)
+    weld = weld.ravel(); n = len(P); T = weld[T]
+    parent = np.arange(n)
+    def root(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]; i = parent[i]
+        return i
+    for a_, b_, c_ in T:
+        ra, rb, rc = root(a_), root(b_), root(c_); parent[rb] = ra; parent[rc] = ra
+    roots = np.array([root(weld[i]) for i in range(n)])
+    return [np.nonzero(roots == r)[0] for r in np.unique(roots)]
 
 
 def arch_frame():
@@ -124,7 +145,7 @@ def slice_width(P, T, z, S):
 
 
 def test_arch():
-    m, P, light, T = read_arch()
+    m, P, light, moss, T = read_arch()
     c, u, n = arch_frame()
     ax, ay = c.ARCH["pos"]
     assert (m["x"], m["y"]) == (ax, ay), (m["x"], m["y"])
@@ -162,6 +183,31 @@ def test_arch():
     assert not (under & (Z > 6.0) & (Z < zm + 6.0)).any(), "rock stands in the opening"
     # the baked light: some rock in deep shade (inside the opening's corners, under the span), some open to the sky
     assert light.min() < 90 and light.max() > 230, (light.min(), light.max())
+    # fix round 1 (controller look check, owner cliffs-and-columns 1)
+    # L4: a heap of 10-20 angular fallen blocks, 1-7.5 m across, each its own piece, under the opening and at the
+    # heavy block's foot; some half under water
+    comps = components(T, P)
+    blocks = [c_ for c_ in comps if Z[c_].max() < 8.0]
+    assert 10 <= len(blocks) <= 20, len(blocks)
+    sizes = [max(np.ptp(S[c_]), np.ptp(Q[c_])) for c_ in blocks]
+    assert min(sizes) >= 1.0 and max(sizes) <= 7.5, sizes
+    at_open = sum(abs(S[c_].mean() - s0) < 14 for c_ in blocks); at_foot = sum(S[c_].mean() < c.ARCH_LAND["s"] + 14 for c_ in blocks)
+    assert at_open >= 5 and at_foot >= 5, (at_open, at_foot)
+    assert sum(Z[c_].min() < -0.3 and Z[c_].max() < 1.5 * np.ptp(Z[c_]) for c_ in blocks) >= 3   # half under water
+    # L3: moss is a cap on each crown spilling 3-6 m down the upper faces, never in the spray
+    assert moss[Z < 8.0].max() == 0, moss[Z < 8.0].max()
+    crown = Z > c.ARCH_TOP - 3.0
+    assert (moss[crown] > 128).mean() > 0.6, (moss[crown] > 128).mean()
+    for leg in (c.ARCH_LAND, c.ARCH_SEA):
+        near = (np.abs(S - leg["s"]) < leg["rs"] * 1.3) & (np.abs(Q) < leg["rq"] * 1.3)
+        top = Z[near].max(); band = near & (Z < top - 3.0) & (Z > top - 6.0)
+        assert (moss[band] > 60).mean() > 0.25, (leg["s"], (moss[band] > 60).mean())
+    # L2: the crown is stepped column ends, not a dome: in its top 10 m many faces are near level and many near upright
+    n_ = np.cross(P[T[:, 1]] - P[T[:, 0]], P[T[:, 2]] - P[T[:, 0]]); n_ /= np.linalg.norm(n_, axis=1, keepdims=True) + 1e-12
+    cz = P[T, 2].mean(1); cs = S[T].mean(1); cq = Q[T].mean(1)
+    land = (cz > c.ARCH_TOP - 10.0) & (np.abs(cs - c.ARCH_LAND["s"]) < 18) & (np.abs(cq) < 15)
+    flat, wall_ = (np.abs(n_[land, 2]) > 0.95).mean(), (np.abs(n_[land, 2]) < 0.35).mean()
+    assert flat > 0.2 and wall_ > 0.2, (flat, wall_)
 
 
 if __name__ == "__main__":

@@ -379,11 +379,37 @@ ARCH_FOOT = 1.2                  # the feet flare to this much of the leg's widt
 ARCH_SKIRT = -4.0                # the rock runs on below the flats (ankle-deep water on ground ~-0.25 m): no floating foot
 ARCH_TOP = ARCH_LAND["top"]      # the highest rock: the headland line's first height step is measured from it
 ARCH_LEG = ARCH_SEA["s"] + ARCH_SEA["rs"] * ARCH_FOOT   # the seaward leg's foot reaches this far along the line at the waterline
-# fallen blocks beneath the opening (s, q, half-sizes along s and q, top z, turn in degrees): one large block of
-# broken columns and smaller pieces, as in the photo's boulders under the hole; each rests on the bed below the flats
-ARCH_BLOCKS = ((9.0, -5.0, 3.6, 2.4, 2.8, 25.0), (-5.0, 6.0, 1.8, 1.5, 1.6, 70.0), (14.0, 7.0, 1.6, 1.3, 1.3, 140.0),
-               (3.0, -12.0, 1.4, 1.2, 1.2, 10.0), (-10.0, -6.0, 1.2, 1.0, 1.0, 100.0), (16.0, -10.0, 1.3, 1.0, 1.4, 55.0),
-               (5.0, 2.0, 0.9, 0.7, 0.7, 30.0))
+# The fallen blocks (owner cliffs-and-columns 1: a jumble of boulders beneath the hole; reference-landforms §2: a
+# cliff foot is a heap of fallen column pieces): angular blocks 1-7 m across, mostly small, a few large, some half
+# under water; one heap beneath the opening, another round the heavy block's foot (never on its opening side, which
+# the first heap covers). Each: s, q, its size along its own three axes, turn and tilt (radians), top z, seed.
+ARCH_HEAPS = ((10, (-12.0, 13.0), (-13.0, 11.0), (1.0, 4.5), 4.5),     # count, s range, q range, sizes, highest top
+              (9, None, None, (1.5, 7.0), 5.5))                           # round the heavy foot
+
+def _foot_radius(a, leg):
+    """The distance from a leg's centre to its foot at the waterline, in direction a (0 = seaward along s)."""
+    sc = arch_leg_scale(0.0, leg); p = 3.2
+    return 1.0 / ((abs(math.cos(a)) / (leg["rs"] * sc)) ** p + (abs(math.sin(a)) / (leg["rq"] * sc)) ** p) ** (1 / p)
+
+def _arch_blocks():
+    rng = np.random.default_rng(31); out = []
+    for n, srange, qrange, (lo, hi), ztop in ARCH_HEAPS:
+        k = 0
+        for _ in range(2000):
+            if k == n: break
+            size = lo + (hi - lo) * rng.random() ** 1.3
+            if srange is None:
+                a = rng.uniform(1.0, 2 * math.pi - 1.0)
+                r = _foot_radius(a, ARCH_LAND) + 0.25 * size
+                bs, bq = ARCH_LAND["s"] + r * math.cos(a), r * math.sin(a)
+            else:
+                bs, bq = rng.uniform(*srange), rng.uniform(*qrange)
+            if any(math.hypot(bs - b[0], bq - b[1]) < 0.45 * (size + b[2][0]) for b in out): continue
+            dims = (size, size * rng.uniform(0.6, 0.95), size * rng.uniform(0.55, 0.95))
+            top = min(ztop, dims[2] * rng.uniform(0.5, 1.0) - 0.25)           # resting on the bed, some half under water
+            out.append((float(bs), float(bq), tuple(float(d) for d in dims), float(rng.uniform(0, math.pi)),
+                        float(rng.uniform(-0.35, 0.35)), float(top), int(rng.integers(1 << 30)))); k += 1
+    return out
 
 def arch_leg_scale(z, leg):
     """A leg's width at height z as a share of its half-widths: from its waist near the water to its bulge up high,
@@ -396,6 +422,8 @@ def arch_leg_scale(z, leg):
 def arch_leg_centre(z, leg):
     """Where a leg's centre is along the spine at height z (it leans)."""
     return leg["s"] + leg["lean"] * max(0.0, z) / leg["top"]
+
+ARCH_BLOCKS = _arch_blocks()
 
 # ---------------- the old headland line: sea stacks, stumps, a reef (pure data; Blender builds it in build_rocks) ----------------
 # The arch is the last arch of an old headland; land lies landward along its spine (-s), open sea seaward (+s).
@@ -1164,8 +1192,8 @@ def _tube(rings):
     return verts, faces
 
 def arch_parts():
-    """The arch's pieces in arch axes (s, q, z) before they are merged: the two legs, the span, the fallen blocks.
-    Each is a closed mesh; build_arch unites them in a voxel remesh, so they may overlap."""
+    """The arch's pieces in arch axes (s, q, z) before they are merged: the two legs and the span. Each is a closed
+    mesh; build_arch unites them in a voxel remesh, so they may overlap."""
     from mathutils import noise as mnoise
     from mathutils import Vector
     parts = []
@@ -1190,51 +1218,89 @@ def arch_parts():
         s_ = sp["s0"] + (sp["s1"] - sp["s0"]) * t
         rings.append(np.stack([np.full_like(ux, s_), b * ux, zc + half * uy], -1))
     parts.append(_tube(rings))
-    for (bs, bq, hs, hq, top, yaw) in ARCH_BLOCKS:
-        a, ux, uy = _superellipse(24, 3.0); rings = []; hz = (top + 1.5) / 2; zc = top - hz
-        cy_, sy_ = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
-        for ph in np.linspace(-math.pi / 2, math.pi / 2, 14)[1:-1]:
-            w = abs(math.cos(ph)) ** (2 / 3.0); h = math.copysign(abs(math.sin(ph)) ** (2 / 3.0), ph)
-            x, y = hs * w * ux, hq * w * uy
-            rings.append(np.stack([bs + cy_ * x - sy_ * y, bq + sy_ * x + cy_ * y, np.full_like(x, zc + hz * h)], -1))
-        parts.append(_tube(rings))
     return parts
 
-def arch_columns(P, Nrm):
-    """Basalt columns (reference-landforms §2; owner cliffs-and-columns 1): a jittered cell pattern across the
-    horizontal plane, so the sides break into upright prisms 2-3 m across (at this arch's scale) with a groove
-    between them, each standing a little proud or back, cut across into drums; around the span the columns are
-    thinner and more chaotic (the entablature). The pattern leans and fans a little with height, so no wall reads as
-    built. Returns the push along each vertex normal, metres."""
+def arch_cells(P, size, jit, salt):
+    """Basalt column cells: a jittered cell pattern across the horizontal plane that leans and fans a little with
+    height, so no wall reads as built. Per point: the distance to the cell's edge (m), the cell's hash 0..1, its key."""
     x, y, z = P[:, 0], P[:, 1], P[:, 2]
     lean = 0.07 * z
     px = x + lean * (fbm(x * 0.02 + 3.0, y * 0.02, 3) - 0.5) * 2; py = y + lean * (fbm(x * 0.02, y * 0.02 + 7.0, 3) - 0.5) * 2
-    def cells(size, jit, salt):
-        gx, gy = px / size, py / size; ix, iy = np.floor(gx), np.floor(gy)
-        f1 = np.full(len(P), 9.0); f2 = np.full(len(P), 9.0); idv = np.zeros(len(P))
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                cx_, cy_ = ix + dx, iy + dy
-                ox = cx_ + 0.5 + jit * (hsh(cx_ + salt, cy_) - 0.5); oy = cy_ + 0.5 + jit * (hsh(cx_, cy_ + salt) - 0.5)
-                d = np.hypot(gx - ox, gy - oy)
-                closer = d < f1
-                f2 = np.where(closer, f1, np.minimum(f2, d)); idv = np.where(closer, hsh(cx_ * 1.31 + salt, cy_ * 0.77), idv); f1 = np.minimum(f1, d)
-        return (f2 - f1) * size, idv
-    e1, id1 = cells(2.6, 0.55, 0.0)
-    e2, id2 = cells(1.5, 0.9, 13.0)
+    gx, gy = px / size, py / size; ix, iy = np.floor(gx), np.floor(gy)
+    f1 = np.full(len(P), 9.0); f2 = np.full(len(P), 9.0); idv = np.zeros(len(P)); key = np.zeros(len(P), np.int64)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            cx_, cy_ = ix + dx, iy + dy
+            ox = cx_ + 0.5 + jit * (hsh(cx_ + salt, cy_) - 0.5); oy = cy_ + 0.5 + jit * (hsh(cx_, cy_ + salt) - 0.5)
+            d = np.hypot(gx - ox, gy - oy)
+            closer = d < f1
+            f2 = np.where(closer, f1, np.minimum(f2, d)); idv = np.where(closer, hsh(cx_ * 1.31 + salt, cy_ * 0.77), idv)
+            key = np.where(closer, (cx_.astype(np.int64) + 100000) * 200003 + (cy_.astype(np.int64) + 100000), key); f1 = np.minimum(f1, d)
+    return (f2 - f1) * size, idv, key
+
+def arch_columns(P, Nrm):
+    """Basalt columns (reference-landforms §2; owner cliffs-and-columns 1) on the walls: upright prisms 2-3 m across
+    (at this arch's scale) with a groove between them, each standing proud or back by up to 0.6 m, so an outline seen
+    edge-on is stepped, cut across into drums; around the span the columns are thinner and more chaotic (the
+    entablature). Returns the push along each vertex normal, metres."""
+    z = P[:, 2]
+    e1, id1, _ = arch_cells(P, 2.6, 0.55, 0.0)
+    e2, id2, _ = arch_cells(P, 1.5, 0.9, 13.0)
     upper = sm(ARCH_SPAN["z1"] - 12.0, ARCH_SPAN["z1"] - 4.0, z)
     edge = e1 * (1 - upper) + e2 * upper; cid = id1 * (1 - upper) + id2 * upper
     groove = -0.6 * (1 - sm(0.0, 0.5, edge))
-    proud = 0.8 * (cid - 0.5)
+    proud = 1.2 * (cid - 0.5)
     drum = frac((z + cid * 11.0) / (2.6 + 2.2 * frac(cid * 7.3)))
     crack = -0.2 * (1 - sm(0.0, 0.06, np.minimum(drum, 1 - drum)))
     side = 1 - np.abs(Nrm[:, 2]) ** 2                                   # full on walls, slight on the moss-covered tops
     return (groove + proud + crack) * (0.25 + 0.75 * side) * sm(-1.0, 1.0, z)
 
+def arch_crowns(P, Nrm):
+    """Stepped column ends on the crowns and shoulders (owner cliffs-and-columns 1: the tops are blocky, broken
+    heights, not domes): every column cell's upward-facing rock is levelled to one height, the cell's highest point
+    less 0, 1.1 or 2.2 m by its hash. Returns the new heights."""
+    z = P[:, 2]
+    _, cid, key = arch_cells(P, 2.6, 0.55, 0.0)
+    w = sm(0.2, 0.5, Nrm[:, 2]) * sm(6.0, 10.0, z)
+    up = w > 0.0
+    keys, inv = np.unique(key[up], return_inverse=True)
+    top = np.full(len(keys), -1e9); np.maximum.at(top, inv, z[up])
+    target = z.copy(); target[up] = top[inv] - 1.1 * np.floor(cid[up] * 2.999)
+    w = w * sm(4.0, 2.5, target - z)                       # a cell reaching far down a slope is left alone: no spikes
+    return z + w * (target - z)
+
+def arch_block_meshes():
+    """The fallen blocks as angular hulls (flat faces, sharp edges): a box's corners each cut back at random and a
+    few points on its faces, turned and tilted, the highest point at the block's top. In arch axes: verts, faces."""
+    import bmesh
+    out = []
+    for (bs, bq, dims, yaw, tilt, top, seed) in ARCH_BLOCKS:
+        rng = np.random.default_rng(seed)
+        pts = [np.array([sx, sy, sz]) * (1 - rng.uniform(0.0, 0.35, 3)) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
+        for _ in range(6):
+            ax_ = int(rng.integers(3)); q_ = rng.uniform(-0.8, 0.8, 3); q_[ax_] = rng.choice((-1.0, 1.0)) * rng.uniform(0.85, 1.0); pts.append(q_)
+        Pb = np.array(pts) * np.array(dims) / 2
+        ct, st = math.cos(tilt), math.sin(tilt)
+        Pb = Pb @ np.array([[1, 0, 0], [0, ct, -st], [0, st, ct]]).T                     # tilt about its long axis
+        cy_, sy_ = math.cos(yaw), math.sin(yaw)
+        Pb = Pb @ np.array([[cy_, -sy_, 0], [sy_, cy_, 0], [0, 0, 1]]).T
+        Pb[:, 2] += top - Pb[:, 2].max(); Pb[:, 0] += bs; Pb[:, 1] += bq
+        bm = bmesh.new()
+        for v in Pb: bm.verts.new(tuple(v))
+        res = bmesh.ops.convex_hull(bm, input=list(bm.verts))
+        bmesh.ops.delete(bm, geom=[g for g in res["geom_interior"] if isinstance(g, bmesh.types.BMVert)], context="VERTS")
+        bmesh.ops.triangulate(bm, faces=list(bm.faces))
+        verts, faces = [], []
+        for f in bm.faces:                                                   # each face its own corners: flat shading
+            o_ = len(verts); verts += [tuple(l.vert.co) for l in f.loops]; faces.append(tuple(range(o_, o_ + len(f.loops))))
+        bm.free(); out.append((verts, faces))
+    return out
+
 def build_arch(voxel=0.5, max_tris=120_000):
     """The sea arch from the pure data above the render setup (ARCH_LAND, ARCH_SEA, ARCH_SPAN, ARCH_BLOCKS): the
-    pieces united in a voxel remesh, weathered into lumps, cut into basalt columns, decimated to at most `max_tris`
-    triangles. Built in world coordinates; the export reads it back around ARCH["pos"]."""
+    legs and span united in a voxel remesh, weathered into lumps, the crowns stepped into column ends, the walls cut
+    into basalt columns, decimated to at most `max_tris` triangles; then the fallen blocks joined as angular hulls.
+    Built in world coordinates; the export reads it back around ARCH["pos"]."""
     from mathutils import noise as mnoise
     from mathutils import Vector
     ax, ay = ARCH["pos"]; rz = math.radians(ARCH["rotz"]); k_ = ARCH["scale"]
@@ -1264,6 +1330,9 @@ def build_arch(voxel=0.5, max_tris=120_000):
     P = P + N * (lump * (1 - 0.6 * np.clip(N[:, 2], 0, 1)) * sm(-2.0, 2.0, P[:, 2]))[:, None]
     o.data.vertices.foreach_set("co", P.ravel()); o.data.update()
     P, N = arrays()
+    P[:, 2] = arch_crowns(P, N)
+    o.data.vertices.foreach_set("co", P.ravel()); o.data.update()
+    P, N = arrays()
     P = P + N * arch_columns(P, N)[:, None]
     o.data.vertices.foreach_set("co", P.ravel()); o.data.update()
     ntri = sum(len(p.vertices) - 2 for p in o.data.polygons)
@@ -1271,7 +1340,19 @@ def build_arch(voxel=0.5, max_tris=120_000):
     if ntri > max_tris:
         dm = o.modifiers.new("dec", "DECIMATE"); dm.ratio = max_tris / ntri * 0.98; bake()
     for p_ in o.data.polygons: p_.use_smooth = True
+    # the fallen blocks, angular, joined as their own islands (flat shaded)
+    bv, bf = [], []
+    for pv, pf in arch_block_meshes():
+        o_ = len(bv); bv += pv; bf += [tuple(i + o_ for i in f) for f in pf]
+    B = np.array(bv) * k_
+    BW = np.stack([ax + B[:, 0] * u[0] + B[:, 1] * n[0], ay + B[:, 0] * u[1] + B[:, 1] * n[1], B[:, 2]], -1)
+    bme = bpy.data.meshes.new("arch_blocks"); bme.from_pydata([tuple(v) for v in BW], [], bf); bme.update()
+    bo = bpy.data.objects.new("arch_blocks", bme); scn.collection.objects.link(bo)
+    bpy.ops.object.select_all(action="DESELECT"); bo.select_set(True); o.select_set(True)
+    bpy.context.view_layer.objects.active = o; bpy.ops.object.join()
+    o.data.materials.clear()
     o.data.materials.append(rock_material())
+    log("arch blocks", len(ARCH_BLOCKS))
     log("arch", len(o.data.vertices), "verts", sum(len(p.vertices) - 2 for p in o.data.polygons), "tris")
     return o
 

@@ -42,9 +42,9 @@
   "openHi": 2.0
  },
  "arch": {
-  "file": "base/arch.bin",
-  "verts": 10796,
-  "tris": 21560,
+  "file": "stops/headland/arch.bin",
+  "verts": 30602,
+  "tris": 59200,
   "indexBytes": 2,
   "scale": 100,
   "x": -1171.4,

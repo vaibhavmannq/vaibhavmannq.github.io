@@ -133,9 +133,13 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
   // The coast's rock: one material for every rock part (the arch now, the stacks next).
   if (archMeta && archBuf)
     parts.push(['arch', createArch(decodeArch(archBuf, archMeta), archMeta, createRockMaterial())]);
-  // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
+  // Every part's shader is compiled here, before it joins the scene (no hitch later). compileAsync skips hidden
+  // objects, so a part that starts hidden (the arch) is shown for the compile only; its first update decides.
   for (const [name, part] of parts) {
+    const shown = part.object.visible;
+    part.object.visible = true;
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
+    part.object.visible = shown;
     app.addPart(part, name);
   }
 }

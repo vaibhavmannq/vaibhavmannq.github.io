@@ -9,12 +9,13 @@ import { STOPS } from '../../src/journey/stops';
 import { buildTrack, frameAt } from '../../src/journey/timeline';
 import { STOP_IDS } from '../../src/journey/types';
 import { ARCH_SEEN_FROM, ARCH_SEEN_ON, archInPlay, decodeArch } from '../../src/world/arch';
+import { HEADLAND_PACK } from '../../src/world/headland';
 import { createHeightSampler } from '../../src/world/heights';
 
 const base = JSON.parse(readFileSync('public/world/base/base.json', 'utf8'));
 const meta = base.arch as ArchMeta | undefined;
 if (!meta) throw new Error('base.json has no arch: run `npm run world:blender`');
-const buf = readFileSync('public/world/base/arch.bin');
+const buf = readFileSync(`public/world/${meta.file}`);
 const arch = decodeArch(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), meta);
 
 describe('the arch (M2.5 Task 3b)', () => {
@@ -22,6 +23,8 @@ describe('the arch (M2.5 Task 3b)', () => {
     expect(arch.position.length).toBe(meta.verts * 3);
     expect(arch.index.length).toBe(meta.tris * 3);
     expect(arch.light.length).toBe(meta.verts);
+    expect(arch.moss.length).toBe(meta.verts);
+    expect(arch.column.length).toBe(meta.verts * 2);
     let top = -1e9;
     for (let i = 0; i < meta.verts; i++) {
       const x = arch.position[i * 3] ?? 0;
@@ -40,6 +43,18 @@ describe('the arch (M2.5 Task 3b)', () => {
       expect(l).toBeGreaterThanOrEqual(0);
       expect(l).toBeLessThanOrEqual(1);
     }
+  });
+
+  it('lives in the headland place pack, counted against the stops that see it, not the world base (R15)', () => {
+    expect(meta.file.startsWith(HEADLAND_PACK)).toBe(true);
+    const manifest = JSON.parse(readFileSync('public/world/manifest.json', 'utf8'));
+    const entry = manifest.files.find((f: { path: string }) => f.path === meta.file);
+    expect(entry?.stage).toBe('B');
+    expect(entry?.stops).toEqual(STOP_IDS.filter((s) => ARCH_SEEN_FROM.has(s)));
+  });
+
+  it('carries moss only above the spray', () => {
+    for (let i = 0; i < meta.verts; i++) if ((arch.position[i * 3 + 2] ?? 0) < 8) expect(arch.moss[i]).toBe(0);
   });
 
   it('is in play at the stops whose approved renders show it, hidden at the others', () => {

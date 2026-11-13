@@ -6,8 +6,8 @@ exported depends on the hour:
   an hour with an aurora   <folder>/aurora.json   each curtain's base line (the folds use Blender's own noise)
   the cave's hour          <folder>/cave.bin      the cave shell with its ragged mouth, the floor, the light that
                                                   reaches each point from the mouth, and the glowing fungi
-  Blue hour (the arch's)   <folder>/arch.bin      the lopsided sea arch and the blocks fallen beneath it, with the
-                                                  share of the sky each point sees
+  Blue hour (the arch's)   <folder>/../stops/headland/arch.bin   the lopsided sea arch and the blocks fallen
+                                                  beneath it, with the share of the sky each point sees and its moss
 
 Each adds its key to <folder>/base.json. The file layouts are read by src/world/aurora.ts, src/world/cave.ts and
 src/world/arch.ts and checked without Blender by tools/world/test_parts.py.
@@ -22,8 +22,12 @@ OPEN_LO, OPEN_HI = -2.0, 2.0  # the `open` field is stored over this range
 HOLE = 0.45                   # triangles with all three corners more open than this are inside the hole: not exported
 ARCH_SCALE = 100              # arch.bin: Int16 units per metre (the arch reaches ~60 m from its origin)
 SKY_RAYS = 48                 # rays per point for the arch's sky light
-ARCH_TRIS = 22_000            # the site's arch: the world base's byte budget (1.0 MB, spec §14) leaves ~0.23 MB; the
-                              # silhouette and weathering survive, the column joints are drawn per pixel (src/world/arch.ts)
+ARCH_TRIS = 60_000            # the site's arch (ruling R15: it lives in the headland pack, under the 3 MB per-place
+                              # budget); enough for the stepped crowns; the column joints are drawn per pixel
+HEADLAND = os.path.join("..", "stops", "headland")   # the headland's place pack, beside base/ (src/world/headland.ts)
+MOSS_REACH = 8.0              # moss can spill this far down from the highest rock nearby; the shader's patches
+                              # thin it out, so it shows 3-6 m down (owner cliffs-and-columns 1)
+MOSS_ABOVE = 8.0              # and never lower than this: no moss in the spray
 SEA_BOUNCE = 0.3              # what a ray that leaves downward brings back from the sea and the flats (they mirror the sky dimly)
 
 
@@ -137,11 +141,49 @@ def _hemisphere(n):
     return np.stack([r * np.cos(a), r * np.sin(a), np.sqrt(1 - r * r)], -1)
 
 
+def moss_share(V, N):
+    """Per vertex 0..1: how much moss can grow there. A cap on each crown spilling MOSS_REACH m down the upper faces
+    (owner cliffs-and-columns 1), never below MOSS_ABOVE m and never on an underside. "The crown" is the highest rock
+    within MOSS_REACH m across (a 1 m grid of highest points, widened by a running maximum)."""
+    x0, y0 = V[:, 0].min() - 1, V[:, 1].min() - 1
+    ix = np.floor(V[:, 0] - x0).astype(int); iy = np.floor(V[:, 1] - y0).astype(int)
+    G = np.full((iy.max() + 1, ix.max() + 1), -1e9); np.maximum.at(G, (iy, ix), V[:, 2])
+    r = int(MOSS_REACH); H = G.copy()
+    pad = np.pad(G, r, constant_values=-1e9)
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            if dx * dx + dy * dy <= r * r:
+                H = np.maximum(H, pad[r + dy:r + dy + G.shape[0], r + dx:r + dx + G.shape[1]])
+    depth = H[iy, ix] - V[:, 2]
+    def sm(a, b, x): t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+    return sm(MOSS_REACH, 1.0, depth) * sm(MOSS_ABOVE, MOSS_ABOVE + 4.0, V[:, 2]) * sm(-0.3, 0.2, N[:, 2])
+
+
+def column_coords(V, N, T, rounds=40, squash=0.85):
+    """Per vertex, where on the horizontal plane its basalt column stands (coast x, y). Columns run up the wall, but
+    the wall's lumps and ribs move it in and out by metres as it rises, which would cut a column pattern laid on the
+    horizontal plane into scales. So the in-and-out part of each point's offset from the smoothed surface (positions
+    and normals averaged over a few metres: `rounds` passes over the mesh's neighbours) is squashed away; what is
+    left moves only along the wall, and slowly with the smooth surface's own lean."""
+    deg = np.zeros(len(V)); Pr = V.copy(); Sn = N.copy()
+    for i, j, k in ((0, 1, 2), (1, 2, 0), (2, 0, 1)): np.add.at(deg, T[:, i], 2.0)
+    for _ in range(rounds):
+        ap, an = Pr.copy(), Sn.copy()
+        for i, j, k in ((0, 1, 2), (1, 2, 0), (2, 0, 1)):
+            np.add.at(ap, T[:, i], Pr[T[:, j]] + Pr[T[:, k]]); np.add.at(an, T[:, i], Sn[T[:, j]] + Sn[T[:, k]])
+        Pr = ap / (1 + deg)[:, None]; Sn = an / np.maximum(np.linalg.norm(an, axis=1, keepdims=True), 1e-9)
+    nu = Sn[:, :2] / np.maximum(np.linalg.norm(Sn[:, :2], axis=1, keepdims=True), 1e-6)
+    out_ = ((V[:, :2] - Pr[:, :2]) * nu).sum(1)
+    return V[:, :2] - squash * out_[:, None] * nu
+
+
 def export_arch(g, folder):
-    """arch.bin: Int16 positions (coast axes around ARCH pos at sea level, 1/ARCH_SCALE m), one byte of sky light per
-    vertex (padded to 4 bytes), then the triangles (Uint16 when the vertices fit, else Uint32: meta indexBytes). The light is the share of a cosine-weighted hemisphere about
+    """arch.bin, in the headland's place pack: Int16 positions (coast axes around ARCH pos at sea level, 1/ARCH_SCALE
+    m), Int16 column coordinates (coast x, y around ARCH pos, 1/ARCH_SCALE m: column_coords), one byte of sky light
+    per vertex, one byte of moss per vertex (padded to 4 bytes), then the triangles (Uint16
+    when the vertices fit, else Uint32: meta indexBytes). The light is the share of a cosine-weighted hemisphere about
     each point's normal that reaches open sky (a ray that leaves downward meets the sea: SEA_BOUNCE; one that meets
-    the rock: nothing), so the inside of the opening, the undersides and the corners go dark."""
+    the rock: nothing), so the inside of the opening, the undersides and the corners go dark. The moss: moss_share."""
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
     ax, ay = g["ARCH"]["pos"]
@@ -163,12 +205,17 @@ def export_arch(g, folder):
         for d in D:
             if bvh.ray_cast(p0, Vector(d), 500.0)[0] is None: acc += 1.0 if d[2] > 0 else SEA_BOUNCE
         light[i] = acc / SKY_RAYS
+    moss = moss_share(V, N)
+    col = column_coords(V, N, T) - np.array([ax, ay])
     local = V - np.array([ax, ay, 0.0])
-    lb = np.round(np.clip(light, 0, 1) * 255).astype(np.uint8).tobytes()
+    def u8(a): return np.round(np.clip(a, 0, 1) * 255).astype(np.uint8).tobytes()
     ib = 2 if nv <= 65536 else 4                                                 # Uint16 triangles when they fit
-    blob = b"".join([np.round(local * ARCH_SCALE).astype("<i2").tobytes(), lb, b"\0" * (-(nv * 7) % 4), T.astype(f"<u{ib}").tobytes()])
-    with open(os.path.join(folder, "arch.bin"), "wb") as f: f.write(blob)
-    _meta(folder, arch=dict(file="base/arch.bin", verts=nv, tris=len(T), indexBytes=ib, scale=ARCH_SCALE, x=ax, y=ay))
+    blob = b"".join([np.round(local * ARCH_SCALE).astype("<i2").tobytes(), np.round(col * ARCH_SCALE).astype("<i2").tobytes(),
+                     u8(light), u8(moss), b"\0" * (-(nv * 12) % 4),
+                     T.astype(f"<u{ib}").tobytes()])
+    pack = os.path.normpath(os.path.join(folder, HEADLAND)); os.makedirs(pack, exist_ok=True)
+    with open(os.path.join(pack, "arch.bin"), "wb") as f: f.write(blob)
+    _meta(folder, arch=dict(file="stops/headland/arch.bin", verts=nv, tris=len(T), indexBytes=ib, scale=ARCH_SCALE, x=ax, y=ay))
     g["log"]("arch", nv, "verts", len(T), "tris; light", round(float(light.min()), 2), "..", round(float(light.max()), 2), ";", len(blob), "bytes")
 
 

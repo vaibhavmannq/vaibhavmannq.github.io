@@ -8,6 +8,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FileEntry, Manifest } from '../../src/assets/manifest.ts';
 import { STOP_IDS, type StopId } from '../../src/journey/types.ts';
+import { ARCH_SEEN_FROM, HEADLAND_PACK } from '../../src/world/headland.ts';
 
 const world = fileURLToPath(new URL('../../public/world/', import.meta.url));
 const INLINED = new Set(['manifest.json', 'base/base.json', 'sky/sky.json']);
@@ -26,6 +27,8 @@ function stopsOf(path: string): StopId[] | 'all' {
   const id = path.split('/')[1]?.split('.')[0] as StopId;
   if ((path.startsWith('sky/') || path.startsWith('stills/')) && STOP_IDS.includes(id)) return [id];
   if (path.startsWith('base/')) return 'all';
+  // the headland's place pack (ruling R15): counted against the stops that see the arch, not the world base
+  if (path.startsWith(HEADLAND_PACK)) return STOP_IDS.filter((s) => ARCH_SEEN_FROM.has(s));
   throw new Error(`no stop rule for ${path}`);
 }
 
