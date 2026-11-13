@@ -14,7 +14,7 @@ import { SHOTS } from '../journey/shots';
 import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
-import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
+import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
 import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
 import { createRail } from '../overlay/rail';
@@ -34,6 +34,7 @@ import { createHeightSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import type { WorldFrame, WorldPart } from '../world/part';
+import { PART_STOPS, partOrder } from '../world/partOrder';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
 import { createSpotGlints } from '../world/spotGlints';
@@ -94,7 +95,14 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
   }
 }
 
-async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: boolean): Promise<void> {
+async function loadBase(
+  app: App,
+  sky: Sky,
+  light: LightUniforms,
+  auroraActive: boolean,
+  /** the stop the visitor is at when stage B starts: its parts compile first (plan M2.5 Task 8) */
+  opening: () => StopId,
+): Promise<void> {
   const dressingMeta = app.manifest.base.dressing;
   const auroraMeta = app.manifest.base.aurora;
   const caveMeta = app.manifest.base.cave;
@@ -148,13 +156,24 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
     parts.push(['stacks', createStacks(decodeStacks(stacksBuf, stacksMeta), stacksMeta, rock)]);
   // Every part's shader is compiled here, before it joins the scene (no hitch later). compileAsync skips hidden
   // objects, so a part that starts hidden (the arch, the stacks) is shown for the compile only; its first update decides.
-  for (const [name, part] of parts) {
+  const byName = new Map(parts);
+  // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
+  // soon as its own shader is ready, never waiting for one that is slower but not needed here (plan M2.5 Task 8).
+  const join = async (name: string) => {
+    const part = byName.get(name);
+    if (!part) return;
     const shown = part.object.visible;
     part.object.visible = true;
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
     part.object.visible = shown;
     app.addPart(part, name);
-  }
+  };
+  // two waves: what the opening stop shows, then the rest (sharing the driver with far parts slowed the near ones)
+  const stop = opening();
+  const order = partOrder([...byName.keys()], stop);
+  const here = order.filter((n) => PART_STOPS[n]?.has(stop));
+  await Promise.all(here.map(join));
+  await Promise.all(order.filter((n) => !here.includes(n)).map(join));
 }
 
 /** Starts the site: the name is already on screen (index.html); the world fades in under it when ready. */
@@ -544,7 +563,9 @@ export async function boot(): Promise<App> {
     loop.start(active.renderer);
 
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
-    app.stageB = loadBase(app, sky, light, params.auroraActive)
+    const opening = (): StopId =>
+      STOP_IDS[last ? (last.kind === 'stop' || last.t < 0.5 ? last.a : last.b) : 0] ?? 'golden';
+    app.stageB = loadBase(app, sky, light, params.auroraActive, opening)
       .then(() => governor.reset(app.tier, performance.now()))
       .catch((error: unknown) => console.warn('world base failed to load', error));
   }
