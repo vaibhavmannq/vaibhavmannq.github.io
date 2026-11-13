@@ -49,5 +49,14 @@
   "scale": 100,
   "x": -1171.4,
   "y": 1218.9
+ },
+ "stacks": {
+  "file": "stops/headland/stacks.bin",
+  "verts": 50170,
+  "tris": 94104,
+  "indexBytes": 2,
+  "scale": 100,
+  "x": -1154.2,
+  "y": 1333.0
  }
 }

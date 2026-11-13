@@ -47,6 +47,15 @@
    "scale": 100,
    "x": -1171.4,
    "y": 1218.9
+  },
+  "stacks": {
+   "file": "stops/headland/stacks.bin",
+   "verts": 50170,
+   "tris": 94104,
+   "indexBytes": 2,
+   "scale": 100,
+   "x": -1154.2,
+   "y": 1333
   }
  },
  "skies": {
@@ -386,6 +395,19 @@
    "path": "stops/headland/arch.bin",
    "bytes": 722424,
    "sha256": "b64b3c3d107714f551d9074eae17b50d951a75ba876c864ba5e46e57b6acd63e",
+   "stage": "B",
+   "stops": [
+    "golden",
+    "sunset",
+    "dusk",
+    "bluehour",
+    "sunrise"
+   ]
+  },
+  {
+   "path": "stops/headland/stacks.bin",
+   "bytes": 1166664,
+   "sha256": "90bac4c3eeca81eea0bf327ae6e410bdc5e5969716bd9e1c8e7c67c4d00b547e",
    "stage": "B",
    "stops": [
     "golden",

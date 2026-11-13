@@ -4,13 +4,12 @@ import { describe, expect, it } from 'vitest';
 import type { ArchMeta } from '../../src/assets/manifest';
 import { poseAt } from '../../src/journey/camera';
 import type { FlightPath } from '../../src/journey/flights';
-import { SHOTS } from '../../src/journey/shots';
 import { STOPS } from '../../src/journey/stops';
 import { buildTrack, frameAt } from '../../src/journey/timeline';
 import { STOP_IDS } from '../../src/journey/types';
 import { ARCH_SEEN_FROM, ARCH_SEEN_ON, archInPlay, decodeArch } from '../../src/world/arch';
 import { HEADLAND_PACK } from '../../src/world/headland';
-import { createHeightSampler } from '../../src/world/heights';
+import { framing } from './framing';
 
 const base = JSON.parse(readFileSync('public/world/base/base.json', 'utf8'));
 const meta = base.arch as ArchMeta | undefined;
@@ -73,13 +72,6 @@ describe('the arch (M2.5 Task 3b)', () => {
   // or its reflection, with the line of sight clear over the baked heights, must be in a segment that draws it.
   // Inside the cave (Before dawn) the shell hides everything but the mouth, which faces away from the arch.
   it('is drawn at every pose that frames it, and every place it is drawn frames it at least once', () => {
-    const bytes = readFileSync('public/world/base/heights.bin');
-    const heightAt = createHeightSampler(
-      new Uint16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2),
-      base.heights,
-    );
-    const paths = JSON.parse(readFileSync('src/journey/flightPaths.json', 'utf8')) as FlightPath[];
-    const cave = SHOTS.beforedawn.cave;
     const pts: [number, number, number][] = [];
     for (let i = 0; i < meta.verts; i += 97) {
       const x = (arch.position[i * 3] ?? 0) + meta.x;
@@ -88,52 +80,8 @@ describe('the arch (M2.5 Task 3b)', () => {
       if (z < 0) continue;
       pts.push([x, y, z], [x, y, -z]); // the arch and its reflection in the sea
     }
-    const rad = (d: number) => (d * Math.PI) / 180;
-    const track = buildTrack(STOPS);
-    const seen = new Set<string>();
-    const missing = new Set<string>();
-    for (const seg of track.segments) {
-      const key = seg.kind === 'stop' ? STOP_IDS[seg.stop] : `${STOP_IDS[seg.from]}>${STOP_IDS[seg.to]}`;
-      const n = seg.kind === 'stop' ? 1 : 300;
-      for (let k = 0; k < n; k++) {
-        const u = seg.kind === 'stop' ? (seg.start + seg.end) / 2 : seg.start + ((seg.end - seg.start) * (k + 0.5)) / n;
-        const state = frameAt(track, u, false);
-        for (const aspect of [16 / 9, 412 / 915]) {
-          const pose = poseAt(state, paths, aspect, 0);
-          const [cx, cy, cz] = [pose.position[0], -pose.position[2], pose.position[1]];
-          if (cave && Math.hypot(cx - cave.x, cy - cave.y) < 11 && cz < cave.centreZ + cave.radii[2]) continue;
-          const tv = Math.tan(rad(pose.fov) / 2);
-          const th = tv * aspect;
-          const [sy, cyw, sp, cp] = [
-            Math.sin(rad(pose.yaw)),
-            Math.cos(rad(pose.yaw)),
-            Math.sin(rad(pose.pitch)),
-            Math.cos(rad(pose.pitch)),
-          ];
-          const fwd = [sy * cp, cyw * cp, sp];
-          const right = [cyw, -sy, 0];
-          const up = [-sy * sp, -cyw * sp, cp];
-          const frames = pts.some(([x, y, z]) => {
-            const d = [x - cx, y - cy, z - cz];
-            const f = d[0] * (fwd[0] ?? 0) + d[1] * (fwd[1] ?? 0) + d[2] * (fwd[2] ?? 0);
-            if (f <= 1) return false;
-            const h = (d[0] * (right[0] ?? 0) + d[1] * (right[1] ?? 0)) / f;
-            const v = (d[0] * (up[0] ?? 0) + d[1] * (up[1] ?? 0) + d[2] * (up[2] ?? 0)) / f;
-            if (Math.abs(h) > th || Math.abs(v) > tv) return false;
-            const dist = Math.hypot(d[0], d[1]);
-            for (let t = 4; t < dist - 80; t += 8) {
-              const w = t / dist;
-              if (cz + d[2] * w < heightAt(cx + d[0] * w, cy + d[1] * w) - 0.3) return false;
-            }
-            return true;
-          });
-          if (!frames) continue;
-          seen.add(key as string);
-          if (!archInPlay(state)) missing.add(`${key} at u=${u.toFixed(2)}`);
-        }
-      }
-    }
-    expect([...missing]).toEqual([]);
+    const { seen, missing } = framing(pts, archInPlay);
+    expect(missing).toEqual([]);
     const drawn = [...ARCH_SEEN_FROM, ...ARCH_SEEN_ON].sort();
     expect(drawn.filter((k) => !seen.has(k))).toEqual([]);
   });

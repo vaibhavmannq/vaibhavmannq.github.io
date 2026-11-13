@@ -33,6 +33,7 @@ import { createLightUniforms, type LightUniforms, lightValues } from '../world/l
 import type { WorldFrame, WorldPart } from '../world/part';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
+import { createStacks, decodeStacks } from '../world/stacks';
 import { createTerrain } from '../world/terrain';
 import { createWaterfall } from '../world/waterfall';
 import { installBench } from './bench';
@@ -94,7 +95,8 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
   const auroraMeta = app.manifest.base.aurora;
   const caveMeta = app.manifest.base.cave;
   const archMeta = app.manifest.base.arch;
-  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf, archBuf] = await Promise.all([
+  const stacksMeta = app.manifest.base.stacks;
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf, archBuf, stacksBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
@@ -102,6 +104,7 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
     auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
     caveMeta ? fetchBinary(caveMeta.file) : null,
     archMeta ? fetchBinary(archMeta.file) : null,
+    stacksMeta ? fetchBinary(stacksMeta.file) : null,
   ]);
   const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
@@ -130,11 +133,13 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
   if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
   if (caveShot && caveMeta && caveBuf)
     parts.push(['cave', createCave(decodeCave(caveBuf, caveMeta), caveShot, sky, light)]);
-  // The coast's rock: one material for every rock part (the arch now, the stacks next).
-  if (archMeta && archBuf)
-    parts.push(['arch', createArch(decodeArch(archBuf, archMeta), archMeta, createRockMaterial())]);
+  // The coast's rock: one material for every rock part (the arch and the stacks; D13).
+  const rock = createRockMaterial();
+  if (archMeta && archBuf) parts.push(['arch', createArch(decodeArch(archBuf, archMeta), archMeta, rock)]);
+  if (stacksMeta && stacksBuf)
+    parts.push(['stacks', createStacks(decodeStacks(stacksBuf, stacksMeta), stacksMeta, rock)]);
   // Every part's shader is compiled here, before it joins the scene (no hitch later). compileAsync skips hidden
-  // objects, so a part that starts hidden (the arch) is shown for the compile only; its first update decides.
+  // objects, so a part that starts hidden (the arch, the stacks) is shown for the compile only; its first update decides.
   for (const [name, part] of parts) {
     const shown = part.object.visible;
     part.object.visible = true;

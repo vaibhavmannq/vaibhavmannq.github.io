@@ -8,9 +8,11 @@ exported depends on the hour:
                                                   reaches each point from the mouth, and the glowing fungi
   Blue hour (the arch's)   <folder>/../stops/headland/arch.bin   the lopsided sea arch and the blocks fallen
                                                   beneath it, with the share of the sky each point sees and its moss
+                           <folder>/../stops/headland/stacks.bin the headland line: stacks, stumps, reef, shelves
+                                                  and fallen blocks, laid out the same way
 
 Each adds its key to <folder>/base.json. The file layouts are read by src/world/aurora.ts, src/world/cave.ts and
-src/world/arch.ts and checked without Blender by tools/world/test_parts.py.
+src/world/arch.ts (and src/world/stacks.ts) and checked without Blender by tools/world/test_parts.py.
 """
 import json, math, os
 import numpy as np
@@ -24,6 +26,8 @@ ARCH_SCALE = 100              # arch.bin: Int16 units per metre (the arch reache
 SKY_RAYS = 48                 # rays per point for the arch's sky light
 ARCH_TRIS = 60_000            # the site's arch (ruling R15: it lives in the headland pack, under the 3 MB per-place
                               # budget); enough for the stepped crowns; the column joints are drawn per pixel
+STACKS_SCALE = 100            # stacks.bin: Int16 units per metre (the line reaches ~300 m from its middle)
+STACKS_TRIS = 96_000          # the stacks part (brief: <= 150 k, aim <= 100 k; the place budget is 3 MB)
 HEADLAND = os.path.join("..", "stops", "headland")   # the headland's place pack, beside base/ (src/world/headland.ts)
 MOSS_REACH = 8.0              # moss can spill this far down from the highest rock nearby; the shader's patches
                               # thin it out, so it shows 3-6 m down (owner cliffs-and-columns 1)
@@ -177,17 +181,15 @@ def column_coords(V, N, T, rounds=40, squash=0.85):
     return V[:, :2] - squash * out_[:, None] * nu
 
 
-def export_arch(g, folder):
-    """arch.bin, in the headland's place pack: Int16 positions (coast axes around ARCH pos at sea level, 1/ARCH_SCALE
-    m), Int16 column coordinates (coast x, y around ARCH pos, 1/ARCH_SCALE m: column_coords), one byte of sky light
-    per vertex, one byte of moss per vertex (padded to 4 bytes), then the triangles (Uint16
-    when the vertices fit, else Uint32: meta indexBytes). The light is the share of a cosine-weighted hemisphere about
-    each point's normal that reaches open sky (a ray that leaves downward meets the sea: SEA_BOUNCE; one that meets
-    the rock: nothing), so the inside of the opening, the undersides and the corners go dark. The moss: moss_share."""
+def _rock_bin(o, ox, oy, scale):
+    """A rock part's file (arch.bin, stacks.bin): Int16 positions (coast axes around (ox, oy) at sea level, 1/scale m),
+    Int16 column coordinates (coast x, y around (ox, oy), 1/scale m: column_coords), one byte of sky light per vertex,
+    one byte of moss per vertex (padded to 4 bytes), then the triangles (Uint16 when the vertices fit, else Uint32:
+    meta indexBytes). The light is the share of a cosine-weighted hemisphere about each point's normal that reaches
+    open sky (a ray that leaves downward meets the sea: SEA_BOUNCE; one that meets the rock: nothing), so openings,
+    undersides and corners go dark. The moss: moss_share. Returns the bytes, the meta's counts and the light."""
     from mathutils import Vector
     from mathutils.bvhtree import BVHTree
-    ax, ay = g["ARCH"]["pos"]
-    o = g["build_arch"](max_tris=ARCH_TRIS)
     me = o.data; me.calc_loop_triangles()
     nv = len(me.vertices)
     V = np.zeros(nv * 3); me.vertices.foreach_get("co", V); V = V.reshape(-1, 3)
@@ -206,17 +208,42 @@ def export_arch(g, folder):
             if bvh.ray_cast(p0, Vector(d), 500.0)[0] is None: acc += 1.0 if d[2] > 0 else SEA_BOUNCE
         light[i] = acc / SKY_RAYS
     moss = moss_share(V, N)
-    col = column_coords(V, N, T) - np.array([ax, ay])
-    local = V - np.array([ax, ay, 0.0])
+    col = column_coords(V, N, T) - np.array([ox, oy])
+    local = V - np.array([ox, oy, 0.0])
+    assert np.abs(local[:, :2]).max() * scale < 32767 and np.abs(col).max() * scale < 32767, "the part outgrows Int16"
     def u8(a): return np.round(np.clip(a, 0, 1) * 255).astype(np.uint8).tobytes()
     ib = 2 if nv <= 65536 else 4                                                 # Uint16 triangles when they fit
-    blob = b"".join([np.round(local * ARCH_SCALE).astype("<i2").tobytes(), np.round(col * ARCH_SCALE).astype("<i2").tobytes(),
+    blob = b"".join([np.round(local * scale).astype("<i2").tobytes(), np.round(col * scale).astype("<i2").tobytes(),
                      u8(light), u8(moss), b"\0" * (-(nv * 12) % 4),
                      T.astype(f"<u{ib}").tobytes()])
+    return blob, dict(verts=nv, tris=len(T), indexBytes=ib), light
+
+
+def _write_pack(folder, name, blob):
     pack = os.path.normpath(os.path.join(folder, HEADLAND)); os.makedirs(pack, exist_ok=True)
-    with open(os.path.join(pack, "arch.bin"), "wb") as f: f.write(blob)
-    _meta(folder, arch=dict(file="stops/headland/arch.bin", verts=nv, tris=len(T), indexBytes=ib, scale=ARCH_SCALE, x=ax, y=ay))
-    g["log"]("arch", nv, "verts", len(T), "tris; light", round(float(light.min()), 2), "..", round(float(light.max()), 2), ";", len(blob), "bytes")
+    with open(os.path.join(pack, name), "wb") as f: f.write(blob)
+
+
+def export_arch(g, folder):
+    """arch.bin, in the headland's place pack (_rock_bin around ARCH pos)."""
+    ax, ay = g["ARCH"]["pos"]
+    o = g["build_arch"](max_tris=ARCH_TRIS)
+    blob, counts, light = _rock_bin(o, ax, ay, ARCH_SCALE)
+    _write_pack(folder, "arch.bin", blob)
+    _meta(folder, arch=dict(file="stops/headland/arch.bin", **counts, scale=ARCH_SCALE, x=ax, y=ay))
+    g["log"]("arch", counts["verts"], "verts", counts["tris"], "tris; light", round(float(light.min()), 2), "..", round(float(light.max()), 2), ";", len(blob), "bytes")
+
+
+def export_stacks(g, folder):
+    """stacks.bin, in the headland's place pack (_rock_bin around the middle of the line): the headland's stacks,
+    remnants, stumps and reef, their wave-cut shelves and fallen blocks, one mesh (coast.py build_stacks)."""
+    o = g["build_stacks"](max_tris=STACKS_TRIS)
+    V = np.array([tuple(v.co) for v in o.data.vertices])
+    ox, oy = (round(float(V[:, 0].min() + V[:, 0].max()) / 2, 1), round(float(V[:, 1].min() + V[:, 1].max()) / 2, 1))
+    blob, counts, light = _rock_bin(o, ox, oy, STACKS_SCALE)
+    _write_pack(folder, "stacks.bin", blob)
+    _meta(folder, stacks=dict(file="stops/headland/stacks.bin", **counts, scale=STACKS_SCALE, x=ox, y=oy))
+    g["log"]("stacks", counts["verts"], "verts", counts["tris"], "tris; light", round(float(light.min()), 2), "..", round(float(light.max()), 2), ";", len(blob), "bytes")
 
 
 def run(g):
@@ -224,5 +251,8 @@ def run(g):
     S = g["S"]; did = False
     if S.get("aurora") and S["aurora"].get("sky_bands"): export_aurora(g, folder); did = True
     if S.get("cave"): export_cave(g, folder); did = True
-    if g["HOUR"] == "bluehour": export_arch(g, folder); did = True
+    only = g.get("ONLY", "")                     # --only <part>: one part, while its shape is being worked on
+    if only:
+        {"arch": export_arch, "stacks": export_stacks}[only](g, folder); return
+    if g["HOUR"] == "bluehour": export_arch(g, folder); export_stacks(g, folder); did = True
     if not did: raise SystemExit(f"nothing to export for hour {g['HOUR']}")

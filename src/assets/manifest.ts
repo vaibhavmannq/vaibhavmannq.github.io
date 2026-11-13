@@ -55,6 +55,9 @@ export interface ArchMeta {
   y: number;
 }
 
+/** The headland stacks (export_parts.py `export_stacks`): stacks.bin has arch.bin's layout, around the line's middle. */
+export type StacksMeta = ArchMeta;
+
 export interface Manifest {
   version: 1;
   base: {
@@ -64,6 +67,7 @@ export interface Manifest {
     aurora?: { file: string };
     cave?: CaveMeta;
     arch?: ArchMeta;
+    stacks?: StacksMeta;
   };
   skies: Partial<Record<StopId, SkyAmbient & { file: string }>>;
   files: FileEntry[];

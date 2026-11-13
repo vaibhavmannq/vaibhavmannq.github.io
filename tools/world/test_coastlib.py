@@ -126,6 +126,45 @@ for i, si in enumerate(c.SHELVES):
     assert len(seen) == len(si["discs"])
 assert sum(len(sh["discs"]) for sh in c.SHELVES) == len(H) and any(len(sh["discs"]) > 1 for sh in c.SHELVES)
 
+# ---- the stacks' forms (M2.5 task 3c; owner cove-and-stacks 12): spires, wedges, a block, flared feet ----
+# Measured on the outlines Blender builds from (stack_section), before its weathering; test_parts.py measures the mesh.
+rk = c.stack_rocks()
+assert [(k["x"], k["y"], k["r"], k["h"], k["lean"]) for k in rk] == [r for r in line_rocks]   # every rock, with its lean
+forms = [k["form"] for k in rk]
+assert forms.count("spire") >= 2 and forms.count("wedge") >= 1 and forms.count("block") == 1, forms
+assert len({(k["form"], k["r"], k["h"]) for k in rk}) == len(rk), "two pieces alike"
+spires = [k for k in rk if k["form"] == "spire"]
+assert [k["h"] for k in spires] == sorted((k["h"] for k in spires), reverse=True), "spires get smaller out to sea"
+def req(k, z): return c._req(c.stack_section(k, z))
+def axis(k, z): return np.array([k["x"] + k["lean"] * k["h"] * (max(z, 0.0) / k["h"]) ** 2, k["y"]])
+measured = []
+for k in rk:
+    if k["h"] < 8.0: continue                                     # the stumps and the reef are all foot
+    foot = np.mean([req(k, z) for z in (1.5, 2.25, 3.0)]) / req(k, k["h"] / 2)
+    assert 1.3 <= foot <= 1.6, (k["form"], k["h"], foot)            # a flared foot, a talus apron into the shelf
+    assert req(k, 3.0) - req(k, 0.45) >= 0.5, (k["form"], k["h"])  # the notch is still cut in it
+    if k["form"] == "spire":                                         # the top third narrows to <= 0.3 x its radius
+        assert req(k, 0.75 * k["h"]) <= 0.3 * k["r"], (k["h"], req(k, 0.75 * k["h"]) / k["r"])
+    if k["form"] == "wedge":                                         # one side slopes at 50-65 deg, the other is sheer
+        f = math.radians(k["face"]); fu = np.array([math.cos(f), math.sin(f)])
+        zs = np.linspace(0.35 * k["h"], 0.9 * k["h"], 12)
+        hi = [((c.stack_section(k, z) - axis(k, z)) @ fu).max() for z in zs]
+        lo = [((c.stack_section(k, z) - axis(k, z)) @ fu).min() for z in zs]
+        slope = math.degrees(math.atan(1 / abs(np.polyfit(zs, hi, 1)[0])))
+        sheer = math.degrees(math.atan(1 / max(abs(np.polyfit(zs, lo, 1)[0]), 1e-9)))
+        assert 50.0 <= slope <= 65.0 and sheer >= 80.0, (k["h"], slope, sheer)
+        measured.append(round(slope))
+    if k["form"] == "block":                                         # a broad flat top, broken by a step
+        f = math.radians(k["face"]); P = c.stack_section(k, k["h"] * 0.97, 400)
+        cx, cy = P.mean(0); g = np.mgrid[-1:1:41j, -1:1:41j].reshape(2, -1).T * np.abs(P - [cx, cy]).max()
+        X, Y = cx + g[:, 0], cy + g[:, 1]; top = c.stack_top(k, X, Y)
+        A, B = P, np.roll(P, -1, 0); ins = np.zeros(len(X), bool)                 # inside the outline (even-odd)
+        for (ax_, ay_), (bx_, by_) in zip(A, B):
+            ins ^= ((ay_ > Y) != (by_ > Y)) & (X < ax_ + (Y - ay_) * (bx_ - ax_) / (by_ - ay_ + 1e-12))
+        flat, low = (top[ins] > k["h"] - 0.05 * k["h"]).mean(), (top[ins] < k["h"] - 0.1 * k["h"]).mean()
+        assert flat >= 0.5 and low >= 0.1, (flat, low)
+assert all(c.stack_top(k, k["x"], k["y"]) <= k["h"] + 0.2 for k in rk if k["form"] in c.CUT_TOP)   # no cut top over the line's height
+
 # Blender builds every piece; the data is seeded: a second load gives the same line
 assert all(r in c.ROCKS for r in line_rocks)
 assert len(c.ROCK_SEEDS) == len(c.ROCKS) and len(set(c.ROCK_SEEDS)) == len(c.ROCK_SEEDS)

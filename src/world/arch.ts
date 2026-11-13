@@ -132,7 +132,7 @@ const columnCell = Fn(([p]: [V2]) => {
 });
 
 /**
- * The coast's rock material, shared by every rock part (the arch now; the stacks in Task 3c): one shader. Each vertex
+ * The coast's rock material, shared by every rock part (the arch, the stacks): one shader. Each vertex
  * carries `light`, its baked share of the sky, and `moss`, how much moss can grow there (baked: a cap on each crown
  * spilling a few metres down the upper faces, none in the spray). Everything that varies slowly is worked out per
  * vertex (s09 rule): the mottle, the lichen patches, the moss's patches. Per pixel only the columns, which must stay
@@ -206,15 +206,10 @@ export function createRockMaterial(): MeshStandardNodeMaterial {
 }
 
 /**
- * The lopsided basalt sea arch (owner cliffs-and-columns 1; M2.5 Task 3b), baked from coast.py's build_arch: one
- * mesh, one draw, the shared rock material, per-vertex baked light. Its legs run on below the flats, so the shallow
- * water hides the cut and no foot floats.
+ * A rock part's mesh from its decoded file (arch.bin, stacks.bin): coast axes around `at` to three.js, the baked
+ * `light`, `moss` and `column` attributes the shared rock material reads, hidden until its first update.
  */
-export function createArch(
-  parts: ArchParts,
-  at: { x: number; y: number },
-  material: MeshStandardNodeMaterial,
-): WorldPart {
+export function rockMesh(parts: ArchParts, at: { x: number; y: number }, material: MeshStandardNodeMaterial): Mesh {
   const n = parts.position.length / 3;
   const position = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -238,6 +233,20 @@ export function createArch(
   geometry.computeBoundingSphere();
   const mesh = new Mesh(geometry, material);
   mesh.visible = false; // never drawn before its first update says it is in play
+  return mesh;
+}
+
+/**
+ * The lopsided basalt sea arch (owner cliffs-and-columns 1; M2.5 Task 3b), baked from coast.py's build_arch: one
+ * mesh, one draw, the shared rock material, per-vertex baked light. Its legs run on below the flats, so the shallow
+ * water hides the cut and no foot floats.
+ */
+export function createArch(
+  parts: ArchParts,
+  at: { x: number; y: number },
+  material: MeshStandardNodeMaterial,
+): WorldPart {
+  const mesh = rockMesh(parts, at, material);
   return {
     object: mesh,
     update(f) {
@@ -245,7 +254,7 @@ export function createArch(
     },
     setTier() {},
     dispose() {
-      geometry.dispose();
+      mesh.geometry.dispose();
     },
   };
 }

@@ -58,6 +58,7 @@ const manifest: Manifest = {
     aurora: base.aurora,
     cave: base.cave,
     arch: base.arch,
+    stacks: base.stacks,
   },
   skies,
   files,

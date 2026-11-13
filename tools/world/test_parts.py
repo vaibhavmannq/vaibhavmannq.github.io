@@ -210,9 +210,116 @@ def test_arch():
     assert flat > 0.2 and wall_ > 0.2, (flat, wall_)
 
 
+def read_rock(key):
+    """A rock part in the headland pack (arch.bin, stacks.bin: export_parts.py `_rock_bin`): Int16 positions (coast
+    axes around the meta's x, y at sea level, 1/scale m), Int16 column coordinates, the baked light and the moss as
+    one byte per vertex each (padded to 4 bytes), then the triangles (Uint16 or Uint32: meta indexBytes)."""
+    if key not in meta:
+        sys.exit(f"base.json has no {key}: run `npm run world:blender` (needs Blender) and commit the result")
+    m = meta[key]
+    assert m["file"] == f"stops/headland/{key}.bin", m["file"]        # ruling R15: rocks live in the place pack
+    buf = open(need(os.path.join(BASE, "..", *m["file"].split("/"))), "rb").read()
+    P = np.frombuffer(buf, "<i2", m["verts"] * 3, 0).reshape(-1, 3) / m["scale"]
+    off = m["verts"] * 6
+    col = np.frombuffer(buf, "<i2", m["verts"] * 2, off).reshape(-1, 2) / m["scale"]; off += m["verts"] * 4
+    light = np.frombuffer(buf, np.uint8, m["verts"], off); off += m["verts"]
+    moss = np.frombuffer(buf, np.uint8, m["verts"], off); off += m["verts"]; off += -off % 4
+    T = np.frombuffer(buf, f"<u{m['indexBytes']}", m["tris"] * 3, off).reshape(-1, 3); off += T.nbytes; T = T.astype(np.int64)
+    assert off == len(buf), (off, len(buf))
+    assert np.abs(col - P[:, :2]).max() < 45.0, np.abs(col - P[:, :2]).max()
+    return m, P, light, moss, T
+
+
+def section(P, T, z):
+    """Where the plane at height z cuts a closed mesh: the area inside the cut (from the cut's segments, oriented by
+    each triangle's outward normal) and the cut points."""
+    a, b, c_ = P[T[:, 0]], P[T[:, 1]], P[T[:, 2]]
+    nrm = np.cross(b - a, c_ - a)
+    zs = P[T, 2] - (z + 0.00317)                         # never exactly on a vertex (positions are whole cm)
+    cross = (zs.min(1) < 0) & (zs.max(1) > 0)
+    pts, area = [], 0.0
+    for i in np.nonzero(cross)[0]:
+        q = []
+        for j, k_ in ((0, 1), (1, 2), (2, 0)):
+            za, zb = zs[i, j], zs[i, k_]
+            if (za < 0) != (zb < 0):
+                w = za / (za - zb); q.append(P[T[i, j], :2] * (1 - w) + P[T[i, k_], :2] * w)
+        if len(q) != 2: continue
+        p0, p1 = q
+        d = p1 - p0
+        if d[0] * nrm[i, 1] - d[1] * nrm[i, 0] > 0: p0, p1 = p1, p0        # the solid on the left of the segment
+        area += 0.5 * (p0[0] * p1[1] - p0[1] * p1[0]); pts += [p0, p1]
+    return abs(area), np.array(pts).reshape(-1, 2)
+
+
+def test_stacks():
+    """M2.5 Task 3c: the headland line in the live world (owner cove-and-stacks 12; reference-landforms §2)."""
+    import coastlib
+    c = coastlib.load("bluehour")
+    m, P, light, moss, T = read_rock("stacks")
+    assert T.max() < len(P) and m["tris"] <= 150_000, m["tris"]          # the hard cap (aim: <= 100 k)
+    W = P + np.array([m["x"], m["y"], 0.0])                                  # coast axes
+    rk = c.stack_rocks()
+    # the part holds every HEADLAND piece within its footprint: every vertex is on some piece's shelf disc (with the
+    # skirt's rounding), and every rock of the line is there at its height
+    discs = np.array([pc["disc"] for pc in c.HEADLAND])
+    near = np.min(np.hypot(W[:, :1] - discs[:, 0], W[:, 1:2] - discs[:, 1]) - discs[:, 2], axis=1)
+    assert near.max() < 2.0, near.max()
+    comps = components(T, P)
+    whose = np.zeros(len(P), np.int64)
+    for i, c_ in enumerate(comps): whose[c_] = i
+    eq = lambda Ts, z: math.sqrt(section(W, Ts, z)[0] / math.pi)
+    report = []
+    for k in rk:
+        ax_ = lambda z: np.array([k["x"] + k["lean"] * k["h"] * (max(z, 0.0) / k["h"]) ** 2, k["y"]])
+        zm = max(k["h"] / 2, 0.3)
+        d = np.hypot(*(W[:, :2] - ax_(zm)).T) + 4 * np.abs(W[:, 2] - zm)
+        own = comps[whose[int(np.argmin(d))]]
+        Ts = T[np.isin(T[:, 0], own)]
+        top = W[own, 2].max()
+        assert k["h"] - 0.12 * k["h"] - 1.5 <= top <= k["h"] + 1.5, (k["form"], k["h"], top)
+        assert W[own, 2].min() < float(c.ground(k["x"], k["y"])) - 2.0, (k["form"], W[own, 2].min())   # a skirt: no floating foot
+        if k["h"] < 8.0: continue
+        foot = np.mean([eq(Ts, z) for z in (1.5, 2.25, 3.0)]); mid = eq(Ts, k["h"] / 2)
+        row = dict(form=k["form"], h=k["h"], foot=round(foot / mid, 2), notch=round(eq(Ts, 3.0) - eq(Ts, 0.45), 2))
+        assert 1.3 <= foot / mid <= 1.6, row                                   # the flared foot
+        assert eq(Ts, 3.0) - eq(Ts, 0.45) >= 0.4, row                          # the wave-cut notch
+        if k["form"] == "spire":
+            row["tip"] = round(eq(Ts, 0.75 * k["h"]) / k["r"], 2)
+            assert row["tip"] <= 0.3, row
+        if k["form"] == "wedge":
+            f = math.radians(k["face"]); fu = np.array([math.cos(f), math.sin(f)])
+            zs = np.linspace(0.35 * k["h"], 0.9 * k["h"], 12)
+            hi = [((section(W, Ts, z)[1] - ax_(z)) @ fu).max() for z in zs]
+            lo = [((section(W, Ts, z)[1] - ax_(z)) @ fu).min() for z in zs]
+            row["slope"] = round(math.degrees(math.atan(1 / abs(np.polyfit(zs, hi, 1)[0]))), 1)
+            row["sheer"] = round(math.degrees(math.atan(1 / max(abs(np.polyfit(zs, lo, 1)[0]), 1e-9))), 1)
+            assert 50.0 <= row["slope"] <= 65.0 and row["sheer"] >= 78.0, row
+        if k["form"] == "block":                                               # a flat top, broken by a step
+            a_, b_, c3 = W[Ts[:, 0]], W[Ts[:, 1]], W[Ts[:, 2]]
+            n_ = np.cross(b_ - a_, c3 - a_); ar = np.linalg.norm(n_, axis=1); nz = np.abs(n_[:, 2]) / np.maximum(ar, 1e-12)
+            cz = (a_[:, 2] + b_[:, 2] + c3[:, 2]) / 3; up = cz > 0.75 * k["h"]
+            level = up & (nz > 0.9); top_ = up & (n_[:, 2] > 0.5 * ar)                 # level / facing up
+            row["level"] = round(float(ar[level].sum() / ar[top_].sum()), 2)
+            row["step"] = round(float(np.percentile(cz[level], 95) - np.percentile(cz[level], 5)), 1)
+            assert row["level"] >= 0.5 and row["step"] >= 0.08 * k["h"], row
+        report.append(row)
+    forms = [k["form"] for k in rk]
+    assert forms.count("spire") >= 2 and forms.count("wedge") >= 1 and forms.count("block") == 1, forms
+    # moss only on top (one mask in the shared material): none in the spray, some on every tall piece's top
+    assert moss[W[:, 2] < 8.0].max() == 0, moss[W[:, 2] < 8.0].max()
+    for k in rk:
+        if k["h"] < 15.0: continue
+        cap = (np.hypot(W[:, 0] - k["x"] - k["lean"] * k["h"], W[:, 1] - k["y"]) < k["r"] * 1.3) & (W[:, 2] > k["h"] - 3.0)
+        assert (moss[cap] > 60).mean() > 0.3, (k["form"], k["h"], (moss[cap] > 60).mean())
+    assert light.min() < 90 and light.max() > 230, (light.min(), light.max())
+    return report
+
+
 if __name__ == "__main__":
     test_aurora()
     test_cave()
     test_arch()
+    stacks = test_stacks()
     print("ok parts: aurora", meta["aurora"], "cave", {k: meta["cave"][k] for k in ("shellVerts", "shellTris", "floorVerts", "fungi")},
-          "arch", {k: meta["arch"][k] for k in ("verts", "tris")})
+          "arch", {k: meta["arch"][k] for k in ("verts", "tris")}, "stacks", {k: meta["stacks"][k] for k in ("verts", "tris")}, stacks)

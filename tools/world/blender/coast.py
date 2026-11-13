@@ -217,6 +217,7 @@ if S.get("sky"):
     S["tilt"] = _el - arg("--sun_el", float(S.get("sun_el", _el)))
 STYLE = arg("--style", "real")
 CAVESEG = arg("--caveseg", 256)   # segments around the cave shell (the site's export uses fewer)
+ONLY = arg("--only", "")          # with --export: only this part (export_parts.py run)
 EXPORT = arg("--export", "")      # a folder: write the site's baked parts there instead of rendering (tools/world/blender/export_parts.py)
 LITE = bool(arg("--lite", 0))   # light previews for this PC: coarser terrain/sea meshes, a thinner short meadow
 WUWA = STYLE == "wuwa"
@@ -565,6 +566,148 @@ def rock_rings(base, h):
         if z - keep[-1] > 0.04: keep.append(z)
     keep[-1] = h
     return keep
+
+# ---------------- the headland stacks' forms (pure data; Blender builds the mesh in build_stacks) ----------------
+# Owner cove-and-stacks 12 (the Olympic coast in mist): pointed spires that get smaller out to sea, wedges (one side
+# sheer, the other sloping), a block with a flat broken top, small rounded stumps; no two alike. reference-landforms §2:
+# every stack stands on a talus apron (its flared foot) with the wave-cut notch at the waterline. Per HEADLAND piece,
+# per rock: its form and the azimuth its form faces (degrees from +x): a wedge's slope, a spire's shoulder, a block's
+# broken step, the fall of a broken top. 35 deg is screen-right from Golden, Sunset and Dusk (they look north-west at
+# the line) and close to it from Blue hour, so a wedge facing it shows its slope against the sky.
+_FORMS = ((("broken", 120.0),),                     # the small remnant beside the parent mass
+          (("block", 75.0),),                       # the parent mass: a broad block, its flat top broken by a step
+          (("spire", 35.0),),                       # the first stack: the tallest spire, its tip off-centre
+          (("wedge", 35.0),),                       # a wedge, its slope across the views
+          (("spire", 200.0), ("broken", 300.0)),    # the split pair: a spire and its broken half
+          (("spire", 10.0),),                       # the leaning spire, its shoulder on the lean's side
+          (("wedge", 215.0),),                      # a small wedge sloping the other way
+          (("broken", 160.0),),                     # the last stack, leaning, its top fallen in
+          (("stump", 0.0),), (("stump", 90.0),), (("reef", 30.0),))
+assert len(_FORMS) == len(HEADLAND) and all(len(f) == len(pc["rocks"]) for f, pc in zip(_FORMS, HEADLAND))
+for _pc, _f in zip(HEADLAND, _FORMS): _pc["forms"] = list(_f)
+STACK_FOOT = 1.45        # the foot's radius over the radius at mid-height (brief: 1.3-1.6; reference-landforms §2's talus)
+FOOT_R = 1.1             # the foot's radius as a share of the rock's r (rock_prof at the waterline)
+FOOT_ROOM = 3.0          # the foot stays this far inside its shelf's disc (the shelf and its blocks stay seen)
+FOOT_TOP = 3.0           # the apron keeps its full width up to here, then rises into the wall at about 40 deg
+SPIRE_TIP = 0.45         # a spire's tip stands this share of its radius off its axis, toward its facing (owner photo 12)
+WEDGE_SLOPE = (56.0, 59.0)   # the slope of a large / a small wedge's sloping side, degrees (brief: 50-65)
+# per form: the section's superellipse exponent (2 round, higher boxier), its elongation along the facing, and how
+# much it tapers to the top (a share of its radius)
+STACK_SECTIONS = dict(spire=(2.4, 1.15, 0.25), wedge=(2.8, 1.1, 0.15), block=(3.6, 1.3, 0.08), broken=(2.6, 1.25, 0.2),
+                      stump=(2.2, 1.2, 0.0), reef=(2.0, 1.5, 0.0), shelf=(2.0, 1.0, 0.0))
+CUT_TOP = ("block", "broken", "wedge", "reef", "shelf")   # forms whose top is a cut surface (the solid runs on 8 % higher)
+
+def _superellipse(n, p):
+    """n points round a superellipse of exponent p (2 a circle, higher boxier): angles, unit half-widths."""
+    a = np.linspace(0, 2 * math.pi, n, endpoint=False); c, s_ = np.cos(a), np.sin(a)
+    return a, np.sign(c) * np.abs(c) ** (2 / p), np.sign(s_) * np.abs(s_) ** (2 / p)
+
+def stack_body(form, t):
+    """A form's size at height share t (of its rock's r), before the foot, the lobes and the notch."""
+    t = np.clip(t, 0.0, 1.0); taper = STACK_SECTIONS[form][2]
+    if form == "spire":                     # a column to 0.45 of its height, then a needle (concave flanks)
+        return np.where(t <= 0.45, 1.0 - taper * t, (1.0 - taper * 0.45) * np.clip((1 - t) / 0.55, 0, 1) ** 1.7)
+    if form == "stump": return (1.0 - 0.35 * t * t) * np.sqrt(np.clip(1 - t ** 6, 0, 1))   # low and rounded
+    return 1.0 - taper * t
+
+def _section_raw(k, z, n):
+    """A rock's outline at height z without its foot or notch: points in its facing frame, and the frame's centre."""
+    r, h, form, seed = k["re"], k["h"], k["form"], k["seed"]
+    t = max(z, 0.0) / max(h, 0.5); b = float(stack_body(form, t)); p, e, _ = STACK_SECTIONS[form]
+    a, ux, uy = _superellipse(n, p)
+    hx, hy, xc = r * e * b, r / e * b, 0.0
+    if form == "wedge":                     # the sheer side stays at -W; the slope side comes in from +W at the slope,
+        tn = math.tan(math.radians(k["slope"]))   # which runs from its crest down to a quarter of its height
+        W = 0.5 * (0.12 * r + 0.75 * h / tn) * (1 - 0.15 * t); X1 = min(W, -W + 0.12 * r + (h - z) / tn)
+        hx, xc = (X1 + W) / 2, (X1 - W) / 2; hy = hy * (1 - 0.7 * min(t, 1.0) ** 2)
+    if form == "spire": xc = SPIRE_TIP * r * float(sm(0.45, 1.0, t))
+    if form in CUT_TOP and z > h:           # closes the solid above its cut top
+        d = math.sqrt(max(0.0, 1 - ((z - h) / (k["H"] - h)) ** 2)); hx, hy = hx * d, hy * d
+    lobes = (1 + 0.06 * np.cos(3 * a + seed * 1.3) + 0.04 * np.cos(5 * a + seed * 2.3)
+             + 0.16 * (vnoise(np.cos(a) * 1.3 + seed * 7.1, np.sin(a) * 1.3 + z / max(r, 1.0) * 0.5) - 0.5)
+             + 0.16 * (vnoise(seed * 3.3, z / max(r, 1.0) * 0.45) - 0.5))       # lobes round it, a waist and a bulge up it
+    if form == "shelf": lobes = lobes / lobes.max()          # a shelf's ragged edge stays on its disc
+    return np.stack([xc + hx * ux * lobes, hy * uy * lobes], -1), np.array([xc, 0.0])
+
+def _req(pts):
+    """The radius of the circle with the outline's area."""
+    x, y = pts[:, 0], pts[:, 1]
+    return math.sqrt(abs(0.5 * float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))) / math.pi)
+
+def stack_section(k, z, n=96):
+    """A rock's outline at height z in coast x, y (before Blender's weathering): its body, the flared foot (STACK_FOOT
+    x its radius at mid-height, up to FOOT_TOP, then a talus rising into the wall), the wave-cut notch, its lean."""
+    P, c = _section_raw(k, z, n)
+    if k["h"] >= 8.0:                       # stumps and the reef are all foot
+        rise = max(1.5, 0.85 * max(0.0, STACK_FOOT * k["M"] - k["R3"]))
+        w = float(sm(FOOT_TOP + rise, FOOT_TOP, z)); req = _req(P)
+        P = c + (P - c) * (1 + (STACK_FOOT * k["M"] / max(req, 1e-6) - 1) * w)
+    if k["form"] != "shelf":                # the wave-cut notch (the shelves are the platform it leaves)
+        req = _req(P); P = c + (P - c) * max(1 - rock_notch(z, k["r"]) / max(req, 1e-6), 0.2)
+    f = math.radians(k["face"]); u, v = np.array([math.cos(f), math.sin(f)]), np.array([-math.sin(f), math.cos(f)])
+    t = max(z, 0.0) / max(k["h"], 0.5)
+    return np.array([k["x"] + k["lean"] * k["h"] * t * t, k["y"]]) + P[:, :1] * u + P[:, 1:] * v
+
+def stack_top(k, X, Y):
+    """Where a rock's cut top is (coast z) above coast x, y: a block's flat top with a broken step down on its facing
+    side, a broken top falling at 20 deg toward its facing with a step, a wedge's crest, the reef's and the shelves'
+    rough flats. Spires and stumps end in their own shape (inf)."""
+    form, h, r, seed = k["form"], k["h"], k["re"], k["seed"]
+    X, Y = np.asarray(X, float), np.asarray(Y, float)
+    if form not in CUT_TOP: return np.full(X.shape, np.inf)
+    f = math.radians(k["face"]); dx, dy = X - k["x"] - k["lean"] * h, Y - k["y"]
+    xl, yl = dx * math.cos(f) + dy * math.sin(f), -dx * math.sin(f) + dy * math.cos(f)
+    p, e, _ = STACK_SECTIONS[form]; rx, ry = r * e, r / e
+    jag = 0.12 * rx * (vnoise(yl / max(0.3 * r, 1.0) + seed, seed * 0.7) - 0.5) * 2      # a broken edge, not a ruled one
+    if form == "block":
+        step = 0.14 * h * sm(0.3 * rx - 0.6, 0.3 * rx + 0.6, xl + jag)
+        return h - step - 0.02 * h * np.clip((yl / ry + 1) / 2, 0, 1)
+    if form == "broken":
+        fall = math.tan(math.radians(20.0)) * np.clip(xl + rx, 0, None)
+        return h - fall - 0.12 * h * sm(0.35 * rx - 0.5, 0.35 * rx + 0.5, xl + jag)
+    if form == "wedge": return np.full(X.shape, h)
+    return h + 0.12 * (vnoise(X * 0.4 + seed, Y * 0.4) - 0.5) * 2               # the reef and the shelves: rough flats
+
+def _stack_rock(x, y, r, h, lean, form, face, seed, disc=None):
+    """One rock's form as data: its place, size, lean, form, facing and seed, the solid's top H, the size its section
+    is drawn at (re), its radius at mid-height (M) and at FOOT_TOP (R3)."""
+    k = dict(x=float(x), y=float(y), r=float(r), h=float(h), lean=float(lean), form=form, face=float(face), seed=int(seed),
+             slope=WEDGE_SLOPE[0] if r > 8.0 else WEDGE_SLOPE[1])
+    k["H"] = h * 1.08 if form in CUT_TOP else h
+    if form == "shelf": k["H"] = h + 0.6
+    # the form is sized so its foot fills the line's footprint (the data's r, as rock_prof's 1.1 r at the waterline:
+    # the shelf and the fallen blocks are laid out round it): its mid-height radius is 1.1 r / STACK_FOOT
+    k["re"] = float(r)
+    if form not in ("shelf", "wedge") and h >= 8.0:
+        for _ in range(4): k["re"] *= FOOT_R * r / STACK_FOOT / _req(_section_raw(k, h / 2, 96)[0])
+    k["M"] = _req(_section_raw(k, h / 2, 96)[0]); k["R3"] = _req(_section_raw(k, FOOT_TOP, 96)[0])
+    # and never wider than its shelf: the foot stays FOOT_ROOM inside the disc (the weathering's lumps go on it)
+    for _ in range(8 if disc is not None else 0):
+        F = stack_section(k, 1.5, 96); over = float(np.hypot(F[:, 0] - disc[0], F[:, 1] - disc[1]).max()) - (disc[2] - FOOT_ROOM)
+        if over <= 0.0: break
+        reach = float(np.hypot(F[:, 0] - x, F[:, 1] - y).max())
+        k["re"] *= (reach - over) / reach
+        k["M"] = _req(_section_raw(k, h / 2, 96)[0]); k["R3"] = _req(_section_raw(k, FOOT_TOP, 96)[0])
+    return k
+
+def stack_rocks():
+    """Every rock of the headland line with its form (HEADLAND order, seeds as _rock_list's)."""
+    out, i = [], 0
+    for pc in HEADLAND:
+        for (x, y, r, h, lean), (form, face) in zip(pc["rocks"], pc["forms"]):
+            out.append(_stack_rock(x, y, r, h, lean, form, face, 1000 + i, pc["disc"])); i += 1
+    return out
+
+def stack_shelves():
+    """The wave-cut shelves as discs to build (one solid per shelf, its discs united): shelf index and the disc rock."""
+    return [(si, _stack_rock(sx, sy, R, sh["z"], 0.0, "shelf", 0.0, 300 + 7 * si + j))
+            for si, sh in enumerate(SHELVES) for j, (sx, sy, R) in enumerate(sh["discs"])]
+
+def stack_rings(k, step=0.5):
+    """The heights of a rock's mesh rings: from below the flats to the top of its solid, dense through the notch."""
+    base = min(float(ground(k["x"], k["y"])), 0.0) - 3.0
+    zs = sorted(set([float(z) for z in np.arange(base, k["H"], step)] + [float(z) for z in np.arange(-1.2, 2.1, 0.15) if base < z < k["H"]] + [k["H"]]))
+    return zs
 
 # ---------------- render setup ----------------
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -1173,11 +1316,6 @@ def _rock_material():
     L(nt, bp.outputs[0], sock(bs, "Normal")); L(nt, bs.outputs[0], out.inputs["Surface"])
     return m
 
-def _superellipse(n, p):
-    """n points round a superellipse of exponent p (2 a circle, higher boxier): angles, unit half-widths."""
-    a = np.linspace(0, 2 * math.pi, n, endpoint=False); c, s_ = np.cos(a), np.sin(a)
-    return a, np.sign(c) * np.abs(c) ** (2 / p), np.sign(s_) * np.abs(s_) ** (2 / p)
-
 def _tube(rings):
     """Quads between equal rings (each an (n, 3) array) and a fan over each end: a closed mesh as (verts, faces)."""
     R = np.stack(rings); nr, n = R.shape[:2]; verts = list(map(tuple, R.reshape(-1, 3))); faces = []
@@ -1238,7 +1376,7 @@ def arch_cells(P, size, jit, salt):
             key = np.where(closer, (cx_.astype(np.int64) + 100000) * 200003 + (cy_.astype(np.int64) + 100000), key); f1 = np.minimum(f1, d)
     return (f2 - f1) * size, idv, key
 
-def arch_columns(P, Nrm):
+def arch_columns(P, Nrm, entablature=True):
     """Basalt columns (reference-landforms §2; owner cliffs-and-columns 1) on the walls: upright prisms 2-3 m across
     (at this arch's scale) with a groove between them, each standing proud or back by up to 0.6 m, so an outline seen
     edge-on is stepped, cut across into drums; around the span the columns are thinner and more chaotic (the
@@ -1246,7 +1384,7 @@ def arch_columns(P, Nrm):
     z = P[:, 2]
     e1, id1, _ = arch_cells(P, 2.6, 0.55, 0.0)
     e2, id2, _ = arch_cells(P, 1.5, 0.9, 13.0)
-    upper = sm(ARCH_SPAN["z1"] - 12.0, ARCH_SPAN["z1"] - 4.0, z)
+    upper = sm(ARCH_SPAN["z1"] - 12.0, ARCH_SPAN["z1"] - 4.0, z) if entablature else 0.0 * z
     edge = e1 * (1 - upper) + e2 * upper; cid = id1 * (1 - upper) + id2 * upper
     groove = -0.6 * (1 - sm(0.0, 0.5, edge))
     proud = 1.2 * (cid - 0.5)
@@ -1255,13 +1393,13 @@ def arch_columns(P, Nrm):
     side = 1 - np.abs(Nrm[:, 2]) ** 2                                   # full on walls, slight on the moss-covered tops
     return (groove + proud + crack) * (0.25 + 0.75 * side) * sm(-1.0, 1.0, z)
 
-def arch_crowns(P, Nrm):
+def arch_crowns(P, Nrm, up=(0.2, 0.5)):
     """Stepped column ends on the crowns and shoulders (owner cliffs-and-columns 1: the tops are blocky, broken
     heights, not domes): every column cell's upward-facing rock is levelled to one height, the cell's highest point
     less 0, 1.1 or 2.2 m by its hash. Returns the new heights."""
     z = P[:, 2]
     _, cid, key = arch_cells(P, 2.6, 0.55, 0.0)
-    w = sm(0.2, 0.5, Nrm[:, 2]) * sm(6.0, 10.0, z)
+    w = sm(up[0], up[1], Nrm[:, 2]) * sm(6.0, 10.0, z)
     up = w > 0.0
     keys, inv = np.unique(key[up], return_inverse=True)
     top = np.full(len(keys), -1e9); np.maximum.at(top, inv, z[up])
@@ -1269,32 +1407,34 @@ def arch_crowns(P, Nrm):
     w = w * sm(4.0, 2.5, target - z)                       # a cell reaching far down a slope is left alone: no spikes
     return z + w * (target - z)
 
-def arch_block_meshes():
-    """The fallen blocks as angular hulls (flat faces, sharp edges): a box's corners each cut back at random and a
-    few points on its faces, turned and tilted, the highest point at the block's top. In arch axes: verts, faces."""
+def block_hull(bs, bq, dims, yaw, tilt, top, seed):
+    """A fallen block as an angular hull (flat faces, sharp edges): a box's corners each cut back at random and a few
+    points on its faces, turned and tilted, the highest point at `top`, centred on (bs, bq): verts, faces."""
     import bmesh
-    out = []
-    for (bs, bq, dims, yaw, tilt, top, seed) in ARCH_BLOCKS:
-        rng = np.random.default_rng(seed)
-        pts = [np.array([sx, sy, sz]) * (1 - rng.uniform(0.0, 0.35, 3)) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
-        for _ in range(6):
-            ax_ = int(rng.integers(3)); q_ = rng.uniform(-0.8, 0.8, 3); q_[ax_] = rng.choice((-1.0, 1.0)) * rng.uniform(0.85, 1.0); pts.append(q_)
-        Pb = np.array(pts) * np.array(dims) / 2
-        ct, st = math.cos(tilt), math.sin(tilt)
-        Pb = Pb @ np.array([[1, 0, 0], [0, ct, -st], [0, st, ct]]).T                     # tilt about its long axis
-        cy_, sy_ = math.cos(yaw), math.sin(yaw)
-        Pb = Pb @ np.array([[cy_, -sy_, 0], [sy_, cy_, 0], [0, 0, 1]]).T
-        Pb[:, 2] += top - Pb[:, 2].max(); Pb[:, 0] += bs; Pb[:, 1] += bq
-        bm = bmesh.new()
-        for v in Pb: bm.verts.new(tuple(v))
-        res = bmesh.ops.convex_hull(bm, input=list(bm.verts))
-        bmesh.ops.delete(bm, geom=[g for g in res["geom_interior"] if isinstance(g, bmesh.types.BMVert)], context="VERTS")
-        bmesh.ops.triangulate(bm, faces=list(bm.faces))
-        verts, faces = [], []
-        for f in bm.faces:                                                   # each face its own corners: flat shading
-            o_ = len(verts); verts += [tuple(l.vert.co) for l in f.loops]; faces.append(tuple(range(o_, o_ + len(f.loops))))
-        bm.free(); out.append((verts, faces))
-    return out
+    rng = np.random.default_rng(seed)
+    pts = [np.array([sx, sy, sz]) * (1 - rng.uniform(0.0, 0.35, 3)) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
+    for _ in range(6):
+        ax_ = int(rng.integers(3)); q_ = rng.uniform(-0.8, 0.8, 3); q_[ax_] = rng.choice((-1.0, 1.0)) * rng.uniform(0.85, 1.0); pts.append(q_)
+    Pb = np.array(pts) * np.array(dims) / 2
+    ct, st = math.cos(tilt), math.sin(tilt)
+    Pb = Pb @ np.array([[1, 0, 0], [0, ct, -st], [0, st, ct]]).T                     # tilt about its long axis
+    cy_, sy_ = math.cos(yaw), math.sin(yaw)
+    Pb = Pb @ np.array([[cy_, -sy_, 0], [sy_, cy_, 0], [0, 0, 1]]).T
+    Pb[:, 2] += top - Pb[:, 2].max(); Pb[:, 0] += bs; Pb[:, 1] += bq
+    bm = bmesh.new()
+    for v in Pb: bm.verts.new(tuple(v))
+    res = bmesh.ops.convex_hull(bm, input=list(bm.verts))
+    bmesh.ops.delete(bm, geom=[g for g in res["geom_interior"] if isinstance(g, bmesh.types.BMVert)], context="VERTS")
+    bmesh.ops.triangulate(bm, faces=list(bm.faces))
+    verts, faces = [], []
+    for f in bm.faces:                                                   # each face its own corners: flat shading
+        o_ = len(verts); verts += [tuple(l.vert.co) for l in f.loops]; faces.append(tuple(range(o_, o_ + len(f.loops))))
+    bm.free()
+    return verts, faces
+
+def arch_block_meshes():
+    """The arch's fallen blocks (block_hull), in arch axes: verts, faces."""
+    return [block_hull(*b) for b in ARCH_BLOCKS]
 
 def build_arch(voxel=0.5, max_tris=120_000):
     """The sea arch from the pure data above the render setup (ARCH_LAND, ARCH_SEA, ARCH_SPAN, ARCH_BLOCKS): the
@@ -1406,17 +1546,104 @@ def build_rocks():
         rock_column(f"xrock{k}", x, y, r, h, lean, 500 + k)
     for k, (x, y, r, h, lean) in enumerate(S.get("cliff_rocks", ())):
         rock_column(f"crock{k}", x, y, r, h, lean, 700 + k)
+    line = [q for pc in HEADLAND for q in pc["rocks"]]
     for k, ((x, y, r, h, lean), seed) in enumerate(zip(ROCKS, ROCK_SEEDS)):
+        if (x, y, r, h, lean) in line: continue                          # the headland line: build_stacks, the site's own mesh
         rock_column(f"stack{k}", x, y, r, h, lean, seed)
-    # the headland line's wave-cut shelves and the blocks fallen at the stacks' feet
-    nb = nd = 0
-    for sh in SHELVES:                                                   # one height per shelf; overlapping discs make one platform
-        for (sx, sy, R) in sh["discs"]:
-            rock_column(f"lshelf{nd}", sx, sy, R, sh["z"], 0.0, 300 + nd, flat=True); nd += 1
+    build_stacks(max_tris=400_000)                                       # the line, its wave-cut shelves and fallen blocks
+    log("rocks", len(ROCKS) - len(line), "and the headland line")
+
+# ---------------- the headland line as one mesh (M2.5 Task 3c: the site's stacks.bin and the renders) ----------------
+STACK_VOXEL = (0.3, 0.5)    # the voxel remesh's cell, small rocks to large (m)
+SHELF_VOXEL = 0.6
+
+def _apply_modifiers(o):
+    bpy.context.view_layer.update(); dg = bpy.context.evaluated_depsgraph_get()
+    m2 = bpy.data.meshes.new_from_object(o.evaluated_get(dg)); old = o.data
+    for md in list(o.modifiers): o.modifiers.remove(md)
+    o.data = m2; bpy.data.meshes.remove(old)
+
+def _mesh_arrays(o):
+    me_ = o.data; nv = len(me_.vertices)
+    P = np.zeros(nv * 3); me_.vertices.foreach_get("co", P); N = np.zeros(nv * 3); me_.vertex_normals.foreach_get("vector", N)
+    return P.reshape(-1, 3), N.reshape(-1, 3)
+
+def _set_co(o, P):
+    o.data.vertices.foreach_set("co", np.asarray(P, float).ravel()); o.data.update()
+
+def _remeshed(name, parts, voxel):
+    """Closed meshes (verts, faces) united by a voxel remesh into one object."""
+    verts, faces = [], []
+    for pv, pf in parts:
+        o_ = len(verts); verts += [tuple(v) for v in pv]; faces += [tuple(i + o_ for i in f) for f in pf]
+    me = bpy.data.meshes.new(name); me.from_pydata(verts, [], faces); me.update()
+    o = bpy.data.objects.new(name, me); scn.collection.objects.link(o)
+    rm = o.modifiers.new("rm", "REMESH"); rm.mode = "VOXEL"; rm.voxel_size = voxel; rm.adaptivity = 0.0
+    _apply_modifiers(o)
+    return o
+
+def stack_solid(k, n):
+    """A rock's closed tube in coast coordinates from its outlines (stack_section), its cut top pressed down onto
+    stack_top: verts, faces."""
+    rings = []
+    for z in stack_rings(k):
+        xy = stack_section(k, z, n)
+        rings.append(np.column_stack([xy, np.minimum(np.full(n, z), stack_top(k, xy[:, 0], xy[:, 1]))]))
+    return _tube(rings)
+
+def build_stacks(max_tris=96_000):
+    """The headland line from the pure data above the render setup (stack_rocks, stack_shelves, HEADLAND's blocks) as
+    one mesh in coast coordinates: each rock a solid from its outlines, remeshed, weathered into lumps (scaled to its
+    size and thinned where it is thin), its tops stepped into column ends and its walls cut into basalt columns, as the
+    arch is (one rock material, D13); the shelves' discs united per shelf; decimated to `max_tris` less the blocks;
+    then the fallen blocks joined as angular hulls (block_hull)."""
+    from mathutils import noise as mnoise
+    from mathutils import Vector
+    objs = []
+    for k in stack_rocks():
+        n = 160 if k["r"] >= 12 else 112 if k["r"] >= 7 else 80
+        vox = float(np.clip(k["re"] * 0.03, *STACK_VOXEL))
+        o = _remeshed("stack_%s_%d" % (k["form"], k["seed"]), [stack_solid(k, n)], vox)
+        zr = np.array(stack_rings(k)); rz = np.array([_req(stack_section(k, z, 48)) for z in zr])
+        P, N = _mesh_arrays(o)
+        thin = np.clip(np.interp(P[:, 2], zr, rz) / 8.0, 0.15, 1.0)                 # lumps no deeper than the rock is thick
+        kk = float(np.clip(k["re"] / 18.0, 0.25, 1.0)) * thin; sd = k["seed"] * 0.37
+        lump = np.array([mnoise.noise(Vector((x / 16.0 + sd, y / 16.0, z / 12.0))) * 3.4 + mnoise.noise(Vector((x / 7.0 + 5, y / 7.0 + sd, z / 6.0))) * 1.3
+                         for x, y, z in P]) * kk
+        lump += np.array([mnoise.noise(Vector((x / 2.5, y / 2.5 + 3, z / 2.5 + sd))) for x, y, z in P]) * 0.25
+        P = P + N * (lump * (1 - 0.6 * np.clip(N[:, 2], 0, 1)) * sm(-2.0, 2.0, P[:, 2]) * (0.4 + 0.6 * sm(3.0, 8.0, P[:, 2])))[:, None]
+        _set_co(o, P)
+        # column ends step the tops; on a spire's or a wedge's steep flanks only the near-level ledges (no terraces)
+        P, N = _mesh_arrays(o); P[:, 2] = arch_crowns(P, N, (0.6, 0.85) if k["form"] in ("spire", "wedge") else (0.2, 0.5)); _set_co(o, P)
+        P, N = _mesh_arrays(o)
+        P = P + N * (arch_columns(P, N, entablature=False) * np.clip(np.interp(P[:, 2], zr, rz) / 6.0, 0.3, 1.0))[:, None]
+        _set_co(o, P)
+        objs.append(o)
+    for si in range(len(SHELVES)):                                       # one solid per shelf: its discs united
+        objs.append(_remeshed("stack_shelf%d" % si, [stack_solid(k, 96) for j, k in stack_shelves() if j == si], SHELF_VOXEL))
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs: o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]; bpy.ops.object.join(); o = objs[0]; o.name = "stacks"
+    # the fallen blocks at the stacks' feet: angular, flat-shaded, joined after the decimation as their own pieces
+    bv, bf, nb = [], [], 0
     for pc in HEADLAND:
         for (bx, by, br, bh) in pc["blocks"]:
-            rock_column(f"lblock{nb}", bx, by, br, bh, 0.0, 1200 + nb); nb += 1
-    log("rocks", len(ROCKS), "shelves", len(SHELVES), "discs", nd, "blocks", nb)
+            rng = np.random.default_rng(1200 + nb)
+            dims = (2 * br, 2 * br * rng.uniform(0.6, 0.95), 2 * br * rng.uniform(0.55, 0.95))
+            pv, pf = block_hull(bx, by, dims, float(rng.uniform(0, math.pi)), float(rng.uniform(-0.35, 0.35)), bh, 1300 + nb)
+            o_ = len(bv); bv += pv; bf += [tuple(i + o_ for i in f) for f in pf]; nb += 1
+    ntri = sum(len(p.vertices) - 2 for p in o.data.polygons); want = max_tris - len(bf)
+    log("stacks remeshed", ntri, "tris; blocks", nb, len(bf), "tris")
+    if ntri > want:
+        dm = o.modifiers.new("dec", "DECIMATE"); dm.ratio = want / ntri * 0.98; _apply_modifiers(o)
+    for p_ in o.data.polygons: p_.use_smooth = True
+    bme = bpy.data.meshes.new("stack_blocks"); bme.from_pydata(bv, [], bf); bme.update()
+    bo = bpy.data.objects.new("stack_blocks", bme); scn.collection.objects.link(bo)
+    bpy.ops.object.select_all(action="DESELECT"); bo.select_set(True); o.select_set(True)
+    bpy.context.view_layer.objects.active = o; bpy.ops.object.join()
+    o.data.materials.clear(); o.data.materials.append(rock_material())
+    log("stacks", len(o.data.vertices), "verts", sum(len(p.vertices) - 2 for p in o.data.polygons), "tris")
+    return o
 
 # the wave-cut shelf at the foot of the right headland: dark wet rock with still pools that mirror the sky
 SHELF = (8.0, 45.0, 9.0, 13.0)       # centre x, y, half-size x, y
