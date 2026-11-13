@@ -77,7 +77,7 @@ no borrowed set pieces (no towers, piano, etc.).
 - **The owner added 128 reference photos and clips** to `.superpowers/refs/` (local, not in git). I viewed all of
   them; `research/owner-references.md` says what each element should take from them (D28). His motion video
   means: pointer parallax first, and something always moving.
-- **s09 (2026-11-13): M2 continued, 9 commits on `world`, not pushed.** The waterfall seen and fixed (78 % look);
+- **s09 (2026-11-13): M2 continued, on `world`, pushed (15e5c8a).** The waterfall seen and fixed (78 % look);
   the new pace built (41 screens, camera top speed, a **Next** ride button and keys); pointer parallax built (works,
   but invisible until stops get near layers); aurora and cloud re-judged against the owner's photos (both 68 %);
   **the cave built** (Task 6, 74 % vs render); **costs measured on the laptop** and the cave/aurora/cloud made
