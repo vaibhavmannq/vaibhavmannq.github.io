@@ -24,6 +24,7 @@ import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap } from '../scroll/touchSnap';
 import { type AuroraData, createAurora } from '../world/aurora';
+import { createCave, decodeCave } from '../world/cave';
 import { createCloudSea } from '../world/cloudSea';
 import { createDressing, decodeDressing } from '../world/dressing';
 import { createHeightSampler } from '../world/heights';
@@ -86,20 +87,24 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
 async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: boolean): Promise<void> {
   const dressingMeta = app.manifest.base.dressing;
   const auroraMeta = app.manifest.base.aurora;
-  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData] = await Promise.all([
+  const caveMeta = app.manifest.base.cave;
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
     dressingMeta ? fetchBinary(dressingMeta.file) : null,
     auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
+    caveMeta ? fetchBinary(caveMeta.file) : null,
   ]);
+  const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
   const heights = new Uint16Array(heightsBuf);
   const heightAt = createHeightSampler(heights, meta.heights);
   app.nearM = STOPS.map((s) =>
     nearDistance(s.cam, s.landscape.yaw, s.landscape.pitch, fovFor(s.landscape.lens, 16 / 9), heightAt),
   );
-  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky);
+  const cut = caveShot && caveBuf ? { x: caveShot.x, y: caveShot.y, rx: 12.2, ry: 10.2 } : undefined;
+  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   const parts: [string, WorldPart][] = [
@@ -116,6 +121,8 @@ async function loadBase(app: App, sky: Sky, light: LightUniforms, auroraActive: 
     parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora, auroraActive)]);
   if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
   if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
+  if (caveShot && caveMeta && caveBuf)
+    parts.push(['cave', createCave(decodeCave(caveBuf, caveMeta), caveShot, sky, light)]);
   // Every part's shader is compiled here, while it is still visible and before it joins the scene (no hitch later).
   for (const [name, part] of parts) {
     await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);

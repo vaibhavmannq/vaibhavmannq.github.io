@@ -8,6 +8,7 @@ import {
   positionWorld,
   reflect,
   smoothstep,
+  step,
   texture,
   uv,
   vec2,
@@ -126,6 +127,7 @@ export function createTerrain(
   colour: Texture,
   meta: { heights: GridMeta; ring: RingMeta },
   sky: Sky,
+  cut?: { x: number; y: number; rx: number; ry: number },
 ): WorldPart {
   colour.colorSpace = SRGBColorSpace;
   const material = new MeshStandardNodeMaterial();
@@ -143,6 +145,12 @@ export function createTerrain(
   material.emissiveNode = sky.colorAt(reflect(v.negate(), vec3(0, 1, 0))).mul(wet.mul(0.35).mul(fresnel).mul(near));
   material.roughnessNode = mix(float(0.92), float(0.3), wet);
   material.metalnessNode = float(0);
+  if (cut) {
+    // The cave's own shell and floor stand here; the 8 m ground grid cannot hold its cut floor (the M0/M1 "pit").
+    const e = wxy.sub(vec2(cut.x, cut.y)).div(vec2(cut.rx, cut.ry)).length();
+    material.alphaTest = 0.5;
+    material.opacityNode = step(1, e);
+  }
 
   const group = new Group();
   const base = new Mesh(baseGeometry(heights, meta.heights), material);
