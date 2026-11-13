@@ -1,5 +1,5 @@
 import data from './shots.json';
-import type { RGB, StopId, Vec3 } from './types';
+import type { RGB, StopId, Vec3, WorldState } from './types';
 
 /** The aurora's curtains (coast.py's `sky_bands` and `aurora_mat` settings). */
 export interface AuroraShot {
@@ -77,7 +77,8 @@ export interface Shot {
   /** az, el, size in degrees, disc strength, lamp energy */
   moon: [number, number, number, number, number] | null;
   swell: number;
-  chop: number;
+  /** The place's world state (export_hours.py's WORLD): see `WorldState`. */
+  world: WorldState;
   aurora: AuroraShot | null;
   cloudsea: CloudShot | null;
   falls: FallsShot | null;

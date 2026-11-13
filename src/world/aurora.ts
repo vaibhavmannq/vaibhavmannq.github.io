@@ -13,6 +13,7 @@ import type { AuroraShot } from '../journey/shots';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS, toThree } from '../journey/types';
 import { mulberry32 } from '../shared/random';
+import { auroraDim } from './light';
 import { fbm2, remap } from './noise';
 import type { WorldPart } from './part';
 
@@ -124,6 +125,8 @@ export function auroraWeights(state: FrameState): [number, number] {
 export function createAurora(data: AuroraData, night: AuroraShot, midnight: AuroraShot, active = false): WorldPart {
   const weights = uniform(new Vector2(0, 0));
   const clock = uniform(0);
+  /** What the moon's phase leaves of the aurora (reference book §1). */
+  const dim = uniform(1);
   // The active state (m2-references §5.1, an option: `?aurora=active`): every 20-40 s, for 5 s, a brighter ripple runs
   // along the foot and the rays' flow runs six times faster. Real-time films show quiet glow most of the time.
   const burst = uniform(0);
@@ -195,6 +198,7 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
     .mul(strength)
     .mul(bandAttr.y)
     .mul(AURORA_GAIN)
+    .mul(dim)
     .mul(surge);
 
   const geometry = merged([auroraGeometry(data.night, night, 0), auroraGeometry(data.midnight, midnight, 1)]);
@@ -211,6 +215,7 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
     update(f) {
       const [n, m] = auroraWeights(f.state);
       weights.value.set(n, m);
+      dim.value = auroraDim(f.hour.world.moonPhase);
       mesh.visible = n > 0.001 || m > 0.001;
       if (active) {
         const t = f.timeS - nextBurst;

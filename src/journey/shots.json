@@ -36,7 +36,6 @@
   ],
   "moon": null,
   "swell": 0.1,
-  "chop": 0.35,
   "cam": [
    9.5,
    -4.0,
@@ -51,7 +50,14 @@
   "aurora": null,
   "cloudsea": null,
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": 4,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 340,
+   "beaufort": 1
+  }
  },
  "sunset": {
   "look": [
@@ -139,7 +145,6 @@
   ],
   "moon": null,
   "swell": 0.12,
-  "chop": 0.4,
   "cam": [
    25.0,
    141.0,
@@ -154,7 +159,14 @@
   "aurora": null,
   "cloudsea": null,
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": 0,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 345,
+   "beaufort": 2
+  }
  },
  "dusk": {
   "look": [
@@ -255,7 +267,6 @@
   ],
   "moon": null,
   "swell": 0.12,
-  "chop": 0.4,
   "cam": [
    30.0,
    40.0,
@@ -270,7 +281,14 @@
   "aurora": null,
   "cloudsea": null,
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": -3,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 305,
+   "beaufort": 1
+  }
  },
  "bluehour": {
   "look": [
@@ -358,7 +376,6 @@
   ],
   "moon": null,
   "swell": 0.05,
-  "chop": 0.25,
   "cam": [
    -1008.0,
    1156.2,
@@ -373,7 +390,14 @@
   "aurora": null,
   "cloudsea": null,
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": -6,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 35,
+   "beaufort": 0
+  }
  },
  "night": {
   "look": [
@@ -459,7 +483,6 @@
    5.0
   ],
   "swell": 0.0,
-  "chop": 0.0,
   "cam": [
    -320.0,
    -437.0,
@@ -542,7 +565,14 @@
    ],
    "sprayZ": 2.0
   },
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": -30,
+   "moonEl": 8,
+   "moonPhase": 0.12,
+   "windAz": 5,
+   "beaufort": 0
+  }
  },
  "midnight": {
   "look": [
@@ -628,7 +658,6 @@
    1.6
   ],
   "swell": 0.2,
-  "chop": 1.0,
   "cam": [
    600.0,
    -950.0,
@@ -716,7 +745,14 @@
    ]
   },
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": -30,
+   "moonEl": 14,
+   "moonPhase": 0.12,
+   "windAz": 330,
+   "beaufort": 2
+  }
  },
  "beforedawn": {
   "look": [
@@ -804,7 +840,6 @@
   ],
   "moon": null,
   "swell": 0.2,
-  "chop": 1.0,
   "cam": [
    -60.0,
    -211.0,
@@ -842,6 +877,13 @@
     "y": -203.5228,
     "r": 1.7
    }
+  },
+  "world": {
+   "sunEl": -10,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 355,
+   "beaufort": 1
   }
  },
  "firstlight": {
@@ -943,7 +985,6 @@
   ],
   "moon": null,
   "swell": 0.04,
-  "chop": 0.2,
   "cam": [
    -60.0,
    -14.0,
@@ -958,7 +999,14 @@
   "aurora": null,
   "cloudsea": null,
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": -4,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 0,
+   "beaufort": 0
+  }
  },
  "sunrise": {
   "look": [
@@ -1059,7 +1107,6 @@
   ],
   "moon": null,
   "swell": 0.05,
-  "chop": 0.2,
   "cam": [
    30.0,
    -40.0,
@@ -1074,6 +1121,13 @@
   "aurora": null,
   "cloudsea": null,
   "falls": null,
-  "cave": null
+  "cave": null,
+  "world": {
+   "sunEl": 1,
+   "moonEl": null,
+   "moonPhase": 0.12,
+   "windAz": 330,
+   "beaufort": 1
+  }
  }
 }

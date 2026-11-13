@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { SkyAmbient } from '../../src/assets/manifest';
 import { HOURS } from '../../src/journey/hours';
 import type { HourPreset } from '../../src/journey/types';
-import { createLightUniforms, lightValues } from '../../src/world/light';
+import { auroraDim, createLightUniforms, lightValues } from '../../src/world/light';
 
 const ambA: SkyAmbient = { ambientSky: [0.5, 0.4, 0.3], ambientGround: [0.1, 0.1, 0.1] };
 const ambB: SkyAmbient = { ambientSky: [0.1, 0.2, 0.3], ambientGround: [0.0, 0.0, 0.2] };
@@ -46,5 +46,15 @@ describe('light values from an hour (spec §9.1)', () => {
 
   it('never tints the sky: the renders used the hybrid style, which ignores sky_tint', () => {
     expect(lightValues(HOURS.bluehour, ambA, ambB, 0).skyTint).toEqual([1, 1, 1]);
+  });
+});
+
+describe('the moon and the aurora (reference book §1: a bright moon washes an aurora out)', () => {
+  it('leaves the aurora at full strength under a crescent moon and halves it under a full one', () => {
+    expect(auroraDim(0.12)).toBe(1);
+    expect(auroraDim(0.2)).toBe(1);
+    expect(auroraDim(0.5)).toBeCloseTo(0.5, 9);
+    expect(auroraDim(0.85)).toBeCloseTo(auroraDim(0.15), 9);
+    expect(auroraDim(0.35)).toBeCloseTo(0.75, 9);
   });
 });

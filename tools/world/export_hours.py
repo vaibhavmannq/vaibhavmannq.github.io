@@ -10,6 +10,23 @@ sys.path.insert(0, HERE)
 import coastlib
 
 HOURS = ["golden", "sunset", "dusk", "bluehour", "night", "midnight", "beforedawn", "firstlight", "sunrise"]
+
+# One world state per place (M2.5 task 2; reference book §1 the clock of the night, §2 wind; owner-references §10, A2).
+# sunEl, moonEl: degrees above the horizon (the moon exists exactly when moonEl is not None); moonPhase 0 new .. 0.5 full;
+# windAz: where the wind blows FROM, degrees, 0 north, 90 east (coast axes: x east, y north); beaufort: force 0..4.
+# windAz is the azimuth of the open water as seen from the stop's camera, found by sampling coast.py's ground() on 14
+# distances (60..2400 m) along every 5 degrees, smoothing over +-20 degrees and taking the most water ("wind from the sea").
+WORLD = {
+    "golden":     dict(sunEl=4,   moonEl=None, moonPhase=0.12, windAz=340, beaufort=1),
+    "sunset":     dict(sunEl=0,   moonEl=None, moonPhase=0.12, windAz=345, beaufort=2),
+    "dusk":       dict(sunEl=-3,  moonEl=None, moonPhase=0.12, windAz=305, beaufort=1),
+    "bluehour":   dict(sunEl=-6,  moonEl=None, moonPhase=0.12, windAz=35,  beaufort=0),
+    "night":      dict(sunEl=-30, moonEl=8,    moonPhase=0.12, windAz=5,   beaufort=0),
+    "midnight":   dict(sunEl=-30, moonEl=14,   moonPhase=0.12, windAz=330, beaufort=2),
+    "beforedawn": dict(sunEl=-10, moonEl=None, moonPhase=0.12, windAz=355, beaufort=1),
+    "firstlight": dict(sunEl=-4,  moonEl=None, moonPhase=0.12, windAz=0,   beaufort=0),
+    "sunrise":    dict(sunEl=1,   moonEl=None, moonPhase=0.12, windAz=330, beaufort=1),
+}
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "src", "journey", "shots.json"))
 
 
@@ -31,11 +48,15 @@ def export(hour):
     el_h, phi_h = S["hsun"]
     sun_el = el_h - S.get("tilt", 0.0)
     keep = ["look", "lens", "hdri", "hsun", "sun_az", "sun_col", "sun_str", "tilt", "ramp", "sky_clip", "sky_grad",
-            "hdri_gain", "expo", "fog", "fog_amt", "sky_tint", "moon", "swell", "chop"]
+            "hdri_gain", "expo", "fog", "fog_amt", "sky_tint", "moon", "swell"]
     out = {k: plain(S.get(k)) for k in keep}
     out.update(cam=[x, y, eye], ground=round(g, 4), eyeZ=round(g + eye, 4), sun_el=sun_el,
                sky_rot=S.get("sky_rot", 0.0), stars=S.get("stars", 0.0), sky=S.get("sky"))
     out.update(plain(parts(c)))
+    out["world"] = WORLD[hour]
+    # one moon: the hour has one exactly when its world state does (its height there is world.moonEl, read by hours.ts;
+    # the lamp's own height in "moon" still aims the key light, which this export does not move)
+    assert (out["moon"] is None) == (WORLD[hour]["moonEl"] is None), hour
     return out
 
 

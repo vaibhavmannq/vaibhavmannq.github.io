@@ -12,7 +12,16 @@ import {
   vec2,
   vec3,
 } from 'three/tsl';
-import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, MeshBasicNodeMaterial, type Node } from 'three/webgpu';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  DoubleSide,
+  Mesh,
+  MeshBasicNodeMaterial,
+  type Node,
+  Vector3,
+} from 'three/webgpu';
+import { windVector } from '../journey/hours';
 import type { FallsShot } from '../journey/shots';
 import { mulberry32 } from '../shared/random';
 import type { LightUniforms } from './light';
@@ -123,6 +132,8 @@ export function fallsGeometry(f: FallsShot): BufferGeometry {
  */
 export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
   const clock = uniform(0);
+  /** The one wind, three.js axes, metres per second (reference book §2: the mist drifts with it). */
+  const wind = uniform(new Vector3());
   const info = attribute('info', 'vec4');
   const kind = info.x;
   const seed = info.y;
@@ -140,8 +151,10 @@ export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
   const spread = right
     .mul(info.z.mul(size).mul(grow))
     .add(vec3(0, 1, 0).mul(info.w.mul(size).mul(0.38).add(life.mul(3.2))));
+  // the air carries a sprite for as long as it lives: life (0..1) over its rate gives the seconds it has drifted
+  const drifted = wind.mul(life.div(seed.mul(0.05).add(0.1)));
   const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: DoubleSide });
-  material.positionNode = positionLocal.add(spread.mul(isSpray));
+  material.positionNode = positionLocal.add(spread.add(drifted).mul(isSpray));
 
   const across = uv().x;
   const down = float(1).sub(uv().y);
@@ -195,6 +208,8 @@ export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
     object: mesh,
     update(frame) {
       clock.value = frame.timeS;
+      const [wx, wy] = windVector(frame.hour.world);
+      wind.value.set(wx, 0, -wy);
       mesh.visible = Math.hypot(frame.pose.position[0] - f.x, frame.pose.position[2] + f.yPool) < 2500;
     },
     setTier() {},

@@ -18,6 +18,15 @@ export const FILL_SHARE = 0.25;
 /** What a full aurora adds to the light from the sky (the renders' aurora lit the ground: `light=True`). */
 export const AURORA_AMBIENT: RGB = [0.02, 0.1, 0.05];
 
+/**
+ * How much of an aurora a moon of this phase leaves (reference book §1: a bright moon washes an aurora out). A
+ * crescent (phase up to 0.2 from new) leaves all of it; a full moon (0.5) half.
+ */
+export function auroraDim(phase: number): number {
+  const f = Math.min(phase, 1 - phase);
+  return f <= 0.2 ? 1 : lerp(1, 0.5, (f - 0.2) / 0.3);
+}
+
 /** Everything the materials read about the light this frame; three.js axes. */
 export interface LightValues {
   keyDir: Vec3;

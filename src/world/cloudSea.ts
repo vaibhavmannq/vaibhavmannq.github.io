@@ -28,7 +28,9 @@ import {
   MeshBasicNodeMaterial,
   type Node,
   type Texture,
+  Vector2,
 } from 'three/webgpu';
+import { windVector } from '../journey/hours';
 import type { CloudShot } from '../journey/shots';
 import type { GridMeta } from './heights';
 import type { LightUniforms } from './light';
@@ -95,28 +97,21 @@ export function cloudGrid(box: CloudShot['box'], stepM: number): BufferGeometry 
  * ocean and are almost still in real time: the swell drifts well under a metre a second.
  */
 export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta, u: LightUniforms): WorldPart {
-  const clock = uniform(0);
+  /** How far the wind has carried the deck, coast metres (reference book §2: the cloud deck drifts with the one wind). */
+  const carried = uniform(new Vector2());
   const weight = uniform(0);
   const detail = uniform(1);
   const [x0, x1, y0, y1] = cfg.box;
 
   /** Height above the deck's level at coast (x, y): a long swell plus sharper crests, both drifting. */
-  const lift = (p: V2): F => {
-    const swell = fbm2(
-      p
-        .mul(0.006)
-        .add(vec2(3, 7))
-        .sub(vec2(clock.mul(0.0036), 0)),
-      2,
-    )
+  const lift = (at: V2): F => {
+    const p = at.sub(carried);
+    const swell = fbm2(p.mul(0.006).add(vec2(3, 7)), 2)
       .sub(0.5)
       .mul(1.7)
       .clamp(-0.5, 0.5);
     // Billows: rounded tops with creases between them (|noise|), 70 m across with a finer set riding on them.
-    const q = p
-      .mul(0.014)
-      .add(vec2(1, 5))
-      .sub(vec2(clock.mul(0.015), clock.mul(0.004)));
+    const q = p.mul(0.014).add(vec2(1, 5));
     const puff = mx_noise_float(q)
       .abs()
       .add(
@@ -142,7 +137,6 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   // Finer billows only tilt the light, and fade out where one is smaller than two pixels (no shimmer far away).
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const pixel = fwidth(wxy).length();
-  const drift = vec2(clock.mul(0.1), clock.mul(0.03));
   // (s09: the old 'tilt' noise, two reads per pixel, is replaced by the lumps' own moon-facing shading below)
   const n = normalize(smoothNormal);
   const toCam = cameraPosition.sub(positionWorld);
@@ -160,7 +154,7 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
       .add(mx_noise_float(p.mul(1 / 6.7).add(vec2(5.2, 1.3))).mul(0.35))
       .mul(0.5)
       .add(0.5);
-  const lp = wxy.sub(drift.mul(0.15));
+  const lp = wxy.sub(carried);
   const lump = lumpAt(lp);
   const toMoon = normalize(vec2(u.moonDir.x, u.moonDir.z.negate()).add(vec2(0.0001, 0)));
   // s09 cost table: the side of each lump toward the moon costs two more noise reads per pixel (Midnight at mid ran
@@ -226,7 +220,9 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   return {
     object: mesh,
     update(f) {
-      clock.value = f.timeS;
+      const [wx, wy] = windVector(f.hour.world);
+      carried.value.x += wx * f.dtS;
+      carried.value.y += wy * f.dtS;
       const far = Math.hypot(f.pose.position[0] - cx, f.pose.position[2] - cz) > 4000;
       weight.value = deckWeight(f.hour.cloud, f.pose.position[1], cfg);
       mesh.visible = weight.value > 0.001 && !far;

@@ -1,6 +1,6 @@
 import { lerp } from '../shared/math';
 import { SHOTS } from './shots';
-import { type HourPreset, type KeyLight, type Moon, STOP_IDS, type StopId, type Vec3 } from './types';
+import { type HourPreset, type KeyLight, type Moon, STOP_IDS, type StopId, type Vec3, type WorldState } from './types';
 
 /** coast.py's sun_dir(): toward a light at elevation `el`, azimuth `az` (degrees). */
 export function sunDir(el: number, az: number): Vec3 {
@@ -21,7 +21,10 @@ function keyLight(id: StopId): KeyLight {
 
 function preset(id: StopId): HourPreset {
   const s = SHOTS[id];
-  const moon: Moon | null = s.moon ? { az: s.moon[0], el: s.moon[1], sizeDeg: s.moon[2], strength: s.moon[3] } : null;
+  // one moon: the world state's moonEl is its height (the lamp's own height in s.moon still aims the key light)
+  const moon: Moon | null = s.moon
+    ? { az: s.moon[0], el: s.world.moonEl ?? s.moon[1], sizeDeg: s.moon[2], strength: s.moon[3] }
+    : null;
   return {
     id,
     key: keyLight(id),
@@ -33,7 +36,7 @@ function preset(id: StopId): HourPreset {
     stars: s.stars,
     moon,
     swell: s.swell,
-    chop: s.chop,
+    world: s.world,
     aurora: s.aurora ? 1 : 0,
     cloud: s.cloudsea ? 1 : 0,
   };
@@ -74,6 +77,40 @@ function blendMoon(a: Moon | null, b: Moon | null, w: number): Moon | null {
   return { ...only, strength: lerp(a ? only.strength : 0, b ? only.strength : 0, w) };
 }
 
+/** Angles in degrees, blended the short way round (350 to 10 passes through 0, not 180). */
+const lerpAngle = (a: number, b: number, w: number): number => {
+  const d = ((((b - a) % 360) + 540) % 360) - 180;
+  return (((a + d * w) % 360) + 360) % 360;
+};
+
+function blendWorld(a: WorldState, b: WorldState, w: number): WorldState {
+  return {
+    sunEl: lerp(a.sunEl, b.sunEl, w),
+    moonEl:
+      a.moonEl === null && b.moonEl === null
+        ? null
+        : lerp(a.moonEl ?? (b.moonEl as number), b.moonEl ?? (a.moonEl as number), w),
+    moonPhase: lerp(a.moonPhase, b.moonPhase, w),
+    windAz: lerpAngle(a.windAz, b.windAz, w),
+    beaufort: lerp(a.beaufort, b.beaufort, w),
+  };
+}
+
+/** Beaufort force 0..4 to a speed, metres per second (the brief's midpoints; 4 = 20-28 km/h, reference book §2). */
+const BEAUFORT_MS = [0.2, 0.8, 2.5, 4.4, 6.7];
+
+/**
+ * Where the air moves, metres per second in coast axes [x east, y north]: the opposite of where the wind comes from.
+ * Everything that moves reads this one vector (reference book §2: "things moving in different directions give it away").
+ */
+export function windVector(world: Pick<WorldState, 'windAz' | 'beaufort'>): [number, number] {
+  const f = Math.min(Math.max(world.beaufort, 0), BEAUFORT_MS.length - 1);
+  const i = Math.min(Math.floor(f), BEAUFORT_MS.length - 2);
+  const speed = lerp(BEAUFORT_MS[i] as number, BEAUFORT_MS[i + 1] as number, f - i);
+  const az = (world.windAz * Math.PI) / 180;
+  return [-Math.sin(az) * speed, -Math.cos(az) * speed];
+}
+
 /** The light between two hours, `w` = 0 (all of a) to 1 (all of b). */
 export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset {
   if (w <= 0) return a;
@@ -93,7 +130,7 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     stars: lerp(a.stars, b.stars, w),
     moon: blendMoon(a.moon, b.moon, w),
     swell: lerp(a.swell, b.swell, w),
-    chop: lerp(a.chop, b.chop, w),
+    world: blendWorld(a.world, b.world, w),
     aurora: lerp(a.aurora, b.aurora, w),
     cloud: lerp(a.cloud, b.cloud, w),
   };

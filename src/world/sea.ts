@@ -141,7 +141,8 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   return {
     object: group,
     update(f) {
-      chop.value = 0.3 + f.hour.chop;
+      // reference book §2 (Beaufort, "on water"): the chop grows with the force, 0.3 calm to 1.3 at force 4
+      chop.value = 0.3 + 0.25 * f.hour.world.beaufort;
       // The plane follows the camera so it always reaches the horizon.
       sea.position.x = f.pose.position[0];
       sea.position.z = f.pose.position[2];
