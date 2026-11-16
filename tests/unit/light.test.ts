@@ -7,6 +7,7 @@ import {
   auroraDim,
   createLightUniforms,
   FOG_SCALE,
+  glitterCarry,
   glitterPower,
   lightValues,
   MOON_SIZE_DEG,
@@ -139,5 +140,31 @@ describe('sun and moon roads as glitter (plan M2.5 Task 5; reference book §3)',
     expect(glitterPower(0.3)).toBeGreaterThan(glitterPower(0.55));
     expect(glitterPower(0.55)).toBeCloseTo(220, 6);
     expect(glitterPower(0.8)).toBeLessThan(220);
+  });
+});
+
+// final review M8: the glitter's facets drift 0.05 m/s along the wind; the drift is carried frame by frame, so a wind
+// that turns during a flight never makes the pattern jump, however long the page has been open
+describe('glitter drift (plan M2.5 Task 5)', () => {
+  it('moves at most 0.05 m/s × dt per frame, even when the wind turns', () => {
+    let off: [number, number] = [0, 0];
+    for (let i = 0; i < 600; i++) {
+      const windAz = i < 300 ? 5 : 330; // night's wind, then midnight's
+      const next = glitterCarry(off, { windAz, beaufort: 1 }, 1 / 60);
+      expect(Math.hypot(next[0] - off[0], next[1] - off[1])).toBeLessThanOrEqual(0.05 / 60 + 1e-9);
+      off = next;
+    }
+  });
+
+  it('goes where the air goes (three.js x, z)', () => {
+    const [x, z] = glitterCarry([0, 0], { windAz: 270, beaufort: 1 }, 1); // a west wind blows east: +x
+    expect(x).toBeCloseTo(0.05, 6);
+    expect(z).toBeCloseTo(0, 6);
+  });
+});
+
+describe('the moon disc with no moon (final review M12)', () => {
+  it('is a number, not NaN, at the moon itself when its size is 0', () => {
+    expect(Number.isFinite(moonCover(1, 0))).toBe(true);
   });
 });

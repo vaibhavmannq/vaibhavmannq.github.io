@@ -7,11 +7,11 @@ import { fovFor, type Pose, poseAt, shortestYaw } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
-import { createLook } from '../journey/look';
+import { createLook, dragEnded, touchIntent } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
 import { SHOTS } from '../journey/shots';
-import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot } from '../journey/spots';
+import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsOpen } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
@@ -95,6 +95,26 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
   }
 }
 
+/**
+ * A part joins the scene once its shader is compiled (no hitch when it first shows). compileAsync skips hidden
+ * objects, so a part that starts hidden is shown for the compile only; its first update decides. A part that fails
+ * is left out with a warning; the rest of the world goes on (final review I1).
+ */
+async function compileThenAdd(app: App, part: WorldPart, name: string): Promise<void> {
+  try {
+    const shown = part.object.visible;
+    part.object.visible = true;
+    try {
+      await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
+    } finally {
+      part.object.visible = shown;
+    }
+    app.addPart(part, name);
+  } catch (error) {
+    console.warn(`${name} failed to join`, error);
+  }
+}
+
 async function loadBase(
   app: App,
   sky: Sky,
@@ -108,15 +128,13 @@ async function loadBase(
   const caveMeta = app.manifest.base.cave;
   const archMeta = app.manifest.base.arch;
   const stacksMeta = app.manifest.base.stacks;
-  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf, archBuf, stacksBuf] = await Promise.all([
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
     dressingMeta ? fetchBinary(dressingMeta.file) : null,
     auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
     caveMeta ? fetchBinary(caveMeta.file) : null,
-    archMeta ? fetchBinary(archMeta.file) : null,
-    stacksMeta ? fetchBinary(stacksMeta.file) : null,
   ]);
   const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
@@ -149,31 +167,40 @@ async function loadBase(
   if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
   if (caveShot && caveMeta && caveBuf)
     parts.push(['cave', createCave(decodeCave(caveBuf, caveMeta), caveShot, sky, light)]);
-  // The coast's rock: one material for every rock part (the arch and the stacks; D13).
-  const rock = createRockMaterial();
-  if (archMeta && archBuf) parts.push(['arch', createArch(decodeArch(archBuf, archMeta), archMeta, rock)]);
-  if (stacksMeta && stacksBuf)
-    parts.push(['stacks', createStacks(decodeStacks(stacksBuf, stacksMeta), stacksMeta, rock)]);
-  // Every part's shader is compiled here, before it joins the scene (no hitch later). compileAsync skips hidden
-  // objects, so a part that starts hidden (the arch, the stacks) is shown for the compile only; its first update decides.
   const byName = new Map(parts);
   // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
   // soon as its own shader is ready, never waiting for one that is slower but not needed here (plan M2.5 Task 8).
-  const join = async (name: string) => {
+  const join = (name: string) => {
     const part = byName.get(name);
-    if (!part) return;
-    const shown = part.object.visible;
-    part.object.visible = true;
-    await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
-    part.object.visible = shown;
-    app.addPart(part, name);
+    return part ? compileThenAdd(app, part, name) : Promise.resolve();
   };
+  // The headland pack (the arch and the stacks, 1.9 MB of rock) is fetched after the base, so the ground and sea
+  // never wait for it, and a failed download costs only the rock (final review I1). One material for every rock
+  // part (D13).
+  const rockReady = (async () => {
+    try {
+      const [archBuf, stacksBuf] = await Promise.all([
+        archMeta ? fetchBinary(archMeta.file) : null,
+        stacksMeta ? fetchBinary(stacksMeta.file) : null,
+      ]);
+      const rock = createRockMaterial();
+      const joins: Promise<void>[] = [];
+      if (archMeta && archBuf)
+        joins.push(compileThenAdd(app, createArch(decodeArch(archBuf, archMeta), archMeta, rock), 'arch'));
+      if (stacksMeta && stacksBuf)
+        joins.push(compileThenAdd(app, createStacks(decodeStacks(stacksBuf, stacksMeta), stacksMeta, rock), 'stacks'));
+      await Promise.all(joins);
+    } catch (error) {
+      console.warn('the headland rock failed to load', error);
+    }
+  })();
   // two waves: what the opening stop shows, then the rest (sharing the driver with far parts slowed the near ones)
   const stop = opening();
   const order = partOrder([...byName.keys()], stop);
   const here = order.filter((n) => PART_STOPS[n]?.has(stop));
   await Promise.all(here.map(join));
   await Promise.all(order.filter((n) => !here.includes(n)).map(join));
+  await rockReady;
 }
 
 /** Starts the site: the name is already on screen (index.html); the world fades in under it when ready. */
@@ -331,10 +358,10 @@ export async function boot(): Promise<App> {
   app.addPart(sky, 'sky');
   // Golden's paper lantern, the first near layer (plan M2.5 Task 7), and the glints of its spots: no download, so
   // they join with the first view.
+  // Both are compiled before they join, so opening anywhere else they never compile mid-flight (final review M7).
   const lantern = createLantern();
-  app.addPart(lantern, 'lantern');
   const glints = createSpotGlints(SPOTS);
-  app.addPart(glints, 'spots');
+  const nearReady = Promise.all([compileThenAdd(app, lantern, 'lantern'), compileThenAdd(app, glints, 'spots')]);
   const goldenCam = STOPS[0]?.cam ?? [0, 0, 0];
   /** ruling R3: the lantern is the nearest thing in Golden's view, so the parallax slides it ~3 % of the width */
   const lanternNear = Math.hypot(LANTERN_AT[0] - goldenCam[0], LANTERN_AT[1] - goldenCam[1]);
@@ -342,7 +369,7 @@ export async function boot(): Promise<App> {
   let walkW = 0;
   let spotPose: Pose | null = null;
   const startWalk = (spot: SpotPath | undefined) => {
-    if (!spot || walk) return;
+    if (!spot || !spotsOpen(walk !== null, walkW)) return;
     walk = { spot, startMs: performance.now(), durMs: SPOT_WALK_MS(spot) };
     glints.setWalking(true);
   };
@@ -361,7 +388,6 @@ export async function boot(): Promise<App> {
   const endWalk = () => {
     if (!walk) return false;
     walk = null;
-    glints.setWalking(false);
     return true;
   };
   window.addEventListener('keydown', (event) => {
@@ -412,10 +438,10 @@ export async function boot(): Promise<App> {
   window.addEventListener(
     'pointerdown',
     (event) => {
+      gesture.turned = false; // every touch starts unclaimed, on the rail too (final review M10)
       if (!worldLayer?.contains(event.target as Node) || (event.pointerType === 'mouse' && event.button !== 0)) return;
       const touch = event.pointerType === 'touch';
       grab = { id: event.pointerId, x: event.clientX, y: event.clientY, touch, turning: !touch, moved: 0 };
-      gesture.turned = false;
     },
     { passive: true },
   );
@@ -423,12 +449,17 @@ export async function boot(): Promise<App> {
     'pointermove',
     (event) => {
       if (!grab || event.pointerId !== grab.id) return;
+      if (dragEnded(event.pointerType, event.buttons)) {
+        grab = null;
+        return;
+      }
       const dx = event.clientX - grab.x;
       const dy = event.clientY - grab.y;
       if (!grab.turning) {
-        if (Math.hypot(dx, dy) < 12) return;
-        if (Math.abs(dx) <= Math.abs(dy)) {
-          grab = null; // a vertical drag: the browser scrolls
+        const intent = touchIntent(dx, dy, last?.resting === true);
+        if (intent === 'wait') return;
+        if (intent !== 'turn') {
+          grab = null; // a vertical drag (the browser scrolls), or a sideways one mid-flight (the touch snap goes on)
           return;
         }
         grab.turning = true;
@@ -462,15 +493,16 @@ export async function boot(): Promise<App> {
     // A spot's walk (plan M2.5 Task 7): along its baked path at 1.2 m/s, eased at both ends; scrolling on leaves from
     // wherever you are, easing back to the journey's path.
     const here = walk && state.resting && state.a === stopIndex(walk.spot.stop);
-    if (walk && !here) {
-      walk = null;
-      glints.setWalking(false);
-    }
+    if (walk && !here) walk = null;
     if (walk) {
-      const k = Math.min(1, (nowMs - walk.startMs) / walk.durMs);
+      // reduced motion: a cut to the spot, as jumps between places cut (final review M13)
+      const k = caps.reducedMotion ? 1 : Math.min(1, (nowMs - walk.startMs) / walk.durMs);
       spotPose = sampleSpot(walk.spot, easeInOutSine(k), camera.aspect);
     }
-    walkW += ((walk ? 1 : 0) - walkW) * (1 - Math.exp(-8 * dtS));
+    if (caps.reducedMotion) walkW = walk ? 1 : 0;
+    else walkW += ((walk ? 1 : 0) - walkW) * (1 - Math.exp(-8 * dtS));
+    const open = spotsOpen(walk !== null, walkW);
+    glints.setWalking(!open);
     if (spotPose && walkW > 0.001) {
       const w = walkW;
       pose.position = [
@@ -481,7 +513,8 @@ export async function boot(): Promise<App> {
       pose.yaw = shortestYaw(pose.yaw, spotPose.yaw, w);
       pose.pitch += (spotPose.pitch - pose.pitch) * w;
     }
-    if (spotsEl) spotsEl.hidden = !(state.resting && state.a === 0 && !walk);
+    const twinsHidden = !(state.resting && state.a === 0 && open);
+    if (spotsEl && spotsEl.hidden !== twinsHidden) spotsEl.hidden = twinsHidden;
     head = look.update(state.resting && !caps.reducedMotion, dtS);
     pose.yaw += head.yaw;
     pose.pitch += head.pitch;
@@ -535,7 +568,7 @@ export async function boot(): Promise<App> {
     // Stage A: the skies of the place the visit starts at (a link may open on any place), then a hidden warm-up frame,
     // then the fade-in (spec §12, review I2). A failed sky still fades in; the store retries.
     const start = frameAt(track, scroll.progress() * track.total, caps.reducedMotion);
-    await Promise.all([skies.ready(start.a), skies.ready(start.b)]).catch(() => undefined);
+    await Promise.all([skies.ready(start.a), skies.ready(start.b), nearReady]).catch(() => undefined);
     const first = frame(performance.now(), 1 / 60);
     for (const part of parts) part.update(first);
     await active.warmUp();

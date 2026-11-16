@@ -20,7 +20,7 @@ import {
 } from 'three/tsl';
 import { BackSide, Mesh, MeshBasicNodeMaterial, type Node, SphereGeometry, type Texture } from 'three/webgpu';
 import type { SkyStore } from '../assets/skies';
-import type { LightUniforms } from './light';
+import { type LightUniforms, MIN_MOON_RADIUS } from './light';
 import type { WorldPart } from './part';
 
 type V3 = Node<'vec3'>;
@@ -71,7 +71,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   // The moon (owner night-sky-and-moon 3, 4, 5, 8): a small sharp disc, lit as a crescent by its phase, the dark part
   // faintly grey (earthshine), a soft halo that lights the sky and cloud beside it. Tested on squared angles
   // (light.ts moonCover): WGSL's cos is only good to ~5e-4, which erased the disc before (s07 bug).
-  const radius = u.moonSize.mul(Math.PI / 360);
+  const radius = u.moonSize.mul(Math.PI / 360).max(MIN_MOON_RADIUS); // size 0: no NaN at the zenith (final review M12)
   const r2a = radius.mul(0.95).pow(2);
   const r2b = radius.mul(1.05).pow(2);
   const toMoon = float(1).sub(dot(dir, u.moonDir)).mul(2);

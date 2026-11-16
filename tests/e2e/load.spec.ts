@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-const STAGE_A = ['/world/sky/golden.jpg', '/world/stills/golden.webp', '/world/stills/poster.webp'];
+// No Golden still: over a live world the stills are off by default (final review I4); the poster is the first paint.
+const STAGE_A = ['/world/sky/golden.jpg', '/world/stills/poster.webp'];
 
 // Spec §14 / D9: the name under 1 s, and the first view's files in under 3 s, on a 10 Mbit/s connection. The live
 // scene's first-view time needs a real GPU and is measured on the laptop (Task 16), not here.

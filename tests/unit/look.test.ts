@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createLook, LOOK } from '../../src/journey/look';
+import { createLook, dragEnded, LOOK, touchIntent } from '../../src/journey/look';
 
 const W = 1000;
 const settle = (look: ReturnType<typeof createLook>, resting: boolean, seconds: number) => {
@@ -48,5 +48,24 @@ describe('look-around (Amendment 1 §6; plan M2.5 Task 6)', () => {
     const look = createLook();
     look.drag(-W / 2, 0, W);
     expect(Math.abs(settle(look, false, 1.2).yaw)).toBeLessThan(0.5);
+  });
+});
+
+describe('which touch turns the head (final review I2, M9)', () => {
+  it('waits for 12 px, gives vertical drags to the scroll, turns on sideways ones at rest', () => {
+    expect(touchIntent(5, 3, true)).toBe('wait');
+    expect(touchIntent(4, 20, true)).toBe('scroll');
+    expect(touchIntent(20, 4, true)).toBe('turn');
+  });
+
+  it('never claims a sideways touch while the journey moves: the touch snap must still carry on to the next place', () => {
+    expect(touchIntent(20, 4, false)).toBe('drop');
+    expect(touchIntent(4, 20, false)).toBe('scroll');
+  });
+
+  it('a mouse drag ends when no button is held any more (a lost pointerup)', () => {
+    expect(dragEnded('mouse', 0)).toBe(true);
+    expect(dragEnded('mouse', 1)).toBe(false);
+    expect(dragEnded('touch', 0)).toBe(false);
   });
 });

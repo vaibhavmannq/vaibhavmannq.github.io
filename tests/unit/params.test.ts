@@ -5,7 +5,7 @@ describe('URL flags (spec §17)', () => {
   it('reads nothing from an empty query', () => {
     expect(readParams('')).toEqual({
       hud: false,
-      stills: true,
+      stills: false,
       webgl: false,
       nogl: false,
       auroraActive: false,
@@ -22,6 +22,13 @@ describe('URL flags (spec §17)', () => {
   it('ignores an unknown stop (Review Focus 2)', () => {
     expect(readParams('?stop=foo').stop).toBeUndefined();
     expect(readParams('?stop=night').stop).toBe('night');
+  });
+
+  // final review I4: the Blender stills are only the no-GPU fallback now (D27); they would cover the live world's
+  // lantern, look-around and spots at every stop
+  it('shows the stills over a live world only when asked (?stills=on)', () => {
+    expect(readParams('?stills=on').stills).toBe(true);
+    expect(readParams('?stills=off').stills).toBe(false);
   });
 
   it('reads progress clamped to 0..1, and the switches', () => {

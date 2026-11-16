@@ -42,3 +42,20 @@ export function createLook(): Look {
     },
   };
 }
+
+/** How far a touch must move before it is read (px). */
+export const TOUCH_SLOP_PX = 12;
+
+/**
+ * What a touch drag is for, from its movement so far: under 12 px, not yet known; more up or down than sideways, the
+ * page's scroll; sideways, a head turn, but only while the journey rests at a stop. In a flight the head cannot turn,
+ * so the touch is dropped and the touch snap still carries the visitor on to the next place (final review I2).
+ */
+export function touchIntent(dxPx: number, dyPx: number, resting: boolean): 'wait' | 'scroll' | 'turn' | 'drop' {
+  if (Math.hypot(dxPx, dyPx) < TOUCH_SLOP_PX) return 'wait';
+  if (Math.abs(dxPx) <= Math.abs(dyPx)) return 'scroll';
+  return resting ? 'turn' : 'drop';
+}
+
+/** A mouse drag whose button is no longer held has ended, even if its pointerup was lost (alt-tab mid-drag). */
+export const dragEnded = (pointerType: string, buttons: number): boolean => pointerType === 'mouse' && buttons === 0;

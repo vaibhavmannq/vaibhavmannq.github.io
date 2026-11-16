@@ -1,8 +1,8 @@
 import { uniform } from 'three/tsl';
 import { Color, DirectionalLight, HemisphereLight, type Scene, Vector3 } from 'three/webgpu';
 import type { SkyAmbient } from '../assets/manifest';
-import { sunDir } from '../journey/hours';
-import { type HourPreset, type RGB, toThree, type Vec3 } from '../journey/types';
+import { sunDir, windVector } from '../journey/hours';
+import { type HourPreset, type RGB, toThree, type Vec3, type WorldState } from '../journey/types';
 import { lerp } from '../shared/math';
 
 /**
@@ -53,7 +53,11 @@ export const MOON_SIZE_DEG = 1.6;
  * its centre). Squared angles (2·(1 − d) ≈ angle²), never cos(r) on the GPU: WGSL's cos is only good to about 5e-4,
  * which erased a 0.45° disc entirely (the s07 "no moon at Midnight" bug).
  */
-export function moonCover(d: number, r: number): number {
+/** The smallest disc radius the sky works with, radians: size 0 (no moon) would divide by zero. */
+export const MIN_MOON_RADIUS = 1e-5;
+
+export function moonCover(d: number, rIn: number): number {
+  const r = Math.max(rIn, MIN_MOON_RADIUS); // no moon (size 0) must not make 0/0 at the moon itself
   const x = 2 * (1 - d);
   return 1 - sstep((0.95 * r) ** 2, (1.05 * r) ** 2, x);
 }
@@ -223,3 +227,21 @@ export function createLightUniforms() {
 }
 
 export type LightUniforms = ReturnType<typeof createLightUniforms>;
+
+/** The glitter's facets drift along the wind at this speed (reference-book §3: capillary ripples ride the wind). */
+export const GLITTER_DRIFT_MS = 0.05;
+
+/**
+ * The glitter's offset after `dtS` more seconds: carried frame by frame along the wind's direction (three.js x, z),
+ * so a wind that turns during a flight never makes the pattern jump (final review M8; cloudSea's `carried` does the same).
+ */
+export function glitterCarry(
+  off: readonly [number, number],
+  world: Pick<WorldState, 'windAz' | 'beaufort'>,
+  dtS: number,
+): [number, number] {
+  const [wx, wy] = windVector(world);
+  const wl = Math.hypot(wx, wy) || 1;
+  const step = GLITTER_DRIFT_MS * dtS;
+  return [off[0] + (wx / wl) * step, off[1] - (wy / wl) * step];
+}

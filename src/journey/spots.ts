@@ -65,3 +65,9 @@ export function sampleSpot(s: SpotPath, t: number, aspect = 16 / 9): Pose & { co
     fov: fovFor(from.lens, aspect),
   };
 }
+
+/**
+ * The glints and their HTML twins are offered only when no walk is running and the camera is back home (its weight
+ * toward the last spot under 1 %): a spot picked on the way back would jump the camera (final review M5).
+ */
+export const spotsOpen = (walking: boolean, walkW: number): boolean => !walking && walkW < 0.01;

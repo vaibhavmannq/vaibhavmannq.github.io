@@ -12,7 +12,7 @@ export interface Params {
   stop?: StopId;
   /** `?hud`: the measuring panel. */
   hud: boolean;
-  /** `?stills=off` hides the renders at the stops, to see (and measure) the live world there. */
+  /** `?stills=on` lays the renders over the live world at the stops (they are the no-GPU fallback; D27, final review I4). */
   stills: boolean;
   /** `?webgl`: force WebGL2 even where WebGPU exists. */
   webgl: boolean;
@@ -28,7 +28,7 @@ export function readParams(search: string): Params {
   const q = new URLSearchParams(search);
   const params: Params = {
     hud: q.has('hud'),
-    stills: q.get('stills') !== 'off',
+    stills: q.get('stills') === 'on',
     webgl: q.has('webgl'),
     nogl: q.has('nogl'),
     auroraActive: q.get('aurora') === 'active',

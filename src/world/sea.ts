@@ -34,10 +34,9 @@ import {
   RedFormat,
   Vector2,
 } from 'three/webgpu';
-import { windVector } from '../journey/hours';
 import type { TierSettings } from '../quality/tiers';
 import type { GridMeta } from './heights';
-import { glitterPower, type LightUniforms } from './light';
+import { glitterCarry, glitterPower, type LightUniforms } from './light';
 import type { WorldPart } from './part';
 
 /** Six analytic ripples: direction x, direction z, amplitude, frequency (the slice's). */
@@ -67,8 +66,8 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   reflection.target.rotateX(-Math.PI / 2);
   const chop = uniform(1);
   const glitterPow = uniform(glitterPower(0.55));
-  /** the glitter's drift: 0.05 m/s along the wind (three.js x, z) */
-  const drift = uniform(new Vector2(0, 0));
+  /** how far the glitter's facets have drifted along the wind, metres (three.js x, z; light.ts glitterCarry) */
+  const carried = uniform(new Vector2(0, 0));
 
   const p = vec2(positionWorld.x, positionWorld.z);
   const pixel = fwidth(p).length();
@@ -111,7 +110,7 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   const r0 = reflect(v.negate(), n);
   const mean = max(dot(r0, u.keyDir), 0).pow(glitterPow).mul(0.35);
   const facetGlint = (freq: number, seed: number) => {
-    const q = p.add(drift.mul(time));
+    const q = p.add(carried);
     const t = mx_noise_vec3(vec3(q.mul(freq), time.mul(0.6).add(seed)));
     const nf = normalize(n.add(vec3(t.x, 0, t.y).mul(sigma.mul(2.2))));
     const hit = max(dot(reflect(v.negate(), nf), u.keyDir), 0)
@@ -166,9 +165,8 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
       // reference book §2 (Beaufort, "on water"): the chop grows with the force, 0.3 calm to 1.3 at force 4
       chop.value = 0.3 + 0.25 * f.hour.world.beaufort;
       glitterPow.value = glitterPower(chop.value);
-      const [wx, wy] = windVector(f.hour.world);
-      const wl = Math.hypot(wx, wy) || 1;
-      drift.value.set((wx / wl) * 0.05, (-wy / wl) * 0.05);
+      const [cx, cz] = glitterCarry([carried.value.x, carried.value.y], f.hour.world, f.dtS);
+      carried.value.set(cx, cz);
       // The plane follows the camera so it always reaches the horizon.
       sea.position.x = f.pose.position[0];
       sea.position.z = f.pose.position[2];
