@@ -111,14 +111,17 @@ no borrowed set pieces (no towers, piano, etc.).
 - **s12, after the push:** a visitor's night on this laptop measured (governor settles on **low**; every flight
   0 slow frames except two first-trip freezes into Night and Midnight); Next-while-arriving fixed; the freezes cut
   from 0.73/0.82 s to 0.48/0.70 s (one-pass aurora/cloud, stage B builds for the scene pass); the mirror's first
-  build of those two is still open (R38). Blender exports byte-stable (cave.bin triangle order).
+  build of those two is still open (R38). Blender exports byte-stable (cave.bin triangle order). All pushed
+  (…d5afa9e). **Phone, a visitor's night:** starts at high, settles on mid at Night, every flight 59–60 fps, the same
+  two first-trip hitches only 0.17 s and 0.20 s (`.superpowers/m25/phone-visitor.mjs`).
 - **Next (s13):** M3. The owner's hands-on test is moved to much later (owner). Open: the mirror first-build freeze
-  (R38); low is this laptop's real tier while looks were judged at mid. Phone setup that works: serve `vite preview --host
+  (R38; small on the phone, fold into M6); low is this laptop's real tier while looks were judged at mid (keep judging
+  at mid, add a low column to look checks). Phone setup that works: serve `vite preview --host
   127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
   (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab
   (the phone's browser is Brave). Measuring tools: `.superpowers/m2/` (s09) and `.superpowers/m25/*.mjs` (s11:
   `laptop.mjs`, `flight.mjs [off-parts]`, `joins.mjs`, `phone-cove.mjs`; s12: `gpusweep.mjs`, `flightab.mjs`,
-  `trace.mjs`).
+  `trace.mjs`, `visitor.mjs`, `phone-visitor.mjs`).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
