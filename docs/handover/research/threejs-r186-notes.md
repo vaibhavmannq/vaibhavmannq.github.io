@@ -190,3 +190,18 @@ No official example exists for stars as points, fireflies, grass, trees or level
 - Maxime Heckel, Field Guide to TSL and WebGPU: https://blog.maximeheckel.com/posts/field-guide-to-tsl-and-webgpu/
 - Utsubo, 100 Three.js Tips (2026): https://www.utsubo.com/blog/threejs-best-practices-100-tips
 - three.js manual, WebGPURenderer: https://threejs.org/manual/en/webgpurenderer.html
+
+## Pre-compiling for where a part is really drawn (s12, measured)
+
+- `renderer.compileAsync(obj, camera, scene)` builds at render-call depth 0 for the current target. A material's
+  build (and so its pipeline) is keyed by its **render context**, and a context by the target's attachments **and
+  the call depth** (`Renderer._renderContexts.get(target, mrt, callDepth)`). Through a `RenderPipeline`, `pass()`
+  draws the scene at depth 1 and a `reflector()` inside it at depth 2, so a bare compileAsync is never reused:
+  the first real draw rebuilds the shader text (uniform/function order differs) and calls the synchronous
+  `createRenderPipeline` (0.5–0.8 s on the laptop's Intel GPU). `src/render/pipeline.ts compile()` sets the pass
+  target and depth 1 around the call. Building at depth 2 the same way (any target/camera) drew the mirror over the
+  whole view: not solved.
+- Transparent + `DoubleSide` draws in two passes (back faces, then front) unless `forceSinglePass: true`;
+  compileAsync builds only the one-pass pipeline.
+- To find late builds: patch `GPUDevice.prototype.createRenderPipeline` in an init script and log descriptors
+  (`.superpowers/m25/gpupipes.mjs`); three's keys via `renderer._pipelines._getRenderCacheKey` (`keys.mjs`).

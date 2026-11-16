@@ -108,9 +108,12 @@ no borrowed set pieces (no towers, piano, etc.).
   **the Blender stills are off over the live world by default** (R34, `?stills=on`); rock moss per vertex. The laptop
   flight stutter traced: GPU headroom on mid at 1080p in Dusk→Blue hour and Night→Midnight (15–21 ms/frame without
   the rock; rock adds 2–7 ms near Blue hour; A/B 7 vs 5.5 stutters/flight) → scene cost for M4/M6, not fixed.
-- **Next (s13):** (1) the owner's hands-on test (list in the s12 log; the plain URL now shows the live world);
-  (2) M3 (Blender exports are now byte-stable: the churn was cave.bin's triangle order, fixed in s12); (3) a visitor's flight with the
-  governor on. Phone setup that works: serve `vite preview --host
+- **s12, after the push:** a visitor's night on this laptop measured (governor settles on **low**; every flight
+  0 slow frames except two first-trip freezes into Night and Midnight); Next-while-arriving fixed; the freezes cut
+  from 0.73/0.82 s to 0.48/0.70 s (one-pass aurora/cloud, stage B builds for the scene pass); the mirror's first
+  build of those two is still open (R38). Blender exports byte-stable (cave.bin triangle order).
+- **Next (s13):** M3. The owner's hands-on test is moved to much later (owner). Open: the mirror first-build freeze
+  (R38); low is this laptop's real tier while looks were judged at mid. Phone setup that works: serve `vite preview --host
   127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
   (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab
   (the phone's browser is Brave). Measuring tools: `.superpowers/m2/` (s09) and `.superpowers/m25/*.mjs` (s11:
