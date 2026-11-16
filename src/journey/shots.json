@@ -61,8 +61,8 @@
  },
  "sunset": {
   "look": [
-   -47.0,
-   0.5
+   -48.0,
+   0.0
   ],
   "lens": 28,
   "hdri": "belfast_sunset_puresky_8k.hdr",
@@ -146,12 +146,12 @@
   "moon": null,
   "swell": 0.12,
   "cam": [
-   25.0,
-   141.0,
-   1.7
+   86.0,
+   96.0,
+   0.6
   ],
-  "ground": 14.3584,
-  "eyeZ": 16.0584,
+  "ground": 18.6749,
+  "eyeZ": 19.2749,
   "sun_el": 1.0,
   "sky_rot": 40.0,
   "stars": 0.0,
@@ -170,10 +170,10 @@
  },
  "dusk": {
   "look": [
-   -40.0,
-   -5.5
+   -54.0,
+   -18.0
   ],
-  "lens": 24,
+  "lens": 22,
   "hdri": "kloppenheim_06_puresky_8k.hdr",
   "hsun": [
    6.84,
@@ -268,12 +268,12 @@
   "moon": null,
   "swell": 0.12,
   "cam": [
+   32.0,
    30.0,
-   40.0,
    1.7
   ],
-  "ground": 25.5974,
-  "eyeZ": 27.2974,
+  "ground": 26.8906,
+  "eyeZ": 28.5906,
   "sun_el": -2.0,
   "sky_rot": 0.0,
   "stars": 0.0,

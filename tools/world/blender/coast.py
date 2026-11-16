@@ -174,6 +174,13 @@ SHOTS["sunset"].update(sky_clip=3.0, disc=4.0, look=(-47.0, 0.5), sky_rot=40.0,
     ramp=((0.0, (0.12, 0.06, 0.20)), (0.25, (0.42, 0.20, 0.42)), (0.40, (0.92, 0.42, 0.42)), (0.53, (1.0, 0.52, 0.26)), (0.68, (1.0, 0.64, 0.30)), (1.0, (1.0, 0.80, 0.52))))
 SHOTS["dusk"].update(lanterns=dict(path=((-12.0, 52.0), (-150.0, 190.0)), n=44, bunch=1.5, w0=3.0, w1=16.0, r=0.32, col=(1.0, 0.50, 0.20), strength=20.0),
     sky_grad=((1.15, 0.90, 0.80), (0.52, 0.62, 1.28), 0.03, 0.50))
+# M3 Task 4 (Amendment 1 §4; design review §2; owner meadow-and-flowers 1-6, cove-and-stacks 6, 12): new cameras.
+# II: down in the meadow (eye 0.6 m) on the terrace's high end, the meadow falling away 80 m to the rim, the arch small beyond, the sun beside it.
+# III: truly high at the plateau's top edge (ground 26.7 m), looking down at the lanterns' water (-22 deg; -30 loses the
+# arch off the top edge). Before (s12): sunset cam (25, 141, 1.7) look (-47, 0.5) lens 28; dusk cam (30, 40, 1.7)
+# look (-40, -5.5) lens 24.
+SHOTS["sunset"].update(cam=(86.0, 96.0, 0.6), look=(-48.0, 0.0), lens=28)
+SHOTS["dusk"].update(cam=(32.0, 30.0, 1.7), look=(-54.0, -18.0), lens=22)
 SHOTS["bluehour"].update(cam=(-1008.0, 1156.2, 0.62), foam_k=0.0, caps=dict(reach=500, per=14, size=(1.6, 3.2)), plankton=dict(n=2600, reach=40.0, size=0.02, col=(0.25, 0.85, 1.0), strength=3.5, fade=9.0))
 SHOTS["night"].update(cliff_rocks=((-377.6, -354.3, 8.0, 29.0, 0.0), (-378.7, -360.9, 7.0, 33.0, 0.0), (-382.1, -366.8, 8.5, 27.0, 0.0), (-382.2, -373.5, 7.5, 31.0, 0.0), (-265.9, -348.8, 8.0, 31.0, 0.0), (-268.5, -342.6, 7.0, 26.0, 0.02), (-274.1, -338.7, 9.0, 33.0, -0.02), (-277.8, -333.1, 7.5, 28.0, 0.0), (-283.9, -330.2, 8.5, 24.0, 0.02), (-288.8, -325.9, 8.0, 32.0, -0.02), (-294.1, -321.8, 7.0, 29.0, 0.0), (-300.9, -321.3, 9.0, 31.0, 0.02), (-306.9, -318.3, 7.5, 26.0, -0.02), (-332.8, -319.8, 8.5, 33.0, 0.0), (-339.3, -320.6, 8.0, 28.0, 0.02), (-345.9, -321.8, 7.0, 24.0, -0.02), (-350.8, -326.6, 9.0, 32.0, 0.0), (-357.1, -329.0, 7.5, 29.0, 0.02), (-361.2, -334.3, 8.5, 31.0, -0.02), (-366.4, -338.2, 8.0, 26.0, 0.0), (-371.5, -342.6, 7.0, 33.0, 0.02), (-373.4, -349.1, 9.0, 28.0, -0.02),),
     caps=dict(reach=300, per=6, size=(1.2, 2.4)), glow_tips=0.9, glow_pow=14.0, ff_z=(0.15, 1.1),

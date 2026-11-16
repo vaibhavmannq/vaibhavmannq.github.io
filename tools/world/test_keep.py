@@ -6,7 +6,7 @@ sys.path.insert(0, HERE)
 import coastlib, views
 
 KEEP = os.path.join(HERE, "blender", "keep.npz")
-c = coastlib.load(); cams = views.cameras()
+c = coastlib.load(); cams = views.kept_cameras()
 for name, cam in cams.items():
     o, d = views.ray_grid(cam, 64); t, k = views.cast(c.ground_base, o, d, cloud=views.cloud_planes().get(name))
     hit = ((k == views.SEA) | (k == views.LAND)) & (t <= views.NEAR); p = o[hit] + d[hit] * t[hit, None]

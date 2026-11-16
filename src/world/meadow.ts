@@ -1,7 +1,6 @@
 import {
   attribute,
   cameraPosition,
-  cameraViewMatrix,
   cos,
   dot,
   float,
@@ -16,9 +15,9 @@ import {
   step,
   time,
   uniform,
+  varying,
   vec2,
   vec3,
-  vec4,
 } from 'three/tsl';
 import {
   BufferAttribute,
@@ -27,7 +26,7 @@ import {
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   Mesh,
-  MeshLambertNodeMaterial,
+  MeshBasicNodeMaterial,
   Vector2,
 } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
@@ -35,7 +34,7 @@ import { STOP_IDS } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
 import { smoothstep as smoothstepJS } from '../shared/math';
 import { mulberry32 } from '../shared/random';
-import type { LightUniforms } from './light';
+import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
 import type { WorldPart } from './part';
 import { COVE_STOPS, PLANT, PLANT_STRIDE, type Plants, swayAmplitude } from './scatter';
 
@@ -237,13 +236,22 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const tremble = sin(time.mul(2 * Math.PI * 2.3).add(rnd.mul(40))).mul(0.015);
   const lean = amp.mul(gust.mul(0.75).add(0.25)).add(tremble).mul(bend.mul(bend));
   const wind3 = vec3(windTo.x, 0, windTo.y);
-  const material = new MeshLambertNodeMaterial({ side: DoubleSide });
+  const material = new MeshBasicNodeMaterial({ side: DoubleSide });
   material.positionNode = root
     .add(turned.mul(h))
     .add(wind3.mul(lean.mul(h)))
     .sub(vec3(0, lean.mul(lean).mul(h).mul(0.5), 0));
-  // lit like the ground they stand on: one up normal, so a blade's back face is not dark (view space for three)
-  material.normalNode = normalize(cameraViewMatrix.mul(vec4(0, 1, 0, 0)).xyz);
+  // Lit like the ground they stand on, with one up normal, so a blade's back face is not dark. With one normal the
+  // light is the same for every plant: three's Lambert sum for an up normal (key, fill and sky, each × albedo / π;
+  // light.ts) worked out once, instead of per pixel (s13: at mid the per-pixel Lambert cost 2.6–4 ms where the new
+  // cameras look into the meadow, against ~0.2 ms at low).
+  const fillUp = saturate(normalize(vec3(light.keyDir.x.negate(), 0.6, light.keyDir.z.negate())).y);
+  const irradiance = light.keyColor
+    .mul(light.keyStrength)
+    .mul(saturate(light.keyDir.y))
+    .add(light.ambSky.mul(light.keyStrength.mul(FILL_SHARE).add(0.3)).mul(fillUp))
+    .add(light.ambSky.mul(HEMI_INTENSITY))
+    .mul(1 / Math.PI);
 
   // colours (linear): tall coastal grass dry gold-green; the short meadow greener; flower heads by kind (reference
   // book §8: thrift pink; coast.py plant_mats yellow and white); every plant a little different
@@ -258,19 +266,20 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   );
   const flower = mix(stalk, head.mul(part), step(0.3, part));
   const grass = mix(tall, short, step(0.5, kind));
-  material.colorNode = mix(grass, flower, step(1.5, kind)).mul(vary);
+  const albedo = mix(grass, flower, step(1.5, kind)).mul(vary);
   // light through the blades when the sun is behind them (reference book §8: bright yellow-green edges backlit,
   // duller front-lit); the tips glow most, a flower head a little
   const toSun = saturate(dot(normalize(positionWorld.sub(cameraPosition)), light.keyDir));
   const through = pow(toSun, 3.0)
     .mul(bend)
     .mul(mix(float(1), float(0.4), part));
-  // NodeMaterial adds any material's emissiveNode (r186 NodeMaterial.setupLighting); Lambert's types omit it
-  (material as unknown as { emissiveNode: unknown }).emissiveNode = light.keyColor
+  const glow = light.keyColor
     .mul(light.keyStrength)
     .mul(vec3(0.55, 0.62, 0.16))
     .mul(through)
     .mul(0.25);
+  // per vertex: the blades are thin, so the eye cannot tell, and the pixels do only the fog
+  material.colorNode = varying(albedo.mul(irradiance).add(glow));
 
   const group = new Group();
   const shapes = [

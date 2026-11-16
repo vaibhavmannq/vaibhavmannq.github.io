@@ -47,7 +47,8 @@ const RULES: Record<CoveStop, Rules> = {
     zmin: 0.8,
     dland: 7,
   },
-  sunset: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 9, zmin: 0.8, dland: 7 },
+  // II looks from inside the flowers (owner meadow 1-6): no tall grass in the first 30 m, more flowers near the lens
+  sunset: { candidates: 22000, near: [], nearFlowers: 1600, lensClear: 30, zmin: 0.8, dland: 7 },
   dusk: { candidates: 18000, near: [], nearFlowers: 500, lensClear: 6, zmin: 0.8, dland: 7 },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
   sunrise: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 6, zmin: 0.3, dland: 1.5 },

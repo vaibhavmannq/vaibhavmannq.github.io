@@ -33,7 +33,7 @@ def hits():
     c = coastlib.load()
     rows = []
     clouds = views.cloud_planes()
-    for ci, (name, cam) in enumerate(views.cameras().items()):
+    for ci, (name, cam) in enumerate(views.kept_cameras().items()):
         for w in (192, 96, 64):                       # the bake's grid and the checks' grids
             o, d = views.ray_grid(cam, w)
             t, k = views.cast(c.ground_base, o, d, cloud=clouds.get(name))
@@ -50,7 +50,7 @@ def hits():
 def main():
     near = float(sys.argv[sys.argv.index("--near") + 1]) if "--near" in sys.argv else NEAR
     H = hits()
-    names = list(views.cameras())
+    names = list(views.kept_cameras())
     lights = views.light_dirs()
     mask = np.zeros((N, N), np.uint8)
     for x, y, z, t, ci in H[H[:, 3] <= near]:

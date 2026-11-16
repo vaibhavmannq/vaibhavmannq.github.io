@@ -26,6 +26,22 @@ def cameras():
     return {k: Camera(v["cam"][0], v["cam"][1], v["eyeZ"], v["look"][0], v["look"][1], v["lens"]) for k, v in _shots().items()}
 
 
+# The keep (M1, D16) protects the nine approved render views. M3 Task 4 moved II and III (D22, Amendment 1 §2; ruling
+# R42): the land the approved views saw stays protected, and the new views look at the reshaped land on purpose. So the
+# keep is baked and tested from these cameras, not from shots.json's current ones.
+KEPT_VIEWS = {
+    "sunset": Camera(25.0, 141.0, 16.0584, -47.0, 0.5, 28),
+    "dusk": Camera(30.0, 40.0, 27.2974, -40.0, -5.5, 24),
+}
+
+
+def kept_cameras():
+    """The cameras keep.npz protects: the approved render views (bake_keep.py, test_keep.py)."""
+    c = cameras()
+    c.update(KEPT_VIEWS)
+    return c
+
+
 def _vfov(lens, aspect):
     """src/journey/camera.ts fovFor(): the vertical field of view in radians."""
     h = 2 * math.atan(18 / lens)
