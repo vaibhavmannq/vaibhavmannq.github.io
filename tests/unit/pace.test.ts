@@ -56,9 +56,21 @@ describe('the ride (Amendment 1 §7)', () => {
   it('goes to the next stop ahead of the camera, or the one behind', () => {
     expect(rideTarget(track, stopCentre(track, 2), 1)).toBe(3);
     expect(rideTarget(track, stopCentre(track, 2), -1)).toBe(1);
-    expect(rideTarget(track, stopCentre(track, 2) + 0.2, -1)).toBe(2);
+    expect(rideTarget(track, stopCentre(track, 2) + 0.2, -1)).toBe(1); // inside a place, Back is the one before (s12)
     expect(rideTarget(track, stopCentre(track, 8), 1)).toBeNull();
     expect(rideTarget(track, stopCentre(track, 0), -1)).toBeNull();
+  });
+
+  // s12: Next pressed while the camera was still easing into a place went to that same place, so nothing happened
+  // (the scroll's own key handler stops the arriving glide first, so the scroll cannot say where it was going)
+  it('inside a place, Next is the place after it and Back the place before', () => {
+    for (const s of track.segments) {
+      if (s.kind !== 'stop' || s.stop === 0 || s.stop === STOPS.length - 1) continue;
+      for (const u of [s.start + 0.01, s.end - 0.01]) {
+        expect(rideTarget(track, u, 1), `stop ${s.stop} at ${u}`).toBe(s.stop + 1);
+        expect(rideTarget(track, u, -1), `stop ${s.stop} at ${u}`).toBe(s.stop - 1);
+      }
+    }
   });
 
   it('plays a long flight at its designed length: 10-20 s', () => {

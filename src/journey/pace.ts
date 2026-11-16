@@ -33,7 +33,11 @@ export function follow(track: Track, cam: number, target: number, dtS: number): 
 }
 
 /** The stop a ride goes to from `cam` in direction `dir`, or null at either end of the night. */
-export function rideTarget(track: Track, cam: number, dir: 1 | -1): number | null {
+export function rideTarget(track: Track, camU: number, dir: 1 | -1): number | null {
+  // Inside a place counts as at its centre: while the camera eases in, the centre is still ahead of it, and Next
+  // would pick the place it is arriving at (s12).
+  const here = track.segments.find((s) => s.kind === 'stop' && camU >= s.start && camU <= s.end);
+  const cam = here?.kind === 'stop' ? stopCentre(track, here.stop) : camU;
   const centres = track.segments.flatMap((s) => (s.kind === 'stop' ? [stopCentre(track, s.stop)] : []));
   const eps = 0.05;
   if (dir > 0) {
