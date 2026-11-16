@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-16, end of session s12 (M2.5 reviewed and fixed; see `docs/handover/sessions/2026-11-16-s12-m2.5-review-and-stutters.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-16, end of session s13 (M3 started: plan, plants, new cameras at II and III; see `docs/handover/sessions/2026-11-16-s13-m3-plan-plants-cameras.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-16, after s12)
+## 2. Where we are (2026-11-16, after s13)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -114,14 +114,26 @@ no borrowed set pieces (no towers, piano, etc.).
   build of those two is still open (R38). Blender exports byte-stable (cave.bin triangle order). All pushed
   (…d5afa9e). **Phone, a visitor's night:** starts at high, settles on mid at Night, every flight 59–60 fps, the same
   two first-trip hitches only 0.17 s and 0.20 s (`.superpowers/m25/phone-visitor.mjs`).
-- **Next (s13):** M3. The owner's hands-on test is moved to much later (owner). Open: the mirror first-build freeze
-  (R38; small on the phone, fold into M6); low is this laptop's real tier while looks were judged at mid (keep judging
-  at mid, add a low column to look checks). Phone setup that works: serve `vite preview --host
-  127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
-  (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab
-  (the phone's browser is Brave). Measuring tools: `.superpowers/m2/` (s09) and `.superpowers/m25/*.mjs` (s11:
-  `laptop.mjs`, `flight.mjs [off-parts]`, `joins.mjs`, `phone-cove.mjs`; s12: `gpusweep.mjs`, `flightab.mjs`,
-  `trace.mjs`, `visitor.mjs`, `phone-visitor.mjs`).
+- **s13 (2026-11-16): M3 started, inline, on `world`, not pushed (2f3d80a, acd7442).**
+  - Research phase: `research/m3-cove-references.md`.
+  - Plan: `docs/superpowers/plans/2026-11-16-m3-the-cove.md` (Tasks 0–8).
+  - Ledger: `docs/handover/ledgers/2026-11-16-m3-the-cove.md`.
+  - **Done:** Task 0 (research), Task 1 (37 k grass and flower plants made in the browser, each stop draws its own)
+    and Task 4 (new cameras: Sunset down in the meadow, Dusk high looking down; D31, R42).
+  - Low: 60 fps at the five cove stops. Mid: Sunset 55, Sunrise 53, Dusk 45 (the plants 1–3 ms; Dusk's mirror
+    alone over budget looking down).
+  - Phone not measured.
+  - My looks: plants 68 %, Sunset 62 %, Dusk 35 %. **No cove place near 85 % yet:** the slab, the trees and the
+    lanterns decide them.
+- **Next (s14):** M3 Task 2, the cliff columns and the grove (Blender export, a cove pack), then Task 5 (Dusk's
+  lanterns and the thread), Task 3 (mist), Tasks 6–8. The exact first step is in the s13 session log.
+  - Still open: R38 (mirror first-build hitch, fold into M6); `?cams=old` not built; mid at the cove stops;
+    stage-B pop-in (M8); headland pack fetched at every start.
+  - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
+    before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); `.superpowers/m2/phone.mjs`
+    drives the open `localhost:4181` tab (the phone's browser is Brave).
+  - Measuring tools: `.superpowers/m25/*.mjs` (s11–s13; s13 added `ab-meadow.mjs`, `laptop-m3.mjs`) and
+    `.superpowers/m3/tools/`.
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.

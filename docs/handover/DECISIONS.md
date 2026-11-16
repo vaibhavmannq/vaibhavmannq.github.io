@@ -184,3 +184,14 @@ stacks (1.9 MB of rock) left the cove places about 0.9 MB for trees, flowers, la
 limit". The number is my call: at 10 Mbit/s 5 MB takes about 4 s, inside D9's "each stop complete under 5 s". The
 first-view (stage A ≤ 1.2 MB) and world-base (≤ 1.0 MB) budgets do not change. Enforced in `src/assets/manifest.ts`
 `BUDGETS.perStopBytes` (CI: `npm run world:report`). Replaces D9's "about 3 MB per stop".
+
+**D31 · 2026-11-16 · (my calls, s13; owner told in chat) The M3 plan, and the cameras at Sunset and Dusk move.** The M3
+plan is `docs/superpowers/plans/2026-11-16-m3-the-cove.md`. Its calls:
+- The cove's plants are made in the browser (no download).
+- Each stop draws only its own plants (R40).
+- Sunset's camera goes down into the meadow at (86, 96), eye 0.6 m.
+- Dusk's camera goes to the plateau's top edge at (32, 30), looking down 18°.
+- The M1 keep protects the approved render views, not the new ones (R42).
+
+Why: Amendment 1 §4 and D22. The before views are kept as shots in `.superpowers/m3/`. A live switch back is still
+owed.
