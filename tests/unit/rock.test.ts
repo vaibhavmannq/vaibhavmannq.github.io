@@ -36,3 +36,22 @@ describe('only the sea leaves tide bands (reference-book §3: a tide band is the
     expect(seaWet(0, 0, undefined)).toBe(1);
   });
 });
+
+describe('the rock material keeps slow terms per vertex (plan M2.5 Global Constraints; final review I3)', () => {
+  it('no noise is computed per pixel: every noise call sits behind a varying', async () => {
+    const { createRockMaterial } = await import('../../src/world/arch');
+    type N = { isVaryingNode?: boolean; getChildren(): Iterable<N>; [k: string]: unknown };
+    const perPixel: string[] = [];
+    const seen = new Set<N>();
+    const walk = (n: N | null | undefined) => {
+      if (!n || seen.has(n)) return;
+      seen.add(n);
+      const name = (n as { shaderNode?: { layout?: { name?: string } } }).shaderNode?.layout?.name ?? '';
+      if (/noise/i.test(name)) perPixel.push(name);
+      if (n.isVaryingNode) return; // worked out per vertex
+      for (const c of n.getChildren()) walk(c);
+    };
+    walk(createRockMaterial().colorNode as unknown as N);
+    expect(perPixel).toEqual([]);
+  });
+});

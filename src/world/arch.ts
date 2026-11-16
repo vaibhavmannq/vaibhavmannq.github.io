@@ -160,10 +160,11 @@ export function createRockMaterial(): MeshStandardNodeMaterial {
   const rock = mix(vec3(...BASALT).mul(mottle.mul(0.5).add(0.75)), vec3(...LICHEN), lichen);
   const shade = float(SHADE_FLOOR).add(float(1 - SHADE_FLOOR).mul(attribute('light', 'float')));
   const base = vs(mix(rock, vec3(...MOSS).mul(patches.add(0.6)), moss).mul(shade) as V3);
+  const dry = vs(float(1).sub(moss) as F); // bare rock's share: moss is never banded or columned
   const wall = vs(
     float(1)
       .sub(smoothstep(0.5, 0.8, up.abs()))
-      .mul(float(1).sub(moss)) as F,
+      .mul(dry) as F,
   );
   // per pixel: the columns
   // The pattern follows the wall up its slope (the baked `column` coordinate, coast x, y); a small lean with height
@@ -201,7 +202,7 @@ export function createRockMaterial(): MeshStandardNodeMaterial {
     .mul(float(1).sub(drum.mul(DRUM_DARK)));
   const material = new MeshStandardNodeMaterial();
   // tide bands at the waterline (rock.ts, ruling R2: the arch and the stacks too); moss is never banded
-  material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, float(1).sub(moss)));
+  material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, dry));
   material.roughnessNode = float(0.9);
   material.metalnessNode = float(0);
   return material;
