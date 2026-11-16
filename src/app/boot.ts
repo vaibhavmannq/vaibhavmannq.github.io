@@ -30,11 +30,13 @@ import { type AuroraData, createAurora } from '../world/aurora';
 import { createCave, decodeCave } from '../world/cave';
 import { createCloudSea } from '../world/cloudSea';
 import { createDressing, decodeDressing } from '../world/dressing';
-import { createHeightSampler } from '../world/heights';
+import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
+import { createMeadow, MEADOW_LAYER } from '../world/meadow';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
+import { scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
 import { createSpotGlints } from '../world/spotGlints';
@@ -155,6 +157,8 @@ async function loadBase(
     ['terrain', terrain],
     ['sea', sea],
   ];
+  // The cove's grass and flowers (plan M3 Task 1): made here from the base heights, no download.
+  parts.push(['meadow', createMeadow(scatterCove(createSurfaceSampler(heights, meta.heights)), light)]);
   if (dressingMeta && dressingBuf) {
     const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
     parts.push(['dressing', createDressing(instances, heightAt)]);
@@ -285,6 +289,8 @@ export async function boot(): Promise<App> {
   const manifest = await loadManifest();
   const scene = new Scene();
   const camera = new PerspectiveCamera(45, host.clientWidth / Math.max(1, host.clientHeight), 0.1, 14000);
+  // the cove's plants draw for the eye but not in the water's mirror (meadow.ts, sea.ts)
+  camera.layers.enable(MEADOW_LAYER);
   let pipeline: Pipeline | null = null;
   if (!params.nogl) {
     try {

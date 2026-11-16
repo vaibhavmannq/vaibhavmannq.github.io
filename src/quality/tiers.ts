@@ -11,12 +11,14 @@ export interface TierSettings {
   /** Resolution of the water's mirror, as a share of the screen. */
   reflect: number;
   bloom: boolean;
+  /** Share of the cove's plants drawn (spec §13: grass density). */
+  grass: number;
 }
 
 export const TIERS: Readonly<Record<Tier, TierSettings>> = {
-  0: { scale: 0.5, reflect: 0.25, bloom: false },
-  1: { scale: 0.75, reflect: 0.35, bloom: true },
-  2: { scale: 1.0, reflect: 0.5, bloom: true },
+  0: { scale: 0.5, reflect: 0.25, bloom: false, grass: 0.4 },
+  1: { scale: 0.75, reflect: 0.35, bloom: true, grass: 0.7 },
+  2: { scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0 },
 };
 
 export interface DeviceHints {

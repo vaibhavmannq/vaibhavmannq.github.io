@@ -1,0 +1,116 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { STOPS } from '../../src/journey/stops';
+import { createSurfaceSampler, type GridMeta } from '../../src/world/heights';
+import { COVE_STOPS, coastFbm, PLANT, PLANT_STRIDE, scatterCove, swayAmplitude } from '../../src/world/scatter';
+
+// coast.py fbm(1.5, 2.25, 3) and fbm(37.3, -12.8, 5), run in numpy (s13)
+const FBM_A = 0.4699855762020289;
+const FBM_B = 0.5890880905158892;
+const manifest = JSON.parse(readFileSync('public/world/manifest.json', 'utf8'));
+const meta: GridMeta = manifest.base.heights;
+const q = new Uint16Array(readFileSync('public/world/base/heights.bin').buffer.slice(0));
+const surface = createSurfaceSampler(q, meta);
+const plants = scatterCove(surface);
+const n = plants.count;
+const at = (i: number) => ({
+  x: plants.data[i * PLANT_STRIDE] as number,
+  y: plants.data[i * PLANT_STRIDE + 1] as number,
+  z: plants.data[i * PLANT_STRIDE + 2] as number,
+  scale: plants.data[i * PLANT_STRIDE + 4] as number,
+  kind: plants.data[i * PLANT_STRIDE + 5] as number,
+});
+
+describe('the cove ground cover (plan M3 Task 1)', () => {
+  it('matches coast.py noise (the zones fall where the renders put them)', () => {
+    // values from coast.py fbm(x, y, o) run in numpy (s13)
+    expect(coastFbm(1.5, 2.25, 3)).toBeCloseTo(FBM_A, 9);
+    expect(coastFbm(37.3, -12.8, 5)).toBeCloseTo(FBM_B, 9);
+  });
+
+  it('places plants around all five cove stops, within the budget', () => {
+    expect(n).toBeGreaterThan(8000);
+    expect(n).toBeLessThanOrEqual(60000);
+    for (const id of COVE_STOPS) {
+      const stop = STOPS.find((s) => s.id === id);
+      if (!stop) throw new Error(id);
+      let near = 0;
+      for (let i = 0; i < n; i++) if (Math.hypot(at(i).x - stop.cam[0], at(i).y - stop.cam[1]) < 60) near++;
+      expect(near, id).toBeGreaterThan(300);
+    }
+  });
+
+  // Review Focus 1: never in the sea, never on a sheer face, never in the lens.
+  it('every plant stands on land, on a walkable slope, sunk a little into the drawn ground, clear of every eye', () => {
+    for (let i = 0; i < n; i++) {
+      const p = at(i);
+      const g = surface(p.x, p.y);
+      expect(g, `plant ${i} ground`).toBeGreaterThan(0.2);
+      const e = 0.5;
+      const slope =
+        Math.hypot(surface(p.x + e, p.y) - surface(p.x - e, p.y), surface(p.x, p.y + e) - surface(p.x, p.y - e)) /
+        (2 * e);
+      expect(slope, `plant ${i} slope`).toBeLessThan(p.kind === PLANT.tall ? 1.0 : 1.35);
+      expect(p.z).toBeLessThanOrEqual(g);
+      expect(p.z).toBeGreaterThan(g - 0.1);
+      for (const stop of STOPS) {
+        const d = Math.hypot(p.x - stop.cam[0], p.y - stop.cam[1], p.z + p.scale - stop.cam[2]);
+        expect(d, `plant ${i} near ${stop.id}`).toBeGreaterThan(0.6);
+      }
+    }
+  }, 30000);
+
+  it('is the same on every visit (seeded)', () => {
+    const again = scatterCove(surface);
+    expect(again.count).toBe(n);
+    expect(Buffer.from(again.data.buffer).equals(Buffer.from(plants.data.buffer))).toBe(true);
+  });
+
+  it('orders instances so a lower tier takes a random fraction, not one region', () => {
+    const half = Math.floor(n / 2);
+    const mean = (a: number, b: number) => {
+      let s = 0;
+      for (let i = a; i < b; i++) s += at(i).x;
+      return s / (b - a);
+    };
+    expect(Math.abs(mean(0, half) - mean(half, n))).toBeLessThan(6);
+  });
+
+  // owner meadow 5, 9: colours in drifts and bands, never an even sprinkle
+  it('puts flowers in drifts: the nearest flower to a flower is mostly of its own kind', () => {
+    const flowers: { x: number; y: number; kind: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      const p = at(i);
+      if (p.kind >= PLANT.pink) flowers.push(p);
+    }
+    expect(flowers.length).toBeGreaterThan(500);
+    const kinds = new Set(flowers.map((f) => f.kind));
+    expect(kinds.size).toBe(3);
+    let same = 0;
+    const sample = flowers.slice(0, 600);
+    for (const f of sample) {
+      let best = Number.POSITIVE_INFINITY;
+      let kind = -1;
+      for (const g of flowers) {
+        if (g === f) continue;
+        const d = (g.x - f.x) ** 2 + (g.y - f.y) ** 2;
+        if (d < best) {
+          best = d;
+          kind = g.kind;
+        }
+      }
+      if (kind === f.kind) same++;
+    }
+    expect(same / sample.length).toBeGreaterThan(0.7);
+  });
+
+  // Review Focus 2 / reference book §2: force 0–1 only trembles the tips; force 3 bends the grass.
+  it('sways by the one wind: tips only when calm, bending in a breeze', () => {
+    expect(swayAmplitude(0)).toBeGreaterThan(0);
+    expect(swayAmplitude(0)).toBeLessThan(0.05);
+    expect(swayAmplitude(1)).toBeLessThan(0.08);
+    expect(swayAmplitude(3)).toBeGreaterThan(0.2);
+    expect(swayAmplitude(3)).toBeLessThan(0.4);
+    expect(swayAmplitude(2)).toBeGreaterThan(swayAmplitude(1));
+  });
+});

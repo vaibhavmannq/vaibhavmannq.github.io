@@ -27,6 +27,32 @@ export type HeightAt = (x: number, y: number) => number;
 /** Deep sea, coast.py's floor (`np.maximum(h, -22)`): the answer outside the grid. */
 export const DEEP_SEA = -22;
 
+/**
+ * The height of the terrain mesh as drawn (terrain.ts splits each cell into triangles a-b-c and b-d-c, so between
+ * grid points it is planar, not bilinear). Things that stand on the ground (plants) use this, so they neither float
+ * nor sink on a slope.
+ */
+export function createSurfaceSampler(q: Uint16Array, meta: GridMeta): HeightAt {
+  const { x0, y0, step, nx, ny, lo, hi } = meta;
+  const k = (hi - lo) / 65535;
+  const at = (i: number, j: number) => lo + (q[j * nx + i] as number) * k;
+  return (x, y) => {
+    const fx = (x - x0) / step;
+    const fy = (y - y0) / step;
+    if (fx < 0 || fy < 0 || fx > nx - 1 || fy > ny - 1) return DEEP_SEA;
+    const i = Math.min(nx - 2, Math.floor(fx));
+    const j = Math.min(ny - 2, Math.floor(fy));
+    const u = fx - i;
+    const v = fy - j;
+    const a = at(i, j);
+    const b = at(i + 1, j);
+    const c = at(i, j + 1);
+    if (u + v <= 1) return a + (b - a) * u + (c - a) * v;
+    const d = at(i + 1, j + 1);
+    return d + (c - d) * (1 - u) + (b - d) * (1 - v);
+  };
+}
+
 export function createHeightSampler(q: Uint16Array, meta: GridMeta): HeightAt {
   const { x0, y0, step, nx, ny, lo, hi } = meta;
   const k = (hi - lo) / 65535;

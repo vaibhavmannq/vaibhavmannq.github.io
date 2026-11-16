@@ -21,6 +21,7 @@ import {
   vec2,
   vec3,
 } from 'three/tsl';
+import type { Camera } from 'three/webgpu';
 import {
   DataTexture,
   DataUtils,
@@ -37,6 +38,7 @@ import {
 import type { TierSettings } from '../quality/tiers';
 import type { GridMeta } from './heights';
 import { glitterCarry, glitterPower, type LightUniforms } from './light';
+import { MEADOW_LAYER } from './meadow';
 import type { WorldPart } from './part';
 
 /** Six analytic ripples: direction x, direction z, amplitude, frequency (the slice's). */
@@ -64,6 +66,17 @@ export function heightTexture(q: Uint16Array, m: GridMeta): DataTexture {
 export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms, tier: TierSettings): WorldPart {
   const reflection = reflector({ resolutionScale: tier.reflect });
   reflection.target.rotateX(-Math.PI / 2);
+  // The mirror's camera is a clone of the eye's, made on first use: it leaves out the cove's plants (MEADOW_LAYER),
+  // whose cost the mirror would double for blades it barely shows (plan M3 Task 1).
+  const base = (reflection as unknown as { reflector?: { getVirtualCamera(c: Camera): Camera } }).reflector;
+  if (base) {
+    const own = base.getVirtualCamera.bind(base);
+    base.getVirtualCamera = (c: Camera) => {
+      const v = own(c);
+      v.layers.disable(MEADOW_LAYER);
+      return v;
+    };
+  }
   const chop = uniform(1);
   const glitterPow = uniform(glitterPower(0.55));
   /** how far the glitter's facets have drifted along the wind, metres (three.js x, z; light.ts glitterCarry) */
