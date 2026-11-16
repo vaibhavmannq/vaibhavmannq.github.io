@@ -21,6 +21,8 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   stacks: ARCH_SEEN_FROM, // the stacks are seen with the arch (STACKS_SEEN_FROM aliases it)
   cliffs: COVE_SEEN_FROM,
   grove: COVE_SEEN_FROM,
+  lanterns: new Set(['dusk']),
+  shallows: new Set(['firstlight', 'sunrise']),
 };
 
 /** Pure: the order to compile and add `names`, opening at `stop`. Ties keep the given order; unknown names go last. */

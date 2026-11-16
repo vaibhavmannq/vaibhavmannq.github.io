@@ -13,6 +13,7 @@ import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../
 import { SHOTS } from '../journey/shots';
 import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsOpen } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
+import { loadThread, saveThread } from '../journey/thread';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
 import { installHud } from '../overlay/hud';
@@ -34,6 +35,7 @@ import { createDressing, decodeDressing } from '../world/dressing';
 import { createGrove, decodeGrove } from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
+import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, MEADOW_LAYER } from '../world/meadow';
 import type { WorldFrame, WorldPart } from '../world/part';
@@ -388,7 +390,43 @@ export async function boot(): Promise<App> {
   // Both are compiled before they join, so opening anywhere else they never compile mid-flight (final review M7).
   const lantern = createLantern();
   const glints = createSpotGlints(SPOTS);
-  const nearReady = Promise.all([compileThenAdd(app, lantern, 'lantern'), compileThenAdd(app, glints, 'spots')]);
+  // The lantern thread (plan M3 Task 5): the lantern claimed at Golden drifts among Dusk's and rests in First light's
+  // shallows. Kept for this visit (sessionStorage; the accessor itself can throw in a locked-down browser).
+  const store = (() => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const thread = loadThread(store);
+  const duskLanterns = createDuskLanterns();
+  const [fl, sr] = [STOP_IDS.indexOf('firstlight'), STOP_IDS.indexOf('sunrise')];
+  const shallows = createLantern({
+    at: SHALLOWS_AT,
+    inPlay: (s) =>
+      thread.claimed &&
+      ((s.kind === 'stop' && (s.a === fl || s.a === sr)) ||
+        (s.kind === 'flight' && ((s.b === fl && s.t > 0.5) || s.a === fl || (s.a === sr && s.t < 0.5)))),
+    // dim at First light; at Sunrise the sun takes over
+    level: (s) => (s.kind === 'stop' ? (s.a === sr ? 0.3 : 0.6) : s.a === fl && s.b === sr ? 0.6 - 0.3 * s.t : 0.6),
+  });
+  const claimLantern = () => {
+    lantern.claim();
+    thread.claimed = true;
+    saveThread(store, thread);
+    duskLanterns.setMine(true);
+  };
+  if (thread.claimed) {
+    lantern.claim();
+    duskLanterns.setMine(true);
+  }
+  const nearReady = Promise.all([
+    compileThenAdd(app, lantern, 'lantern'),
+    compileThenAdd(app, glints, 'spots'),
+    compileThenAdd(app, duskLanterns, 'lanterns'),
+    compileThenAdd(app, shallows, 'shallows'),
+  ]);
   const goldenCam = STOPS[0]?.cam ?? [0, 0, 0];
   /** ruling R3: the lantern is the nearest thing in Golden's view, so the parallax slides it ~3 % of the width */
   const lanternNear = Math.hypot(LANTERN_AT[0] - goldenCam[0], LANTERN_AT[1] - goldenCam[1]);
@@ -429,7 +467,7 @@ export async function boot(): Promise<App> {
       }
     if (lantern.object.visible) {
       const [lx, ly, lz] = toScreen(lantern.centre);
-      if (lz < 1 && Math.hypot(lx - x, ly - y) < 60) return lantern.claim();
+      if (lz < 1 && Math.hypot(lx - x, ly - y) < 60) return claimLantern();
     }
     endWalk();
   };

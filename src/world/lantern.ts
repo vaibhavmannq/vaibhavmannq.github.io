@@ -18,9 +18,11 @@ import {
   Group,
   Mesh,
   MeshBasicNodeMaterial,
+  type Node,
   PlaneGeometry,
   type Vector3,
 } from 'three/webgpu';
+import type { FrameState } from '../journey/timeline';
 import { toThree, type Vec3 } from '../journey/types';
 import type { WorldPart } from './part';
 
@@ -50,29 +52,53 @@ export interface Lantern extends WorldPart {
   readonly claimed: boolean;
 }
 
-export function createLantern(at: Vec3 = LANTERN_AT): Lantern {
-  const glow = uniform(1);
-  // Paper lit from inside, brightest at the bottom where the candle is (owner video 4); a thin dark frame at the edges.
-  const y = positionLocal.y.div(PAPER.h).add(0.5);
-  // candle light through paper (reference book §7: ~1 900 K, deep orange); kept under the grade's shoulder so it
-  // stays amber instead of bleaching to cream; the top is paler and dimmer, farther from the flame
-  const warm = mix(vec3(1.0, 0.42, 0.1).mul(1.15), vec3(0.85, 0.5, 0.24).mul(0.5), smoothstep(0.05, 1.0, y));
-  const edge = max(
-    step(PAPER.w / 2 - 0.012, abs(positionLocal.x)).mul(step(PAPER.w / 2 - 0.012, abs(positionLocal.z))),
-    step(PAPER.h / 2 - 0.01, abs(positionLocal.y)),
-  );
-  // the candle shows through each face as a soft hot spot low in the middle; paper fibres break up the flat colour
-  const side = abs(positionLocal.x)
-    .min(abs(positionLocal.z))
-    .div(PAPER.w / 2); // 0 mid-face … 1 at the corner
-  const spot = float(1)
-    .sub(smoothstep(0.0, 0.9, vec3(side, y.sub(0.25).mul(1.6), 0).length()))
-    .mul(0.9);
-  const fibres = mx_noise_float(positionLocal.mul(vec3(90, 14, 90)))
-    .mul(0.08)
+type N3 = Node<'vec3'>;
+type N1 = Node<'float'>;
+
+/**
+ * The paper look, shared by every lantern (owner `lanterns` video 4, frames 0.5–9.2 s; m3-cove-references "Lanterns"):
+ * the paper is pale cream, almost white, at the top and orange only low down where the candle is; the candle shows
+ * as a soft hot spot low on each face; the edges are soft (a little dimmer), never a dark frame; paper fibres break
+ * up the flat colour. `p` is the position from the paper box's centre; w, h its width and height (m).
+ * s11–s13: "reads as a box" meant too saturated and too even, with a hard dark frame.
+ */
+export function paperLook(p: N3, w: number, h: number, glow: N1 | number): N3 {
+  const y = p.y.div(h).add(0.5); // 0 at the bottom, 1 at the top
+  const orange = vec3(1.0, 0.42, 0.1).mul(1.25); // candle light through paper (reference book §7: ~1 900 K)
+  const cream = vec3(1.0, 0.86, 0.66).mul(0.78);
+  const tint = mix(orange, cream, smoothstep(0.0, 0.75, y));
+  const side = abs(p.x)
+    .min(abs(p.z))
+    .div(w / 2); // 0 mid-face … 1 at a corner
+  const spot = float(1).sub(smoothstep(0.0, 0.95, vec3(side, y.sub(0.2).mul(1.4), 0).length()));
+  const edge = float(1)
+    .sub(smoothstep(0.72, 1.0, side).mul(0.3))
+    .sub(smoothstep(0.9, 1.0, abs(y.mul(2).sub(1))).mul(0.25));
+  const fibres = mx_noise_float(p.mul(vec3(90, 14, 90)))
+    .mul(0.06)
     .add(1);
+  return tint.mul(spot.mul(0.65).add(0.55)).mul(edge).mul(fibres).mul(glow) as unknown as N3;
+}
+
+export interface LanternOptions {
+  /** where it stands (coast axes; z its foot) */
+  at?: Vec3;
+  /** whether it is drawn in this frame (default: at Golden and the first 60 % of the flight away) */
+  inPlay?: (s: FrameState) => boolean;
+  /** its brightness in this frame (default 1) */
+  level?: (s: FrameState) => number;
+}
+
+const atGolden = (s: FrameState) => s.a === 0 && (s.kind === 'stop' || s.t < 0.6);
+
+export function createLantern(opts: LanternOptions = {}): Lantern {
+  const at = opts.at ?? LANTERN_AT;
+  const inPlay = opts.inPlay ?? atGolden;
+  const level = opts.level ?? (() => 1);
+  const glow = uniform(1);
+  const centreY = FLOAT_H + PAPER.h / 2;
   const paperMat = new MeshBasicNodeMaterial();
-  paperMat.colorNode = mix(warm.mul(spot.add(0.55)).mul(fibres).mul(glow), vec3(0.09, 0.05, 0.03), edge);
+  paperMat.colorNode = paperLook(positionLocal, PAPER.w, PAPER.h, glow);
   const paper = new Mesh(new BoxGeometry(PAPER.w, PAPER.h, PAPER.w), paperMat);
   paper.position.y = FLOAT_H + PAPER.h / 2;
 
@@ -104,7 +130,7 @@ export function createLantern(at: Vec3 = LANTERN_AT): Lantern {
   const [x, h, z] = toThree(at);
   group.position.set(x, h + 0.004, z);
   group.visible = false;
-  const centre = group.position.clone().setY(h + FLOAT_H + PAPER.h / 2);
+  const centre = group.position.clone().setY(h + centreY);
 
   let hover = 0;
   let wantHover = false;
@@ -123,10 +149,10 @@ export function createLantern(at: Vec3 = LANTERN_AT): Lantern {
     },
     update(f) {
       const s = f.state;
-      group.visible = s.a === 0 && (s.kind === 'stop' || s.t < 0.6);
+      group.visible = inPlay(s);
       if (!group.visible) return;
       hover += ((wantHover || claimed ? 1 : 0) - hover) * (1 - Math.exp(-6 * f.dtS));
-      glow.value = lanternFlicker(f.timeS, f.hour.world.beaufort) * (1 + 0.6 * hover);
+      glow.value = lanternFlicker(f.timeS, f.hour.world.beaufort) * (1 + 0.6 * hover) * level(s);
       // stranded on the wet sand: it rocks a little as the film of water moves under it, and turns very slowly
       body.rotation.z = 0.012 * Math.sin(2 * Math.PI * 0.23 * f.timeS);
       body.rotation.x = 0.008 * Math.sin(2 * Math.PI * 0.31 * f.timeS + 1.1);
