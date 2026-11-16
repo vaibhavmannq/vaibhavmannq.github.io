@@ -233,14 +233,14 @@ def test_arch():
     assert flat > 0.2 and wall_ > 0.2, (flat, wall_)
 
 
-def read_rock(key):
+def read_rock(key, pack="headland"):
     """A rock part in the headland pack (arch.bin, stacks.bin: export_parts.py `_rock_bin`): Int16 positions (coast
     axes around the meta's x, y at sea level, 1/scale m), Int16 column coordinates, the baked light and the moss as
     one byte per vertex each (padded to 4 bytes), then the triangles (Uint16 or Uint32: meta indexBytes)."""
     if key not in meta:
         sys.exit(f"base.json has no {key}: run `npm run world:blender` (needs Blender) and commit the result")
     m = meta[key]
-    assert m["file"] == f"stops/headland/{key}.bin", m["file"]        # ruling R15: rocks live in the place pack
+    assert m["file"] == f"stops/{pack}/{key}.bin", m["file"]          # ruling R15: rocks live in the place pack
     buf = open(need(os.path.join(BASE, "..", *m["file"].split("/"))), "rb").read()
     P = np.frombuffer(buf, "<i2", m["verts"] * 3, 0).reshape(-1, 3) / m["scale"]
     off = m["verts"] * 6
@@ -358,11 +358,132 @@ def test_stacks():
     return report
 
 
+def test_leaf_cards():
+    """M3 Task 2: leaf cards from a leaf cloud (foliage.py): about `target` cards, deterministic, and every bent
+    normal points out of the crown's dome (front-lit crowns read round: spec §9.7)."""
+    sys.path.insert(0, os.path.join(HERE, "blender"))
+    from foliage import leaf_cards, crown_centre
+    rng = np.random.default_rng(5)
+    d = rng.normal(size=(40_000, 3)); d /= np.linalg.norm(d, axis=1, keepdims=True)
+    P = d * rng.uniform(1.6, 2.0, (len(d), 1)) * np.array([1.0, 1.0, 0.8]) + np.array([0.0, 0.0, 3.0])
+    N = rng.normal(size=P.shape)
+    corners, bent, own, cen, depth = leaf_cards(P, N, 500, 7)
+    assert 300 <= len(corners) <= 500, len(corners)
+    again = leaf_cards(P, N, 500, 7)
+    assert all(np.array_equal(a, b) for a, b in zip((corners, bent, own, cen, depth), again))
+    C = corners.mean(1)
+    out = C - crown_centre(P)
+    out /= np.linalg.norm(out, axis=1, keepdims=True)
+    assert ((bent * out).sum(1) > 0.3).mean() > 0.97, ((bent * out).sum(1) > 0.3).mean()
+    assert (bent[:, 2] > -0.8).all()                                          # never straight down: no dark underside
+    assert ((bent * own).sum(1) > 0).all()                                    # its own facing on the dome's side
+    side = np.linalg.norm(corners[:, 1] - corners[:, 0], axis=1)
+    assert np.allclose(side, np.linalg.norm(corners[:, 3] - corners[:, 0], axis=1))
+    assert 0.0 <= depth.min() and depth.max() == 1.0
+
+
+def cove_pack_bytes():
+    pack = os.path.join(BASE, "..", "stops", "cove")
+    return sum(os.path.getsize(os.path.join(pack, f)) for f in os.listdir(pack))
+
+
+def test_cove_cliffs():
+    """M3 Task 2: the cliff columns at Golden (x ~ 22) and Sunrise (x ~ -102) from coast.py cliff_rocks, in the cove
+    pack, one mesh in the shared rock material: every column there at its height, standing in the ground."""
+    import coastlib
+    c = coastlib.load("bluehour")
+    m, P, light, moss, T = read_rock("cliffs", "cove")
+    assert T.max() < len(P) and m["tris"] <= 60_000, m["tris"]
+    W = P + np.array([m["x"], m["y"], 0.0])
+    sys.path.insert(0, os.path.join(HERE, "blender"))
+    from export_parts import cliff_columns, live_ground, CLIFF_CLEAR
+    at = live_ground(BASE)
+    cols = [t[2:] for t in cliff_columns(c.SHOTS, at)]
+    assert len(cols) == 24
+    # no column top just pokes out of the turf (s14: a moss blob seen from the land)
+    assert all(h - at(x, y) >= CLIFF_CLEAR or h < at(x, y) for (x, y, r, h, lean) in cols)
+    # each vertex belongs to the column whose axis is nearest (in its own radii)
+    rel = np.stack([np.hypot(W[:, 0] - x - lean * h * np.clip(W[:, 2] / h, 0, 1) ** 2, W[:, 1] - y) / r for (x, y, r, h, lean) in cols])
+    own = rel.argmin(0)
+    assert rel.min(0).max() < 2.5, rel.min(0).max()                         # nothing outside the columns
+    assert W[:, 2].max() <= 1.35 * max(h for (_, _, _, h, _) in cols) + 1.0, W[:, 2].max()
+    for i, (x, y, r, h, lean) in enumerate(cols):
+        mine = own == i
+        assert mine.sum() > 100, (x, y, mine.sum())
+        top = W[mine, 2].max()                     # (neighbours overlap into a wall: a taller one may own its top)
+        assert 0.75 * h <= top, (x, y, h, top)
+        assert W[mine, 2].min() < float(c.ground(x, y)) - 1.0, (x, y)        # no floating foot
+    assert light.min() < 120 and light.max() > 200, (light.min(), light.max())
+    assert cove_pack_bytes() <= 3.1e6, cove_pack_bytes()                   # D30: 5 MB per place, the headland's 1.9 MB in
+
+
+def read_grove():
+    """grove.bin (export_parts.py export_cove): the instances, then each model's wood and cards; see grove.ts."""
+    if "grove" not in meta:
+        sys.exit("base.json has no grove: run `npm run world:blender` (needs Blender) and commit the result")
+    m = meta["grove"]
+    assert m["file"] == "stops/cove/grove.bin", m["file"]
+    buf = open(need(os.path.join(BASE, "..", *m["file"].split("/"))), "rb").read()
+    inst = np.frombuffer(buf, "<f4", m["instances"] * 10, 0).reshape(-1, 10); off = inst.nbytes
+    protos = []
+    for pm in m["protos"]:
+        wv, wt, nc = pm["woodVerts"], pm["woodTris"], pm["cards"]
+        wp = np.frombuffer(buf, "<i2", wv * 3, off).reshape(-1, 3) / m["scale"]; off += wv * 6; off += -off % 4
+        wn = np.frombuffer(buf, np.uint8, wv * 4, off).reshape(-1, 4)[:, :3] / 127.5 - 1; off += wv * 4
+        wtri = np.frombuffer(buf, "<u2", wt * 3, off).reshape(-1, 3); off += wt * 6; off += -off % 4
+        cp = np.frombuffer(buf, "<i2", nc * 12, off).reshape(-1, 4, 3) / m["scale"]; off += nc * 24
+        cb = np.frombuffer(buf, np.uint8, nc * 16, off).reshape(-1, 4, 4); off += nc * 16
+        protos.append(dict(meta=pm, wood=wp, woodN=wn, woodT=wtri.astype(np.int64), cards=cp,
+                           bent=cb[:, :, :3] / 127.5 - 1, ao=cb[:, 0, 3] / 255))
+    assert off == len(buf), (off, len(buf))
+    return m, inst, protos
+
+
+def test_grove():
+    """M3 Task 2: the cove's trees and shrubs (coast.py grove_plants) in the cove pack: each Poly Haven model as
+    simplified wood (<= 3 k triangles) and leaf cards (<= 600), every plant where the renders put it, standing on the
+    ground, and the cards' bent normals pointing out of their crown."""
+    import coastlib
+    sys.path.insert(0, os.path.join(HERE, "blender"))
+    from foliage import crown_centre
+    c = coastlib.load("bluehour")
+    m, inst, protos = read_grove()
+    plants = c.grove_plants()
+    assert [p["kind"] for p in m["protos"]] == list(c.GROVE_KINDS)
+    assert len(inst) == len(plants) >= 40, len(inst)
+    for row, p in zip(inst, plants):
+        assert c.GROVE_KINDS[int(row[0])] == p["kind"]
+        assert np.allclose(row[1:4], (p["x"], p["y"], p["z"]), atol=0.01), (row[1:4], p)
+        assert abs(row[3] - float(c.ground(p["x"], p["y"]))) <= 0.3, (p, float(c.ground(p["x"], p["y"])))
+        assert np.allclose(row[4:7], p["scale"], atol=1e-4) and np.allclose(row[7:10], p["rot"], atol=1e-4)
+    for pr in protos:
+        pm = pr["meta"]
+        assert pm["woodTris"] <= 3000 and 100 <= pm["cards"] <= 600, pm
+        assert np.abs(np.linalg.norm(pr["bent"], axis=2) - 1).max() < 0.03
+        assert pr["cards"][:, :, 2].max() > 1.0                                      # the crown above the root
+        if pm["kind"].startswith("island_tree"):                                     # a trunk (the shrub's twigs: none)
+            assert pm["woodTris"] >= 1000 and pr["woodT"].max() < len(pr["wood"]) == pm["woodVerts"]
+            assert np.abs(np.linalg.norm(pr["woodN"], axis=1) - 1).max() < 0.03
+            assert pr["wood"][:, 2].min() < 0.2                                      # stands on its origin
+        if pm["kind"].startswith("island_tree"):                                     # one crown each
+            C = pr["cards"].mean(1)
+            out = C - crown_centre(C)
+            out /= np.linalg.norm(out, axis=1, keepdims=True)
+            share = ((pr["bent"][:, 0] * out).sum(1) > 0).mean()
+            assert share > 0.9, (pm["kind"], share)
+    assert cove_pack_bytes() <= 3.1e6, cove_pack_bytes()
+
+
 if __name__ == "__main__":
     test_canonical_tris()
     test_aurora()
     test_cave()
     test_arch()
     stacks = test_stacks()
+    test_leaf_cards()
+    test_cove_cliffs()
+    test_grove()
     print("ok parts: aurora", meta["aurora"], "cave", {k: meta["cave"][k] for k in ("shellVerts", "shellTris", "floorVerts", "fungi")},
-          "arch", {k: meta["arch"][k] for k in ("verts", "tris")}, "stacks", {k: meta["stacks"][k] for k in ("verts", "tris")}, stacks)
+          "arch", {k: meta["arch"][k] for k in ("verts", "tris")}, "stacks", {k: meta["stacks"][k] for k in ("verts", "tris")}, stacks,
+          "cliffs", {k: meta["cliffs"][k] for k in ("verts", "tris")},
+          "grove", [(p["kind"], p["woodTris"], p["cards"]) for p in meta["grove"]["protos"]], "cove pack", cove_pack_bytes())

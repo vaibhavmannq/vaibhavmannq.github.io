@@ -58,6 +58,18 @@ export interface ArchMeta {
 /** The headland stacks (export_parts.py `export_stacks`): stacks.bin has arch.bin's layout, around the line's middle. */
 export type StacksMeta = ArchMeta;
 
+/** The cove's cliff columns (export_parts.py `export_cliffs`): cliffs.bin has arch.bin's layout, around their middle. */
+export type CliffsMeta = ArchMeta;
+
+/** The cove's trees and shrubs (export_parts.py `export_grove`): the counts that lay out grove.bin (src/world/grove.ts). */
+export interface GroveMeta {
+  file: string;
+  /** Int16 units per metre in a model's own frame. */
+  scale: number;
+  instances: number;
+  protos: { kind: string; woodVerts: number; woodTris: number; cards: number }[];
+}
+
 export interface Manifest {
   version: 1;
   base: {
@@ -68,6 +80,8 @@ export interface Manifest {
     cave?: CaveMeta;
     arch?: ArchMeta;
     stacks?: StacksMeta;
+    cliffs?: CliffsMeta;
+    grove?: GroveMeta;
   };
   skies: Partial<Record<StopId, SkyAmbient & { file: string }>>;
   files: FileEntry[];

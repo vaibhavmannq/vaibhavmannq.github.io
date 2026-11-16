@@ -1,0 +1,383 @@
+import {
+  attribute,
+  cameraPosition,
+  dot,
+  float,
+  mix,
+  normalize,
+  positionLocal,
+  positionWorld,
+  pow,
+  saturate,
+  sin,
+  texture,
+  time,
+  uniform,
+  uv,
+  varying,
+  vec3,
+} from 'three/tsl';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  CanvasTexture,
+  DoubleSide,
+  Mesh,
+  MeshBasicNodeMaterial,
+  NoColorSpace,
+  Vector2,
+} from 'three/webgpu';
+import type { GroveMeta } from '../assets/manifest';
+import type { TierSettings } from '../quality/tiers';
+import { mulberry32 } from '../shared/random';
+import { coveInPlay } from './cliffs';
+import type { HeightAt } from './heights';
+import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
+import type { WorldPart } from './part';
+
+/** One model's simplified wood and leaf cards, in its own frame (coast axes: x east, y north, z up; metres). */
+export interface GroveProto {
+  woodPos: Float32Array;
+  woodNrm: Float32Array;
+  woodIndex: Uint16Array;
+  /** four corners per card */
+  cardPos: Float32Array;
+  /** per corner: the bent normal (foliage.py leaf_cards) */
+  cardBent: Float32Array;
+  /** per card: 0 at its crown's middle, 1 at the crown's edge */
+  cardDepth: Float32Array;
+}
+
+export interface Grove {
+  /** 10 floats per plant: model, x, y, z (coast axes), scale x, y, z, turn x, y, z (radians, Blender XYZ) */
+  instances: Float32Array;
+  protos: GroveProto[];
+}
+
+/** Reads grove.bin (layout: tools/world/blender/export_parts.py export_grove). */
+export function decodeGrove(buf: ArrayBuffer, meta: GroveMeta): Grove {
+  let off = 0;
+  const instances = new Float32Array(buf, 0, meta.instances * 10).slice();
+  off += meta.instances * 40;
+  const pad4 = () => {
+    off += (4 - (off % 4)) % 4;
+  };
+  const i16 = (n: number) => {
+    const a = new Int16Array(buf, off, n);
+    off += n * 2;
+    return Float32Array.from(a, (v) => v / meta.scale);
+  };
+  const u8 = (n: number) => {
+    const a = new Uint8Array(buf, off, n);
+    off += n;
+    return a;
+  };
+  const protos = meta.protos.map((p) => {
+    const woodPos = i16(p.woodVerts * 3);
+    pad4();
+    const wn = u8(p.woodVerts * 4);
+    const woodNrm = new Float32Array(p.woodVerts * 3);
+    for (let i = 0; i < p.woodVerts; i++)
+      for (let j = 0; j < 3; j++) woodNrm[i * 3 + j] = (wn[i * 4 + j] as number) / 127.5 - 1;
+    const woodIndex = new Uint16Array(buf, off, p.woodTris * 3).slice();
+    off += p.woodTris * 6;
+    pad4();
+    const cardPos = i16(p.cards * 12);
+    const cb = u8(p.cards * 16);
+    const cardBent = new Float32Array(p.cards * 12);
+    const cardDepth = new Float32Array(p.cards);
+    for (let v = 0; v < p.cards * 4; v++)
+      for (let j = 0; j < 3; j++) cardBent[v * 3 + j] = (cb[v * 4 + j] as number) / 127.5 - 1;
+    for (let c = 0; c < p.cards; c++) cardDepth[c] = (cb[c * 16 + 3] as number) / 255;
+    return { woodPos, woodNrm, woodIndex, cardPos, cardBent, cardDepth };
+  });
+  if (off !== buf.byteLength) throw new Error(`grove.bin: read ${off} of ${buf.byteLength} bytes`);
+  return { instances, protos };
+}
+
+type V3 = [number, number, number];
+
+/** The linear part of plant `i`'s placement: Blender's object matrix R = Rz·Ry·Rx, times its scale. */
+function linear(inst: Float32Array, i: number, inverseScale: boolean): number[] {
+  const o = i * 10;
+  const s = [inst[o + 4], inst[o + 5], inst[o + 6]].map((v) => (inverseScale ? 1 / (v as number) : (v as number)));
+  const [a, b, c] = [inst[o + 7] ?? 0, inst[o + 8] ?? 0, inst[o + 9] ?? 0];
+  const [ca, sa, cb, sb, cc, sc] = [Math.cos(a), Math.sin(a), Math.cos(b), Math.sin(b), Math.cos(c), Math.sin(c)];
+  // Rz·Ry·Rx, row-major
+  const R = [
+    cc * cb,
+    cc * sb * sa - sc * ca,
+    cc * sb * ca + sc * sa,
+    sc * cb,
+    sc * sb * sa + cc * ca,
+    sc * sb * ca - cc * sa,
+    -sb,
+    cb * sa,
+    cb * ca,
+  ];
+  return R.map((v, k) => v * (s[k % 3] as number));
+}
+
+const apply = (L: number[], p: ArrayLike<number>): V3 => [
+  (L[0] as number) * (p[0] as number) + (L[1] as number) * (p[1] as number) + (L[2] as number) * (p[2] as number),
+  (L[3] as number) * (p[0] as number) + (L[4] as number) * (p[1] as number) + (L[5] as number) * (p[2] as number),
+  (L[6] as number) * (p[0] as number) + (L[7] as number) * (p[1] as number) + (L[8] as number) * (p[2] as number),
+];
+
+/** Pure: a point of plant `i`'s model, placed in coast axes (as Blender places the object). */
+export function placePoint(inst: Float32Array, i: number, p: ArrayLike<number>): V3 {
+  const q = apply(linear(inst, i, false), p);
+  return [q[0] + (inst[i * 10 + 1] ?? 0), q[1] + (inst[i * 10 + 2] ?? 0), q[2] + (inst[i * 10 + 3] ?? 0)];
+}
+
+/**
+ * Pure: where a plant's root goes on the live ground (model 3: the shrub). The export stands it on coast.py's ground
+ * formula less its sink, but the live height field is an 8 m grid: on a rim it lies up to 4.6 m above the formula
+ * (s14), and the meadow and the terrain follow the grid. So the root follows the grid, sunk as in the renders; a plant
+ * whose grid ground is under GROVE_MIN_GROUND (two at the plateau's edge, where the grid drops to the sea) is left out.
+ */
+/** The meadow's rule (scatter.ts, coast.py build_grass): nothing grows below 0.8 m above the sea. */
+export const GROVE_MIN_GROUND = 0.8;
+
+export function rootZ(kind: number, ground: number): number | null {
+  if (ground < GROVE_MIN_GROUND) return null;
+  return ground - (kind === 3 ? 0.12 : 0.25);
+}
+
+export interface GroveGeometry {
+  /** three.js axes */
+  position: Float32Array;
+  normal: Float32Array;
+  uv: Float32Array;
+  /** per vertex: leaf (0 wood, 1 card), depth in the crown, sway (0..1, more at the top), phase */
+  aux: Float32Array;
+  /** wood triangles first, then the cards in a fixed random order (a tier draws a prefix of them) */
+  index: Uint32Array;
+  woodIndexCount: number;
+  /** per tree (not the shrubs): its card vertices' range, for tests */
+  crowns: [number, number][];
+  /** the plants drawn (index into the instances) */
+  kept: number[];
+}
+
+/** Pure: every plant of the grove placed on the live ground, in one geometry (one draw). */
+export function bakeGrove(grove: Grove, groundAt: HeightAt): GroveGeometry {
+  const n = grove.instances.length / 10;
+  let nv = 0;
+  const kept: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const kind = grove.instances[i * 10] ?? 0;
+    if (rootZ(kind, groundAt(grove.instances[i * 10 + 1] ?? 0, grove.instances[i * 10 + 2] ?? 0)) === null) continue;
+    const p = grove.protos[kind] as GroveProto;
+    nv += p.woodPos.length / 3 + p.cardPos.length / 3;
+    kept.push(i);
+  }
+  const position = new Float32Array(nv * 3);
+  const normal = new Float32Array(nv * 3);
+  const uvs = new Float32Array(nv * 2);
+  const aux = new Float32Array(nv * 4);
+  const wood: number[] = [];
+  const cards: { rank: number; v: number }[] = [];
+  const crowns: [number, number][] = [];
+  const r = mulberry32(2026);
+  let v = 0;
+  const put = (pp: V3, nn: V3) => {
+    // coast (x, y, z) → three (x, z, −y)
+    position.set([pp[0], pp[2], -pp[1]], v * 3);
+    const l = Math.hypot(...nn) || 1;
+    normal.set([nn[0] / l, nn[2] / l, -nn[1] / l], v * 3);
+  };
+  for (const i of kept) {
+    const kind = grove.instances[i * 10] ?? 0;
+    const p = grove.protos[kind] as GroveProto;
+    const inst = grove.instances.slice(i * 10, i * 10 + 10);
+    inst[3] = rootZ(kind, groundAt(inst[1] ?? 0, inst[2] ?? 0)) ?? 0;
+    const N = linear(inst, 0, true);
+    const w0 = v;
+    for (let k = 0; k < p.woodPos.length / 3; k++) {
+      put(placePoint(inst, 0, p.woodPos.subarray(k * 3, k * 3 + 3)), apply(N, p.woodNrm.subarray(k * 3, k * 3 + 3)));
+      v++;
+    }
+    for (const k of p.woodIndex) wood.push(w0 + k);
+    let top = 1e-6;
+    for (let k = 2; k < p.cardPos.length; k += 3) top = Math.max(top, p.cardPos[k] as number);
+    const c0 = v;
+    const shrub = kind === 3;
+    for (let c = 0; c < p.cardPos.length / 12; c++) {
+      const flip = r() < 0.5;
+      const phase = r() * 2 * Math.PI;
+      for (let k = 0; k < 4; k++) {
+        const m = p.cardPos.subarray((c * 4 + k) * 3, (c * 4 + k) * 3 + 3);
+        put(placePoint(inst, 0, m), apply(N, p.cardBent.subarray((c * 4 + k) * 3, (c * 4 + k) * 3 + 3)));
+        // the atlas: island-tree leaves on the left half, the shrub's on the right; half the cards mirrored
+        const u = k === 1 || k === 2 ? 1 : 0;
+        uvs.set([((flip ? 1 - u : u) + (shrub ? 1 : 0)) * 0.5, k >= 2 ? 1 : 0], v * 2);
+        aux.set([1, p.cardDepth[c] ?? 1, Math.min(1, Math.max(0, (m[2] as number) / top)), phase], v * 4);
+        v++;
+      }
+      cards.push({ rank: r(), v: c0 + c * 4 });
+    }
+    if (!shrub) crowns.push([c0, v]);
+  }
+  cards.sort((a, b) => a.rank - b.rank);
+  const index = new Uint32Array(wood.length + cards.length * 6);
+  index.set(wood);
+  let k = wood.length;
+  for (const { v: c } of cards) {
+    index.set([c, c + 1, c + 2, c, c + 2, c + 3], k);
+    k += 6;
+  }
+  return { position, normal, uv: uvs, aux, index, woodIndexCount: wood.length, crowns, kept };
+}
+
+/** Pure: how many indices to draw for a tier's share of the leaf cards (the wood always). */
+export function drawCount(g: Pick<GroveGeometry, 'index' | 'woodIndexCount'>, share: number): number {
+  const cards = (g.index.length - g.woodIndexCount) / 6;
+  return g.woodIndexCount + Math.round(cards * Math.min(1, Math.max(0, share))) * 6;
+}
+
+/**
+ * The leaf atlas, drawn in the browser (no download): two cells of leaf clumps on clear ground, the island trees'
+ * broad pointed leaves (Poly Haven island_tree leaves) on the left, the shrub's small narrow ones on the right. The
+ * colours are brightness only (the material tints them), so one atlas serves every tree.
+ */
+function leafAtlas(): CanvasTexture {
+  const W = 512;
+  const H = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const g = canvas.getContext('2d') as CanvasRenderingContext2D;
+  const r = mulberry32(31);
+  // a clump is a few sprigs (twig tips) at random inside the cell, each a tuft of leaves round its tip, so the clump's
+  // outline is lumpy and its middle full (one ring of leaves per card read as rings across a crown, s14)
+  const clump = (x0: number, sprigs: number, per: number, len: number, wid: number) => {
+    for (let k = 0; k < sprigs; k++) {
+      const sa = r() * 2 * Math.PI;
+      const sd = 62 * Math.sqrt(r());
+      const sx = x0 + 128 + Math.cos(sa) * sd;
+      const sy = 128 + Math.sin(sa) * sd;
+      for (let i = 0; i < per; i++) {
+        const a = r() * 2 * Math.PI;
+        const d = 34 * Math.sqrt(r());
+        const l = len * (0.7 + 0.5 * r());
+        const w = wid * (0.7 + 0.5 * r());
+        const v = 150 + Math.floor(105 * r());
+        const yel = Math.floor(30 * (r() - 0.3));
+        g.save();
+        g.translate(sx + Math.cos(a) * d * 0.6, sy + Math.sin(a) * d * 0.6);
+        g.rotate(a + (r() - 0.5) * 1.6);
+        g.fillStyle = `rgb(${Math.min(255, v + yel)},${v},${Math.max(0, v - 2 * yel - 20)})`;
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.quadraticCurveTo(l * 0.45, -w, l, 0);
+        g.quadraticCurveTo(l * 0.45, w, 0, 0);
+        g.fill();
+        g.restore();
+      }
+    }
+  };
+  clump(0, 7, 26, 30, 8); // ~12 cm leaves on a ~1.3 m card (Poly Haven island_tree leaves: 8-15 cm)
+  clump(256, 8, 30, 20, 4);
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = NoColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+/** Leaf colours (linear; Poly Haven island_tree leaves: mean of the leaf texels (0.116, 0.135, 0.014), made greener for
+ * the coast's dark olive crowns (owner cove-and-stacks 6, 12); the shrub darker). Bark: a dark grey-brown. */
+const LEAF: V3 = [0.095, 0.125, 0.032];
+const SHRUB: V3 = [0.065, 0.09, 0.035];
+const BARK: V3 = [0.055, 0.045, 0.036];
+
+/**
+ * The cove's trees and shrubs (plan M3 Task 2): the old tree with its grove, the scrub along the terrace rim, the left
+ * headland's trees and Sunrise's shrubs, placed as the renders place them (coast.py grove_plants). One geometry, one
+ * material, one draw: wood (lit by its own normals) and leaf cards lit by bent normals, so a front-lit crown reads as
+ * one round volume (spec §9.7); the light is worked out per vertex, as the meadow's is, so the back-face flip never
+ * enters. Twigs move in the wind, trunks never (reference book §2: force 0–1 leaves tremble; §8). Drawn in the mirror.
+ */
+export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUniforms): WorldPart {
+  const g = bakeGrove(grove, groundAt);
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(g.position, 3));
+  geometry.setAttribute('normal', new BufferAttribute(g.normal, 3));
+  geometry.setAttribute('uv', new BufferAttribute(g.uv, 2));
+  geometry.setAttribute('aux', new BufferAttribute(g.aux, 4));
+  geometry.setIndex(new BufferAttribute(g.index, 1));
+  geometry.computeBoundingSphere();
+
+  const amp = uniform(0.02);
+  const windTo = uniform(new Vector2(0, 1));
+  const aux = attribute('aux', 'vec4');
+  const leaf = aux.x;
+  const depth = aux.y;
+  const N = normalize(attribute('normal', 'vec3'));
+  // twigs: each card sways as one, more near the top, along the wind with a little across it
+  const sway = sin(time.mul(2 * Math.PI * 0.7).add(aux.w))
+    .mul(amp)
+    .mul(aux.z)
+    .mul(leaf);
+  const flutter = sin(time.mul(2 * Math.PI * 2.1).add(aux.w.mul(3)))
+    .mul(amp.mul(0.35))
+    .mul(leaf);
+  const material = new MeshBasicNodeMaterial({ side: DoubleSide });
+  material.positionNode = positionLocal.add(vec3(windTo.x.mul(sway), flutter, windTo.y.mul(sway)));
+
+  // light per vertex (as meadow.ts): the key on the (bent) normal, the fill opposite it, the sky and ground bounce
+  const fillDir = normalize(vec3(light.keyDir.x.negate(), 0.6, light.keyDir.z.negate()));
+  const hemi = mix(light.ambGround, light.ambSky, N.y.mul(0.5).add(0.5)).mul(HEMI_INTENSITY);
+  const irradiance = light.keyColor
+    .mul(light.keyStrength)
+    .mul(saturate(dot(N, light.keyDir)))
+    .add(light.ambSky.mul(light.keyStrength.mul(FILL_SHARE).add(0.3)).mul(saturate(dot(N, fillDir))))
+    .add(hemi)
+    .mul(1 / Math.PI);
+  const shade = mix(float(1), mix(float(0.45), float(1), depth), leaf); // inner leaves sit in the crown's own shade
+  const leafCol = mix(vec3(...LEAF), vec3(...SHRUB), saturate(uv().x.sub(0.5).mul(1000)));
+  const albedo = mix(vec3(...BARK), leafCol, leaf);
+  // light through the leaves at the crown's edge when the sun is behind it (reference book §8)
+  const toSun = saturate(dot(normalize(positionWorld.sub(cameraPosition)), light.keyDir));
+  // forward scattering: only near the sun, only at the crown's edge
+  const through = pow(toSun, 14.0).mul(depth.mul(depth)).mul(leaf);
+  const glow = light.keyColor
+    .mul(light.keyStrength)
+    .mul(vec3(0.5, 0.6, 0.12))
+    .mul(through)
+    .mul(0.22);
+  const lit = varying(albedo.mul(irradiance).mul(shade).add(glow));
+  const tex = typeof document === 'undefined' ? null : leafAtlas();
+  if (tex) {
+    const t = texture(tex, uv());
+    material.colorNode = lit.mul(mix(vec3(1), t.rgb, leaf));
+    material.opacityNode = mix(float(1), t.a, leaf);
+    material.alphaTest = 0.35; // low enough that a far crown's averaged (mipmapped) alpha still stands
+  } else {
+    material.colorNode = lit;
+  }
+
+  const mesh = new Mesh(geometry, material);
+  mesh.frustumCulled = true;
+  mesh.visible = false;
+  return {
+    object: mesh,
+    update(f) {
+      mesh.visible = coveInPlay(f.state);
+      if (!mesh.visible) return;
+      const w = f.hour.world;
+      // reference book §2: force 0–1 leaves tremble (2 cm), force 3 leaves and twigs in constant motion (~12 cm)
+      amp.value = 0.02 + 0.035 * Math.max(0, w.beaufort);
+      const az = (w.windAz * Math.PI) / 180;
+      windTo.value.set(-Math.sin(az), Math.cos(az));
+    },
+    setTier(t: TierSettings) {
+      geometry.setDrawRange(0, drawCount(g, t.leaves));
+    },
+    dispose() {
+      geometry.dispose();
+      material.dispose();
+      tex?.dispose();
+    },
+  };
+}

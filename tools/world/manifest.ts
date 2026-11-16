@@ -8,6 +8,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FileEntry, Manifest } from '../../src/assets/manifest.ts';
 import { STOP_IDS, type StopId } from '../../src/journey/types.ts';
+import { COVE_PACK, COVE_SEEN_FROM } from '../../src/world/cove.ts';
 import { ARCH_SEEN_FROM, HEADLAND_PACK } from '../../src/world/headland.ts';
 
 const world = fileURLToPath(new URL('../../public/world/', import.meta.url));
@@ -29,6 +30,8 @@ function stopsOf(path: string): StopId[] | 'all' {
   if (path.startsWith('base/')) return 'all';
   // the headland's place pack (ruling R15): counted against the stops that see the arch, not the world base
   if (path.startsWith(HEADLAND_PACK)) return STOP_IDS.filter((s) => ARCH_SEEN_FROM.has(s));
+  // the cove's place pack (M3 Task 2): the cove's five stops
+  if (path.startsWith(COVE_PACK)) return STOP_IDS.filter((s) => COVE_SEEN_FROM.has(s));
   throw new Error(`no stop rule for ${path}`);
 }
 
@@ -59,6 +62,8 @@ const manifest: Manifest = {
     cave: base.cave,
     arch: base.arch,
     stacks: base.stacks,
+    cliffs: base.cliffs,
+    grove: base.grove,
   },
   skies,
   files,

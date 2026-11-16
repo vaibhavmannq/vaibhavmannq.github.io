@@ -58,5 +58,45 @@
   "scale": 100,
   "x": -1124.9,
   "y": 1311.3
+ },
+ "cliffs": {
+  "file": "stops/cove/cliffs.bin",
+  "verts": 23977,
+  "tris": 47039,
+  "indexBytes": 2,
+  "scale": 100,
+  "x": -42.1,
+  "y": 40.8
+ },
+ "grove": {
+  "file": "stops/cove/grove.bin",
+  "scale": 4000,
+  "instances": 43,
+  "protos": [
+   {
+    "kind": "island_tree_01",
+    "woodVerts": 1891,
+    "woodTris": 2425,
+    "cards": 500
+   },
+   {
+    "kind": "island_tree_02",
+    "woodVerts": 1779,
+    "woodTris": 2425,
+    "cards": 500
+   },
+   {
+    "kind": "island_tree_03",
+    "woodVerts": 1772,
+    "woodTris": 2425,
+    "cards": 500
+   },
+   {
+    "kind": "searsia_burchellii",
+    "woodVerts": 0,
+    "woodTris": 0,
+    "cards": 600
+   }
+  ]
  }
 }

@@ -56,6 +56,46 @@
    "scale": 100,
    "x": -1124.9,
    "y": 1311.3
+  },
+  "cliffs": {
+   "file": "stops/cove/cliffs.bin",
+   "verts": 23977,
+   "tris": 47039,
+   "indexBytes": 2,
+   "scale": 100,
+   "x": -42.1,
+   "y": 40.8
+  },
+  "grove": {
+   "file": "stops/cove/grove.bin",
+   "scale": 4000,
+   "instances": 43,
+   "protos": [
+    {
+     "kind": "island_tree_01",
+     "woodVerts": 1891,
+     "woodTris": 2425,
+     "cards": 500
+    },
+    {
+     "kind": "island_tree_02",
+     "woodVerts": 1779,
+     "woodTris": 2425,
+     "cards": 500
+    },
+    {
+     "kind": "island_tree_03",
+     "woodVerts": 1772,
+     "woodTris": 2425,
+     "cards": 500
+    },
+    {
+     "kind": "searsia_burchellii",
+     "woodVerts": 0,
+     "woodTris": 0,
+     "cards": 600
+    }
+   ]
   }
  },
  "skies": {
@@ -188,7 +228,7 @@
   {
    "path": "base/cave.bin",
    "bytes": 197530,
-   "sha256": "fa4efd8ac680464f11cb6c7fafd3d9bd707d06ba41b0fc9010b6048262716282",
+   "sha256": "273a213ac645b74da1ee9e46315049802a31a3bddaf3b9a70be73e712e5309d2",
    "stage": "B",
    "stops": "all"
   },
@@ -389,6 +429,32 @@
    "stage": "B",
    "stops": [
     "sunset"
+   ]
+  },
+  {
+   "path": "stops/cove/cliffs.bin",
+   "bytes": 569958,
+   "sha256": "d687f1e3905c123b870ef5f72edd3b55beb43af0ee4df78cc74b34464fe1e64d",
+   "stage": "B",
+   "stops": [
+    "golden",
+    "sunset",
+    "dusk",
+    "firstlight",
+    "sunrise"
+   ]
+  },
+  {
+   "path": "stops/cove/grove.bin",
+   "bytes": 183800,
+   "sha256": "b39c9125650a313ba7c2ccd2b608a9517e8273b8da46487609ded98798e19432",
+   "stage": "B",
+   "stops": [
+    "golden",
+    "sunset",
+    "dusk",
+    "firstlight",
+    "sunrise"
    ]
   },
   {

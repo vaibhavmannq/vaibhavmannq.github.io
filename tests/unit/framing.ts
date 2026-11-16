@@ -35,6 +35,8 @@ export function framing(
   pts: [number, number, number][],
   inPlay: (state: FrameState) => boolean,
   perFlight = 300,
+  /** only points nearer than this (m) count: farther, the distant dressing stands in */
+  reach = Number.POSITIVE_INFINITY,
 ): { seen: Set<string>; missing: string[] } {
   const cave = SHOTS.beforedawn.cave;
   const rad = (d: number) => (d * Math.PI) / 180;
@@ -65,7 +67,7 @@ export function framing(
         const frames = pts.some(([x, y, z]) => {
           const d = [x - cx, y - cy, z - cz] as const;
           const f = d[0] * fwd[0] + d[1] * fwd[1] + d[2] * fwd[2];
-          if (f <= 1) return false;
+          if (f <= 1 || f > reach) return false;
           const h = (d[0] * right[0] + d[1] * right[1]) / f;
           const v = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / f;
           if (Math.abs(h) > th || Math.abs(v) > tv) return false;

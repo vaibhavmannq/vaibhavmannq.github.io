@@ -28,8 +28,10 @@ import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { createCave, decodeCave } from '../world/cave';
+import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { createDressing, decodeDressing } from '../world/dressing';
+import { createGrove, decodeGrove } from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
@@ -130,6 +132,8 @@ async function loadBase(
   const caveMeta = app.manifest.base.cave;
   const archMeta = app.manifest.base.arch;
   const stacksMeta = app.manifest.base.stacks;
+  const cliffsMeta = app.manifest.base.cliffs;
+  const groveMeta = app.manifest.base.grove;
   const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
@@ -178,16 +182,33 @@ async function loadBase(
     const part = byName.get(name);
     return part ? compileThenAdd(app, part, name) : Promise.resolve();
   };
-  // The headland pack (the arch and the stacks, 1.9 MB of rock) is fetched after the base, so the ground and sea
-  // never wait for it, and a failed download costs only the rock (final review I1). One material for every rock
-  // part (D13).
+  // The headland pack (the arch and the stacks, 1.9 MB of rock) and the cove pack (its cliffs and grove, 0.7 MB) are
+  // fetched after the base, so the ground and sea never wait for them, and a failed download costs only that pack
+  // (final review I1). One material for every rock part (D13).
+  const rock = createRockMaterial();
+  const surfaceAt = createSurfaceSampler(heights, meta.heights);
+  const coveReady = (async () => {
+    try {
+      const [cliffsBuf, groveBuf] = await Promise.all([
+        cliffsMeta ? fetchBinary(cliffsMeta.file) : null,
+        groveMeta ? fetchBinary(groveMeta.file) : null,
+      ]);
+      const joins: Promise<void>[] = [];
+      if (cliffsMeta && cliffsBuf)
+        joins.push(compileThenAdd(app, createCliffs(decodeCliffs(cliffsBuf, cliffsMeta), cliffsMeta, rock), 'cliffs'));
+      if (groveMeta && groveBuf)
+        joins.push(compileThenAdd(app, createGrove(decodeGrove(groveBuf, groveMeta), surfaceAt, light), 'grove'));
+      await Promise.all(joins);
+    } catch (error) {
+      console.warn('the cove pack failed to load', error);
+    }
+  })();
   const rockReady = (async () => {
     try {
       const [archBuf, stacksBuf] = await Promise.all([
         archMeta ? fetchBinary(archMeta.file) : null,
         stacksMeta ? fetchBinary(stacksMeta.file) : null,
       ]);
-      const rock = createRockMaterial();
       const joins: Promise<void>[] = [];
       if (archMeta && archBuf)
         joins.push(compileThenAdd(app, createArch(decodeArch(archBuf, archMeta), archMeta, rock), 'arch'));
@@ -204,7 +225,7 @@ async function loadBase(
   const here = order.filter((n) => PART_STOPS[n]?.has(stop));
   await Promise.all(here.map(join));
   await Promise.all(order.filter((n) => !here.includes(n)).map(join));
-  await rockReady;
+  await Promise.all([rockReady, coveReady]);
 }
 
 /** Starts the site: the name is already on screen (index.html); the world fades in under it when ready. */

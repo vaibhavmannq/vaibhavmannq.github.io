@@ -791,6 +791,64 @@ def stack_rings(k, step=0.5):
     zs = sorted(set([float(z) for z in np.arange(base, k["H"], step)] + [float(z) for z in np.arange(-1.2, 2.1, 0.15) if base < z < k["H"]] + [k["H"]]))
     return zs
 
+# ---------------- the cove's grove (M3 Task 2): trees and scrub as pure data, for the renders and the site's cove pack ----------------
+# Spots around the old tree (TREE): dx, dy, size, turn (deg), lean (deg). Clusters, not a row: the old tree with two companions
+# behind it, a pair at the far end, one leaning loner, scrub between (size < 1: a Poly Haven searsia shrub).
+GROVE_SPOTS = ((-6, 7, 2.1, 40, 4), (8.7, 16.2, 1.7, 120, -6), (-14, 15, 1.3, 250, 7),
+               (-40, 4, 1.9, 300, -5), (-46, 12, 1.4, 80, 9),
+               (30, 9, 1.6, 20, -4),
+               (-55, -5, 1.7, 60, -8), (-60, -8, 1.2, 330, 6), (-34, -3, 1.5, 15, 3), (-64, -2, 0.7, 200, 0), (-58, -9, 0.6, 100, 0),
+               (-22, 2, 0.6, 10, 0), (-50, -3, 0.55, 140, 0), (16, -2, 0.6, 260, 0), (-3, -4, 0.5, 330, 0), (24, 14, 0.55, 90, 0))
+# Wind-bent trees and scrub on the left headland's top, set back from its cliff edge: x, y, size, turn, lean, kind.
+LGROVE_SPOTS = ((-109, 50, 2.4, 300, 10, "island_tree_02"), (-108, 66, 2.0, 140, 12, "tree"), (-110, 75, 1.5, 80, 6, "island_tree_03"), (-106, 58, 0.7, 10, 0, "searsia_burchellii"),
+                (-114, 58, 1.6, 30, 8, "island_tree_02"), (-119, 66, 1.2, 200, 6, "island_tree_03"), (-125, 52, 0.7, 0, 0, "searsia_burchellii"),
+                (-113, 88, 1.9, 110, 9, "tree"), (-118, 96, 1.3, 260, 4, "island_tree_02"), (-112, 80, 0.6, 50, 0, "searsia_burchellii"),
+                (-117, 114, 1.5, 300, 5, "island_tree_03"), (-113, 106, 0.55, 140, 0, "searsia_burchellii"), (-126, 80, 0.8, 20, 0, "searsia_burchellii"),
+                (-112, 40, 0.6, 90, 0, "searsia_burchellii"), (-118, 34, 1.4, 70, 7, "island_tree_02"), (-123, 22, 1.1, 160, 3, "tree"))
+COVE_HOURS = ("golden", "sunset", "dusk", "firstlight", "sunrise")
+GROVE_KINDS = ("island_tree_01", "island_tree_02", "island_tree_03", "searsia_burchellii")
+
+def grove_plants():
+    """Every tree and shrub of the cove, in coast axes: dicts with kind (GROVE_KINDS; "island_tree_01" is the old tree's
+    model), x, y, z (the model's origin: the ground less its sink), scale (x, y, z), rot (radians, Blender XYZ) and group
+    (tree: the old tree; grove: around it; rim: scrub along the terrace rim; lgrove: the left headland; props: Sunrise's
+    shrubs). The renders' build_grove, build_lgrove and build_props place these; the site's cove pack exports them
+    (export_parts.py export_cove). Each stands on the ground formula (the renders' surface_z, without Blender)."""
+    out = []
+    def put(kind, x, y, sink, scale, rot_deg, group):
+        out.append(dict(kind=kind, x=float(x), y=float(y), z=float(ground(x, y)) - sink, scale=tuple(float(v) for v in scale),
+                        rot=tuple(math.radians(float(a)) for a in rot_deg), group=group))
+    tx, ty, _ = TREE
+    put("island_tree_01", tx, ty, 0.25, (2.3,) * 3, (0, 0, 200), "tree")
+    rr_ = np.random.default_rng(8)
+    kinds = ("island_tree_02", None, "island_tree_03")
+    for k, (dx, dy, s, rz, lean) in enumerate(GROVE_SPOTS):
+        x, y = tx + dx, ty + dy
+        if s < 1.0:
+            put("searsia_burchellii", x, y, 0.1, (s * 3.2,) * 3, (0, 0, rz), "grove"); continue
+        kd = kinds[k % 3]
+        if kd:
+            sc = s * rr_.uniform(1.8, 2.6); put(kd, x, y, 0.25, (sc,) * 3, (lean, rr_.uniform(-4, 4), rz), "grove"); continue
+        sq = rr_.uniform(0.85, 1.2); s = s * 1.25                                                # wider or narrower crowns
+        sc = (s * sq, s / sq, s * (0.75 if s < 1 else rr_.uniform(0.7, 1.35)))
+        put("island_tree_01", x, y, 0.25, sc, (lean, rr_.uniform(-4, 4), rz), "grove")
+    cams = [SHOTS[h]["cam"][:2] for h in COVE_HOURS]
+    rr2 = np.random.default_rng(44)
+    for x in np.arange(-40.0, 24.0, 4.5):
+        if rr2.random() < 0.3: continue
+        y = 137.0 + rr2.uniform(-1.0, 2.5); x = x + rr2.uniform(-1.5, 1.5)
+        if float(ground(x, y)) < 12.0 or min(math.hypot(x - cx, y - cy) for cx, cy in cams) < 10.0: continue   # never in front of a lens
+        put("searsia_burchellii", x, y, 0.15, (rr2.uniform(1.4, 2.6),) * 3, (0, 0, rr2.uniform(0, 360)), "rim")
+    rr3 = np.random.default_rng(31)
+    for x, y, s, rz, lean, kd in LGROVE_SPOTS:
+        if float(ground(x, y)) < 4.0: continue
+        if kd == "searsia_burchellii": put(kd, x, y, 0.1, (s * 3.2,) * 3, (0, 0, rz), "lgrove"); continue
+        if kd == "tree": put("island_tree_01", x, y, 0.25, (s * 1.25,) * 3, (lean, 0, rz), "lgrove"); continue
+        sc = s * rr3.uniform(1.8, 2.4); put(kd, x, y, 0.25, (sc,) * 3, (lean, rr3.uniform(-4, 4), rz), "lgrove")
+    for kd, x, y, s_, rz, lean in SHOTS["sunrise"].get("props", ()):
+        put(kd, x, y, 0.2, (s_,) * 3, (lean, 0, rz), "props")
+    return out
+
 # ---------------- render setup ----------------
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scn = bpy.context.scene
@@ -2127,57 +2185,29 @@ def build_frame_tree():
     c = TREE_OBJ.copy(); scn.collection.objects.link(c); c.location = (x, y, surface_z(x, y) - 0.3); c.scale = (s, s, s); c.rotation_euler[2] = math.radians(rz)
     log("frame tree at", round(x, 1), round(y, 1))
 
-def build_grove():
-    # a small wind-bent grove around the old tree: a few trees of different sizes, low bushes between them
-    if TREE_OBJ is None: return
-    tx, ty, _ = TREE
-    # clusters, not a row: the old tree with two companions behind it, a pair at the far end, one leaning loner, scrub between
-    spots = ((-6, 7, 2.1, 40, 4), (8.7, 16.2, 1.7, 120, -6), (-14, 15, 1.3, 250, 7),          # around the old tree
-             (-40, 4, 1.9, 300, -5), (-46, 12, 1.4, 80, 9),                               # the pair near the far end
-             (30, 9, 1.6, 20, -4),
-             (-55, -5, 1.7, 60, -8), (-60, -8, 1.2, 330, 6), (-34, -3, 1.5, 15, 3), (-64, -2, 0.7, 200, 0), (-58, -9, 0.6, 100, 0),
-             (-22, 2, 0.6, 10, 0), (-50, -3, 0.55, 140, 0), (16, -2, 0.6, 260, 0), (-3, -4, 0.5, 330, 0), (24, 14, 0.55, 90, 0))
-    rr_ = np.random.default_rng(8)
-    kinds = ("island_tree_02", None, "island_tree_03")
-    for k, (dx, dy, s, rz, lean) in enumerate(spots):
-        x, y = tx + dx, ty + dy
-        if s < 1.0:                                                   # scrub: a real shrub model
-            place_model("searsia_burchellii", x, y, surface_z(x, y) - 0.1, s * 3.2, rz); continue
-        kd = kinds[k % 3]
-        if kd:
-            place_model(kd, x, y, surface_z(x, y) - 0.25, s * rr_.uniform(1.8, 2.6), rz, (lean, rr_.uniform(-4, 4))); continue
+def place_plant(p_):
+    """One of grove_plants() in the scene: the old tree's own object copied, or a Poly Haven model placed."""
+    if p_["kind"] == "island_tree_01":
+        if TREE_OBJ is None: return
         c = TREE_OBJ.copy(); scn.collection.objects.link(c)
-        sq = rr_.uniform(0.85, 1.2)                                                       # wider or narrower crowns
-        s = s * 1.25; c.location = (x, y, surface_z(x, y) - 0.25); c.scale = (s * sq, s / sq, s * (0.75 if s < 1 else rr_.uniform(0.7, 1.35)))
-        c.rotation_euler = (math.radians(lean), math.radians(rr_.uniform(-4, 4)), math.radians(rz))
-    rr2 = np.random.default_rng(44); nr_ = 0
-    for x in np.arange(-40.0, 24.0, 4.5):
-        if rr2.random() < 0.3: continue
-        y = 137.0 + rr2.uniform(-1.0, 2.5); x = x + rr2.uniform(-1.5, 1.5)
-        z = surface_z(x, y)
-        if z < 12.0 or math.hypot(x - CX, y - CY) < 10.0: continue     # never right in front of a lens on the rim
-        place_model("searsia_burchellii", x, y, z - 0.15, rr2.uniform(1.4, 2.6), rr2.uniform(0, 360)); nr_ += 1
-    log("grove", len(spots), "rim scrub", nr_)
+    else:
+        c = place_model(p_["kind"], p_["x"], p_["y"], p_["z"], 1.0, 0.0)
+    c.location = (p_["x"], p_["y"], p_["z"]); c.scale = p_["scale"]; c.rotation_euler = p_["rot"]
+
+def build_grove():
+    # a small wind-bent grove around the old tree, and scrub along the terrace rim (grove_plants: pure data, shared with
+    # the site's cove pack)
+    if TREE_OBJ is None: return
+    ps = [p_ for p_ in grove_plants() if p_["group"] in ("grove", "rim")]
+    for p_ in ps: place_plant(p_)
+    log("grove", len(ps))
 
 def build_lgrove():
     # wind-bent trees and scrub on the left headland's top, set back from its cliff edge
     if TREE_OBJ is None: return
-    spots = ((-109, 50, 2.4, 300, 10, "island_tree_02"), (-108, 66, 2.0, 140, 12, "tree"), (-110, 75, 1.5, 80, 6, "island_tree_03"), (-106, 58, 0.7, 10, 0, "searsia_burchellii"),
-             (-114, 58, 1.6, 30, 8, "island_tree_02"), (-119, 66, 1.2, 200, 6, "island_tree_03"), (-125, 52, 0.7, 0, 0, "searsia_burchellii"),
-             (-113, 88, 1.9, 110, 9, "tree"), (-118, 96, 1.3, 260, 4, "island_tree_02"), (-112, 80, 0.6, 50, 0, "searsia_burchellii"),
-             (-117, 114, 1.5, 300, 5, "island_tree_03"), (-113, 106, 0.55, 140, 0, "searsia_burchellii"), (-126, 80, 0.8, 20, 0, "searsia_burchellii"),
-             (-112, 40, 0.6, 90, 0, "searsia_burchellii"), (-118, 34, 1.4, 70, 7, "island_tree_02"), (-123, 22, 1.1, 160, 3, "tree"))
-    rr_ = np.random.default_rng(31); n = 0
-    for x, y, s, rz, lean, kd in spots:
-        z = surface_z(x, y)
-        if z < 4.0: continue
-        n += 1
-        if kd == "searsia_burchellii": place_model(kd, x, y, z - 0.1, s * 3.2, rz); continue
-        if kd == "tree":
-            c = TREE_OBJ.copy(); scn.collection.objects.link(c); c.location = (x, y, z - 0.25); c.scale = (s * 1.25,) * 3
-            c.rotation_euler = (math.radians(lean), 0.0, math.radians(rz)); continue
-        place_model(kd, x, y, z - 0.25, s * rr_.uniform(1.8, 2.4), rz, (lean, rr_.uniform(-4, 4)))
-    log("left grove", n)
+    ps = [p_ for p_ in grove_plants() if p_["group"] == "lgrove"]
+    for p_ in ps: place_plant(p_)
+    log("left grove", len(ps))
 
 def build_caps():
     cfg = S.get("caps")
@@ -2198,7 +2228,10 @@ def build_caps():
     log("caps", n)
 
 def build_props():
-    for kd, x, y, s_, rz, lean in S.get("props", ()):
+    if HOUR == "sunrise":                                                # Sunrise's shrubs: grove_plants (the site has them too)
+        for p_ in grove_plants():
+            if p_["group"] == "props": place_plant(p_)
+    for kd, x, y, s_, rz, lean in (S.get("props", ()) if HOUR != "sunrise" else ()):
         place_model(kd, x, y, surface_z(x, y) - 0.2, s_, rz, (lean, 0.0))
     if S.get("props"): log("props", len(S["props"]))
 

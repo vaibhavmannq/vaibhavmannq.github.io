@@ -13,12 +13,14 @@ export interface TierSettings {
   bloom: boolean;
   /** Share of the cove's plants drawn (spec §13: grass density). */
   grass: number;
+  /** Share of the grove's leaf cards drawn (spec §13: leaf-card density; plan M3 Task 2). */
+  leaves: number;
 }
 
 export const TIERS: Readonly<Record<Tier, TierSettings>> = {
-  0: { scale: 0.5, reflect: 0.25, bloom: false, grass: 0.4 },
-  1: { scale: 0.75, reflect: 0.35, bloom: true, grass: 0.7 },
-  2: { scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0 },
+  0: { scale: 0.5, reflect: 0.25, bloom: false, grass: 0.4, leaves: 0.8 },
+  1: { scale: 0.75, reflect: 0.35, bloom: true, grass: 0.7, leaves: 1.0 },
+  2: { scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0 },
 };
 
 export interface DeviceHints {
