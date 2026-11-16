@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-16, end of session s13 (M3 started: plan, plants, new cameras at II and III; see `docs/handover/sessions/2026-11-16-s13-m3-plan-plants-cameras.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-16, end of session s14 (M3: cliffs, grove, Dusk's lanterns, the thread; see `docs/handover/sessions/2026-11-16-s14-m3-grove-cliffs-lanterns.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-16, after s13)
+## 2. Where we are (2026-11-16, after s14)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -125,15 +125,26 @@ no borrowed set pieces (no towers, piano, etc.).
   - Phone not measured.
   - My looks: plants 68 %, Sunset 62 %, Dusk 35 %. **No cove place near 85 % yet:** the slab, the trees and the
     lanterns decide them.
-- **Next (s14):** M3 Task 2, the cliff columns and the grove (Blender export, a cove pack), then Task 5 (Dusk's
-  lanterns and the thread), Task 3 (mist), Tasks 6–8. The exact first step is in the s13 session log.
-  - Still open: R38 (mirror first-build hitch, fold into M6); `?cams=old` not built; mid at the cove stops;
-    stage-B pop-in (M8); headland pack fetched at every start.
+- **s14 (2026-11-16): M3 Tasks 2 and 5 done, inline, on `world`, not pushed (482ccce, eb1154b).**
+  - **Task 2:** a cove place pack `public/world/stops/cove/` (0.75 MB): the 24 cliff columns at Golden and Sunrise
+    and the grove (43 Poly Haven trees and shrubs as wood plus leaf cards with bent normals), exported by
+    `npm run world:blender` (now also runs Golden hour). The grove is pure data in coast.py (`grove_plants`).
+  - **Task 5:** Dusk's 44 lanterns (strings, lit one by one on arrival, drifting, with streaks), one paper look for
+    every lantern, and the lantern thread (claim at Golden → Dusk → First light's shallows; sessionStorage).
+  - **D32:** things on land follow the live 8 m height grid, which lies 2–5 m under coast.py's formula along the rims.
+  - My looks: Golden 64 %, Sunset 68 %, Dusk 58 %, First light 55 %, Sunrise 70 %. **Still no place at 85 %.**
+  - Low: 56–60 fps at the cove stops on the warm laptop; cliffs and grove cost 2–5 ms of GPU. Mid is over budget at
+    Dusk and Sunrise with or without them. **Phone not measured** in s13 or s14.
+  - `horizon.spec.ts` (e2e) fails on clean HEAD too: pre-existing, open.
+- **Next (s15):** M3 Task 3 (First light's mist), then Task 6 (life), Task 7 (spots), Task 8 (costs, phone, verdicts,
+  owner page). The exact first step is in the s14 session log.
+  - Still open: R38 (mirror first-build hitch, M6); `?cams=old` not built; mid at the cove stops; stage-B pop-in
+    (M8); the headland and cove packs fetched at every start; Sunset wants one clean tree as its subject.
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
     before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); `.superpowers/m2/phone.mjs`
     drives the open `localhost:4181` tab (the phone's browser is Brave).
-  - Measuring tools: `.superpowers/m25/*.mjs` (s11–s13; s13 added `ab-meadow.mjs`, `laptop-m3.mjs`) and
-    `.superpowers/m3/tools/`.
+  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/` (s14: `thread-shots.mjs`, `ab-cove.mjs`,
+    `ab-lanterns.mjs`, `laptop-4181.mjs`; `sheet.py` for contact sheets).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.

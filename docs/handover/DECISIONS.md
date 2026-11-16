@@ -195,3 +195,9 @@ plan is `docs/superpowers/plans/2026-11-16-m3-the-cove.md`. Its calls:
 
 Why: Amendment 1 §4 and D22. The before views are kept as shots in `.superpowers/m3/`. A live switch back is still
 owed.
+
+**D32 · 2026-11-16 · (my calls, s14; owner told in chat) The cove gets its own place pack, and things on the land
+stand on the live height grid.** `public/world/stops/cove/` holds the cliff columns and the grove (0.75 MB), counted
+against the five cove stops. Plants and rocks follow the site's 8 m grid where it differs from coast.py's formula
+(2–5 m along the rims): six of 43 plants are left out where the grid is sea (R43), and cliff columns whose tops would
+just poke through the turf are lowered (R47). The thread is kept per visit in sessionStorage. Ledger: R43–R52.
