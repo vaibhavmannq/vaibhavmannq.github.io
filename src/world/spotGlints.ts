@@ -32,10 +32,11 @@ export function createSpotGlints(spots: readonly SpotPath[]): SpotGlints {
     const p = toThree(glintAt(spot));
     const sprite = new Sprite(material);
     sprite.position.set(...p);
-    // a glint farther than Golden's few metres keeps about the same size on screen
-    const end = spot.points[0] ?? [0, 0, 0];
-    const far = Math.hypot(p[0] - end[0], p[2] + end[1]);
-    sprite.scale.setScalar(0.22 * Math.max(1, far / 6));
+    // Golden's two keep the size the owner has seen; elsewhere a glint is as big on screen as one 6 m off at Golden
+    // (Sunset's is 2 m from the eye, First light's 18 m)
+    const eye = spot.points[0] ?? [0, 0, 0];
+    const far = Math.hypot(p[0] - eye[0], p[2] + eye[1]);
+    sprite.scale.setScalar(spot.stop === 'golden' ? 0.22 : (0.22 * far) / 6);
     sprite.userData.stop = stopIndex(spot.stop);
     group.add(sprite);
     return { spot, position: new Vector3(...p), sprite };
