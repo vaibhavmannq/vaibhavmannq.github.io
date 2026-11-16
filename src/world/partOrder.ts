@@ -13,6 +13,7 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   sea: EVERYWHERE,
   dressing: EVERYWHERE,
   meadow: new Set(['golden', 'sunset', 'dusk', 'firstlight', 'sunrise']),
+  life: new Set(['golden', 'sunset', 'dusk', 'firstlight', 'sunrise']),
   aurora: new Set(['night', 'midnight']),
   falls: new Set(['night']),
   cloud: new Set(['midnight']),

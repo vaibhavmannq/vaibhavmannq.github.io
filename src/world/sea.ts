@@ -37,6 +37,7 @@ import {
 } from 'three/webgpu';
 import type { TierSettings } from '../quality/tiers';
 import type { GridMeta } from './heights';
+import { fishRing, RING_SPEED } from './life';
 import { glitterCarry, glitterPower, type LightUniforms } from './light';
 import { MEADOW_LAYER } from './meadow';
 import type { WorldPart } from './part';
@@ -111,6 +112,19 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
     gx = gx.add(c.mul(dx));
     gz = gz.add(c.mul(dz));
   }
+  // First light's fish ring (plan M3 Task 6, life.ts; reference book §3, §10): one ring and no splash, spreading at
+  // RING_SPEED, a few ripples wide, gone within seconds. It tilts the facets, so it shows as a ring broken in the mirror.
+  const rd = p.sub(fishRing.at);
+  const rl = rd.length().max(0.001);
+  const off = rl.sub(fishRing.age.mul(RING_SPEED));
+  const ringSlope = cos(off.mul((2 * Math.PI) / 0.5))
+    .mul(exp(off.div(0.6).pow(2).negate()))
+    .mul(exp(fishRing.age.div(-2.2)))
+    .mul(smoothstep(0, 0.3, fishRing.age))
+    .mul(fishRing.amp)
+    .mul(1.6);
+  gx = gx.add(rd.x.div(rl).mul(ringSlope));
+  gz = gz.add(rd.y.div(rl).mul(ringSlope));
   const toCam = cameraPosition.sub(positionWorld);
   const dist = toCam.length();
   const flatten = smoothstep(450.0, 25.0, dist);

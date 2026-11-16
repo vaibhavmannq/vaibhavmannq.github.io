@@ -36,6 +36,7 @@ import { createGrove, decodeGrove } from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
+import { createLife } from '../world/life';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, MEADOW_LAYER } from '../world/meadow';
 import { createMist } from '../world/mist';
@@ -129,6 +130,7 @@ async function loadBase(
   auroraActive: boolean,
   /** the stop the visitor is at when stage B starts: its parts compile first (plan M2.5 Task 8) */
   opening: () => StopId,
+  reducedMotion: boolean,
 ): Promise<void> {
   const dressingMeta = app.manifest.base.dressing;
   const auroraMeta = app.manifest.base.aurora;
@@ -166,6 +168,8 @@ async function loadBase(
   ];
   // The cove's grass and flowers (plan M3 Task 1): made here from the base heights, no download.
   parts.push(['meadow', createMeadow(scatterCove(createSurfaceSampler(heights, meta.heights)), light)]);
+  // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
+  parts.push(['life', createLife(light, createSurfaceSampler(heights, meta.heights), reducedMotion)]);
   if (dressingMeta && dressingBuf) {
     const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
     parts.push(['dressing', createDressing(instances, heightAt)]);
@@ -672,7 +676,7 @@ export async function boot(): Promise<App> {
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
     const opening = (): StopId =>
       STOP_IDS[last ? (last.kind === 'stop' || last.t < 0.5 ? last.a : last.b) : 0] ?? 'golden';
-    app.stageB = loadBase(app, sky, light, params.auroraActive, opening)
+    app.stageB = loadBase(app, sky, light, params.auroraActive, opening, caps.reducedMotion)
       .then(() => governor.reset(app.tier, performance.now()))
       .catch((error: unknown) => console.warn('world base failed to load', error));
   }
