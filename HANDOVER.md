@@ -109,7 +109,7 @@ no borrowed set pieces (no towers, piano, etc.).
   flight stutter traced: GPU headroom on mid at 1080p in Dusk→Blue hour and Night→Midnight (15–21 ms/frame without
   the rock; rock adds 2–7 ms near Blue hour; A/B 7 vs 5.5 stutters/flight) → scene cost for M4/M6, not fixed.
 - **Next (s13):** (1) the owner's hands-on test (list in the s12 log; the plain URL now shows the live world);
-  (2) M3, after a stable arch.bin triangulation (2 MB churn per Blender run); (3) a visitor's flight with the
+  (2) M3 (Blender exports are now byte-stable: the churn was cave.bin's triangle order, fixed in s12); (3) a visitor's flight with the
   governor on. Phone setup that works: serve `vite preview --host
   127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
   (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab

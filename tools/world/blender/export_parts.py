@@ -35,6 +35,16 @@ MOSS_ABOVE = 8.0              # and never lower than this: no moss in the spray
 SEA_BOUNCE = 0.3              # what a ray that leaves downward brings back from the sea and the flats (they mirror the sky dimly)
 
 
+def canonical_tris(T):
+    """Triangles in one fixed order: each starts at its smallest corner (the winding kept), then rows sorted. Blender
+    hands out an evaluated mesh's loop triangles in a different order on every run (cave.bin churned, s12); this makes a
+    re-export with no change byte-identical."""
+    T = np.asarray(T, np.int64).reshape(-1, 3)
+    k = np.argmin(T, axis=1)
+    R = np.stack([T[np.arange(len(T)), (k + i) % 3] for i in range(3)], axis=1)
+    return R[np.lexsort((R[:, 2], R[:, 1], R[:, 0]))]
+
+
 def _meta(folder, **keys):
     path = os.path.join(folder, "base.json")
     meta = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
@@ -84,7 +94,7 @@ def export_cave(g, folder):
     opn = np.zeros(len(me.vertices), np.float32); cave.data.attributes["open"].data.foreach_get("value", opn)
     T = np.array([tuple(t.vertices) for t in me.loop_triangles], np.int64)
     tri_open = opn[T]
-    shell_tris = T[~np.all(tri_open > HOLE, axis=1)]
+    shell_tris = canonical_tris(T[~np.all(tri_open > HOLE, axis=1)])
     solid = T[~np.all(tri_open > 0.0, axis=1)]                                  # what blocks light: rock, not the hole
     bvh = BVHTree.FromPolygons([Vector(v) for v in V], [tuple(int(i) for i in t) for t in solid])
 

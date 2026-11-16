@@ -11,6 +11,12 @@ shots = json.load(open(os.path.join(ROOT, "src", "journey", "shots.json"), encod
 meta = json.load(open(os.path.join(BASE, "base.json"), encoding="utf-8"))
 
 
+def canonical_order(T):
+    sys.path.insert(0, os.path.join(HERE, "blender"))
+    from export_parts import canonical_tris
+    return canonical_tris(np.asarray(T, np.int64))
+
+
 def need(path):
     if not os.path.exists(path):
         sys.exit(f"missing {path}: run `npm run world:blender` (needs Blender) and commit the result")
@@ -57,8 +63,25 @@ def read_cave():
     return m, cave, shell, opn, light, floor, flight, fungi, frad, stris, ftris
 
 
+def test_canonical_tris():
+    """Blender hands out an evaluated mesh's triangles in a different order on every run; the files list them in one
+    order (each from its smallest corner, winding kept, then sorted), so a re-export with no change is byte-identical."""
+    sys.path.insert(0, os.path.join(HERE, "blender"))
+    from export_parts import canonical_tris
+    rng = np.random.default_rng(1)
+    T = rng.integers(0, 500, (300, 3))
+    shuffled = np.roll(T[rng.permutation(len(T))], 1, axis=1)          # another order, each triangle rotated
+    assert (canonical_tris(shuffled) == canonical_tris(T)).all()
+    C = canonical_tris(T)
+    assert (C[:, 0] == C.min(1)).all()
+    tri = lambda t: {tuple(np.roll(t, k)) for k in range(3)}          # the same triangle, same winding
+    got = {tuple(t) for t in C}
+    assert all(got & tri(t) for t in T)
+
+
 def test_cave():
     m, cave, shell, opn, light, floor, flight, fungi, frad, stris, ftris = read_cave()
+    assert (stris == canonical_order(stris)).all(), "cave.bin's shell triangles are not in canonical order: re-export"
     centre = np.array([0.0, 0.0, cave["centreZ"] - cave["floor"]])
     assert np.linalg.norm(shell - centre, axis=1).max() < 13.5
     assert stris.max() < len(shell) and ftris.max() < len(floor)
@@ -336,6 +359,7 @@ def test_stacks():
 
 
 if __name__ == "__main__":
+    test_canonical_tris()
     test_aurora()
     test_cave()
     test_arch()
