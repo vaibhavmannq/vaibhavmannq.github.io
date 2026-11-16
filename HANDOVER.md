@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-13, end of session s11 (M2.5 built; see `docs/handover/sessions/2026-11-13-s11-m2.5-built.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-16, end of session s12 (M2.5 reviewed and fixed; see `docs/handover/sessions/2026-11-16-s12-m2.5-review-and-stutters.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-13, after s11)
+## 2. Where we are (2026-11-16, after s12)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -103,14 +103,19 @@ no borrowed set pieces (no towers, piano, etc.).
   everywhere, 0 frames over 50 ms. Open: laptop flights stutter with the rock in view (1–9 frames > 50 ms), the
   lantern still reads as a box, the final whole-branch review was not run (R33). Owner's page:
   https://claude.ai/artifact/9JhoxnNjFJcFhm8Ukape4A
-- **Next (s12, in this order):** (1) the M2.5 final whole-branch review (one opus reviewer; package with the SDD
-  skill's `review-package` from b36a4ac to HEAD; point it at the ledger's Ruling/minor lines and the plan's Review
-  Focus); one fix pass with TDD; (2) trace the laptop flight stutters with the rock in view; (3) the owner's
-  hands-on test (list in the s11 log); then M3. `world` is pushed (76d1caa). Phone setup that works: serve `vite preview --host
+- **s12 (2026-11-16): M2.5 final review done, one TDD fix pass (9a174b4, 7497f48), not pushed.** The headland pack
+  no longer holds back (or breaks) the ground and sea; a sideways swipe mid-flight no longer strands the visitor;
+  **the Blender stills are off over the live world by default** (R34, `?stills=on`); rock moss per vertex. The laptop
+  flight stutter traced: GPU headroom on mid at 1080p in Dusk→Blue hour and Night→Midnight (15–21 ms/frame without
+  the rock; rock adds 2–7 ms near Blue hour; A/B 7 vs 5.5 stutters/flight) → scene cost for M4/M6, not fixed.
+- **Next (s13):** (1) the owner's hands-on test (list in the s12 log; the plain URL now shows the live world);
+  (2) M3, after a stable arch.bin triangulation (2 MB churn per Blender run); (3) a visitor's flight with the
+  governor on. Phone setup that works: serve `vite preview --host
   127.0.0.1 --port 4181`, adb reverse and forward right before each run, wake the screen
   (`adb shell input keyevent KEYCODE_WAKEUP`), `.superpowers/m2/phone.mjs` drives the open `localhost:4181` tab
   (the phone's browser is Brave). Measuring tools: `.superpowers/m2/` (s09) and `.superpowers/m25/*.mjs` (s11:
-  `laptop.mjs` holds/flights/census, `flight.mjs [off-parts]`, `joins.mjs`, `phone-cove.mjs`, `t7/slide2.mjs`).
+  `laptop.mjs`, `flight.mjs [off-parts]`, `joins.mjs`, `phone-cove.mjs`; s12: `gpusweep.mjs`, `flightab.mjs`,
+  `trace.mjs`).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
