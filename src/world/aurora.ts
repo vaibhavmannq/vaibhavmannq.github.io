@@ -190,6 +190,9 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
     blending: AdditiveBlending,
     depthWrite: false,
     side: DoubleSide,
+    // one pass, not three.js's back-then-front for transparent two-sided: additive light does not care about order,
+    // and stage B's compile then builds the pipeline the flight uses (s12: a 0.73 s frame entering Night)
+    forceSinglePass: true,
     fog: false,
   });
   material.colorNode = cored

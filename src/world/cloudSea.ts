@@ -133,7 +133,14 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   // three.js axes: x east, y up, z = -north
   const smoothNormal = varying(normalize(vec3(h.sub(hx), E, hy.sub(h)))) as V3;
 
-  const material = new MeshBasicNodeMaterial({ transparent: true, side: DoubleSide, alphaTest: 0.02 });
+  // one pass (s12: three.js draws transparent two-sided materials back faces first, a pipeline stage B's compile never
+  // built, so the deck's first frame in view cost 0.82 s); the deck is seen from above, its back faces hardly ever
+  const material = new MeshBasicNodeMaterial({
+    transparent: true,
+    side: DoubleSide,
+    alphaTest: 0.02,
+    forceSinglePass: true,
+  });
   material.positionNode = vec3(positionLocal.x, h.add(cfg.z), positionLocal.z);
 
   // Finer billows only tilt the light, and fade out where one is smaller than two pixels (no shimmer far away).

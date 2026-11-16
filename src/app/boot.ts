@@ -105,7 +105,7 @@ async function compileThenAdd(app: App, part: WorldPart, name: string): Promise<
     const shown = part.object.visible;
     part.object.visible = true;
     try {
-      await app.pipeline?.renderer.compileAsync(part.object, app.camera, app.scene);
+      await app.pipeline?.compile(part.object);
     } finally {
       part.object.visible = shown;
     }

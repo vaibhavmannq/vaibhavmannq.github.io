@@ -13,7 +13,15 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { type Camera, type Node, NoToneMapping, RenderPipeline, type Scene, WebGPURenderer } from 'three/webgpu';
+import {
+  type Camera,
+  type Node,
+  NoToneMapping,
+  type Object3D,
+  RenderPipeline,
+  type Scene,
+  WebGPURenderer,
+} from 'three/webgpu';
 import type { LightUniforms } from '../world/light';
 
 /** The two settings the pipeline itself changes (the tier table lives in quality/tiers.ts). */
@@ -31,6 +39,13 @@ export interface Pipeline {
   render(): void;
   /** Compile every shader and render each output once, while the canvas is still hidden. */
   warmUp(): Promise<void>;
+  /**
+   * Build `object`'s shaders for where it is really drawn: the scene pass. A bare compileAsync builds them for the canvas at the top level, which three.js r186 keys apart (a material's
+   * build is keyed by its render context, and a context by its target and how deeply nested its render call is), so
+   * a part that first showed mid-flight (the aurora, the cloud deck) was built again then: 0.7-0.8 s frames on the
+   * laptop (s12 trace).
+   */
+  compile(object: Object3D): Promise<void>;
 }
 
 /** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
@@ -56,6 +71,7 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
   let glow: Node<'vec4'> | null = null;
   let bloomOn = false;
   let view: { scene: Scene; camera: Camera } | null = null;
+  let scenePass: ReturnType<typeof pass> | null = null;
   const select = () => {
     const next = bloomOn ? glow : plain;
     if (!next) return;
@@ -68,7 +84,8 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
     backend,
     setScene(scene, camera, light) {
       view = { scene, camera };
-      const color = pass(scene, camera).getTextureNode('output');
+      scenePass = pass(scene, camera);
+      const color = scenePass.getTextureNode('output');
       // The renders' vivid grade (grade.py, as in the slice): ACES, saturation 1.32, a warm tint, a soft vignette.
       const grade = (c: Node<'vec4'>): Node<'vec4'> => {
         let g = acesFilmicToneMapping(c.rgb, light.exposure) as Node<'vec3'>;
@@ -101,6 +118,28 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
     },
     render() {
       pipeline.render();
+    },
+    compile(object) {
+      const target = scenePass?.renderTarget;
+      if (!view || !target) return Promise.resolve();
+      // compileAsync picks its render context before its first await, at nesting depth 0, but the scene pass draws at
+      // depth 1; so the target and the depth are set only around the call. r186 internals:
+      // Renderer._renderContexts.get(target, mrt, callDepth). (The mirror inside the pass draws at depth 2; building
+      // for it the same way drew the mirror over the whole view, so its first use is still built mid-flight: s12.)
+      const contexts = (renderer as unknown as { _renderContexts?: { get?: (...a: unknown[]) => unknown } })
+        ._renderContexts;
+      const get = contexts?.get;
+      // another three.js version: the plain compile (a first-use hitch, never a part left out)
+      if (!contexts || typeof get !== 'function') return renderer.compileAsync(object, view.camera, view.scene);
+      const previous = renderer.getRenderTarget();
+      contexts.get = (r: unknown, mrt: unknown) => get.call(contexts, r, mrt, 1);
+      renderer.setRenderTarget(target);
+      try {
+        return renderer.compileAsync(object, view.camera, view.scene);
+      } finally {
+        contexts.get = get;
+        renderer.setRenderTarget(previous);
+      }
     },
     async warmUp() {
       if (!view) return;
