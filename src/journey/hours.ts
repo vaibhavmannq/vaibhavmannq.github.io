@@ -45,6 +45,22 @@ export const SHADOW_FLOOR: Record<StopId, RGB> = {
   sunrise: [0.12, 0.09, 0.11],
 };
 
+/**
+ * How much mist lies on the water (plan M3 Task 3; reference book §4: radiation fog forms on calm clear nights and
+ * "tends to dissipate soon after sunrise", owner `mist` 8). Only First light has it in full; Sunrise keeps a thin rest.
+ */
+export const MIST: Record<StopId, number> = {
+  golden: 0,
+  sunset: 0,
+  dusk: 0,
+  bluehour: 0,
+  night: 0,
+  midnight: 0,
+  beforedawn: 0,
+  firstlight: 1,
+  sunrise: 0.35,
+};
+
 function preset(id: StopId): HourPreset {
   const s = SHOTS[id];
   // one moon: the world state's moonEl is its height (the lamp's own height in s.moon still aims the key light)
@@ -66,6 +82,7 @@ function preset(id: StopId): HourPreset {
     aurora: s.aurora ? 1 : 0,
     cloud: s.cloudsea ? 1 : 0,
     shadowFloor: SHADOW_FLOOR[id],
+    mist: MIST[id],
   };
 }
 
@@ -161,5 +178,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     aurora: lerp(a.aurora, b.aurora, w),
     cloud: lerp(a.cloud, b.cloud, w),
     shadowFloor: mix3(a.shadowFloor, b.shadowFloor, w),
+    mist: lerp(a.mist, b.mist, w),
   };
 }

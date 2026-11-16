@@ -38,6 +38,7 @@ import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, MEADOW_LAYER } from '../world/meadow';
+import { createMist } from '../world/mist';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
 import { scatterCove } from '../world/scatter';
@@ -383,8 +384,16 @@ export async function boot(): Promise<App> {
   if (pipeline) jumps.ready = (i) => skies.ready(i);
   const sky = createSky(light, skies, blank);
   // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
-  scene.fogNode = fog(sky.horizonAt(positionWorld.sub(cameraPosition)), densityFogFactor(light.fogDensity));
+  // First light's mist (plan M3 Task 3) is height fog in the same colour, folded into the one fog: no draw, and the
+  // mirror pass shows it because it renders this scene. Zero at every hour but First light and Sunrise.
+  const mist = createMist();
+  const haze = densityFogFactor(light.fogDensity);
+  scene.fogNode = fog(
+    sky.horizonAt(positionWorld.sub(cameraPosition)),
+    haze.oneMinus().mul(mist.factor.oneMinus()).oneMinus(),
+  );
   app.addPart(sky, 'sky');
+  app.addPart(mist.part, 'mist');
   // Golden's paper lantern, the first near layer (plan M2.5 Task 7), and the glints of its spots: no download, so
   // they join with the first view.
   // Both are compiled before they join, so opening anywhere else they never compile mid-flight (final review M7).

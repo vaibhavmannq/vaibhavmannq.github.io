@@ -63,6 +63,16 @@ export function heightTexture(q: Uint16Array, m: GridMeta): DataTexture {
   return t;
 }
 
+/**
+ * Pure: how much surf foam the wind force allows (plan M3 Task 3). Reference book §2: force 0 is "like a mirror",
+ * force 1 ripples with no crests, force 2 glassy wavelets; §3: a white line of foam that comes and goes where the sea
+ * meets the land. So at force 0–1 the edge line is faint and the swash sheet nearly gone; both full from force 2.
+ */
+export function foamLevel(beaufort: number): { edge: number; sheet: number } {
+  const b = Math.max(0, beaufort);
+  return { edge: Math.min(1, 0.35 + 0.65 * Math.min(1, b / 2)), sheet: Math.min(1, Math.max(0, (b - 0.5) / 1.5)) };
+}
+
 export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms, tier: TierSettings): WorldPart {
   const reflection = reflector({ resolutionScale: tier.reflect });
   reflection.target.rotateX(-Math.PI / 2);
@@ -78,6 +88,8 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
     };
   }
   const chop = uniform(1);
+  const foamEdge = uniform(1);
+  const foamSheet = uniform(1);
   const glitterPow = uniform(glitterPower(0.55));
   /** how far the glitter's facets have drifted along the wind, metres (three.js x, z; light.ts glitterCarry) */
   const carried = uniform(new Vector2(0, 0));
@@ -158,7 +170,7 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   const sheet = smoothstep(1.0, 0.15, depth)
     .mul(smoothstep(0, 0.12, depth))
     .mul(0.45);
-  const foam = max(edge, sheet)
+  const foam = max(edge.mul(foamEdge), sheet.mul(foamSheet))
     .mul(lace)
     .mul(smoothstep(160.0, 40.0, dist));
   col = mix(col, u.ambSky.mul(1.8).add(u.keyColor.mul(0.45)), foam.clamp(0, 1));
@@ -178,6 +190,9 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
       // reference book §2 (Beaufort, "on water"): the chop grows with the force, 0.3 calm to 1.3 at force 4
       chop.value = 0.3 + 0.25 * f.hour.world.beaufort;
       glitterPow.value = glitterPower(chop.value);
+      const fl = foamLevel(f.hour.world.beaufort);
+      foamEdge.value = fl.edge;
+      foamSheet.value = fl.sheet;
       const [cx, cz] = glitterCarry([carried.value.x, carried.value.y], f.hour.world, f.dtS);
       carried.value.set(cx, cz);
       // The plane follows the camera so it always reaches the horizon.

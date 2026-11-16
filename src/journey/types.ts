@@ -92,4 +92,6 @@ export interface HourPreset {
   cloud: number;
   /** The darkest a shadow may show, sRGB on screen after the grade (owner-references §17: never black, tinted). */
   shadowFloor: RGB;
+  /** 0..1: First light's mist, a flat band on the water (plan M3 Task 3); 0 at every other hour but Sunrise. */
+  mist: number;
 }
