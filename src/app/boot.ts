@@ -11,7 +11,7 @@ import { createLook, dragEnded, touchIntent } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
 import { SHOTS } from '../journey/shots';
-import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsOpen } from '../journey/spots';
+import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsAt, spotsOpen } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
 import { loadThread, saveThread } from '../journey/thread';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
@@ -452,8 +452,9 @@ export async function boot(): Promise<App> {
     glints.setWalking(true);
   };
   const spotsEl = document.getElementById('spots');
-  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-spot]'))
-    b.addEventListener('click', () => startWalk(SPOTS.find((s) => s.id === b.dataset.spot)));
+  const spotButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-spot]')];
+  let twinsAt = -1;
+  for (const b of spotButtons) b.addEventListener('click', () => startWalk(SPOTS.find((s) => s.id === b.dataset.spot)));
   const toScreen = (v: Vector3) => {
     const p = v.clone().project(camera);
     return [((p.x + 1) / 2) * window.innerWidth, ((1 - p.y) / 2) * window.innerHeight, p.z] as const;
@@ -475,6 +476,7 @@ export async function boot(): Promise<App> {
   const pick = (x: number, y: number) => {
     if (glints.object.visible)
       for (const g of glints.at) {
+        if (!g.sprite.visible) continue;
         const [gx, gy, gz] = toScreen(g.position);
         if (gz < 1 && Math.hypot(gx - x, gy - y) < 40) return startWalk(g.spot);
       }
@@ -591,8 +593,13 @@ export async function boot(): Promise<App> {
       pose.yaw = shortestYaw(pose.yaw, spotPose.yaw, w);
       pose.pitch += (spotPose.pitch - pose.pitch) * w;
     }
-    const twinsHidden = !(state.resting && state.a === 0 && open);
+    const twinsHidden = !(state.resting && spotsAt(state.a).length > 0 && open);
     if (spotsEl && spotsEl.hidden !== twinsHidden) spotsEl.hidden = twinsHidden;
+    if (!twinsHidden && twinsAt !== state.a) {
+      // each stop offers its own spots (plan M3 Task 7)
+      twinsAt = state.a;
+      for (const b of spotButtons) b.hidden = SPOTS.find((s) => s.id === b.dataset.spot)?.stop !== STOP_IDS[state.a];
+    }
     head = look.update(state.resting && !caps.reducedMotion, dtS);
     pose.yaw += head.yaw;
     pose.pitch += head.pitch;

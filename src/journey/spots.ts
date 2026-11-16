@@ -14,9 +14,21 @@ export interface SpotPath {
   points: Vec3[];
   /** where the walker looks at the end: yaw, pitch (degrees, coast convention) */
   look: [number, number];
+  /** where its glint shows, if not a hand's height under the walk's end (where that is out of the stop's frame) */
+  glint?: Vec3;
 }
 
 export const SPOTS = data as SpotPath[];
+
+/** The spots offered at stop `i` (plan M3 Task 7: Golden two, every other cove stop one). */
+export const spotsAt = (i: number): SpotPath[] => SPOTS.filter((s) => stopIndex(s.stop) === i);
+
+/** Where a spot's glint shows, coast axes: a hand's height under the walk's end unless the spot names a place. */
+export function glintAt(s: SpotPath): Vec3 {
+  if (s.glint) return s.glint;
+  const end = s.points[s.points.length - 1] ?? [0, 0, 0];
+  return [end[0], end[1], end[2] - 0.45];
+}
 
 /** Walking pace (plan M2.5 Task 7). */
 export const WALK_MS_PER_M = 1000 / 1.2;

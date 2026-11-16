@@ -12,5 +12,34 @@
     "label": "Kneel by the lantern",
     "points": [[9.5, -4.0, 0.9151], [9.45, -3.16, 0.95], [8.61, -2.32, 0.75]],
     "look": [-33, -14]
+  },
+  {
+    "id": "flowers",
+    "stop": "sunset",
+    "label": "Lie down in the flowers",
+    "points": [[86, 96, 19.2749], [86.8, 95.3, 19.62], [87.6, 94.6, 19.9]],
+    "look": [-30, -2],
+    "glint": [85, 98, 18.8]
+  },
+  {
+    "id": "cliff-edge",
+    "stop": "dusk",
+    "label": "Step to the edge",
+    "points": [[32, 30, 28.5906], [30.6, 33.8, 26.7], [29.26, 37.52, 24.7]],
+    "look": [-68, -28]
+  },
+  {
+    "id": "shallows",
+    "stop": "firstlight",
+    "label": "Wade into the shallows",
+    "points": [[-60, -14, 0.8086], [-55, -6.8, 0.82], [-49.3, 1.3, 0.8]],
+    "look": [35, -10]
+  },
+  {
+    "id": "rim",
+    "stop": "sunrise",
+    "label": "Walk along the rim",
+    "points": [[30, -40, 35.9891], [29.6, -34, 31.6], [28.9, -24, 30.56]],
+    "look": [-8, -4]
   }
 ]

@@ -1,6 +1,6 @@
 import { float, smoothstep, uniform, uv, vec3 } from 'three/tsl';
 import { AdditiveBlending, Group, Sprite, SpriteNodeMaterial, Vector3 } from 'three/webgpu';
-import type { SpotPath } from '../journey/spots';
+import { glintAt, type SpotPath } from '../journey/spots';
 import { stopIndex } from '../journey/stops';
 import { toThree } from '../journey/types';
 import type { WorldPart } from './part';
@@ -11,7 +11,7 @@ import type { WorldPart } from './part';
  */
 export interface SpotGlints extends WorldPart {
   /** world positions (three.js), one per spot, for picking */
-  readonly at: { spot: SpotPath; position: Vector3 }[];
+  readonly at: { spot: SpotPath; position: Vector3; sprite: Sprite }[];
   setWalking(on: boolean): void;
 }
 
@@ -29,13 +29,16 @@ export function createSpotGlints(spots: readonly SpotPath[]): SpotGlints {
     .mul(1.4);
   const group = new Group();
   const at = spots.map((spot) => {
-    const end = spot.points[spot.points.length - 1] ?? [0, 0, 0];
-    const p = toThree([end[0], end[1], end[2] - 0.45]);
+    const p = toThree(glintAt(spot));
     const sprite = new Sprite(material);
     sprite.position.set(...p);
-    sprite.scale.setScalar(0.22);
+    // a glint farther than Golden's few metres keeps about the same size on screen
+    const end = spot.points[0] ?? [0, 0, 0];
+    const far = Math.hypot(p[0] - end[0], p[2] + end[1]);
+    sprite.scale.setScalar(0.22 * Math.max(1, far / 6));
+    sprite.userData.stop = stopIndex(spot.stop);
     group.add(sprite);
-    return { spot, position: new Vector3(...p) };
+    return { spot, position: new Vector3(...p), sprite };
   });
   group.visible = false;
   let walking = false;
@@ -48,6 +51,8 @@ export function createSpotGlints(spots: readonly SpotPath[]): SpotGlints {
     },
     update(f) {
       group.visible = !walking && f.state.resting && stops.has(f.state.a);
+      // only the glints of the stop the visitor rests at (plan M3 Task 7)
+      if (group.visible) for (const g of at) g.sprite.visible = g.sprite.userData.stop === f.state.a;
       breath.value = 0.65 + 0.35 * Math.sin(2 * Math.PI * 0.4 * f.timeS);
     },
     setTier() {},

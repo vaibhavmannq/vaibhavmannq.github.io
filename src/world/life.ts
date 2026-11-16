@@ -410,7 +410,8 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
     gull,
     select(kind.lessThan(2.5), dark, select(kind.lessThan(3.5), petal, dewCol)),
   );
-  m.opacityNode = shape.mul(b.w);
+  // nothing a hand's width from the eye: a petal passing a walking visitor fades rather than filling the frame
+  m.opacityNode = shape.mul(b.w).mul(smoothstep(0.6, 1.8, a.xyz.sub(cameraPosition).length()));
   const mesh = new Mesh(g, m);
   mesh.frustumCulled = false;
   mesh.renderOrder = 2; // after the sea (transparent, renderOrder 1)
