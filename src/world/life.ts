@@ -425,6 +425,7 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
   const since: Record<string, number | null> = {};
   const idx = Object.fromEntries(COVE.map((s) => [s, STOP_IDS.indexOf(s)])) as Record<StopId, number>;
   const ringXY = new Vector2();
+  let drawn = 0;
   return {
     object: mesh,
     update(f) {
@@ -440,14 +441,25 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
         const list = lifeSprites(stop, f.timeS, f.timeS - (since[stop] ?? f.timeS), f.hour.world, groundAt, reduced);
         for (const s of list) {
           if (n >= MAX || s.alpha * w <= 0.001) continue;
-          A.set([s.x, s.z, -s.y, s.size], n * 4);
-          B.set([KIND_INDEX[s.kind], s.flap, s.rot, s.alpha * w], n * 4);
+          const o = n * 4;
+          A[o] = s.x;
+          A[o + 1] = s.z;
+          A[o + 2] = -s.y;
+          A[o + 3] = s.size;
+          B[o] = KIND_INDEX[s.kind];
+          B[o + 1] = s.flap;
+          B[o + 2] = s.rot;
+          B[o + 3] = s.alpha * w;
           n++;
         }
       }
       g.instanceCount = n;
-      ia.needsUpdate = true;
-      ib.needsUpdate = true;
+      // nothing to upload away from the cove (most of the night); review s16
+      if (n > 0 || drawn > 0) {
+        ia.needsUpdate = true;
+        ib.needsUpdate = true;
+      }
+      drawn = n;
       mesh.visible = n > 0;
 
       const wf = lifeWeight(f.state, idx.firstlight);
