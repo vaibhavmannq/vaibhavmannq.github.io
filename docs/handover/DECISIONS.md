@@ -201,3 +201,9 @@ stand on the live height grid.** `public/world/stops/cove/` holds the cliff colu
 against the five cove stops. Plants and rocks follow the site's 8 m grid where it differs from coast.py's formula
 (2–5 m along the rims): six of 43 plants are left out where the grid is sea (R43), and cliff columns whose tops would
 just poke through the turf are lowered (R47). The thread is kept per visit in sessionStorage. Ledger: R43–R52.
+
+**D33 · 2026-11-18 · (my calls, s16; owner told in chat) Sunset gets a lone tree of its own, and Dusk's lanterns leave
+the water's mirror.** A new plant in coast.py's grove (`LONE_TREE`, group "lone": the old tree's model at (62.8, 145.8),
+scale 2.2) is Sunset's subject (owner `meadow-and-flowers` 10), so the grove the other places show is unchanged. Dusk's
+lanterns and their streaks draw for the eye only: the streak is their reflection, and the mirror's first build of them
+hitched the first flight into Dusk. Ledger: R65–R71.

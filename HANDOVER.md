@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-16, end of session s15 (M3: First light's mist, the life layer, a walk at each cove stop; see `docs/handover/sessions/2026-11-16-s15-m3-mist-life-spots.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-18, end of session s16 (M3: the Dusk hitch fixed, the look pass, the final review; see `docs/handover/sessions/2026-11-18-s16-m3-hitch-and-look.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-16, after s14)
+## 2. Where we are (2026-11-18, after s16)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -147,16 +147,27 @@ no borrowed set pieces (no towers, piano, etc.).
   - Low 54–60 fps at the cove stops; mist and life cost nothing measurable; Golden at 14 materials (the cap).
   - Phone: cove stops 59–60 fps at mid and high; the first flight into Dusk hitches (3 frames, worst 117 ms;
     present in the s14 build too). Task 8 open: final review, owner page.
-- **Next (s16):** the Dusk first-trip hitch on the phone; then the look pass toward 85 %
-  (Sunset's one tree, lantern paper up close, bats' shape, Dusk from the stop); the M3 final review; the owner page.
-  The exact first step is in the s15 session log.
-  - Still open: R38 (mirror first-build hitch, M6); `?cams=old` not built; mid at the cove stops; stage-B pop-in
-    (M8); the headland and cove packs fetched at every start; `horizon.spec.ts` fails (pre-existing).
+- **s16 (2026-11-18): M3 hitch fixed, look pass, final review; inline, on `world`, not pushed (98d9b58..be480e5).**
+  - The first flight into Dusk no longer builds shaders mid-flight (near parts compiled before the scene existed;
+    Dusk's lanterns left the mirror, R65). Phone: 0 slow frames into Dusk, but measured on a build missing the grove.
+  - Look: lanterns with a crown and a lit inside; light pools under Dusk's lanterns (their streaks had never shown:
+    `positionLocal` vs `positionGeometry` in r186); bats' own outline; dome flower heads; Sunrise's walk ends on the
+    arch; **Sunset's subject is one lone tree** (coast.py `LONE_TREE`, cove pack re-exported).
+  - `world:report` now fails when the manifest is stale (the re-exported grove was refused at load).
+  - Final review of M3 done: three important bugs, all fixed this session; two minors open (ledger).
+  - My looks: Golden 70 %, Sunset 76 %, Dusk 70 %, First light 69 %, Sunrise 75 %. **Still none at 85 %; no owner page.**
+- **Next (s17):** finish the gate (`world:test` was stopped part-way, e2e not run); the phone check on HEAD (the owner runs it; `phone-visitor.mjs` twice, `phone-cove5.mjs`); then decide
+  with the owner: one more look session (Sunset, Golden nearest) or close M3 and carry the rest into M8. Exact steps:
+  the s16 session log.
+  - Still open: R38 (Night/Midnight first builds, M6); mid at the cove stops; `?cams=old`; stage-B pop-in (M8);
+    packs fetched at every start; `horizon.spec.ts` (pre-existing); Dusk's lanterns ignore reduced motion.
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
-    before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); `.superpowers/m2/phone.mjs`
-    drives the open `localhost:4181` tab (the phone's browser is Brave).
-  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/` (s15: `ab-builds.mjs` two builds one page at
-    a time, `ab-flight.mjs`, `life-frames.mjs`, `spot-shots.mjs`, `flight-frames.mjs`, `census.mjs`; `sheet.py`).
+    before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); the scripts drive the open
+    `localhost:4181` tab (the phone's browser is Brave).
+  - After a Blender re-export: `node tools/world/manifest.ts` (or `npm run world`), then `npm run world:report`.
+  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/` (s16: `first-dusk.mjs` rides with a
+    pipeline log, `pl-dump.mjs`, `trace-dusk.mjs`, `stop-shot.mjs`, `ground-scan.ts`; s15: `ab-builds.mjs`,
+    `spot-shots.mjs`, `census.mjs`, `life-frames.mjs`; `sheet.py`).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
