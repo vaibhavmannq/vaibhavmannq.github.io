@@ -323,6 +323,7 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
     .mul(amp.mul(0.35))
     .mul(leaf);
   const material = new MeshBasicNodeMaterial({ side: DoubleSide });
+  material.name = 'grove.material';
   material.positionNode = positionLocal.add(vec3(windTo.x.mul(sway), flutter, windTo.y.mul(sway)));
 
   // light per vertex (as meadow.ts): the key on the (bent) normal, the fill opposite it, the sky and ground bounce

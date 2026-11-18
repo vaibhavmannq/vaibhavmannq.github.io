@@ -96,6 +96,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   col = col.add(vec3(0.85, 0.9, 1.0).mul(point.mul(lit).mul(high).mul(dark).mul(max(u.stars, 0).min(1).mul(3.0))));
 
   const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
+  material.name = 'sky.material';
   material.colorNode = col;
   const mesh = new Mesh(new SphereGeometry(12000, 64, 32), material);
   mesh.frustumCulled = false;

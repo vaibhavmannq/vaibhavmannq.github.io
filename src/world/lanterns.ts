@@ -31,6 +31,7 @@ import { STOP_IDS, toThree, type Vec3 } from '../journey/types';
 import { smoothstep as smoothstepJS } from '../shared/math';
 import { mulberry32 } from '../shared/random';
 import { paperLook } from './lantern';
+import { EYE_ONLY_LAYER } from './meadow';
 import type { WorldPart } from './part';
 
 /**
@@ -218,6 +219,7 @@ export function createDuskLanterns(): DuskLanterns {
   const turned = vec3(lp.x.mul(c).sub(lp.z.mul(s)), lp.y, lp.x.mul(s).add(lp.z.mul(c)));
   const bob = sin(time.mul(2 * Math.PI * 0.22).add(phase)).mul(0.025);
   const material = new MeshBasicNodeMaterial();
+  material.name = 'lanterns.material';
   material.positionNode = vec3(a0.x.add(drift.x), bob, a0.y.add(drift.y)).add(turned);
 
   const k = a0.w;
@@ -259,6 +261,7 @@ export function createDuskLanterns(): DuskLanterns {
   const across = vec3(toEye.z.negate(), 0, toEye.x);
   const v = positionLocal.y;
   const streakMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+  streakMat.name = 'lanterns.streakMat';
   streakMat.positionNode = root
     .add(across.mul(positionLocal.x.mul(STREAK.w).mul(scale)))
     .add(toEye.mul(v.mul(STREAK.l).mul(scale).add(0.15)));
@@ -283,6 +286,10 @@ export function createDuskLanterns(): DuskLanterns {
   const streak = new Mesh(sg, streakMat);
   streak.frustumCulled = false;
   streak.renderOrder = 2; // after the sea (renderOrder 1, transparent): it would cover a streak that writes no depth
+  // Out of the water's mirror (s16): the streak is the reflection, and a mirrored lantern first built its shaders
+  // mid-flight into Dusk (150 ms here; R38's kind). Side by side the stop and the edge look the same without it.
+  body.layers.set(EYE_ONLY_LAYER);
+  streak.layers.set(EYE_ONLY_LAYER);
   const mesh = new Group();
   mesh.add(body, streak);
   mesh.visible = false;

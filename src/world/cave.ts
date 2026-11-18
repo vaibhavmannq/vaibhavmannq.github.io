@@ -245,6 +245,7 @@ export function createCave(parts: CaveParts, cave: CaveShot, sky: Sky, u: LightU
   const colour = mix(banded, mirrored, wet.mul(fresnel.mul(0.6).add(0.4)));
 
   const material = new MeshBasicNodeMaterial({ side: DoubleSide, alphaTest: 0.5 });
+  material.name = 'cave.material';
   material.colorNode = colour;
   const shellCut = smoothstep(-0.02, 0.02, ragged).mul(float(1).sub(isFloor));
   const floorCut = step(0, beyondEdge).mul(isFloor);

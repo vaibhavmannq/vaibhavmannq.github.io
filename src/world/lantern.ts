@@ -98,17 +98,20 @@ export function createLantern(opts: LanternOptions = {}): Lantern {
   const glow = uniform(1);
   const centreY = FLOAT_H + PAPER.h / 2;
   const paperMat = new MeshBasicNodeMaterial();
+  paperMat.name = 'lantern.paperMat';
   paperMat.colorNode = paperLook(positionLocal, PAPER.w, PAPER.h, glow);
   const paper = new Mesh(new BoxGeometry(PAPER.w, PAPER.h, PAPER.w), paperMat);
   paper.position.y = FLOAT_H + PAPER.h / 2;
 
   const floatMat = new MeshBasicNodeMaterial();
+  floatMat.name = 'lantern.floatMat';
   floatMat.colorNode = vec3(0.07, 0.045, 0.03).add(vec3(0.25, 0.12, 0.04).mul(glow).mul(0.3));
   const floatMesh = new Mesh(new BoxGeometry(0.38, FLOAT_H, 0.38), floatMat);
   floatMesh.position.y = FLOAT_H / 2;
 
   // The streak on the wet sand: as long as the lantern is tall, broken into bars by the film of water (owner video 4).
   const streakMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+  streakMat.name = 'lantern.streakMat';
   const v = uv().y;
   const bars = sin(v.mul(46.0)).mul(0.5).add(0.5).pow(2);
   streakMat.colorNode = vec3(1.0, 0.5, 0.18)

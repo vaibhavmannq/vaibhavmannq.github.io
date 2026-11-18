@@ -39,7 +39,7 @@ import type { TierSettings } from '../quality/tiers';
 import type { GridMeta } from './heights';
 import { fishRing, RING_SPEED } from './life';
 import { glitterCarry, glitterPower, type LightUniforms } from './light';
-import { MEADOW_LAYER } from './meadow';
+import { EYE_ONLY_LAYER } from './meadow';
 import type { WorldPart } from './part';
 
 /** Six analytic ripples: direction x, direction z, amplitude, frequency (the slice's). */
@@ -77,14 +77,14 @@ export function foamLevel(beaufort: number): { edge: number; sheet: number } {
 export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms, tier: TierSettings): WorldPart {
   const reflection = reflector({ resolutionScale: tier.reflect });
   reflection.target.rotateX(-Math.PI / 2);
-  // The mirror's camera is a clone of the eye's, made on first use: it leaves out the cove's plants (MEADOW_LAYER),
+  // The mirror's camera is a clone of the eye's, made on first use: it leaves out the cove's plants (EYE_ONLY_LAYER),
   // whose cost the mirror would double for blades it barely shows (plan M3 Task 1).
   const base = (reflection as unknown as { reflector?: { getVirtualCamera(c: Camera): Camera } }).reflector;
   if (base) {
     const own = base.getVirtualCamera.bind(base);
     base.getVirtualCamera = (c: Camera) => {
       const v = own(c);
-      v.layers.disable(MEADOW_LAYER);
+      v.layers.disable(EYE_ONLY_LAYER);
       return v;
     };
   }
@@ -190,6 +190,7 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   col = mix(col, u.ambSky.mul(1.8).add(u.keyColor.mul(0.45)), foam.clamp(0, 1));
 
   const material = new MeshBasicNodeMaterial({ transparent: true });
+  material.name = 'sea.material';
   material.colorNode = col;
   material.opacityNode = smoothstep(0.0, 0.35, depth).mul(0.85).add(fresnel.mul(0.15)).max(foam).clamp(0, 1);
   const sea = new Mesh(new PlaneGeometry(16000, 16000, 1, 1), material);

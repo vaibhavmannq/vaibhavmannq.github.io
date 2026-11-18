@@ -38,7 +38,7 @@ import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLife } from '../world/life';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
-import { createMeadow, MEADOW_LAYER } from '../world/meadow';
+import { createMeadow, EYE_ONLY_LAYER } from '../world/meadow';
 import { createMist } from '../world/mist';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
@@ -318,7 +318,7 @@ export async function boot(): Promise<App> {
   const scene = new Scene();
   const camera = new PerspectiveCamera(45, host.clientWidth / Math.max(1, host.clientHeight), 0.1, 14000);
   // the cove's plants draw for the eye but not in the water's mirror (meadow.ts, sea.ts)
-  camera.layers.enable(MEADOW_LAYER);
+  camera.layers.enable(EYE_ONLY_LAYER);
   let pipeline: Pipeline | null = null;
   if (!params.nogl) {
     try {
@@ -434,12 +434,15 @@ export async function boot(): Promise<App> {
     lantern.claim();
     duskLanterns.setMine(true);
   }
-  const nearReady = Promise.all([
-    compileThenAdd(app, lantern, 'lantern'),
-    compileThenAdd(app, glints, 'spots'),
-    compileThenAdd(app, duskLanterns, 'lanterns'),
-    compileThenAdd(app, shallows, 'shallows'),
-  ]);
+  // Joined once the pipeline has its scene: before that its compile is a no-op, and a part hidden at the start (Dusk's
+  // lanterns, the shallows lantern) then built its shaders on its first trip, mid-flight (s16: 150 ms into Dusk).
+  const joinNear = () =>
+    Promise.all([
+      compileThenAdd(app, lantern, 'lantern'),
+      compileThenAdd(app, glints, 'spots'),
+      compileThenAdd(app, duskLanterns, 'lanterns'),
+      compileThenAdd(app, shallows, 'shallows'),
+    ]);
   const goldenCam = STOPS[0]?.cam ?? [0, 0, 0];
   /** ruling R3: the lantern is the nearest thing in Golden's view, so the parallax slides it ~3 % of the width */
   const lanternNear = Math.hypot(LANTERN_AT[0] - goldenCam[0], LANTERN_AT[1] - goldenCam[1]);
@@ -644,6 +647,7 @@ export async function boot(): Promise<App> {
     const active = pipeline;
     active.setScene(scene, camera, light);
     applyTier(tier);
+    const nearReady = joinNear();
     new ResizeObserver(() => {
       camera.aspect = host.clientWidth / Math.max(1, host.clientHeight);
       camera.updateProjectionMatrix();
@@ -686,6 +690,8 @@ export async function boot(): Promise<App> {
     app.stageB = loadBase(app, sky, light, params.auroraActive, opening, caps.reducedMotion)
       .then(() => governor.reset(app.tier, performance.now()))
       .catch((error: unknown) => console.warn('world base failed to load', error));
+  } else {
+    void joinNear();
   }
   void last;
   installBench(app);

@@ -141,6 +141,7 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
     alphaTest: 0.02,
     forceSinglePass: true,
   });
+  material.name = 'cloudSea.material';
   material.positionNode = vec3(positionLocal.x, h.add(cfg.z), positionLocal.z);
 
   // Finer billows only tilt the light, and fade out where one is smaller than two pixels (no shimmer far away).

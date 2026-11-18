@@ -41,9 +41,10 @@ import { COVE_STOPS, PLANT, PLANT_STRIDE, type Plants, swayAmplitude } from './s
 /**
  * The cove's ground cover (plan M3 Task 1): tall tufts, a short meadow and three flowers, one instanced draw per
  * shape, one material for all three. Placements come from scatter.ts; the shapes are made here, so the plants cost
- * no download. Layer MEADOW_LAYER keeps them out of the water's mirror (their cost; the mirror sees the sea and sky).
+ * no download. Layer EYE_ONLY_LAYER keeps them out of the water's mirror (their cost; the mirror sees the sea and sky).
+ * Dusk's lanterns use it too (lanterns.ts).
  */
-export const MEADOW_LAYER = 2;
+export const EYE_ONLY_LAYER = 2;
 
 /** Plants grow in over this last stretch as the camera comes near, so nothing pops (spec §12). Metres. */
 export const MEADOW_REACH = 170;
@@ -237,6 +238,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const lean = amp.mul(gust.mul(0.75).add(0.25)).add(tremble).mul(bend.mul(bend));
   const wind3 = vec3(windTo.x, 0, windTo.y);
   const material = new MeshBasicNodeMaterial({ side: DoubleSide });
+  material.name = 'meadow.material';
   material.positionNode = root
     .add(turned.mul(h))
     .add(wind3.mul(lean.mul(h)))
@@ -299,13 +301,13 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
       g.instanceCount = n;
       const mesh = new Mesh(g, material);
       mesh.frustumCulled = false; // instances cover the whole cove; the shader shrinks the far ones
-      mesh.layers.set(MEADOW_LAYER);
+      mesh.layers.set(EYE_ONLY_LAYER);
       mesh.userData.weight = 1;
       group.add(mesh);
       return { mesh, g, n, shapeIndex, stopIndex: STOP_IDS.indexOf(id) };
     }),
   );
-  group.layers.set(MEADOW_LAYER);
+  group.layers.set(EYE_ONLY_LAYER);
   const drawn = [0, 0, 0];
   const count = (share: number) => {
     drawn.fill(0);

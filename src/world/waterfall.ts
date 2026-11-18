@@ -154,6 +154,7 @@ export function createWaterfall(f: FallsShot, u: LightUniforms): WorldPart {
   // the air carries a sprite for as long as it lives: life (0..1) over its rate gives the seconds it has drifted
   const drifted = wind.mul(life.div(seed.mul(0.05).add(0.1)));
   const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: DoubleSide });
+  material.name = 'waterfall.material';
   material.positionNode = positionLocal.add(spread.add(drifted).mul(isSpray));
 
   const across = uv().x;

@@ -195,6 +195,7 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
     forceSinglePass: true,
     fog: false,
   });
+  material.name = 'aurora.material';
   material.colorNode = cored
     .mul(alpha)
     .add(vec3(...MAGENTA).mul(top.mul(TOP_GAIN)))
