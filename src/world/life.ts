@@ -375,17 +375,22 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
   const x = abs(p.x.sub(0.5)).mul(2);
   const y = p.y.sub(0.5).mul(2);
   const centre = x.mul(flap.mul(0.6)).add(sin(x.mul(Math.PI)).mul(0.18));
-  const scallop = select(
-    kind.greaterThan(0.5).and(kind.lessThan(1.5)),
-    abs(sin(x.mul(10)))
-      .mul(0.3)
-      .add(0.7),
-    float(1),
-  );
-  const th = mix(float(0.3), float(0.07), x).mul(scallop);
+  const th = mix(float(0.3), float(0.07), x);
   const wing = smoothstep(th, th.mul(0.45), abs(y.sub(centre))).mul(smoothstep(1.0, 0.9, x));
   const body = smoothstep(1.0, 0.6, vec2(p.x.sub(0.5).div(0.12), y.div(0.32)).length());
-  const birdShape = max(wing, body);
+  // A bat (s16; reference book §10): not a bird's thin tapering wing but a deep membrane, wide at the body and
+  // narrowing to the tip, its back edge scalloped between three finger bones; a stubby body with two ear points.
+  const lead = centre.add(0.14);
+  const chord = mix(float(0.95), float(0.12), x.pow(0.8));
+  const trail = lead.sub(chord).add(abs(sin(x.mul(3 * Math.PI))).mul(mix(float(0.32), float(0.1), x)));
+  const membrane = smoothstep(-0.05, 0.03, lead.sub(y))
+    .mul(smoothstep(-0.05, 0.03, y.sub(trail)))
+    .mul(smoothstep(1.0, 0.94, x));
+  const batBody = smoothstep(1.0, 0.7, vec2(p.x.sub(0.5).div(0.09), y.add(0.03).div(0.36)).length());
+  const ears = smoothstep(0.05, 0.0, abs(x.sub(0.08)).add(y.sub(0.36).abs().mul(0.35)).sub(0.04));
+  const batShape = max(max(membrane, batBody), ears);
+  const isBat = kind.greaterThan(0.5).and(kind.lessThan(1.5));
+  const birdShape = select(isBat, batShape, max(wing, body));
   const r = p.sub(0.5).mul(2);
   const petalShape = smoothstep(1.0, 0.7, r.length());
   const glint = exp(r.dot(r).mul(-30)).add(

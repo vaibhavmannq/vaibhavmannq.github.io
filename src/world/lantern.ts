@@ -1,13 +1,13 @@
 import {
   abs,
   float,
-  max,
+  frontFacing,
   mix,
   mx_noise_float,
+  normalLocal,
   positionLocal,
   sin,
   smoothstep,
-  step,
   uniform,
   uv,
   vec3,
@@ -15,6 +15,9 @@ import {
 import {
   AdditiveBlending,
   BoxGeometry,
+  BufferGeometry,
+  DoubleSide,
+  Float32BufferAttribute,
   Group,
   Mesh,
   MeshBasicNodeMaterial,
@@ -24,6 +27,7 @@ import {
 } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { toThree, type Vec3 } from '../journey/types';
+import { mulberry32 } from '../shared/random';
 import type { WorldPart } from './part';
 
 /**
@@ -73,11 +77,83 @@ export function paperLook(p: N3, w: number, h: number, glow: N1 | number): N3 {
   const spot = float(1).sub(smoothstep(0.0, 0.95, vec3(side, y.sub(0.2).mul(1.4), 0).length()));
   const edge = float(1)
     .sub(smoothstep(0.72, 1.0, side).mul(0.3))
-    .sub(smoothstep(0.9, 1.0, abs(y.mul(2).sub(1))).mul(0.25));
+    .sub(smoothstep(0.9, 1.0, y.mul(2).sub(1).negate()).mul(0.25)) // the foot, in the float's shadow
+    .add(smoothstep(0.955, 0.99, y).mul(0.35)); // the cut rim at the open top catches the candle
   const fibres = mx_noise_float(p.mul(vec3(90, 14, 90)))
     .mul(0.06)
     .add(1);
   return tint.mul(spot.mul(0.65).add(0.55)).mul(edge).mul(fibres).mul(glow) as unknown as N3;
+}
+
+/**
+ * The paper of every lantern (s16; owner `lanterns` video 4): four walls, flaring a little toward the open top, each
+ * creased once across and once down (the middle of each wall pushed in or out by a few millimetres, so its four facets
+ * catch the light apart), and the floor inside where the candle stands. No lid: from above the eye sees the lit
+ * inside over the rim. Centred like a w×h×w box at the origin; non-indexed, flat normals. Pure, seeded.
+ * s11–s15: a closed smooth box "reads as a box".
+ */
+export function paperShape(w: number, h: number, seed = 7): BufferGeometry {
+  const rnd = mulberry32(seed);
+  const flare = 0.1;
+  const pos: number[] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[]) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (let side = 0; side < 4; side++) {
+    const ang = (side * Math.PI) / 2;
+    const n = [Math.sin(ang), Math.cos(ang)];
+    const t = [Math.cos(ang), -Math.sin(ang)];
+    const inMid = (rnd() < 0.5 ? -1 : 1) * (0.05 + rnd() * 0.05) * w;
+    // the paper's crown (video 4): the corners stand up on the frame, each top edge sags between them
+    const sag = (0.1 + rnd() * 0.08) * h;
+    // u across the wall (-1 … 1), v up it (0 … 1); corners and the foot stay true (the frame and the float hold them)
+    const at = (u: number, v: number): number[] => {
+      const half = (w / 2) * (1 + flare * v);
+      const bow = 1 - u * u;
+      const out = half + (v === 0.5 ? inMid * bow : 0);
+      const y = v * h - h / 2 - (v === 1 ? sag * bow : 0);
+      return [n[0]! * out + t[0]! * u * half, y, n[1]! * out + t[1]! * u * half];
+    };
+    const us = [-1, -0.5, 0, 0.5, 1];
+    for (let i = 0; i < 4; i++)
+      for (const [v0, v1] of [
+        [0, 0.5],
+        [0.5, 1],
+      ] as const)
+        quad(at(us[i]!, v0), at(us[i + 1]!, v0), at(us[i + 1]!, v1), at(us[i]!, v1));
+  }
+  const f = w / 2 - 0.002;
+  const y = -h / 2 + 0.004;
+  quad([-f, y, f], [f, y, f], [f, y, -f], [-f, y, -f]); // the floor, facing up
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * The paper's colour on both sides (s16): outside, `paperLook` with each facet a little brighter or darker; inside
+ * (the faces turned away from the eye, seen over the rim) the candle lights the walls directly, so they are brighter
+ * and more orange low down, and the floor holds the flame's hot spot.
+ */
+export function paperLit(p: N3, w: number, h: number, glow: N1 | number): N3 {
+  const facet = normalLocal
+    .dot(vec3(0.6, 0.3, -0.75))
+    .mul(0.3)
+    .add(1);
+  // a few ink strokes, as on the owner's lanterns (written on, drawn on): the thin contours of a noise field, on part of
+  // the paper only
+  const ink = float(1).sub(
+    float(1)
+      .sub(smoothstep(0.0, 0.018, mx_noise_float(p.mul(26)).abs()))
+      .mul(smoothstep(0.3, 0.45, mx_noise_float(p.mul(4).add(3.1))))
+      .mul(0.3),
+  );
+  const outside = paperLook(p, w, h, glow).mul(facet).mul(ink);
+  const y = p.y.div(h).add(0.5);
+  const flame = float(1).sub(smoothstep(0.0, 0.35 * w, vec3(p.x, p.y.add(h / 2), p.z).length()));
+  const wall = mix(vec3(1.0, 0.46, 0.12).mul(2.4), vec3(1.0, 0.64, 0.3).mul(1.5), smoothstep(0.0, 1.0, y));
+  const floor = vec3(1.0, 0.62, 0.22).mul(flame.pow(2).mul(2.2).add(1.2));
+  const inside = mix(wall, floor, smoothstep(0.5, 0.9, normalLocal.y.abs())).mul(glow);
+  return mix(inside, outside, float(frontFacing)) as unknown as N3;
 }
 
 export interface LanternOptions {
@@ -97,10 +173,10 @@ export function createLantern(opts: LanternOptions = {}): Lantern {
   const level = opts.level ?? (() => 1);
   const glow = uniform(1);
   const centreY = FLOAT_H + PAPER.h / 2;
-  const paperMat = new MeshBasicNodeMaterial();
+  const paperMat = new MeshBasicNodeMaterial({ side: DoubleSide });
   paperMat.name = 'lantern.paperMat';
-  paperMat.colorNode = paperLook(positionLocal, PAPER.w, PAPER.h, glow);
-  const paper = new Mesh(new BoxGeometry(PAPER.w, PAPER.h, PAPER.w), paperMat);
+  paperMat.colorNode = paperLit(positionLocal, PAPER.w, PAPER.h, glow);
+  const paper = new Mesh(paperShape(PAPER.w, PAPER.h), paperMat);
   paper.position.y = FLOAT_H + PAPER.h / 2;
 
   const floatMat = new MeshBasicNodeMaterial();
