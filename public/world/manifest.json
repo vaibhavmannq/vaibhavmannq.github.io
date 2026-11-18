@@ -69,7 +69,7 @@
   "grove": {
    "file": "stops/cove/grove.bin",
    "scale": 4000,
-   "instances": 43,
+   "instances": 44,
    "protos": [
     {
      "kind": "island_tree_01",
@@ -446,8 +446,8 @@
   },
   {
    "path": "stops/cove/grove.bin",
-   "bytes": 183800,
-   "sha256": "b39c9125650a313ba7c2ccd2b608a9517e8273b8da46487609ded98798e19432",
+   "bytes": 183840,
+   "sha256": "a331ae0b14af076a094e1285360fdd5d597bd0113113ac4f725c08e8b1c673da",
    "stage": "B",
    "stops": [
     "golden",

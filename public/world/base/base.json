@@ -71,7 +71,7 @@
  "grove": {
   "file": "stops/cove/grove.bin",
   "scale": 4000,
-  "instances": 43,
+  "instances": 44,
   "protos": [
    {
     "kind": "island_tree_01",

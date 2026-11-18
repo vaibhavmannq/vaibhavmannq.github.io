@@ -143,22 +143,25 @@ export function flowerClump(): Shape {
     s.pos.push(x - 0.012, 0, z, x + 0.012, 0, z, ...top);
     s.bend.push(0, 0, 1);
     s.part.push(0, 0, 0);
-    // the head: an octahedron, radius about 2 cm at the clump's usual 0.3 m height (thrift heads are 1.5–2.5 cm)
+    // the head: a low dome on five sides, turned at random (thrift is a ball of florets 1.5–2.5 cm across, reference
+    // book §8); s16: the four-sided octahedron read as a diamond card up close
     const hr = 0.06 + 0.02 * r();
-    const c = [top[0], top[1] + hr * 0.6, top[2]] as const;
-    const ring = [0, 1, 2, 3].map((k) => [
-      c[0] + Math.cos((k * Math.PI) / 2) * hr,
+    const c = [top[0], top[1] + hr * 0.45, top[2]] as const;
+    const turn = r() * Math.PI;
+    const ring = [0, 1, 2, 3, 4].map((k) => [
+      c[0] + Math.cos(turn + (k * 2 * Math.PI) / 5) * hr,
       c[1],
-      c[2] + Math.sin((k * Math.PI) / 2) * hr,
+      c[2] + Math.sin(turn + (k * 2 * Math.PI) / 5) * hr,
     ]);
-    for (let k = 0; k < 4; k++) {
+    for (let k = 0; k < 5; k++) {
       const p = ring[k] as number[];
-      const q = ring[(k + 1) % 4] as number[];
-      s.pos.push(...p, ...q, c[0], c[1] + hr * 0.8, c[2]);
-      s.pos.push(...q, ...p, c[0], c[1] - hr * 0.8, c[2]);
+      const q = ring[(k + 1) % 5] as number[];
+      s.pos.push(...p, ...q, c[0], c[1] + hr * 0.75, c[2]);
+      s.pos.push(...q, ...p, c[0], c[1] - hr * 0.55, c[2]);
       s.bend.push(1, 1, 1, 1, 1, 1);
-      // `part` > 0 on a head: 1 on its sunlit upper half, 0.55 on its shaded lower half (a ball, not a flat chip)
-      s.part.push(1, 1, 1, 0.55, 0.55, 0.55);
+      // `part` > 0.3 on a head, and its brightness: full at the crown, falling toward the rim and darker beneath, so
+      // each facet shades like a ball's (a ball, not a flat chip)
+      s.part.push(0.8, 0.8, 1.1, 0.6, 0.6, 0.4);
     }
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.35 + 0.2 * r(), 0.03, 0.35, 0);

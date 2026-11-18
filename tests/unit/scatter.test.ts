@@ -64,7 +64,7 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
     const again = scatterCove(surface);
     expect(again.count).toBe(n);
     expect(Buffer.from(again.data.buffer).equals(Buffer.from(plants.data.buffer))).toBe(true);
-  });
+  }, 60_000); // ~13 s alone; past 30 s when the whole suite shares the CPU (s16)
 
   it('orders instances so a lower tier takes a random fraction, not one region', () => {
     const half = Math.floor(n / 2);

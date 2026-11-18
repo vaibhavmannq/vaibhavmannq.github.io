@@ -25,6 +25,7 @@ describe('the cove plants (plan M3 Task 1)', () => {
   it('keeps every shape cheap (triangles per plant)', () => {
     expect(tallTuft().pos.length / 9).toBeLessThanOrEqual(30);
     expect(shortTuft().pos.length / 9).toBeLessThanOrEqual(16);
-    expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(50);
+    // s16: 58, five-sided heads (the four-sided ones read as diamonds up close)
+    expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(60);
   });
 });

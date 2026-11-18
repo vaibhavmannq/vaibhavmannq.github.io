@@ -805,6 +805,7 @@ LGROVE_SPOTS = ((-109, 50, 2.4, 300, 10, "island_tree_02"), (-108, 66, 2.0, 140,
                 (-113, 88, 1.9, 110, 9, "tree"), (-118, 96, 1.3, 260, 4, "island_tree_02"), (-112, 80, 0.6, 50, 0, "searsia_burchellii"),
                 (-117, 114, 1.5, 300, 5, "island_tree_03"), (-113, 106, 0.55, 140, 0, "searsia_burchellii"), (-126, 80, 0.8, 20, 0, "searsia_burchellii"),
                 (-112, 40, 0.6, 90, 0, "searsia_burchellii"), (-118, 34, 1.4, 70, 7, "island_tree_02"), (-123, 22, 1.1, 160, 3, "tree"))
+LONE_TREE = (62.8, 145.8)       # Sunset's lone tree (grove_plants, group "lone")
 COVE_HOURS = ("golden", "sunset", "dusk", "firstlight", "sunrise")
 GROVE_KINDS = ("island_tree_01", "island_tree_02", "island_tree_03", "searsia_burchellii")
 
@@ -847,6 +848,10 @@ def grove_plants():
         sc = s * rr3.uniform(1.8, 2.4); put(kd, x, y, 0.25, (sc,) * 3, (lean, rr3.uniform(-4, 4), rz), "lgrove")
     for kd, x, y, s_, rz, lean in SHOTS["sunrise"].get("props", ()):
         put(kd, x, y, 0.2, (s_,) * 3, (lean, 0, rz), "props")
+    # Sunset's subject (s16; owner meadow-and-flowers 10: one clean tree, not a clump): the old tree's model alone on
+    # the meadow's far ridge, 55 m out at 25 deg right of the stop's look, its crown against the sky right of the sun
+    x, y = LONE_TREE
+    put("island_tree_01", x, y, 0.25, (2.2,) * 3, (0, 0, 200), "lone")
     return out
 
 # ---------------- render setup ----------------
