@@ -1,4 +1,5 @@
 import { BufferAttribute, BufferGeometry, Mesh, type MeshStandardNodeMaterial } from 'three/webgpu';
+import { STOP_IDS } from '../journey/types';
 import { mulberry32 } from '../shared/random';
 import type { WorldPart } from './part';
 
@@ -10,6 +11,8 @@ import type { WorldPart } from './part';
  * silhouettes are the point), one merged mesh, the shared rock material (D13). Pure data first, the mesh after.
  * Coast axes: x east, y north, z up, metres; azimuths from north, clockwise.
  */
+const NIGHT = STOP_IDS.indexOf('night');
+
 export const BOWL = {
   /** the lagoon's centre (coast.py LAG): the live crater the bowl stands in */
   x: -320,
@@ -339,7 +342,9 @@ export function bowlGeometry(prisms: readonly Prism[], fallsAt: { x: number; y: 
       position.set(q, v * 3);
       normal.set(n, v * 3);
       const z = q[2]!;
-      light[v] = 0.3 + 0.7 * Math.min(1, Math.max(0, (z + 2) / 40)) ** 0.8;
+      // deep in the bowl the walls see little sky (owner waterfall 5: the alcove in deep shadow, the falls bright by
+      // contrast); the rim sees most of it
+      light[v] = 0.12 + 0.88 * Math.min(1, Math.max(0, (z + 2) / 40)) ** 1.3;
       moss[v] = Math.min(1, mossy + spray * 0.45);
       column[v * 2] = cx * CELL_SCALE - z * 0.04;
       column[v * 2 + 1] = cy * CELL_SCALE + z * 0.03;
@@ -413,7 +418,9 @@ export function createBowl(
   return {
     object: mesh,
     update(f) {
-      mesh.visible = Math.hypot(f.pose.position[0] - BOWL.x, f.pose.position[2] + BOWL.y) < 1800;
+      // only at Night and on the flights in and out (s18 census: from 1.8 km it cost Dusk, Midnight and Before dawn a
+      // material each without being seen)
+      mesh.visible = f.state.a === NIGHT || f.state.b === NIGHT;
     },
     setTier() {},
     dispose() {
