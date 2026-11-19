@@ -158,7 +158,12 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
     const facetPx = float(1 / freq).div(pixel.max(1e-4));
     return mix(mean, hit, smoothstep(2.0, 4.0, facetPx));
   };
-  const glint = max(facetGlint(4.0, 0), facetGlint(0.5, 11)).mul(u.keyColor).mul(6.0);
+  // no road from a light that is out (s17: Blue hour's sun is 6° down with strength 0; a breath of wind let its facets
+  // glint as a white blob on the flats)
+  const glint = max(facetGlint(4.0, 0), facetGlint(0.5, 11))
+    .mul(u.keyColor)
+    .mul(6.0)
+    .mul(smoothstep(0.0, 0.05, u.keyStrength));
   let col = mix(body, reflection.rgb, fresnel).add(glint);
 
   // Shore: depth from the heights, foam at the edge, a sheet in the swash, transparent shallows (slice).
