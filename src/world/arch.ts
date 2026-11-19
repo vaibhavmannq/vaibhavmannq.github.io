@@ -76,6 +76,8 @@ export function archInPlay(state: FrameState): boolean {
  * about three times the rock's green, lichen about twice the rock's red), not its pixels.
  */
 const BASALT: [number, number, number] = [0.2, 0.19, 0.205];
+/** The aurora's light on rock at Night, linear (tuned against owner aurora 1, 6 and the brief's "walls take its green"). */
+const AURORA_GREEN: [number, number, number] = [0.003, 0.016, 0.01];
 const LICHEN: [number, number, number] = [0.26, 0.2, 0.08];
 const MOSS: [number, number, number] = [0.09, 0.15, 0.03];
 /** The darkest a vertex gets from its baked sky share: rock in the deepest corner still shows (spec §9.6). */
@@ -140,7 +142,7 @@ const columnCell = Fn(([p]: [V2]) => {
  * sharp at any mesh size: one cell search across the horizontal plane gives each column its shade, each of its faces
  * a shade of its own, a narrow joint, and drums cut across (owner cliffs-and-columns 1).
  */
-export function createRockMaterial(fresh?: FreshWater): MeshStandardNodeMaterial {
+export function createRockMaterial(fresh?: FreshWater, aurora?: Node<'float'>): MeshStandardNodeMaterial {
   const vs = <T extends Node>(n: T): T => varying(n) as unknown as T;
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const z = positionWorld.y;
@@ -203,6 +205,17 @@ export function createRockMaterial(fresh?: FreshWater): MeshStandardNodeMaterial
   const material = new MeshStandardNodeMaterial();
   // tide bands at the waterline (rock.ts, ruling R2: the arch and the stacks too); moss is never banded
   material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, dry.mul(seaWetNode(wxy, fresh))));
+  // Under an aurora the rock takes its green (plan M5 Task 3; book §5 "it lights the land"; owner aurora 1, 6): mostly
+  // the moss and the wet rock low down and in the spray, in proportion to the sky the face sees; none in hours
+  // without an aurora (the uniform is 0 there).
+  if (aurora) {
+    const wetLow = smoothstep(6, 0, z).mul(dry);
+    const catchGreen = moss.mul(0.7).add(wetLow.mul(0.35)).add(0.12);
+    material.emissiveNode = vec3(...AURORA_GREEN)
+      .mul(aurora)
+      .mul(catchGreen)
+      .mul(attribute('light', 'float'));
+  }
   material.roughnessNode = float(0.9);
   material.metalnessNode = float(0);
   return material;

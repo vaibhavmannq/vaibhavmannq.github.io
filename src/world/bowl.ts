@@ -340,7 +340,7 @@ export function bowlGeometry(prisms: readonly Prism[], fallsAt: { x: number; y: 
       normal.set(n, v * 3);
       const z = q[2]!;
       light[v] = 0.3 + 0.7 * Math.min(1, Math.max(0, (z + 2) / 40)) ** 0.8;
-      moss[v] = Math.min(1, mossy + spray * 0.7);
+      moss[v] = Math.min(1, mossy + spray * 0.45);
       column[v * 2] = cx * CELL_SCALE - z * 0.04;
       column[v * 2 + 1] = cy * CELL_SCALE + z * 0.03;
       v++;

@@ -45,6 +45,12 @@ const BURST_S = 5;
 const NIGHT = STOP_IDS.indexOf('night');
 const MIDNIGHT = STOP_IDS.indexOf('midnight');
 const rad = (d: number) => (d * Math.PI) / 180;
+/** A sky direction, coast axes (x east, y north, z up), from azimuth (from north, clockwise) and elevation. */
+const sky = (az: number, el: number): [number, number, number] => [
+  Math.sin(rad(az)) * Math.cos(rad(el)),
+  Math.cos(rad(az)) * Math.cos(rad(el)),
+  Math.sin(rad(el)),
+];
 
 /**
  * One hour's curtains as quad strips on the unit sphere (three.js axes). `uv` runs along the curtain (x) and up it
@@ -64,11 +70,26 @@ export function auroraGeometry(curves: number[][], cfg: AuroraShot, set: 0 | 1):
       const az = flat[i * 3] as number;
       const el = flat[i * 3 + 1] as number;
       const h = flat[i * 3 + 2] as number;
+      const foot = sky(az, el);
+      const toApex = cfg.apex ? sky(cfg.apex[0], cfg.apex[1]) : null;
+      const angle = toApex
+        ? Math.acos(Math.min(1, foot[0] * toApex[0] + foot[1] * toApex[1] + foot[2] * toApex[2]))
+        : 0;
       for (let j = 0; j <= ROWS; j++) {
         const sv = j / ROWS;
-        const e = rad(el + h * sv);
-        const a = rad(az + cfg.lean * sv);
-        pos.push(...toThree([Math.sin(a) * Math.cos(e), Math.cos(a) * Math.cos(e), Math.sin(e)]));
+        if (toApex && angle > 1e-4) {
+          // up a great circle toward the apex (plan M5 Task 3: a corona)
+          const w = Math.min(0.97, rad(h * sv) / angle);
+          const s0 = Math.sin((1 - w) * angle) / Math.sin(angle);
+          const s1 = Math.sin(w * angle) / Math.sin(angle);
+          pos.push(
+            ...toThree([s0 * foot[0] + s1 * toApex[0], s0 * foot[1] + s1 * toApex[1], s0 * foot[2] + s1 * toApex[2]]),
+          );
+        } else {
+          const e = rad(el + h * sv);
+          const a = rad(az + cfg.lean * sv);
+          pos.push(...toThree([Math.sin(a) * Math.cos(e), Math.cos(a) * Math.cos(e), Math.sin(e)]));
+        }
         uvs.push(i / (n - 1), sv);
         band.push(11 * b + 3, k, span, set);
       }

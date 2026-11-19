@@ -34,6 +34,7 @@ import { capInstances } from '../world/caps';
 import { createCave, decodeCave } from '../world/cave';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
+import { coronaCurves, coronaShot } from '../world/corona';
 import { createDressing, decodeDressing } from '../world/dressing';
 import { createCaps, createGrove, decodeGrove } from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
@@ -169,7 +170,7 @@ async function loadBase(
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   // One material for every rock part (D13); the lagoon's fresh water wears no barnacle line (plan M5 Task 1).
-  const rock = createRockMaterial(lagoon);
+  const rock = createRockMaterial(lagoon, light.aurora as unknown as Parameters<typeof createRockMaterial>[1]);
   const parts: [string, WorldPart][] = [
     ['terrain', terrain],
     ['sea', sea],
@@ -196,7 +197,18 @@ async function loadBase(
   // The four unknowns (M2). Each hides itself wherever its hour or place is not in play.
   const { night, midnight } = SHOTS;
   if (auroraData && night.aurora && midnight.aurora)
-    parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora, auroraActive)]);
+    // Night's curtains are the corona made here (plan M5 Task 3); Midnight keeps the baked ones
+    parts.push([
+      'aurora',
+      OLD_CAMS_ON
+        ? createAurora(auroraData, night.aurora, midnight.aurora, auroraActive)
+        : createAurora(
+            { ...auroraData, night: coronaCurves() },
+            coronaShot(night.aurora),
+            midnight.aurora,
+            auroraActive,
+          ),
+    ]);
   if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
   // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);

@@ -17,6 +17,8 @@ export interface AuroraShot {
   yaw: number;
   /** az0, az1, el0, el1, height, fold amplitude (all degrees), brightness */
   bands: [number, number, number, number, number, number, number][];
+  /** Night's corona (plan M5 Task 3): rays run along great circles toward this point (azimuth, elevation, degrees). */
+  apex?: [number, number];
 }
 
 /** The sea of cloud (coast.py's `build_cloudsea`). box = x0, x1, y0, y1. */
