@@ -230,3 +230,16 @@ Night's aurora is a corona made in the browser (`corona.ts`), every ray toward o
 rock takes a faint aurora green. Fireflies gather where the pointer meets the water; reeds frame the near shallows;
 one lantern per project plus the visitor's floats on the lagoon, hover lifts it, click opens a card, each has a
 keyboard twin. Night → Midnight goes up beside the falls. Ledger: R84–R98.
+
+**D37 · 2026-11-19 · (my calls, s19; owner told in the session log and on the M6 page) Deep midnight, M6, and R38.**
+Every part's shaders are built for the sea's mirror as well as the scene pass before it joins, each build keyed by its
+own render context (`keyBuildsByOwnContext`, using three's `renderer.debug.onNodeBuilderCreated`): three r186 shared one
+camera uniform group between pre-built shaders, which is why s12's attempt drew the eye's view upside down. Midnight's
+ground within 60 m of the eye is designed in the browser (`ridge.ts`: a 7° shoulder of heather and grass, a knoll),
+drawn in the terrain's material; the eye stands 1.6 m over it. Heather is a new plant kind; Midnight is the meadow's
+sixth stop. In the moon's hours plants, turf and leaves lose most of their colour (Purkinje) and no backlit glow comes
+through them. The lone tree is the cove pack's tree at coast.py's midnight prop. Four ranges at 1.5–7.5 km are made in
+the browser (`peaks.ts`), each paler with distance, their feet in the deck, which now reaches north to y = −100. The
+deck carries a forward-scatter road toward the moon and is dimmer elsewhere; its lumps are smaller. Midnight's aurora
+is the late-night kind: a soft foot, weaker (× 0.78), patches breathing on 6.5/11/17 s clocks. Ledger: R100–R110.
+The owner's six UI and motion sites are surveyed for every milestone in `research/owner-sites.md`.

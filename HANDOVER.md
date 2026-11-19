@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-19, end of session s18 (M5, Night, built on my side; see `docs/handover/sessions/2026-11-19-s18-m5-night.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-19, end of session s19 (M6, Deep midnight, built on my side, and R38 fixed; see `docs/handover/sessions/2026-11-19-s19-m6-deep-midnight.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-19, after s18)
+## 2. Where we are (2026-11-19, after s19)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -190,17 +190,34 @@ no borrowed set pieces (no towers, piano, etc.).
     Midnight as before (2 frames, worst 151 and 184 ms).
   - Owner page (close M5? phone): https://claude.ai/artifact/AQ9kvXB889kr9XvWbxerrs
   - Check scripts now run in one off-screen Chrome (`.superpowers/quiet-browser.mjs`; owner: no windows popping up).
-- **Next (s19): M6, Deep midnight** (Amendment 1 §4 VI).
-  Exact steps: the s18 session log.
-  - Still open: R38 (Night/Midnight first builds, M6); mid at Dusk/Sunrise and the mid rides on this laptop; Dusk's
-    +1 material (s18); stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing).
+- **s19 (2026-11-19): M6, Deep midnight, built on my side, and R38 fixed; inline, on `world`, not pushed (71a8e7d..).**
+  - Research sheet `research/m6-midnight-references.md`; plan `docs/superpowers/plans/2026-11-19-m6-deep-midnight.md`;
+    ledger `docs/handover/ledgers/2026-11-19-m6-deep-midnight.md` (R100–R110); D37.
+  - **R38 fixed:** every part is built for the sea's mirror before it shows; three r186 had shared one camera uniform
+    group between pre-built shaders (s12's upside-down view), now keyed per render context (`keyBuildsByOwnContext`).
+    Laptop, first visit with no shader cache: into Night and Midnight 0 slow frames (old 500–1083 ms).
+  - Midnight built: a designed ridge top of heather and grass (`ridge.ts`), the lone tree (cove pack), four ranges
+    fading with distance (`peaks.ts`), the moon's road on the deck, smaller lumps, a late-night aurora (soft foot,
+    pulsating patches); moonlit colours grey (Purkinje) at Night and Midnight.
+  - **My looks: Midnight 74 % at mid, 72 % at low** (before 45 %), behaviour 72 %. Not 85 (heather as carpet, the deck's
+    swells, the far plain, no earthshine); I recommend closing M6 and carrying the rest into M8.
+  - Speed: census inside D13 (Midnight 38 draws, 10 materials); laptop low unchanged, mid cheaper. **Phone not
+    measured (not connected).** Firefox's smoke page-load bar (5 s) fails on this laptop in old and new builds.
+  - The owner's six UI and motion sites (all milestones): `research/owner-sites.md`. Asked: the Kawaii Text Animation link.
+- **Next (s20): plug in the phone (R38, Midnight), then M7, Before dawn** (Amendment 1 §4 VII). Exact steps: the s19 log.
+  - Still open: R101 (a ~200 ms first-visit frame into Midnight, both builds); mid at Dusk/Sunrise and the mid rides on
+    this laptop; stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing); the Firefox
+    smoke timing.
+  - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
+    cache) and `.superpowers/m6/first-ride.mjs` (START, FIRST, WAIT env).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
     before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); Brave must be in front; the scripts
     drive the open `localhost:4181` tab.
   - After a Blender re-export or a coast.py edit: `python tools/world/export_hours.py`, `bake_base.py`,
     `node tools/world/bake_flights.ts`, `bake_dressing.py`, `node tools/world/manifest.ts`, then `npm run world:report`.
   - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/`, `.superpowers/m4/tools/`, `.superpowers/m5/`
-    (s18: `flight-clear.ts` checks flights against the bowl's walls, `lure.mjs`, `lanterns.mjs`, `camcalc.ts`).
+    (s18: `flight-clear.ts`, `lure.mjs`, `lanterns.mjs`, `camcalc.ts`), `.superpowers/m6/` (s19: `first-ride.mjs`,
+    `shot.mjs` with parts hidden, `strip.mjs` frame strips).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.

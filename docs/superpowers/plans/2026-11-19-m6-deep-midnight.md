@@ -52,30 +52,30 @@ UI/motion sources the owner named in s19: `research/owner-sites.md` (no change t
   pipeline log (`.superpowers/m6/first-ride.mjs`): which builds come late, and when.
 - [x] Fix: build each part for the mirror too; find why s12's attempt drew the eye's view upside down; unit test.
 - [x] Laptop A/B, cold: into Night and Midnight before/after.
-- [ ] Phone A/B (a visitor's night, this build vs e406c8a).
+- [ ] Phone A/B (a visitor's night, this build vs e406c8a). **Not done in s19: the phone was not connected.**
 
 ### Task 2: The ridge top, heather and grass (owner `night-sky` 6; render; book §8)
-- [ ] `ridge.ts`: a pure, seeded ground patch around Midnight's camera; tests (meets the grid at its rim, no hole under
+- [x] `ridge.ts`: a pure, seeded ground patch around Midnight's camera; tests (meets the grid at its rim, no hole under
   the eye, falls away in front).
-- [ ] Heather (grey-violet mats) and grass on it in the meadow system; a few pale stones.
-- [ ] Prototype the camera's eye height and look with `?param` hooks, shoot, write the winner into coast.py.
+- [x] Heather (grey-violet mats) and grass on it in the meadow system; a few pale stones.
+- [x] Camera kept (cam, look, lens as before); the designed ground puts the eye 1.6 m over it, which reads right. No coast.py change.
 
 ### Task 3: The lone tree (owner `night-sky` 6; D33)
-- [ ] The cove pack's tree placed on the ridge's left shoulder, its crown against cloud and sky, a slow sway; shown only
+- [x] The cove pack's tree placed on the ridge's left shoulder, its crown against cloud and sky, a slow sway; shown only
   at Midnight and its flights.
 
 ### Task 4: Peaks fading with distance (owner `night-sky` 6, `mist` 2; book §1)
-- [ ] `peaks.ts`: three or four ranges, jagged, rising distance, each paler; feet under the deck; tests.
-- [ ] The mid-ground hill loses its daylight green.
+- [x] `peaks.ts`: three or four ranges, jagged, rising distance, each paler; feet under the deck; tests.
+- [x] The mid-ground hill loses its daylight green.
 
 ### Task 5: The cloud deck and the moon's road (owner `cloud-sea` 3, `night-sky` 4, 5, 8; book §4)
-- [ ] Smaller, more numerous lumps; the side facing the moon brighter; a road of forward scatter toward the moon.
-- [ ] The moon: earthshine on the dark part; the halo lights the deck under it.
+- [x] Smaller, more numerous lumps; the side facing the moon brighter; a road of forward scatter toward the moon.
+- [ ] The moon: earthshine on the dark part; the halo lights the deck under it. **Not done: carried to M8.**
 
 ### Task 6: The late-night aurora (book §5; brief "a softer aurora foot")
-- [ ] Midnight's foot softened, strength lowered; pulsating patches (5–20 s, each its own clock); the deck takes a
+- [x] Midnight's foot softened, strength lowered; pulsating patches (5–20 s, each its own clock); the deck takes a
   faint green under it. Judged in motion (frame strips).
 
 ### Task 7: Speed, phone, verdicts
-- [ ] Census; laptop held still at low/mid; the first ride (R38) again; phone over USB; gate (`npm test`, e2e,
+- [x] Census; laptop held still at low/mid; the first ride (R38) again; phone over USB; gate (`npm test`, e2e,
   `world:report`, `world:test`); verdicts with likes, dislikes, % look and % behaviour; ledger, log, HANDOVER.
