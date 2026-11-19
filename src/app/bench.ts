@@ -42,6 +42,7 @@ declare global {
     __look(): { yaw: number; pitch: number };
     /** Golden's lantern on screen, CSS pixels (plan M2.5 Task 7: its parallax slide is measured). */
     __lanternPx(): [number, number];
+    __projectPx(): number[][];
   }
 }
 

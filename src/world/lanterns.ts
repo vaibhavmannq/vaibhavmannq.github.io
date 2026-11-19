@@ -158,7 +158,7 @@ export function threadPick(field: readonly FieldLantern[], cam: readonly number[
 }
 
 /** One lantern's shape: the paper box on a thin float, with `part` 1 on the paper and 0 on the float. */
-function lanternShape(): BufferGeometry {
+export function lanternShape(): BufferGeometry {
   const { paper, float: fh } = DUSK_LANTERNS;
   const p = paperShape(paper.w, paper.h).translate(0, fh + paper.h / 2, 0);
   const f = new BoxGeometry(paper.w * 1.25, fh, paper.w * 1.25).translate(0, fh / 2, 0).toNonIndexed();

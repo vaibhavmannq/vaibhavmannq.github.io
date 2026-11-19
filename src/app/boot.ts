@@ -3,6 +3,7 @@ import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vecto
 import { fetchBinary, fetchJson, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
 import { createSkyStore, skyAmbients } from '../assets/skies';
+import { projects } from '../content/projects';
 import { fovFor, type Pose, poseAt, shortestYaw } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
 import flightPathsOld from '../journey/flightPathsOld.json';
@@ -19,6 +20,7 @@ import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '.
 import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
 import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
+import { createProjectCard } from '../overlay/projectCard';
 import { createRail } from '../overlay/rail';
 import { createRide } from '../overlay/ride';
 import { createStage } from '../overlay/stage';
@@ -49,6 +51,7 @@ import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
 import { createPebbles } from '../world/pebbles';
 import { createPlankton, planktonStirs, waterline } from '../world/plankton';
+import { createProjectLanterns } from '../world/projectLanterns';
 import { scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
@@ -480,6 +483,26 @@ export async function boot(): Promise<App> {
   })();
   const thread = loadThread(store);
   const duskLanterns = createDuskLanterns(caps.reducedMotion);
+  // Night's project lanterns (plan M5 Task 5): one per project, and the visitor's among them once claimed.
+  const projectLanterns = createProjectLanterns(caps.reducedMotion);
+  projectLanterns.setCount(projects.length, thread.claimed);
+  const card = createProjectCard();
+  const openProject = (i: number) => {
+    const p = projects[i];
+    if (p) card.open(p);
+  };
+  const lanternTwins = document.getElementById('lantern-twins');
+  if (lanternTwins)
+    for (const [i, p] of projects.entries()) {
+      const b = document.createElement('button');
+      b.className = 'spot';
+      b.type = 'button';
+      b.textContent = `Lift the lantern: ${p.title}`;
+      b.addEventListener('click', () => openProject(i));
+      b.addEventListener('focus', () => projectLanterns.setHover(i));
+      b.addEventListener('blur', () => projectLanterns.setHover(-1));
+      lanternTwins.append(b);
+    }
   const [fl, sr] = [STOP_IDS.indexOf('firstlight'), STOP_IDS.indexOf('sunrise')];
   const shallows = createLantern({
     at: SHALLOWS_AT,
@@ -495,6 +518,7 @@ export async function boot(): Promise<App> {
     thread.claimed = true;
     saveThread(store, thread);
     duskLanterns.setMine(true);
+    projectLanterns.setCount(projects.length, true);
   };
   if (thread.claimed) {
     lantern.claim();
@@ -507,6 +531,7 @@ export async function boot(): Promise<App> {
       compileThenAdd(app, lantern, 'lantern'),
       compileThenAdd(app, glints, 'spots'),
       compileThenAdd(app, duskLanterns, 'lanterns'),
+      compileThenAdd(app, projectLanterns, 'projectLanterns'),
       compileThenAdd(app, shallows, 'shallows'),
     ]);
   const goldenCam = STOPS[0]?.cam ?? [0, 0, 0];
@@ -528,6 +553,7 @@ export async function boot(): Promise<App> {
     const p = v.clone().project(camera);
     return [((p.x + 1) / 2) * window.innerWidth, ((1 - p.y) / 2) * window.innerHeight, p.z] as const;
   };
+  window.__projectPx = () => projectLanterns.centres().map((c) => toScreen(c).slice(0, 2));
   window.__lanternPx = () => {
     const [x, y] = toScreen(lantern.centre);
     return [x, y];
@@ -541,6 +567,22 @@ export async function boot(): Promise<App> {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') endWalk();
   });
+  /** The project lantern under a screen point (within 55 px of its paper), or −1; the visitor's own opens nothing. */
+  const projectAt = (x: number, y: number) => {
+    if (!projectLanterns.object.visible) return -1;
+    let best = -1;
+    let bestD = 55;
+    projectLanterns.centres().forEach((c, i) => {
+      if (i >= projects.length) return;
+      const [px, py, pz] = toScreen(c);
+      const d = Math.hypot(px - x, py - y);
+      if (pz < 1 && d < bestD) {
+        best = i;
+        bestD = d;
+      }
+    });
+    return best;
+  };
   /** A tap or click on the world: a glint starts its walk; the lantern becomes the visitor's; elsewhere, back. */
   const pick = (x: number, y: number) => {
     if (glints.object.visible)
@@ -553,6 +595,8 @@ export async function boot(): Promise<App> {
       const [lx, ly, lz] = toScreen(lantern.centre);
       if (lz < 1 && Math.hypot(lx - x, ly - y) < 60) return claimLantern();
     }
+    const hit = projectAt(x, y);
+    if (hit >= 0) return openProject(hit);
     endWalk();
   };
 
@@ -724,6 +768,15 @@ export async function boot(): Promise<App> {
       const py = ((1 - pointer[1]) / 2) * window.innerHeight;
       lantern.setHover(Math.hypot(lx - px, ly - py) < 70);
     }
+    // a project lantern lifts under the pointer (plan M5 Task 5), and the cursor says it can be opened (spec §10)
+    if (projectLanterns.object.visible && pointerSeen && !card.isOpen) {
+      const i = projectAt(((pointer[0] + 1) / 2) * window.innerWidth, ((1 - pointer[1]) / 2) * window.innerHeight);
+      projectLanterns.setHover(i);
+      if (worldLayer) worldLayer.style.cursor = i >= 0 ? 'pointer' : '';
+    } else if (worldLayer?.style.cursor) worldLayer.style.cursor = '';
+    // the lanterns' twins are reachable by keyboard while resting at Night
+    const twinsOff = !(state.resting && STOP_IDS[state.a] === 'night');
+    if (lanternTwins && lanternTwins.hidden !== twinsOff) lanternTwins.hidden = twinsOff;
     const hour = blendHours(
       HOURS[STOP_IDS[state.a] ?? 'golden'],
       HOURS[STOP_IDS[state.b] ?? 'golden'],
