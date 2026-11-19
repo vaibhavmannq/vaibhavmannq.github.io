@@ -20,11 +20,11 @@ const floor = (s: (typeof SPOTS)[number]) => {
 };
 
 describe("Golden's spots (Amendment 1 §6 step 2; plan M2.5 Task 7)", () => {
-  it('has two spots at Golden and one at each other cove stop (plan M3 Task 7), each starting at its camera', () => {
+  it('has two spots at Golden and one at each other cove stop and at Blue hour (plan M3 Task 7, M4 Task 5), each starting at its camera', () => {
     const count = (id: string) => SPOTS.filter((s) => s.stop === id).length;
     expect(count('golden')).toBe(2);
-    for (const id of ['sunset', 'dusk', 'firstlight', 'sunrise']) expect(count(id), id).toBe(1);
-    for (const id of ['bluehour', 'night', 'midnight', 'beforedawn']) expect(count(id), id).toBe(0);
+    for (const id of ['sunset', 'dusk', 'bluehour', 'firstlight', 'sunrise']) expect(count(id), id).toBe(1);
+    for (const id of ['night', 'midnight', 'beforedawn']) expect(count(id), id).toBe(0);
     for (const s of SPOTS) expect(s.points[0], s.id).toEqual(STOPS[stopIndex(s.stop)]?.cam);
   });
 

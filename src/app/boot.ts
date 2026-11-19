@@ -707,8 +707,18 @@ export async function boot(): Promise<App> {
     if (hour.plankton > 0.01) {
       // one stroke at a time: the feet while wading, else the pointer (both share the ring's last point)
       const at = touchAt ?? (pointerSeen ? pointer : null);
-      if (walk && pose.position[1] < 1.6) stir(planktonStirs, pose.position[0], pose.position[2], timeS, 1.4, 0.6);
-      else if (at) {
+      if (walk && pose.position[1] < 1.6) {
+        // the legs are a stride ahead of the eye (coast yaw: forward is (sin, cos) → three.js (sin, −cos))
+        const yaw = (pose.yaw * Math.PI) / 180;
+        stir(
+          planktonStirs,
+          pose.position[0] + Math.sin(yaw) * 0.9,
+          pose.position[2] - Math.cos(yaw) * 0.9,
+          timeS,
+          1.4,
+          0.6,
+        );
+      } else if (at) {
         const d = ray.set(at[0], at[1], 0.5).unproject(camera).sub(camera.position);
         const hit = waterHit([camera.position.x, camera.position.y, camera.position.z], [d.x, d.y, d.z]);
         if (hit) {

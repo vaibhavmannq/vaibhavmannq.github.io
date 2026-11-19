@@ -169,7 +169,8 @@ export function createPlankton(feet: Float32Array): WorldPart {
   // a hand's width at first, spreading with the ripple it made (0.2–0.3 m/s, book §3)
   const rad = float(0.04)
     .add(h2.sqrt().mul(0.4))
-    .mul(float(0.8).add(age.min(2).mul(0.4)));
+    .mul(float(0.8).add(age.min(2).mul(0.4)))
+    .mul(s.w.max(0.5)); // a footstep stirs a wider ring than a hand
   const stirAt = vec2(s.x, s.y).add(vec2(ang.cos(), ang.sin()).mul(rad));
   const at = select(isFeet, sp.xy, select(isFlats, flatsAt, stirAt)) as Node<'vec2'>;
   const dist = vec3(at.x, 0, at.y).sub(cameraPosition).length();
@@ -200,7 +201,7 @@ export function createPlankton(feet: Float32Array): WorldPart {
   const lag = h3.mul(0.12).add(rad.mul(0.08));
   const st = age.sub(lag);
   const stirB = step(0, st)
-    .mul(exp(st.div(h4.mul(0.6).add(0.5).negate())))
+    .mul(exp(st.div(h4.mul(0.6).add(0.5).mul(s.w.max(1)).negate()))) // a footstep's wake lasts longer
     .mul(s.w)
     .mul(h5.mul(0.8).add(0.9))
     .mul(
@@ -215,7 +216,7 @@ export function createPlankton(feet: Float32Array): WorldPart {
   // lifted with distance so far sparks never sink into the sea's depth (s16: coplanar things sink past ~100 m)
   m.positionNode = vec3(at.x, dist.mul(0.001).add(0.03), at.y);
   // a few pixels whatever the distance, a little larger very near; nothing at all when dark
-  const px = mix(float(2.6), float(6), saturate(b)).add(smoothstep(4, 0.6, dist).mul(3));
+  const px = mix(float(2.6), float(6), saturate(b)).add(smoothstep(5, 0.8, dist).mul(6));
   m.scaleNode = vec2(px.mul(dist).mul(pxAngle).mul(step(0.004, b)));
   const q = uv().sub(0.5).mul(2);
   const core = exp(dot(q, q).mul(-9));
