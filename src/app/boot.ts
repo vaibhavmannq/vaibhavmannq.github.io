@@ -44,6 +44,7 @@ import { createLife } from '../world/life';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, EYE_ONLY_LAYER } from '../world/meadow';
 import { createMist } from '../world/mist';
+import { createNightLife, nightLure, nightWeight } from '../world/nightlife';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
 import { createPebbles } from '../world/pebbles';
@@ -175,6 +176,8 @@ async function loadBase(
     ['terrain', terrain],
     ['sea', sea],
   ];
+  // Night's fireflies and glowing reeds (plan M5 Task 4)
+  parts.push(['nightlife', createNightLife(reducedMotion)]);
   // Night's bowl of basalt columns (plan M5 Task 1): made here, no download. Not with `?cams=old`: the old camera
   // stands behind the new south wall.
   if (SHOTS.night.falls && !OLD_CAMS_ON)
@@ -750,6 +753,19 @@ export async function boot(): Promise<App> {
         if (hit) {
           const far = Math.hypot(hit[0] - camera.position.x, hit[1] - camera.position.z);
           stir(planktonStirs, hit[0], hit[1], timeS, 1, Math.max(STIR_SPACING, far * 0.03));
+        }
+      }
+    }
+    // Night's fireflies drift toward where the pointer (or a finger) meets the water (plan M5 Task 4)
+    if (nightWeight(state) > 0.5) {
+      const at = touchAt ?? (pointerSeen ? pointer : null);
+      if (at) {
+        const d = ray.set(at[0], at[1], 0.5).unproject(camera).sub(camera.position);
+        const hit = waterHit([camera.position.x, camera.position.y, camera.position.z], [d.x, d.y, d.z]);
+        if (hit && Math.hypot(hit[0] - camera.position.x, hit[1] - camera.position.z) < 40) {
+          nightLure.x = hit[0];
+          nightLure.z = hit[1];
+          nightLure.atS = timeS;
         }
       }
     }

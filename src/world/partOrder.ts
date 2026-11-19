@@ -17,6 +17,7 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   aurora: new Set(['night', 'midnight']),
   falls: new Set(['night']),
   bowl: new Set(['night']),
+  nightlife: new Set(['night']),
   cloud: new Set(['midnight']),
   cave: new Set(['beforedawn']),
   arch: ARCH_SEEN_FROM,
