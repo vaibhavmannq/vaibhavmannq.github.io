@@ -52,7 +52,7 @@ UI/motion sources the owner named in s19: `research/owner-sites.md` (no change t
   pipeline log (`.superpowers/m6/first-ride.mjs`): which builds come late, and when.
 - [x] Fix: build each part for the mirror too; find why s12's attempt drew the eye's view upside down; unit test.
 - [x] Laptop A/B, cold: into Night and Midnight before/after.
-- [ ] Phone A/B (a visitor's night, this build vs e406c8a). **Not done in s19: the phone was not connected.**
+- [x] Phone A/B (a visitor's night, this build vs e406c8a): this build 0 slow frames, old 184/218 ms.
 
 ### Task 2: The ridge top, heather and grass (owner `night-sky` 6; render; book §8)
 - [x] `ridge.ts`: a pure, seeded ground patch around Midnight's camera; tests (meets the grid at its rim, no hole under

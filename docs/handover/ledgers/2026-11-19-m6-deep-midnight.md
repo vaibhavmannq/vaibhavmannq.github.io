@@ -110,6 +110,20 @@ Fontshare. "Kawaii Text Animation" was not found under that name (asked).
   whatever the build (s18 saw 8.1 s once). Open, not M6's. A change that moved the mirror builds behind the joins was
   tried for it, did not help, and was reverted (measure before fixing).
 
+### Phone (s19, after the owner plugged it in; USB, Brave, WebGPU; logs `.superpowers/m6/phone-*.log`)
+- Brave's DevTools socket was `chrome_devtools_remote_<pid>` this time (Chrome, also running, held the plain name):
+  forward 9222 to the one whose pid is `com.brave.browser` (`adb shell cat /proc/net/unix | grep devtools`).
+- Every part joined in both builds first (`joined.mjs`; the new build adds ridge, lonetree, peaks).
+- **A visitor's night, R38:** this build, then e406c8a, then this build again (warm phone): **this build 0 frames over
+  50 ms on every flight in both runs, worst 34 ms, the tier high all night**; e406c8a into Night 2 (worst 184 ms), into
+  Midnight 1 (worst 218 ms), and the governor stepped high → mid → low after them (s18 saw the same step in both
+  builds). **R38 is fixed on the phone.**
+- **Held still** (mid / high): Blue hour 59.8 / 59.8, Night 59.8 / 59.8, **Midnight 59.8 / 59.5** fps (s18: 59.7 / 59.5).
+  M6 costs nothing on the phone.
+- **Portrait framing** (`final/phone-midnight.png`): the moon, the aurora, the deck and the ranges read; the lone tree
+  is cut to its right edge at the frame's left (portrait keeps less width). No stop has a portrait framing of its own:
+  carried to M8 as one pass for every stop (R111).
+
 ### Verdicts (mine, D15; `.superpowers/m6/m6-final.jpg`, `final/mid.png`, `final/low.png`)
 - **Deep midnight: 74 % at mid, 72 % at low** (before 45 %). **Behaviour 72 %** (before 55 %).
 - Pieces (look / behaviour): ridge and heather 70 / 70, lone tree 76 / 70, ranges 70 / –, deck and road 72 / 72,

@@ -46,8 +46,10 @@ Not pushed.
 - Census: Midnight 38 draws, 1.85 M triangles, 10 materials (was 32 / 1.34 M / 7). Dusk back to 46 / 12.
 - Laptop held still, cool, low: Midnight 11.4 vs 11.5 ms GPU (old/new), 60 fps; mid: new 19.5 vs old 22.0 ms.
 - Size 309.4 kB gz (was 306.7). No new download (the tree is in the cove pack). `world:report` green.
-- **Phone: not measured: the phone was not connected over USB this session.** R38 and Midnight on the phone are the
-  first check of s20.
+- **Phone** (plugged in at the end; Brave, WebGPU): a visitor's night with this build had 0 frames over 50 ms on every
+  flight in two runs (worst 34 ms), the tier high all night; e406c8a had 2 into Night (184 ms) and 1 into Midnight
+  (218 ms) and stepped high → mid → low. **R38 is fixed on the phone.** Midnight held still 59.8 fps at mid, 59.5 at
+  high. In portrait the lone tree is cut off at the left: a per-stop portrait framing is carried to M8 (R111).
 - Gate: unit 354 passed; e2e 24 passed, `horizon.spec` ×2 pre-existing, smoke "name is on screen at once" over its 5 s
   bar on this laptop's Firefox in both this build and e406c8a (environmental, open); `world:test`: all world checks passed.
 
@@ -59,15 +61,13 @@ Not pushed.
 
 ## Open
 - Owner: M3, M4, M5, M6 closes; Sunset/Dusk cameras; the Kawaii Text Animation link.
-- Phone checks for M6 and R38 (s20, first thing).
 - R101: one ~200 ms frame into Midnight on a cold first visit, seen in two of three runs, both builds, no pipeline
   involved. Long tasks of 67–169 ms while resting at Night/Midnight 40–50 s after arriving (cold).
-- Carry to M8: Midnight's list above; from before: Night's walls, rim plants, falls; mid at Dusk/Sunrise and the mid
+- Carry to M8: Midnight's list above; a portrait framing per stop (the lone tree leaves the phone's frame); from before: Night's walls, rim plants, falls; mid at Dusk/Sunrise and the mid
   rides on this laptop; stage-B pop-in; packs fetched every start; `horizon.spec`; the Firefox smoke timing.
 
 Owner page: none this session (the owner reviews in the final session).
 
 ## Next (s20)
-1. Plug in the phone: R38 (a visitor's night, this build vs e406c8a) and Midnight held still at mid and high.
-2. M7, Before dawn (Amendment 1 §4 VII: the stop begins deeper in the cave and drifts toward the mouth; a skylight
+1. M7, Before dawn (Amendment 1 §4 VII: the stop begins deeper in the cave and drifts toward the mouth; a skylight
    shaft as an option), with its Research phase and `research/owner-sites.md`.

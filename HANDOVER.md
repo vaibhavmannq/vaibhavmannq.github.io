@@ -201,11 +201,12 @@ no borrowed set pieces (no towers, piano, etc.).
     pulsating patches); moonlit colours grey (Purkinje) at Night and Midnight.
   - **My looks: Midnight 74 % at mid, 72 % at low** (before 45 %), behaviour 72 %. Not 85 (heather as carpet, the deck's
     swells, the far plain, no earthshine); I recommend closing M6 and carrying the rest into M8.
-  - Speed: census inside D13 (Midnight 38 draws, 10 materials); laptop low unchanged, mid cheaper. **Phone not
-    measured (not connected).** Firefox's smoke page-load bar (5 s) fails on this laptop in old and new builds.
+  - Speed: census inside D13 (Midnight 38 draws, 10 materials); laptop low unchanged, mid cheaper. **Phone: R38 fixed (0 slow
+    frames on every flight, tier high all night; old build 184/218 ms), Midnight 59.5–59.8 fps.** Firefox's smoke page-load bar (5 s) fails on this laptop in old and new builds.
   - The owner's six UI and motion sites (all milestones): `research/owner-sites.md`. Asked: the Kawaii Text Animation link.
-- **Next (s20): plug in the phone (R38, Midnight), then M7, Before dawn** (Amendment 1 §4 VII). Exact steps: the s19 log.
-  - Still open: R101 (a ~200 ms first-visit frame into Midnight, both builds); mid at Dusk/Sunrise and the mid rides on
+- **Next (s20): M7, Before dawn** (Amendment 1 §4 VII). Exact steps: the s19 log.
+  - Still open: R101 (a ~200 ms first-visit frame into Midnight on the laptop, both builds; the phone showed none);
+    a portrait framing per stop (M8: Midnight's tree leaves the phone's frame); mid at Dusk/Sunrise and the mid rides on
     this laptop; stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing); the Firefox
     smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
