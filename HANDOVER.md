@@ -203,7 +203,7 @@ no borrowed set pieces (no towers, piano, etc.).
     swells, the far plain, no earthshine); I recommend closing M6 and carrying the rest into M8.
   - Speed: census inside D13 (Midnight 38 draws, 10 materials); laptop low unchanged, mid cheaper. **Phone: R38 fixed (0 slow
     frames on every flight, tier high all night; old build 184/218 ms), Midnight 59.5–59.8 fps.** Firefox's smoke page-load bar (5 s) fails on this laptop in old and new builds.
-  - The owner's six UI and motion sites (all milestones): `research/owner-sites.md`. Asked: the Kawaii Text Animation link.
+  - The owner's six UI and motion sites (all milestones): `research/owner-sites.md`. (Kawaii Text Animation: dropped by the owner.)
 - **Next (s20): M7, Before dawn** (Amendment 1 §4 VII). Exact steps: the s19 log.
   - Still open: R101 (a ~200 ms first-visit frame into Midnight on the laptop, both builds; the phone showed none);
     a portrait framing per stop (M8: Midnight's tree leaves the phone's frame); mid at Dusk/Sunrise and the mid rides on

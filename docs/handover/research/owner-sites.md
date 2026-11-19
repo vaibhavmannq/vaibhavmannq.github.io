@@ -16,7 +16,7 @@ for one effect (D9: the size bar). Nothing may take a scene's attention from the
 | **Supahero** (supahero.io) | ~400 real hero sections from brands and portfolios, as images; now part of screensdesign.com | gallery | how a first screen places a name and one line over a full-bleed image: our Golden hour (M9) |
 | **Fontshare** (fontshare.com) | free fonts from the Indian Type Foundry | free for personal and commercial use (ITF FFL) | **we already use Satoshi from it** (body); candidates below |
 | **MotionSites** (motionsites.ai) | a paid library of AI prompts for animated hero sections, with free previews | paid prompts | look only: "Coastal Cards", "Dark Portfolio", "Ink Reveal", "Moss Island", "Scroll-Driven 3D" |
-| **Kawaii Text Animation** | not found under that name (web search; 21st.dev's "kawaii" tag lists playful buttons and bento grids, not a text effect) | — | **asked the owner for the link**; the nearest are 21st.dev's "Squash Text", "Text Wavy", "Bloom Text" (bouncy letters) |
+| **Kawaii Text Animation** | dropped by the owner (s19, after the survey) | — | nothing |
 
 ## What each milestone takes
 
