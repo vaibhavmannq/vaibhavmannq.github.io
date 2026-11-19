@@ -68,6 +68,11 @@ Not pushed.
 
 Owner page: none this session (the owner reviews in the final session).
 
+## End of session (owner)
+- D38: M3, M4, M5, M6 closed below 85 %, leftovers to M8. Sunset and Dusk keep the new cameras; M8 adds more to
+  Sunset's view ("it feels empty"), `?cams=old` kept as the reference until then. Kawaii Text Animation dropped.
+- `world` pushed at 58ebd78 (owner's word).
+
 ## Next (s20)
 1. M7, Before dawn (Amendment 1 §4 VII: the stop begins deeper in the cave and drifts toward the mouth; a skylight
    shaft as an option), with its Research phase and `research/owner-sites.md`.

@@ -243,3 +243,10 @@ the browser (`peaks.ts`), each paler with distance, their feet in the deck, whic
 deck carries a forward-scatter road toward the moon and is dimmer elsewhere; its lumps are smaller. Midnight's aurora
 is the late-night kind: a soft foot, weaker (× 0.78), patches breathing on 6.5/11/17 s clocks. Ledger: R100–R110.
 The owner's six UI and motion sites are surveyed for every milestone in `research/owner-sites.md`.
+
+**D38 · 2026-11-19 · (owner, s19) M3, M4, M5 and M6 close below the 85 % bar; their leftovers go to M8. Sunset and
+Dusk keep the new cameras.** Closing scores (mine, look at mid): Golden 76, Sunset 80, Dusk 74, First light 74,
+Sunrise 76, Blue hour 82, Night 72, Deep midnight 74. Every carried item is in the s16, s17, s18 and s19 logs. On the
+cameras the owner added: "honestly I really liked the old sunset; if possible try adding some more in view as it feels
+empty; do it in M8". So M8 fills Sunset's new meadow view (more in the frame, the old view's richness as the guide);
+`?cams=old` stays as that reference until the M8 Sunset pass, then goes.

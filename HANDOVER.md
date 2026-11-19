@@ -204,6 +204,9 @@ no borrowed set pieces (no towers, piano, etc.).
   - Speed: census inside D13 (Midnight 38 draws, 10 materials); laptop low unchanged, mid cheaper. **Phone: R38 fixed (0 slow
     frames on every flight, tier high all night; old build 184/218 ms), Midnight 59.5–59.8 fps.** Firefox's smoke page-load bar (5 s) fails on this laptop in old and new builds.
   - The owner's six UI and motion sites (all milestones): `research/owner-sites.md`. (Kawaii Text Animation: dropped by the owner.)
+- **Owner, end of s19 (D38): M3–M6 closed below 85 %, everything carried to M8; Sunset and Dusk keep the new cameras.
+  M8 must fill Sunset's meadow view ("it feels empty"; the owner liked the old view): `?cams=old` stays as the
+  reference until then.** No owner answers are pending.
 - **Next (s20): M7, Before dawn** (Amendment 1 §4 VII). Exact steps: the s19 log.
   - Still open: R101 (a ~200 ms first-visit frame into Midnight on the laptop, both builds; the phone showed none);
     a portrait framing per stop (M8: Midnight's tree leaves the phone's frame); mid at Dusk/Sunrise and the mid rides on
