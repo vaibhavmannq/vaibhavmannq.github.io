@@ -49,7 +49,7 @@ Not pushed.
 - **Phone: not measured: the phone was not connected over USB this session.** R38 and Midnight on the phone are the
   first check of s20.
 - Gate: unit 354 passed; e2e 24 passed, `horizon.spec` ×2 pre-existing, smoke "name is on screen at once" over its 5 s
-  bar on this laptop's Firefox in both this build and e406c8a (environmental, open); `world:test` was still running when the session ended: its log is `.superpowers/m6/world-test.log` (check it first in s20).
+  bar on this laptop's Firefox in both this build and e406c8a (environmental, open); `world:test`: all world checks passed.
 
 ## Learned
 - On a much-used laptop Chrome's shader disk cache hides first-visit hitches: measure first trips with a cold Chrome.
