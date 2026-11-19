@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-19, end of session s16 (M3 finished on my side: the Dusk hitch fixed, the look pass, the final review; see `docs/handover/sessions/2026-11-18-s16-m3-hitch-and-look.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-19, end of session s17 (M4, Blue hour, built on my side; see `docs/handover/sessions/2026-11-19-s17-m4-blue-hour.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-18, after s16)
+## 2. Where we are (2026-11-19, after s17)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -163,17 +163,28 @@ no borrowed set pieces (no towers, piano, etc.).
   - **Final looks: Golden 76 %, Sunset 80 %, Dusk 74 %, First light 74 %, Sunrise 76 %.** None at 85 %; my
     recommendation: close M3 and carry the rest into M8 (list in the s16 log). Owner page with two questions (close
     M3? old or new cameras?): https://claude.ai/artifact/PrcvXudVZYCPSbpSAmFfU4
-- **Next (s17): M4, Blue hour.** First read the owner's answers on the M3 page (the phone check of HEAD is done:
-  no cost from day 2); then M4's Research phase and plan. Exact steps: the s16 session log.
-  - Still open: R38 (Night/Midnight first builds, M6); mid at the cove stops; stage-B pop-in (M8);
-    packs fetched at every start; `horizon.spec.ts` (pre-existing).
+- **s17 (2026-11-19): M4, Blue hour, built on my side; inline, on `world`, not pushed (f950f6b..).**
+  - Research sheet `research/m4-blue-hour-references.md`; plan `docs/superpowers/plans/2026-11-19-m4-blue-hour.md`;
+    ledger `docs/handover/ledgers/2026-11-19-m4-blue-hour.md` (R76–R83); D35.
+  - Built: plankton that lights only where water moves (rock waterlines, rare sparks, a trail under the pointer or a
+    finger, the feet on a new wade spot); stars by magnitude against the sky's brightness (every night hour); scrub
+    caps on the arch and stacks (the grove's shrub, placed in the browser); Blue hour's wind 0 → 0.5 and sand ribs;
+    the flight to Night leaves under the arch's span with the gaze lifting.
+  - **My looks: Blue hour 82 % at mid, 78 % at low** (before ~66 %). Not 85 (glare, boxy fallen blocks, low's
+    mirror); I recommend closing M4 and carrying those into M8.
+  - Speed: census inside D13; laptop low +1 ms at Blue hour, cove stops unchanged; nothing new to download.
+  - Owner page with the asks (close M4; still M3's two answers, which arrived blank this session): see the s17 log.
+- **Next (s18): M5, Night** (Amendment 1 §5). First read the owner's answers on the M4 and M3 pages. Exact steps: the
+  s17 session log.
+  - Still open: R38 (Night/Midnight first builds, M6); mid at Dusk/Sunrise and the mid ride into Blue hour on this
+    laptop; stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
-    before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); the scripts drive the open
-    `localhost:4181` tab (the phone's browser is Brave).
+    before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); Brave must be in front; the scripts
+    drive the open `localhost:4181` tab.
   - After a Blender re-export: `node tools/world/manifest.ts` (or `npm run world`), then `npm run world:report`.
-  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/` (s16: `first-dusk.mjs` rides with a
-    pipeline log, `pl-dump.mjs`, `trace-dusk.mjs`, `stop-shot.mjs`, `ground-scan.ts`; s15: `ab-builds.mjs`,
-    `spot-shots.mjs`, `census.mjs`, `life-frames.mjs`; `sheet.py`).
+  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/`, `.superpowers/m4/tools/` (s17:
+    `first-bluehour.mjs` rides with pipelines and long tasks, `flight-hold.mjs`, `parts-cost.mjs`, `ab-shot.mjs`,
+    `sweep.mjs`, `wade.mjs`, `arch-gap.mjs`, `rock-map.mjs`).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.

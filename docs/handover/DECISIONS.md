@@ -213,3 +213,10 @@ M3 closes below the 85 % bar, at Golden 76 %, Sunset 80 %, Dusk 74 %, First ligh
 left (Golden's glare, Sunset's clump, Dusk's mirror resolution and foreground, First light's mist, Sunrise's sun shafts,
 faceted flower heads) move to M8 polish, where the whole night is judged together. `?cams=old` stays until the owner
 picks the Sunset and Dusk cameras. Rulings R72–R75 (pebbles, the backlit meadow, the lantern's place, the switch).
+
+**D35 · 2026-11-19 · (my calls, s17; owner told in the session log and on the M4 page) Blue hour, M4.** The stop's camera
+stays; "the arch overhead" is the flight to Night leaving under the span with the gaze lifting (`FLIGHT_OVERRIDES`,
+`LOOK_UP`). Sea sparkle lights only where water moves (waterlines, rare sparks, the pointer's trail, the wading feet),
+in one sprite draw, Blue hour only. Stars are shown by magnitude against the sky's own brightness, every night hour.
+Scrub caps are placed in the browser by coast.py's rule and drawn with the grove's material, only at Blue hour and its
+flights. Blue hour's wind is force 0.5 (was 0). A new spot, "Wade out into the flats". Ledger: R76–R83.
