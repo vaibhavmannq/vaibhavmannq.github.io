@@ -17,7 +17,7 @@ import type { WorldPart } from './part';
  */
 
 /** At full mist (First light): the density at the sea, per metre, and the band's top (where it is a tenth of that). */
-export const MIST_DENSITY = 0.01;
+export const MIST_DENSITY = 0.0135;
 export const MIST_TOP = 2.0;
 /** The thin rest at Sunrise lies lower: the top falls toward this as the mist thins. */
 export const MIST_TOP_THIN = 0.8;

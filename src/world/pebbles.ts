@@ -7,13 +7,15 @@ import {
 } from 'three/webgpu';
 import { SHOTS } from '../journey/shots';
 import type { FrameState } from '../journey/timeline';
+import { STOP_IDS, type StopId } from '../journey/types';
 import { mulberry32 } from '../shared/random';
 import type { HeightAt } from './heights';
+import { EYE_ONLY_LAYER } from './meadow';
 import type { WorldPart } from './part';
 import { coastFbm } from './scatter';
 
 /**
- * Golden's pebbles (s16; the renders' build_beach in coast.py, owner `beach` refs): the wet sand in front of the eye was
+ * Golden's and First light's pebbles (s16; the renders' build_beach in coast.py, owner `beach` refs): the wet sand in front of the eye was
  * an empty mirror. Pebbles gather in drifts along the tide line, 1.5–30 m out across the view. Made here (no
  * download) as one merged mesh with the attributes the shared rock material reads (`light`, `moss`, `column`), so they
  * draw with the cliffs' own shader: no new material at Golden (14, the cap; R59) and no new shader to build.
@@ -30,13 +32,16 @@ export interface Pebble {
   tilt: number;
 }
 
-export const PEBBLES = { n: 700, near: 1.5, far: 30, spread: 0.9, size: 0.42 };
+export const PEBBLES = { n: 500, near: 1.5, far: 30, spread: 0.9, size: 0.42 };
 
-/** Pure, seeded: the pebbles on the live ground (D32), coast.py build_beach's rule at the site's count. */
-export function pebbleField(groundAt: HeightAt): Pebble[] {
-  const r = mulberry32(17);
-  const [cx, cy] = SHOTS.golden.cam;
-  const yaw = (SHOTS.golden.look[0] * Math.PI) / 180;
+/** The beach stops that get pebbles: Golden, and First light at the far end of the same beach (s16). */
+export const PEBBLE_STOPS = ['golden', 'firstlight'] as const satisfies readonly StopId[];
+
+/** Pure, seeded: the pebbles in front of one stop's eye, on the live ground (D32), coast.py build_beach's rule. */
+export function pebbleField(groundAt: HeightAt, stop: (typeof PEBBLE_STOPS)[number] = 'golden'): Pebble[] {
+  const r = mulberry32(stop === 'golden' ? 17 : 23);
+  const [cx, cy] = SHOTS[stop].cam;
+  const yaw = (SHOTS[stop].look[0] * Math.PI) / 180;
   const out: Pebble[] = [];
   for (let k = 0; k < PEBBLES.n * 40 && out.length < PEBBLES.n; k++) {
     const d = PEBBLES.near + (PEBBLES.far - PEBBLES.near) * r() ** 1.6;
@@ -63,12 +68,16 @@ export function pebbleField(groundAt: HeightAt): Pebble[] {
   return out;
 }
 
-/** Shown at Golden and over the first part of the flight away, like Golden's lantern. */
-export const pebblesInPlay = (s: Pick<FrameState, 'a' | 'kind' | 't'>): boolean =>
-  s.a === 0 && (s.kind === 'stop' || s.t < 0.6);
+/** Shown at their stops and over the first part of the flight away, like Golden's lantern, and the last part in. */
+export function pebblesInPlay(s: Pick<FrameState, 'a' | 'b' | 'kind' | 't'>): boolean {
+  const at = PEBBLE_STOPS.map((id) => STOP_IDS.indexOf(id));
+  return (
+    (at.includes(s.a) && (s.kind === 'stop' || s.t < 0.6)) || (s.kind === 'flight' && at.includes(s.b) && s.t > 0.6)
+  );
+}
 
 export function createPebbles(groundAt: HeightAt, rock: MeshStandardNodeMaterial): WorldPart {
-  const field = pebbleField(groundAt);
+  const field = PEBBLE_STOPS.flatMap((stop) => pebbleField(groundAt, stop));
   const proto = new IcosahedronGeometry(1, 1);
   const pp = proto.getAttribute('position').array as Float32Array;
   const nv = pp.length / 3;
@@ -121,6 +130,8 @@ export function createPebbles(groundAt: HeightAt, rock: MeshStandardNodeMaterial
   geometry.setAttribute('normal', new BufferAttribute(normal, 3));
   geometry.computeBoundingSphere();
   const mesh = new Mesh(geometry, rock);
+  // eye only (s16 A/B: drawn twice they cost 2-5 ms at mid; a pebble's reflection on the swash is a few pixels)
+  mesh.layers.set(EYE_ONLY_LAYER);
   mesh.visible = false;
   return {
     object: mesh,

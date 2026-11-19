@@ -30,14 +30,21 @@ describe("Golden's pebbles (s16)", () => {
     }
   });
 
+  it('lays First light its own drift on the far end of the beach', () => {
+    expect(pebbleField(surface, 'firstlight').length).toBeGreaterThan(150);
+  });
+
   it('is the same on every visit (seeded)', () => {
     expect(pebbleField(surface)).toEqual(field);
   });
 
-  it('shows only at Golden and the first part of the flight away', () => {
-    expect(pebblesInPlay({ kind: 'stop', a: 0, t: 0 })).toBe(true);
-    expect(pebblesInPlay({ kind: 'flight', a: 0, t: 0.5 })).toBe(true);
-    expect(pebblesInPlay({ kind: 'flight', a: 0, t: 0.7 })).toBe(false);
-    expect(pebblesInPlay({ kind: 'stop', a: 1, t: 0 })).toBe(false);
+  it('shows only at Golden and First light, and near them on the flights', () => {
+    expect(pebblesInPlay({ kind: 'stop', a: 0, b: 0, t: 0 })).toBe(true);
+    expect(pebblesInPlay({ kind: 'flight', a: 0, b: 1, t: 0.5 })).toBe(true);
+    expect(pebblesInPlay({ kind: 'flight', a: 0, b: 1, t: 0.7 })).toBe(false);
+    expect(pebblesInPlay({ kind: 'stop', a: 1, b: 1, t: 0 })).toBe(false);
+    expect(pebblesInPlay({ kind: 'stop', a: 7, b: 7, t: 0 })).toBe(true);
+    expect(pebblesInPlay({ kind: 'flight', a: 6, b: 7, t: 0.8 })).toBe(true);
+    expect(pebblesInPlay({ kind: 'flight', a: 6, b: 7, t: 0.3 })).toBe(false);
   });
 });
