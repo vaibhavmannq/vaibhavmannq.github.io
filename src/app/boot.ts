@@ -73,6 +73,7 @@ import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
 import { STIR_SPACING, stir, waterHit } from '../world/stir';
 import { createTerrain } from '../world/terrain';
+import { createVines, vineLeaves } from '../world/vines';
 import { createWaterfall } from '../world/waterfall';
 import { installBench } from './bench';
 import { detectCapabilities } from './capabilities';
@@ -294,6 +295,8 @@ async function loadBase(
         along: frame.along,
         lateral: frame.lateral,
       });
+      // vines on the mouth's lip (plan M7 Task 6), their own small draw
+      parts.push(['vines', createVines(vineLeaves(caveParts.shell.position, mouthOpen, 2.9), caveShot, sky)]);
       parts.push([
         'cave',
         createCave(caveParts, caveShot, sky, light, {

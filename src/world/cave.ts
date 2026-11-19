@@ -68,6 +68,7 @@ const SHADOW: [number, number, number] = [0.006, 0.008, 0.013];
 /** Owner's cave photos 2, 3, 5: rock near the mouth catches warm bounce light; only the far corners go dark. */
 const BOUNCE: [number, number, number] = [0.16, 0.11, 0.07];
 const ROCK: [number, number, number] = [0.32, 0.3, 0.34];
+const MOSS: [number, number, number] = [0.16, 0.26, 0.09];
 const FUNGI_ON_ROCK = 0.05;
 
 export interface CaveParts {
@@ -328,8 +329,15 @@ export function createCave(
   const hz = wz.sub(cave.floor);
   // wet rock is darker (book §9): the walls' feet and the floor
   const wetFoot = mix(float(1), float(0.7), smoothstep(0.7, 0.05, hz).max(isFloor));
+  // moss on the mouth's rim (owner cave 5; book §8: moss in every wet shaded place), patchy, per vertex
+  const moss = vs(
+    smoothstep(-0.8, -0.3, open)
+      .mul(smoothstep(0.0, -0.15, open))
+      .mul(smoothstep(0.42, 0.6, fbm2(wxy.mul(1.7).add(wz), 2, 0.5)))
+      .mul(shellOnly) as F,
+  );
   const rockLit = vs(
-    vec3(...ROCK)
+    mix(vec3(...ROCK), vec3(...MOSS), moss)
       .mul(mottle.mul(0.7).add(0.65))
       .mul(lit)
       .mul(wetFoot) as V3,
