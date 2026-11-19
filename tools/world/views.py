@@ -32,6 +32,8 @@ def cameras():
 KEPT_VIEWS = {
     "sunset": Camera(25.0, 141.0, 16.0584, -47.0, 0.5, 28),
     "dusk": Camera(30.0, 40.0, 27.2974, -40.0, -5.5, 24),
+    # M5 Task 1 moved V (Amendment 1 §5; s18)
+    "night": Camera(-320.0, -437.0, 1.2819, 0.0, 12.0, 20),
 }
 
 

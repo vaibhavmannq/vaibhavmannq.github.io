@@ -21,7 +21,7 @@ import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
 import { ARCH_SEEN_FROM, ARCH_SEEN_ON } from './headland';
 import type { WorldPart } from './part';
-import { tideBands } from './rock';
+import { type FreshWater, seaWetNode, tideBands } from './rock';
 
 type F = Node<'float'>;
 type V2 = Node<'vec2'>;
@@ -140,7 +140,7 @@ const columnCell = Fn(([p]: [V2]) => {
  * sharp at any mesh size: one cell search across the horizontal plane gives each column its shade, each of its faces
  * a shade of its own, a narrow joint, and drums cut across (owner cliffs-and-columns 1).
  */
-export function createRockMaterial(): MeshStandardNodeMaterial {
+export function createRockMaterial(fresh?: FreshWater): MeshStandardNodeMaterial {
   const vs = <T extends Node>(n: T): T => varying(n) as unknown as T;
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const z = positionWorld.y;
@@ -202,7 +202,7 @@ export function createRockMaterial(): MeshStandardNodeMaterial {
     .mul(float(1).sub(drum.mul(DRUM_DARK)));
   const material = new MeshStandardNodeMaterial();
   // tide bands at the waterline (rock.ts, ruling R2: the arch and the stacks too); moss is never banded
-  material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, dry));
+  material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, dry.mul(seaWetNode(wxy, fresh))));
   material.roughnessNode = float(0.9);
   material.metalnessNode = float(0);
   return material;

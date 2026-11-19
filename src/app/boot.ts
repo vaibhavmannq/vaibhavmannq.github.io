@@ -29,6 +29,7 @@ import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
+import { BOWL, createBowl } from '../world/bowl';
 import { capInstances } from '../world/caps';
 import { createCave, decodeCave } from '../world/cave';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
@@ -162,15 +163,28 @@ async function loadBase(
   const cut = caveShot && caveBuf ? { x: caveShot.x, y: caveShot.y, rx: 12.2, ry: 10.2 } : undefined;
   // Night's lagoon is fed by the falls, not the sea: no tide bands there (rock.ts). Its middle lies between the pool
   // and the camera; 120 m reaches the bowl's walls.
-  const nightFalls = SHOTS.night.falls;
-  const lagoon = nightFalls ? { x: nightFalls.x, y: (nightFalls.poolY + SHOTS.night.cam[1]) / 2, r: 120 } : undefined;
+  // s18: the bowl's own middle (plan M5 Task 1); its walls stand 34-48 m out, the crater's 8 m slopes up to 70 m.
+  const lagoon = { x: BOWL.x, y: BOWL.y, r: 62 };
   const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon, light);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
+  // One material for every rock part (D13); the lagoon's fresh water wears no barnacle line (plan M5 Task 1).
+  const rock = createRockMaterial(lagoon);
   const parts: [string, WorldPart][] = [
     ['terrain', terrain],
     ['sea', sea],
   ];
+  // Night's bowl of basalt columns (plan M5 Task 1): made here, no download. Not with `?cams=old`: the old camera
+  // stands behind the new south wall.
+  if (SHOTS.night.falls && !OLD_CAMS_ON)
+    parts.push([
+      'bowl',
+      createBowl(
+        rock,
+        { x: SHOTS.night.falls.x, y: SHOTS.night.falls.yLip },
+        { x: SHOTS.night.cam[0], y: SHOTS.night.cam[1] },
+      ),
+    ]);
   // The cove's grass and flowers (plan M3 Task 1): made here from the base heights, no download.
   parts.push(['meadow', createMeadow(scatterCove(createSurfaceSampler(heights, meta.heights)), light)]);
   // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
@@ -196,8 +210,7 @@ async function loadBase(
   };
   // The headland pack (the arch and the stacks, 1.9 MB of rock) and the cove pack (its cliffs and grove, 0.7 MB) are
   // fetched after the base, so the ground and sea never wait for them, and a failed download costs only that pack
-  // (final review I1). One material for every rock part (D13).
-  const rock = createRockMaterial();
+  // (final review I1).
   let capsFound: (caps: Float32Array) => void = () => undefined;
   const capsAt = new Promise<Float32Array>((resolve) => {
     capsFound = resolve;

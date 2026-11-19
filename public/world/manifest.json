@@ -22,8 +22,8 @@
   },
   "dressing": {
    "file": "base/dressing.bin",
-   "trees": 3085,
-   "scrub": 7284
+   "trees": 3214,
+   "scrub": 7310
   },
   "aurora": {
    "file": "base/aurora.json"
@@ -234,22 +234,22 @@
   },
   {
    "path": "base/colour.webp",
-   "bytes": 7246,
-   "sha256": "35a68b8381be072773a0d688d439576e9a4f6c92f3d05ed543733709de34344b",
+   "bytes": 7220,
+   "sha256": "541b32e209575bd5024313a230ed6aeb792802dc0ef979dde6a1112a0a6dc3f0",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "base/dressing.bin",
-   "bytes": 82952,
-   "sha256": "b147ac0b735f034bd393bdee08502312cf62244d279c4c8b60cd33a490befb06",
+   "bytes": 84192,
+   "sha256": "7c67b6c6ea2f4ee42839e49bdfa39017952c4473131586ce25baa95e820b6b27",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "base/heights.bin",
    "bytes": 401802,
-   "sha256": "d0525feb8a60206abc4e62b1643cde2efadedd8eabe0e031312ea70d0d6c1e21",
+   "sha256": "a1d197d9293483db84faff9c85b9f17d2d1629064ad89f1c36abde7e6ed6116f",
    "stage": "B",
    "stops": "all"
   },

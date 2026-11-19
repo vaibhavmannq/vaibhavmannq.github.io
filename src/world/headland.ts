@@ -20,6 +20,7 @@ export const ARCH_SEEN_ON: ReadonlySet<FlightKey> = new Set<FlightKey>([
   'sunset>dusk',
   'dusk>bluehour',
   'bluehour>night',
+  'night>midnight', // M5: over the falls' lip the camera looks north to the coast
   'midnight>beforedawn',
   'firstlight>sunrise',
 ]);

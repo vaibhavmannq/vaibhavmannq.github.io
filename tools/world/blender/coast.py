@@ -208,6 +208,13 @@ SHOTS["night"].update(aurora=dict(AUR3, dist=2300.0, strength=3.0,
     sky_bands=((-58.0, 48.0, 19.0, 42.0, 14.0, 6.0, 1.0), (-42.0, 30.0, 36.0, 24.0, 10.0, 5.0, 0.5), (8.0, 62.0, 18.0, 25.0, 8.0, 3.0, 0.35))))
 SHOTS["midnight"].update(aurora=dict(AUR3, dist=3000.0, strength=2.8,
     sky_bands=((-52.0, 46.0, 1.5, 15.0, 11.0, 5.0, 1.0), (-22.0, 42.0, 12.0, 5.0, 8.0, 4.0, 0.5), (-62.0, -22.0, 0.5, 4.0, 6.0, 2.5, 0.35))), star_mask=(6.0, 2.0), stars=6.0)
+# M5 (s18; Amendment 1 §5 "Camera"; plan 2026-11-19-m5-night.md Task 1): at the water's edge inside the bowl of
+# columns, eye 1 m over the lagoon (over_water: the eye stands on the water, not the lagoon's floor), the falls a third
+# in from the right at a three-quarter angle, the buttress rising out of frame on the left 10 m away, the open west
+# side centre-left. Moonlight is a crescent's (world moonPhase 0.12, 13 % lit): lamp 5.0 -> 0.7.
+# Before (s17): cam (-320, -437, 0.9) look (0, 12) lens 20.
+SHOTS["night"].update(cam=(-316.8, -416.9, 1.0), look=(-19.0, 2.0), lens=20, over_water=True, falls_r=(49.5, 46.0),
+    moon=(140.0, 22.0, 0.9, 35.0, 0.7))
 SHOTS["golden"].update(cliff_rocks=((22.5, 14.0, 5.0, 18.1, 0.0), (21.3, 21.0, 4.0, 14.5, -0.03), (23.3, 27.0, 5.5, 18.4, 0.02), (21.9, 34.0, 4.5, 15.1, 0.0), (23.9, 41.0, 6.0, 16.8, -0.02), (21.5, 47.0, 4.0, 12.2, 0.03), (22.9, 54.0, 5.0, 15.1, 0.0), (22.1, 61.0, 5.5, 16.5, -0.03), (23.5, 67.0, 4.5, 11.9, 0.02), (21.7, 74.0, 5.0, 12.7, 0.0), (23.1, 81.0, 4.0, 9.9, -0.02), (22.5, 88.0, 5.0, 11.4, 0.03),))
 SHOTS["sunrise"].update(sky_grad=((1.18, 0.92, 0.78), (0.78, 0.86, 1.15), 0.02, 0.35), ramp=((0.0, (0.22, 0.24, 0.42)), (0.20, (0.58, 0.50, 0.72)), (0.32, (0.98, 0.68, 0.70)), (0.45, (1.0, 0.80, 0.66)), (0.60, (1.0, 0.90, 0.78)), (1.0, (1.0, 0.98, 0.94))),
     sun_str=5.0, sun_col=(1.0, 0.70, 0.42), patches=((-140.0, -106.0, -10.0, 100.0, 60000, 3.0),),
@@ -303,6 +310,10 @@ def _ground_world(x, y):
     r = r - 8.0 * (fbm(np.cos(ang_) * 3.0 + 4, np.sin(ang_) * 3.0 + 2, 4) - 0.5) - 4.0 * (fbm(np.cos(ang_) * 14.0 + 9, np.sin(ang_) * 14.0 + 1, 3) - 0.5) - 2.2 * (fbm(np.cos(ang_) * 30.0 + 5, np.sin(ang_) * 30.0 + 8, 3) - 0.5) - 0.9 * np.abs(np.sin(ang_ * 17 + 9 * fbm(x * 0.05, y * 0.05, 3)))   # irregular gullies, not a palisade
     bowl = np.where(r < 56, -3.6 + 4.0 * sm(40, 56, r), 0.4)
     wall = (28 + 8 * fbm(x * 0.05 + 1, y * 0.05 + 3, 4) + 3 * (fbm(x * 0.25, y * 0.25, 3) - 0.5)) * sm(58, 72, r)
+    # M5 (s18; Amendment 1 §5 "the far side lower so the sky opens there"): the rim drops to about 12 m on the west,
+    # where the land outside is lowest (21-25 m); the live bowl of columns (src/world/bowl.ts BOWL.open) matches it
+    az_ = np.degrees(np.arctan2(x - lx, y - ly))
+    wall = wall * (1.0 - 0.62 * np.exp(-((((az_ - 285.0) + 180.0) % 360.0 - 180.0) / 40.0) ** 2))
     hl = np.where(r < 58, bowl, 0.4 + wall)
     out_ = sm(92, 115, r)
     h = np.where(r < 115, hl * (1 - out_) + h * out_, h)

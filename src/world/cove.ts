@@ -26,6 +26,7 @@ export const COVE_SEEN_ON: ReadonlySet<FlightKey> = new Set<FlightKey>([
   'golden>sunset',
   'sunset>dusk',
   'dusk>bluehour',
+  'night>midnight', // M5: over the falls' lip the camera looks north to the coast
   'midnight>beforedawn',
   'beforedawn>firstlight',
   'firstlight>sunrise',

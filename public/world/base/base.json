@@ -24,8 +24,8 @@
  },
  "dressing": {
   "file": "base/dressing.bin",
-  "trees": 3085,
-  "scrub": 7284
+  "trees": 3214,
+  "scrub": 7310
  },
  "aurora": {
   "file": "base/aurora.json"

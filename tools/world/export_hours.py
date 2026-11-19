@@ -45,6 +45,8 @@ def export(hour):
     S = c.S
     x, y, eye = S["cam"]
     g = float(c.ground(x, y))
+    if S.get("over_water"):
+        g = max(g, 0.0)  # Night (M5): the eye stands on the lagoon's still surface, not its floor
     el_h, phi_h = S["hsun"]
     sun_el = el_h - S.get("tilt", 0.0)
     keep = ["look", "lens", "hdri", "hsun", "sun_az", "sun_col", "sun_str", "tilt", "ramp", "sky_clip", "sky_grad",

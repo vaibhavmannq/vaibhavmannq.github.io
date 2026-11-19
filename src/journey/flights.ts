@@ -36,6 +36,18 @@ export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
     [-526.4, 40.96, 239.81],
     [-402.56, -245.82, 120.55],
   ],
+  // Night → Midnight goes up the falls (plan M5 Task 1; design review §4 "V → VI"): the camera stands 4 m from the
+  // bowl's south wall (src/world/bowl.ts), so a straight climb went through it. Low across the lagoon, rising beside
+  // the falls' left edge, over the lip, then the long climb east toward the ridge.
+  'night>midnight': [
+    [-318.5, -392.0, 2.5],
+    [-325.5, -355.0, 9.0],
+    [-327.0, -343.0, 31.0],
+    [-324.0, -330.0, 52.0],
+    [-290.0, -318.0, 95.0],
+    [-180.0, -400.0, 230.0],
+    [-41.76, -576.83, 411.57],
+  ],
 };
 
 /**

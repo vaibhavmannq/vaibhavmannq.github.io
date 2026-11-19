@@ -88,13 +88,15 @@ export interface Shot {
 export const SHOTS = data as unknown as Record<StopId, Shot>;
 
 /**
- * The cameras Sunset and Dusk had before M3 (D31; acd7442~1), for a side-by-side in the running site: `?cams=old`.
- * Read once, before the stops, the plants and the flights are built from the shots (boot.ts swaps the three flights
+ * The cameras Sunset and Dusk had before M3 (D31; acd7442~1), and Night before M5 (68a08b4), for a side-by-side in the running site: `?cams=old`.
+ * Read once, before the stops, the plants and the flights are built from the shots (boot.ts swaps the five flights
  * that touch them). The spots at those two stops start from the new cameras, so they are hidden there.
  */
 export const OLD_CAMS: Partial<Record<StopId, Pick<Shot, 'cam' | 'look' | 'lens' | 'ground' | 'eyeZ'>>> = {
   sunset: { cam: [25.0, 141.0, 1.7], look: [-47.0, 0.5], lens: 28, ground: 14.3584, eyeZ: 16.0584 },
   dusk: { cam: [30.0, 40.0, 1.7], look: [-40.0, -5.5], lens: 24, ground: 25.5974, eyeZ: 27.2974 },
+  // M5 Task 1 (s18; Amendment 1 §5): Night moved into the bowl of columns
+  night: { cam: [-320.0, -437.0, 0.9], look: [0.0, 12.0], lens: 20, ground: 0.3819, eyeZ: 1.2819 },
 };
 
 export const OLD_CAMS_ON =
