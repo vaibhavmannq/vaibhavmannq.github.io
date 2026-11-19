@@ -4,7 +4,14 @@
  * directly with type stripping.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { APPROACH, FLIGHT_OVERRIDES, type FlightPath, generateWaypoints } from '../../src/journey/flights.ts';
+import {
+  APPROACH,
+  FLIGHT_OVERRIDES,
+  type FlightPath,
+  generateWaypoints,
+  WALKS,
+  walkStart,
+} from '../../src/journey/flights.ts';
 import { STOP_IDS, type StopId, type Vec3 } from '../../src/journey/types.ts';
 import { createHeightSampler, type GridMeta } from '../../src/world/heights.ts';
 
@@ -15,7 +22,7 @@ const q = new Uint16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
 const heightAt = createHeightSampler(q, base.heights);
 const shots = JSON.parse(readFileSync(new URL('src/journey/shots.json', root), 'utf8')) as Record<
   StopId,
-  { cam: Vec3; eyeZ: number }
+  { cam: Vec3; eyeZ: number; look: [number, number] }
 >;
 
 const camOf = (id: StopId): Vec3 => [shots[id].cam[0], shots[id].cam[1], shots[id].eyeZ];
@@ -25,7 +32,9 @@ for (let i = 0; i < STOP_IDS.length - 1; i++) {
   const to = STOP_IDS[i + 1] as StopId;
   const key = `${from}>${to}` as const;
   const a = camOf(from);
-  const b = camOf(to);
+  // a stop that walks is arrived at where its walk starts (plan M7 Task 2)
+  const walk = WALKS[to];
+  const b = walk ? walkStart(camOf(to), shots[to].look[0], walk.depth) : camOf(to);
   const override = FLIGHT_OVERRIDES[key];
   const points = override ? [a, ...override, b] : generateWaypoints(a, b, heightAt, APPROACH[key]);
   paths.push({ from, to, points: points.map((p) => p.map((v) => Math.round(v * 100) / 100) as Vec3) });

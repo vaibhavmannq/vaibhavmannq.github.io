@@ -11,6 +11,19 @@ export interface FlightPath {
 
 export type FlightKey = `${StopId}>${StopId}`;
 
+/**
+ * Stops whose camera walks while resting (plan M7 Task 2; Amendment 1 §4 VII "the stop begins deeper in the cave and
+ * drifts toward the mouth"): the walk starts `depth` m behind the stop's camera, along its view reversed, and ends at
+ * the stop's camera. The flight in ends at the walk's start (bake_flights.ts).
+ */
+export const WALKS: Partial<Record<StopId, { depth: number }>> = { beforedawn: { depth: 14 } };
+
+/** Where a stop's walk starts: `depth` m behind `cam` (coast axes, absolute z), against the view `yaw`. Pure. */
+export function walkStart(cam: Vec3, yaw: number, depth: number): Vec3 {
+  const a = (yaw * Math.PI) / 180;
+  return [cam[0] - Math.sin(a) * depth, cam[1] - Math.cos(a) * depth, cam[2]];
+}
+
 /** Hand-placed curves that replace the generated ones. */
 export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
   // The slice's path over the cove, approved in s02.
@@ -55,9 +68,13 @@ export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
  * comes round the hill and enters from the north (in M0 the cave is still a pit in the 8 m ground; M7 builds it).
  */
 export const APPROACH: Partial<Record<FlightKey, Vec3[]>> = {
+  // plan M7 Task 2: facing the sea, backing in under the mouth's lip (~43 m), down to eye height in the chamber, then
+  // through the passage's junction (its top 37.9 m); facing the hill would show the chamber's dome from outside
   'midnight>beforedawn': [
     [-60, -150, 60],
     [-60, -185, 42],
+    [-60.5, -197, 39.2],
+    [-59.6, -207, 36.6],
   ],
 };
 
@@ -112,6 +129,12 @@ export function generateWaypoints(a: Vec3, b: Vec3, heightAt: HeightAt, approach
 }
 
 const curves = new WeakMap<readonly Vec3[], CatmullRomCurve3>();
+
+/** A flight's length along its curve, metres. */
+export function flightLength(points: readonly Vec3[]): number {
+  sampleFlight(points, 0);
+  return curves.get(points)?.getLength() ?? 1;
+}
 const _p = new Vector3();
 const _t = new Vector3();
 

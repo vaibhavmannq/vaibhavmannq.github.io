@@ -18,6 +18,7 @@ import { STOPS, stopIndex } from '../journey/stops';
 import { loadThread, saveThread } from '../journey/thread';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
+import { createWalk } from '../journey/walk';
 import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
 import { createProjectCard } from '../overlay/projectCard';
@@ -33,7 +34,8 @@ import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { BOWL, createBowl, fallsLayout } from '../world/bowl';
 import { capInstances } from '../world/caps';
-import { createCave, decodeCave } from '../world/cave';
+import { caveLure, createCave, decodeCave } from '../world/cave';
+import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { coronaCurves, coronaShot } from '../world/corona';
@@ -49,6 +51,16 @@ import { createMist } from '../world/mist';
 import { createNightLife, nightLure, nightWeight } from '../world/nightlife';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
+import {
+  buildPassage,
+  junctionVisible,
+  openShell,
+  PASSAGE_END,
+  passageFrame,
+  passageSite,
+  shellSampler,
+  WALK_DEPTH,
+} from '../world/passage';
 import { createPeaks } from '../world/peaks';
 import { createPebbles } from '../world/pebbles';
 import { createPlankton, planktonStirs, waterline } from '../world/plankton';
@@ -242,8 +254,59 @@ async function loadBase(
   }
   // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);
-  if (caveShot && caveMeta && caveBuf)
-    parts.push(['cave', createCave(decodeCave(caveBuf, caveMeta), caveShot, sky, light)]);
+  if (caveShot && caveMeta && caveBuf) {
+    const caveParts = decodeCave(caveBuf, caveMeta);
+    if (OLD_CAMS_ON) parts.push(['cave', createCave(caveParts, caveShot, sky, light)]);
+    else {
+      // Before dawn starts deeper (plan M7 Task 1): a passage of columns behind the chamber, its back wall opened
+      const site = passageSite(caveShot, SHOTS.beforedawn);
+      const mouthOpen = caveParts.shell.open;
+      caveParts.shell.open = openShell(caveParts.shell.position, mouthOpen, site);
+      const passage = buildPassage(
+        site,
+        shellSampler(caveParts.shell.position, site),
+        surface,
+        caveShot.floor,
+        caveShot,
+      );
+      const frame = passageFrame(site);
+      const inPassage = (x: number, y: number) => {
+        const s = frame.along(x - caveShot.x, y - caveShot.y);
+        return s > 0 && s < PASSAGE_END + 1 && Math.abs(frame.lateral(x - caveShot.x, y - caveShot.y)) < 4;
+      };
+      // its floor: cobbles, boulders and column stumps (plan M7 Task 4)
+      const floorStones = scatterFloor(
+        caveFloorSite({
+          ...frame,
+          halfW: 2.6,
+          passageEnd: PASSAGE_END,
+          walkDepth: WALK_DEPTH,
+          pool: { x: caveShot.pool.x - caveShot.x, y: caveShot.pool.y - caveShot.y, r: 3.2 },
+        }),
+        [-9.5, -26, 9.5, 9.5],
+      );
+      const stones = floorGeometry(floorStones);
+      // the fungi in clusters (plan M7 Task 5), in place of cave.bin's ring along the floor's edge
+      caveParts.fungi = fungiClusters({
+        shell: caveParts.shell.position,
+        passage,
+        stones: floorStones,
+        along: frame.along,
+        lateral: frame.lateral,
+      });
+      parts.push([
+        'cave',
+        createCave(caveParts, caveShot, sky, light, {
+          passage,
+          inPassage,
+          mouthOpen,
+          throughJunction: junctionVisible(site),
+          alongOf: frame.along,
+          stones,
+        }),
+      ]);
+    }
+  }
   const byName = new Map(parts);
   // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
   // soon as its own shader is ready, never waiting for one that is slower but not needed here (plan M2.5 Task 8).
@@ -731,11 +794,18 @@ export async function boot(): Promise<App> {
   );
   window.addEventListener('pointercancel', letGo, { passive: true });
 
+  // Before dawn walks from deep in the passage toward the mouth while resting (plan M7 Task 2); `?walk=0..1` holds it
+  // at one place for shots
+  const dawnIndex = stopIndex('beforedawn');
+  const stopWalk = createWalk(dawnIndex);
+  const lurePointer: [number, number] = [0, 0];
+  const heldWalk = new URLSearchParams(location.search).get('walk');
   const frame = (nowMs: number, dtS: number): WorldFrame => {
     const u = app.override ?? cameraU(nowMs);
     const state = frameAt(track, u, caps.reducedMotion);
     const timeS = (nowMs - startedAt) / 1000;
-    const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion);
+    const walkS = heldWalk !== null ? Number(heldWalk) : stopWalk.step(state, dtS, caps.reducedMotion);
+    const pose = poseAt(state, paths, camera.aspect, timeS, caps.reducedMotion, walkS);
     // A spot's walk (plan M2.5 Task 7): along its baked path at 1.2 m/s, eased at both ends; scrolling on leaves from
     // wherever you are, easing back to the journey's path.
     const here = walk && state.resting && state.a === stopIndex(walk.spot.stop);
@@ -848,6 +918,16 @@ export async function boot(): Promise<App> {
         }
       }
     }
+    // Before dawn's fungi brighten along the pointer's ray (plan M7 Task 5): up while it moves, fading over ~2 s
+    const atDawn = state.a === dawnIndex || state.b === dawnIndex;
+    const moved = pointerSeen && (pointer[0] !== lurePointer[0] || pointer[1] !== lurePointer[1]);
+    lurePointer[0] = pointer[0];
+    lurePointer[1] = pointer[1];
+    if (atDawn && moved && !caps.reducedMotion) {
+      const d = ray.set(pointer[0], pointer[1], 0.5).unproject(camera).sub(camera.position).normalize();
+      caveLure.dir = [d.x, d.y, d.z];
+      caveLure.energy += (1 - caveLure.energy) * (1 - Math.exp(-dtS / 0.3));
+    } else caveLure.energy *= Math.exp(-dtS / 2);
     last = state;
     return { state, hour, pose, timeS, dtS };
   };

@@ -38,6 +38,8 @@ export interface Framing {
 export interface Stop {
   id: StopId;
   numeral: string;
+  /** Where the camera stands on arrival when the stop walks (plan M7 Task 2); it walks from here to `cam`. */
+  walkFrom?: Vec3;
   hour: string;
   place: string;
   /** Coast x, y and the absolute eye height (ground + eye). */

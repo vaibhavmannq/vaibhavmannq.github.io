@@ -63,6 +63,7 @@ describe('the track', () => {
       skyWeight: 0,
       stillWeight: 1,
       fade: 0,
+      stopT: 0.5,
     });
   });
 

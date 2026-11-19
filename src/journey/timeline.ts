@@ -45,6 +45,8 @@ export interface FrameState {
   stillWeight: number;
   /** Veil over the scene; only reduced motion uses it, to cross-fade instead of flying (spec §8.5). */
   fade: number;
+  /** 0..1 through a stop's own scroll (plan M7 Task 2: a stop's walk follows it); absent in flights. */
+  stopT?: number;
 }
 
 export function buildTrack(stops: readonly Stop[]): Track {
@@ -83,6 +85,7 @@ export function frameAt(track: Track, u: number, reducedMotion: boolean): FrameS
       skyWeight: 0,
       stillWeight: 1,
       fade: 0,
+      stopT: clamp01((x - s.start) / (s.end - s.start)),
     };
   const t = clamp01((x - s.start) / (s.end - s.start));
   const stillWeight = Math.max(smoothstep(0.15, 0, t), smoothstep(0.85, 1, t));

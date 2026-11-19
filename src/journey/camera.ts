@@ -48,13 +48,19 @@ export function poseAt(
   aspect: number,
   timeS: number,
   reducedMotion = false,
+  /** how far along its walk a walking stop is, 0 (its start) .. 1 (its camera); walk.ts */
+  walkS = 1,
 ): Pose {
   const a = stopAt(frame.a);
   const path = paths[frame.a];
   if (frame.kind === 'stop' || !path || reducedMotion) {
     const at = frame.kind === 'stop' || frame.t < 0.5 ? a : stopAt(frame.b);
     const d = drift(timeS);
-    const cam: Vec3 = [at.cam[0] + d[0], at.cam[1] + d[1], at.cam[2] + d[2]];
+    const from = frame.kind === 'stop' && !reducedMotion ? at.walkFrom : undefined;
+    const base: Vec3 = from
+      ? [lerp(from[0], at.cam[0], walkS), lerp(from[1], at.cam[1], walkS), lerp(from[2], at.cam[2], walkS)]
+      : at.cam;
+    const cam: Vec3 = [base[0] + d[0], base[1] + d[1], base[2] + d[2]];
     return {
       position: toThree(cam),
       yaw: at.landscape.yaw,

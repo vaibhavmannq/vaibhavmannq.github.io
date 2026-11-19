@@ -1,4 +1,5 @@
-import { SHOTS } from './shots';
+import { WALKS, walkStart } from './flights';
+import { OLD_CAMS_ON, SHOTS } from './shots';
 import { STOP_IDS, type Stop, type StopId } from './types';
 
 /** Placeholder labels until the site's text is written (spec §16). */
@@ -18,12 +19,15 @@ const LABELS: Record<StopId, [string, string, string]> = {
 export const STOPS: readonly Stop[] = STOP_IDS.map((id) => {
   const shot = SHOTS[id];
   const [numeral, hour, place] = LABELS[id];
+  const walk = OLD_CAMS_ON ? undefined : WALKS[id];
+  const cam: [number, number, number] = [shot.cam[0], shot.cam[1], shot.eyeZ];
   return {
+    ...(walk ? { walkFrom: walkStart(cam, shot.look[0], walk.depth) } : {}),
     id,
     numeral,
     hour,
     place,
-    cam: [shot.cam[0], shot.cam[1], shot.eyeZ],
+    cam,
     landscape: { yaw: shot.look[0], pitch: shot.look[1], lens: shot.lens },
   };
 });

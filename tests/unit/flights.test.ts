@@ -1,6 +1,8 @@
 /// <reference types="node" />
+
 import { describe, expect, it } from 'vitest';
 import { generateWaypoints, sampleFlight } from '../../src/journey/flights';
+import { SHOTS } from '../../src/journey/shots';
 import type { Vec3 } from '../../src/journey/types';
 
 const flat = () => 0;
@@ -119,8 +121,14 @@ describe('the baked flight paths over the real world base', async () => {
         // A hillside is ground rising ahead: looking down at lower ground while landing does not count.
         const under = heightAt(x, y);
         let blocked = false;
+        // plan M7 Task 2: the flight into Before dawn flies in through the cave's mouth on purpose (its hillside is cut
+        // open there, and the passage runs on under the hill); ground within 32 m of the cave does not count
+        const cave = SHOTS.beforedawn.cave;
         for (let t = 1; t <= 30 && !blocked; t += 1) {
-          const g = heightAt(x + dir[0] * t, y + dir[1] * t);
+          const hx = x + dir[0] * t;
+          const hy = y + dir[1] * t;
+          if (cave && Math.hypot(hx - cave.x, hy - cave.y) < 32) continue;
+          const g = heightAt(hx, hy);
           blocked = z + dir[2] * t < g && g > under + 2;
         }
         run = blocked ? run + 1 : 0;
