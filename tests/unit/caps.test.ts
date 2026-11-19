@@ -57,3 +57,14 @@ describe('scrub caps (plan M4 Task 3; coast.py build_caps)', () => {
     expect(capInstances(position, index, { x: 0, y: 0 }, 4)).toEqual(capInstances(position, index, { x: 0, y: 0 }, 4));
   });
 });
+
+describe('where the caps draw (s17: only where they read)', () => {
+  it('at Blue hour and on its two flights, not from the cove', async () => {
+    const { capsInPlay } = await import('../../src/world/grove');
+    expect(capsInPlay({ kind: 'stop', a: 3, b: 3 })).toBe(true);
+    expect(capsInPlay({ kind: 'flight', a: 2, b: 3 })).toBe(true);
+    expect(capsInPlay({ kind: 'flight', a: 3, b: 4 })).toBe(true);
+    expect(capsInPlay({ kind: 'stop', a: 0, b: 0 })).toBe(false);
+    expect(capsInPlay({ kind: 'flight', a: 0, b: 1 })).toBe(false);
+  });
+});

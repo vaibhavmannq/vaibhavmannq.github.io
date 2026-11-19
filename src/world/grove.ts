@@ -28,13 +28,14 @@ import {
   Vector2,
 } from 'three/webgpu';
 import type { GroveMeta } from '../assets/manifest';
+import type { FrameState } from '../journey/timeline';
+import { STOP_IDS } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
 import { mulberry32 } from '../shared/random';
 import { coveInPlay } from './cliffs';
 import type { HeightAt } from './heights';
 import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
 import type { WorldPart } from './part';
-import { stacksInPlay } from './stacks';
 
 /** One model's simplified wood and leaf cards, in its own frame (coast axes: x east, y north, z up; metres). */
 export interface GroveProto {
@@ -400,8 +401,14 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
   };
 }
 
+/** Pure: whether the scrub caps draw: at Blue hour and on the flights that reach or leave it. */
+export function capsInPlay(state: Pick<FrameState, 'kind' | 'a' | 'b'>): boolean {
+  const bh = STOP_IDS.indexOf('bluehour');
+  return state.kind === 'stop' ? state.a === bh : state.a === bh || state.b === bh;
+}
+
 /** Leaf cards a scrub cap draws, of its shrub's (they stand 50–500 m away, against the sky): the outline needs fewer. */
-export const CAP_CARD_SHARE = 0.45;
+export const CAP_CARD_SHARE = 0.35;
 
 /**
  * Scrub caps on the stacks and the arch (plan M4 Task 3; caps.ts places them): the grove's shrub in a second geometry
@@ -422,7 +429,9 @@ export function createCaps(grove: GrovePart, instances: Float32Array): WorldPart
   return {
     object: mesh,
     update(f) {
-      mesh.visible = stacksInPlay(f.state);
+      // only where they read: at Blue hour and on its two flights; from the cove they are specks 1–2 km out (s17: they
+      // cost 1–2 ms at mid at Golden and Sunset for nothing seen)
+      mesh.visible = capsInPlay(f.state);
       if (mesh.visible) grove.setWind(f.hour.world);
     },
     setTier(t: TierSettings) {

@@ -3,10 +3,12 @@ import {
   dot,
   equirectUV,
   exp,
+  Fn,
   float,
   floor,
   fract,
   fwidth,
+  If,
   length,
   max,
   min,
@@ -92,30 +94,39 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   // out first, the dark side of a twilight sky fills before the glow, and Night's dark sky holds a dense field, with no
   // per-hour count. Size grows with brightness and is never under a pixel (a smaller star crawls as the camera moves).
   // Colour by temperature: most white to pale orange, a few blue-white. Twinkle is stronger near the horizon.
-  const p = dir.mul(330.0);
-  const cell = floor(p);
-  const centre = vec3(hash3(cell), hash3(cell.add(17.0)), hash3(cell.add(31.0)))
-    .sub(0.5)
-    .mul(0.6);
-  const cellsPerPx = fwidth(p).length().max(1e-4);
-  const dPx = length(fract(p).sub(0.5).sub(centre)).div(cellsPerPx);
-  // flux relative to the faintest star a cell can hold: N(< m) ∝ 10^(0.43 m) → flux = u^(−0.4 / 0.43)
-  const flux = hash3(cell.add(5.0)).max(1e-4).pow(-0.93).min(600.0);
-  const skyLum = dot(col, vec3(0.2126, 0.7152, 0.0722)).max(0.0015);
-  // near the horizon a star looks through more air: up to two magnitudes dimmer (×0.16)
-  const air = mix(float(0.16), float(1), smoothstep(0.0, 0.25, dir.y)).mul(smoothstep(-0.01, 0.03, dir.y));
-  const seen = flux.mul(air).mul(max(u.stars, 0)).mul(0.0002);
-  const shows = smoothstep(1.0, 3.0, seen.div(skyLum));
-  const rPx = flux.log().mul(0.22).add(0.6).clamp(0.6, 2.2);
-  const point = exp(dPx.div(rPx).pow(2).negate());
-  const twinkleAmp = mix(float(0.3), float(0.04), smoothstep(0.02, 0.5, dir.y));
-  const twinkle = sin(time.mul(hash3(cell.add(23.0)).mul(9.0).add(5.0)).add(hash3(cell.add(29.0)).mul(6.283)))
-    .mul(twinkleAmp)
-    .add(1);
-  const temp = smoothstep(0.08, 0.98, hash3(cell.add(41.0)));
-  const starCol = mix(vec3(0.72, 0.82, 1.0), vec3(1.0, 0.8, 0.6), temp);
-  const glow = seen.sqrt().mul(0.2).min(1.6);
-  col = col.add(starCol.mul(point.mul(shows).mul(glow).mul(twinkle)));
+  // Only an hour with stars pays for them (s17: the field cost ~1 ms at mid on this laptop at every stop): a uniform
+  // branch, so the derivative inside stays in uniform control flow.
+  const starField = Fn(() => {
+    const stars = vec3(0).toVar();
+    If(u.stars.greaterThan(0.01), () => {
+      const p = dir.mul(330.0);
+      const cell = floor(p);
+      const centre = vec3(hash3(cell), hash3(cell.add(17.0)), hash3(cell.add(31.0)))
+        .sub(0.5)
+        .mul(0.6);
+      const cellsPerPx = fwidth(p).length().max(1e-4);
+      const dPx = length(fract(p).sub(0.5).sub(centre)).div(cellsPerPx);
+      // flux relative to the faintest star a cell can hold: N(< m) ∝ 10^(0.43 m) → flux = u^(−0.4 / 0.43)
+      const flux = hash3(cell.add(5.0)).max(1e-4).pow(-0.93).min(600.0);
+      const skyLum = dot(col, vec3(0.2126, 0.7152, 0.0722)).max(0.0015);
+      // near the horizon a star looks through more air: up to two magnitudes dimmer (×0.16)
+      const air = mix(float(0.16), float(1), smoothstep(0.0, 0.25, dir.y)).mul(smoothstep(-0.01, 0.03, dir.y));
+      const seen = flux.mul(air).mul(max(u.stars, 0)).mul(0.0002);
+      const shows = smoothstep(1.0, 3.0, seen.div(skyLum));
+      const rPx = flux.log().mul(0.22).add(0.6).clamp(0.6, 2.2);
+      const point = exp(dPx.div(rPx).pow(2).negate());
+      const twinkleAmp = mix(float(0.3), float(0.04), smoothstep(0.02, 0.5, dir.y));
+      const twinkle = sin(time.mul(hash3(cell.add(23.0)).mul(9.0).add(5.0)).add(hash3(cell.add(29.0)).mul(6.283)))
+        .mul(twinkleAmp)
+        .add(1);
+      const temp = smoothstep(0.08, 0.98, hash3(cell.add(41.0)));
+      const starCol = mix(vec3(0.72, 0.82, 1.0), vec3(1.0, 0.8, 0.6), temp);
+      const glow = seen.sqrt().mul(0.2).min(1.6);
+      stars.assign(starCol.mul(point.mul(shows).mul(glow).mul(twinkle)));
+    });
+    return stars;
+  });
+  col = col.add(starField());
 
   const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
   material.name = 'sky.material';
