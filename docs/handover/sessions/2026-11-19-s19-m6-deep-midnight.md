@@ -60,7 +60,7 @@ Not pushed.
 - A cloud lit "through the crests" with a cosine-squared lobe lights the whole deck whenever the view faces a low moon.
 
 ## Open
-- Owner: M3, M4, M5, M6 closes; Sunset/Dusk cameras.
+- Owner: answered at the end (D38); nothing pending.
 - R101: one ~200 ms frame into Midnight on a cold first visit, seen in two of three runs, both builds, no pipeline
   involved. Long tasks of 67–169 ms while resting at Night/Midnight 40–50 s after arriving (cold).
 - Carry to M8: Midnight's list above; a portrait framing per stop (the lone tree leaves the phone's frame); from before: Night's walls, rim plants, falls; mid at Dusk/Sunrise and the mid
