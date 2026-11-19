@@ -69,6 +69,11 @@ const SHADOW: [number, number, number] = [0.006, 0.008, 0.013];
 const BOUNCE: [number, number, number] = [0.16, 0.11, 0.07];
 const ROCK: [number, number, number] = [0.32, 0.3, 0.34];
 const MOSS: [number, number, number] = [0.16, 0.26, 0.09];
+/** Where the mouth faces (coast x, y; the shots' az -10). */
+const MOUTH_AXIS = [Math.sin((-10 * Math.PI) / 180), Math.cos((-10 * Math.PI) / 180)] as const;
+/** How much of the zenith's light the skylight's patch takes (a hole ~2 m across, ~10 m up: form factor ~0.03, eased
+ * as the rest of the cave's light is) */
+const SKY_PATCH = 0.9;
 const FUNGI_ON_ROCK = 0.05;
 
 export interface CaveParts {
@@ -178,6 +183,8 @@ export interface CaveExtras {
   mouthOpen?: Float32Array;
   /** how far behind the stop's camera a cave-local point is (passage.ts `passageFrame().along`) */
   alongOf?: (x: number, y: number) => number;
+  /** the skylight's floor patch, cave-local (skylight.ts; plan M7 Task 7) */
+  skylight?: { x: number; y: number };
   /** stones and stumps on the floor (caveFloor.ts; plan M7 Task 4), cave-local */
   stones?: { position: Float32Array; index: Uint32Array };
 }
@@ -334,12 +341,30 @@ export function createCave(
     smoothstep(-0.8, -0.3, open)
       .mul(smoothstep(0.0, -0.15, open))
       .mul(smoothstep(0.42, 0.6, fbm2(wxy.mul(1.7).add(wz), 2, 0.5)))
-      .mul(shellOnly) as F,
+      .mul(shellOnly)
+      // only the mouth's rim, not the passage's junction (its cut raised `open` too)
+      .mul(smoothstep(-2, 2, wxy.sub(vec2(cave.x, cave.y)).dot(vec2(MOUTH_AXIS[0], MOUTH_AXIS[1])))) as F,
   );
+  // the skylight's patch (plan M7 Task 7): the zenith's blue on the floor under the hole, and moss thriving there
+  // (owner cave 1)
+  const sk = extras.skylight;
+  const patch = sk
+    ? vs(
+        wxy
+          .sub(vec2(cave.x + sk.x, cave.y + sk.y))
+          .length()
+          .div(1.6)
+          .pow(2)
+          .negate()
+          .exp()
+          .mul(smoothstep(1.2, 0.2, hz)) as F,
+      )
+    : float(0);
+  const zenith = sky.colorAt(vec3(0, 1, 0) as unknown as V3);
   const rockLit = vs(
-    mix(vec3(...ROCK), vec3(...MOSS), moss)
+    mix(vec3(...ROCK), vec3(...MOSS), moss.max(patch.mul(0.6)))
       .mul(mottle.mul(0.7).add(0.65))
-      .mul(lit)
+      .mul(lit.add(zenith.mul(patch.mul(SKY_PATCH)).mul(camInside)))
       .mul(wetFoot) as V3,
   );
   // plan M7 Task 3, Fingal's colonnade on the chamber's walls (the passage has real ones): vertical columns ~0.8 m

@@ -69,6 +69,7 @@ import { createRidge, ridgeHeight, scatterRidge } from '../world/ridge';
 import { PLANT_STRIDE, scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
+import { createSkylight, openRoof, roofAbove, SKYLIGHT } from '../world/skylight';
 import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
 import { STIR_SPACING, stir, waterHit } from '../world/stir';
@@ -263,6 +264,12 @@ async function loadBase(
       const site = passageSite(caveShot, SHOTS.beforedawn);
       const mouthOpen = caveParts.shell.open;
       caveParts.shell.open = openShell(caveParts.shell.position, mouthOpen, site);
+      // the skylight (plan M7 Task 7), an option: `?skylight=off` keeps the roof whole
+      const skylightOn = new URLSearchParams(location.search).get('skylight') !== 'off';
+      if (skylightOn) {
+        caveParts.shell.open = openRoof(caveParts.shell.position, caveParts.shell.open);
+        parts.push(['skylight', createSkylight(caveShot, sky, roofAbove(caveParts.shell.position, SKYLIGHT))]);
+      }
       const passage = buildPassage(
         site,
         shellSampler(caveParts.shell.position, site),
@@ -306,6 +313,7 @@ async function loadBase(
           throughJunction: junctionVisible(site),
           alongOf: frame.along,
           stones,
+          ...(skylightOn ? { skylight: SKYLIGHT } : {}),
         }),
       ]);
     }

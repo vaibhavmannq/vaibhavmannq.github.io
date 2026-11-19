@@ -24,6 +24,7 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   cloud: new Set(['midnight']),
   cave: new Set(['beforedawn']),
   vines: new Set(['beforedawn']),
+  skylight: new Set(['beforedawn']),
   arch: ARCH_SEEN_FROM,
   stacks: ARCH_SEEN_FROM, // the stacks are seen with the arch (STACKS_SEEN_FROM aliases it)
   cliffs: COVE_SEEN_FROM,
