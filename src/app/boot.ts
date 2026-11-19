@@ -38,7 +38,7 @@ import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { coronaCurves, coronaShot } from '../world/corona';
 import { createDressing, decodeDressing } from '../world/dressing';
-import { createCaps, createGrove, decodeGrove } from '../world/grove';
+import { createCaps, createGrove, createLoneTree, decodeGrove } from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
@@ -263,6 +263,8 @@ async function loadBase(
       if (groveMeta && groveBuf) {
         const grove = createGrove(decodeGrove(groveBuf, groveMeta), surfaceAt, light);
         joins.push(compileThenAdd(app, grove, 'grove'));
+        // Deep midnight's lone tree on the ridge's knoll (plan M6 Task 3)
+        joins.push(compileThenAdd(app, createLoneTree(grove, ridgeGround), 'lonetree'));
         // the stacks' and the arch's scrub caps share the grove's shrub and material (plan M4 Task 3)
         joins.push(
           capsAt.then((caps) => (caps.length ? compileThenAdd(app, createCaps(grove, caps), 'caps') : undefined)),

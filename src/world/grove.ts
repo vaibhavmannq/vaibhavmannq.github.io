@@ -10,6 +10,7 @@ import {
   pow,
   saturate,
   sin,
+  smoothstep,
   texture,
   time,
   uniform,
@@ -361,7 +362,16 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
     .mul(vec3(0.5, 0.6, 0.12))
     .mul(through)
     .mul(0.22);
-  const lit = varying(albedo.mul(irradiance).mul(shade).add(glow));
+  // Under the moon (plan M6 Task 3): a crescent sends little light through the crown, and the eye sees little colour
+  // (reference book §1, Purkinje): the leaves grey toward a cool blue, keeping half their own.
+  const moonlit = smoothstep(0.0, 4.0, light.moonStrength);
+  const seen = albedo
+    .mul(irradiance)
+    .mul(shade)
+    .add(glow.mul(float(1).sub(moonlit.mul(0.9))));
+  const lit = varying(
+    mix(seen, vec3(dot(seen, vec3(0.2126, 0.7152, 0.0722))).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)),
+  );
   const tex = typeof document === 'undefined' ? null : leafAtlas();
   if (tex) {
     const t = texture(tex, uv());
@@ -436,6 +446,49 @@ export function createCaps(grove: GrovePart, instances: Float32Array): WorldPart
     },
     setTier(t: TierSettings) {
       geometry.setDrawRange(0, drawCount(g, t.leaves * CAP_CARD_SHARE));
+    },
+    dispose() {
+      geometry.dispose();
+    },
+  };
+}
+
+/**
+ * Deep midnight's lone tree (plan M6 Task 3; research/m6-midnight-references.md "The lone tree"): coast.py's midnight
+ * prop (`island_tree_03`, the render's place and size) on the ridge's knoll, drawn with the grove's material from the
+ * cove pack (no new download, no new material). Only at Midnight and its flights; in the mirror as the grove.
+ */
+export const LONE_MIDNIGHT = { model: 2, x: 586.1, y: -958.0, scale: 3.5, turnDeg: 200, tiltDeg: 6 } as const;
+
+export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart {
+  const t = LONE_MIDNIGHT;
+  const tilt = (t.tiltDeg * Math.PI) / 180;
+  const instances = Float32Array.from([
+    t.model,
+    t.x,
+    t.y,
+    groundAt(t.x, t.y),
+    t.scale,
+    t.scale,
+    t.scale,
+    tilt,
+    0,
+    (t.turnDeg * Math.PI) / 180,
+  ]);
+  const g = bakeGrove({ instances, protos: grove.protos }, groundAt);
+  const geometry = groveGeometry(g);
+  const mesh = new Mesh(geometry, grove.material);
+  mesh.name = 'lonetree';
+  mesh.visible = false;
+  const midnight = STOP_IDS.indexOf('midnight');
+  return {
+    object: mesh,
+    update(f) {
+      mesh.visible = f.state.a === midnight || f.state.b === midnight;
+      if (mesh.visible) grove.setWind(f.hour.world);
+    },
+    setTier(tier: TierSettings) {
+      geometry.setDrawRange(0, drawCount(g, tier.leaves));
     },
     dispose() {
       geometry.dispose();
