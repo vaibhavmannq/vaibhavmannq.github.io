@@ -66,7 +66,9 @@ Commits on `world`: 98d9b58, 255b53c, f6c42d4, be480e5, plus this docs commit. N
 - **Final looks: Golden 76 %, Sunset 80 %, Dusk 74 %, First light 74 %, Sunrise 76 %.** None at 85 %; I recommend
   closing M3 and carrying the rest into M8. Owner page: https://claude.ai/artifact/PrcvXudVZYCPSbpSAmFfU4 (asks: close
   M3? old or new cameras at Sunset and Dusk?).
-- Phone not re-run after day 2's additions (the owner had unplugged); the laptop A/B shows the cost is small.
+- Phone on HEAD c728440 (after day 2): cove stops 59.5–59.8 fps; 0 slow frames into Dusk. A warm phone stepped high → mid
+  at the Night/Midnight first trips (R38); an interleaved A/B with 4aaf4f0 did exactly the same, so day 2 costs nothing
+  there.
 
 ## Open
 - No cove place at 85 % (what holds each back: the ledger, end of "Session s16").
@@ -79,5 +81,4 @@ Commits on `world`: 98d9b58, 255b53c, f6c42d4, be480e5, plus this docs commit. N
 1. Read the owner's answers on the M3 page (close M3; old or new cameras). If the cameras go back, only `shots.json`
    and `flightPaths.json` change (copy the `OLD_CAMS` values and `flightPathsOld.json` in, then drop the switch), and the
    walks at those two stops need new paths (they start from the new cameras).
-2. A quick phone check of HEAD (day 2 added pebbles and the meadow glow): `phone-visitor.mjs` once, `phone-cove5.mjs`.
-3. Start M4 (Blue hour): its Research phase (D20) and plan, per the spec and Amendment 1 (build order §10).
+2. Start M4 (Blue hour): its Research phase (D20) and plan, per the spec and Amendment 1 (build order §10).

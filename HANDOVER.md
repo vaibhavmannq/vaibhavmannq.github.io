@@ -163,8 +163,8 @@ no borrowed set pieces (no towers, piano, etc.).
   - **Final looks: Golden 76 %, Sunset 80 %, Dusk 74 %, First light 74 %, Sunrise 76 %.** None at 85 %; my
     recommendation: close M3 and carry the rest into M8 (list in the s16 log). Owner page with two questions (close
     M3? old or new cameras?): https://claude.ai/artifact/PrcvXudVZYCPSbpSAmFfU4
-- **Next (s17): M4, Blue hour.** First read the owner's answers on the M3 page; a quick phone check of HEAD (day 2's
-  additions); then M4's Research phase and plan. Exact steps: the s16 session log.
+- **Next (s17): M4, Blue hour.** First read the owner's answers on the M3 page (the phone check of HEAD is done:
+  no cost from day 2); then M4's Research phase and plan. Exact steps: the s16 session log.
   - Still open: R38 (Night/Midnight first builds, M6); mid at the cove stops; stage-B pop-in (M8);
     packs fetched at every start; `horizon.spec.ts` (pre-existing).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
