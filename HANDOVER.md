@@ -173,7 +173,8 @@ no borrowed set pieces (no towers, piano, etc.).
   - **My looks: Blue hour 82 % at mid, 78 % at low** (before ~66 %). Not 85 (glare, boxy fallen blocks, low's
     mirror); I recommend closing M4 and carrying those into M8.
   - Speed: census inside D13; laptop low +1 ms at Blue hour, cove stops unchanged; nothing new to download.
-  - Owner page with the asks (close M4; still M3's two answers, which arrived blank this session): see the s17 log.
+  - Owner page with the asks (close M4; still M3's two answers, which arrived blank this session):
+    https://claude.ai/artifact/R4rHJqRkc1hik7h7CsmRd9
 - **Next (s18): M5, Night** (Amendment 1 §5). First read the owner's answers on the M4 and M3 pages. Exact steps: the
   s17 session log.
   - Still open: R38 (Night/Midnight first builds, M6); mid at Dusk/Sunrise and the mid ride into Blue hour on this
