@@ -21,7 +21,7 @@ import {
   vec2,
   vec3,
 } from 'three/tsl';
-import type { Camera } from 'three/webgpu';
+import type { Camera, RenderTarget } from 'three/webgpu';
 import {
   DataTexture,
   DataUtils,
@@ -74,12 +74,31 @@ export function foamLevel(beaufort: number): { edge: number; sheet: number } {
   return { edge: Math.min(1, 0.35 + 0.65 * Math.min(1, b / 2)), sheet: Math.min(1, Math.max(0, (b - 0.5) / 1.5)) };
 }
 
-export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms, tier: TierSettings): WorldPart {
+/**
+ * Where the sea's mirror draws, for a given eye camera: its own camera (a clone made on first use) and its render target.
+ * The pipeline builds every part's shaders for it ahead of time (R38, plan M6): the mirror draws one level deeper than
+ * the scene pass, which three.js r186 keys apart, so a part first seen in the mirror was built mid-flight.
+ */
+export interface Mirror {
+  camera(eye: Camera): Camera;
+  target(eye: Camera): RenderTarget;
+}
+
+export function createSea(
+  heights: DataTexture,
+  meta: GridMeta,
+  u: LightUniforms,
+  tier: TierSettings,
+): WorldPart & { mirror: Mirror | null } {
   const reflection = reflector({ resolutionScale: tier.reflect });
   reflection.target.rotateX(-Math.PI / 2);
   // The mirror's camera is a clone of the eye's, made on first use: it leaves out the cove's plants (EYE_ONLY_LAYER),
   // whose cost the mirror would double for blades it barely shows (plan M3 Task 1).
-  const base = (reflection as unknown as { reflector?: { getVirtualCamera(c: Camera): Camera } }).reflector;
+  const base = (
+    reflection as unknown as {
+      reflector?: { getVirtualCamera(c: Camera): Camera; getRenderTarget(c: Camera): RenderTarget };
+    }
+  ).reflector;
   if (base) {
     const own = base.getVirtualCamera.bind(base);
     base.getVirtualCamera = (c: Camera) => {
@@ -203,9 +222,16 @@ export function createSea(heights: DataTexture, meta: GridMeta, u: LightUniforms
   sea.renderOrder = 1;
   const group = new Group();
   group.add(sea, reflection.target);
+  const mirror: Mirror | null = base
+    ? {
+        camera: (eye) => base.getVirtualCamera(eye),
+        target: (eye) => base.getRenderTarget(base.getVirtualCamera(eye)),
+      }
+    : null;
 
   return {
     object: group,
+    mirror,
     update(f) {
       // reference book §2 (Beaufort, "on water"): the chop grows with the force, 0.3 calm to 1.3 at force 4
       chop.value = 0.3 + 0.25 * f.hour.world.beaufort;

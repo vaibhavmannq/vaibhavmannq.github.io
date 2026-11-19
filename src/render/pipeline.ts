@@ -23,6 +23,7 @@ import {
   WebGPURenderer,
 } from 'three/webgpu';
 import type { LightUniforms } from '../world/light';
+import type { Mirror } from '../world/sea';
 
 /** The two settings the pipeline itself changes (the tier table lives in quality/tiers.ts). */
 export interface PipelineTier {
@@ -45,7 +46,9 @@ export interface Pipeline {
    * a part that first showed mid-flight (the aurora, the cloud deck) was built again then: 0.7-0.8 s frames on the
    * laptop (s12 trace).
    */
-  compile(object: Object3D): Promise<void>;
+  compile(object: Object3D, opts?: { mirror?: boolean }): Promise<void>;
+  /** The sea's mirror: from now on `compile` also builds each part for it (R38, plan M6). */
+  setMirror(mirror: Mirror | null): void;
 }
 
 /** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
@@ -59,6 +62,7 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
     alpha: false,
   });
   await renderer.init();
+  keyBuildsByOwnContext(renderer);
   renderer.toneMapping = NoToneMapping;
   // The host is sized to the large viewport (world.css), which a phone's toolbar never changes.
   renderer.setSize(host.clientWidth, host.clientHeight);
@@ -72,6 +76,7 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
   let bloomOn = false;
   let view: { scene: Scene; camera: Camera } | null = null;
   let scenePass: ReturnType<typeof pass> | null = null;
+  let mirror: Mirror | null = null;
   const select = () => {
     const next = bloomOn ? glow : plain;
     if (!next) return;
@@ -119,27 +124,52 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
     render() {
       pipeline.render();
     },
-    compile(object) {
+    setMirror(m) {
+      mirror = m;
+    },
+    async compile(object, opts) {
       const target = scenePass?.renderTarget;
-      if (!view || !target) return Promise.resolve();
+      if (!view || !target) return;
       // compileAsync picks its render context before its first await, at nesting depth 0, but the scene pass draws at
-      // depth 1; so the target and the depth are set only around the call. r186 internals:
-      // Renderer._renderContexts.get(target, mrt, callDepth). (The mirror inside the pass draws at depth 2; building
-      // for it the same way drew the mirror over the whole view, so its first use is still built mid-flight: s12.)
+      // depth 1 and the sea's mirror inside it at depth 2; so the target and the depth are set only around each call.
+      // r186 internals: Renderer._renderContexts.get(target, mrt, callDepth).
       const contexts = (renderer as unknown as { _renderContexts?: { get?: (...a: unknown[]) => unknown } })
         ._renderContexts;
       const get = contexts?.get;
       // another three.js version: the plain compile (a first-use hitch, never a part left out)
       if (!contexts || typeof get !== 'function') return renderer.compileAsync(object, view.camera, view.scene);
-      const previous = renderer.getRenderTarget();
-      contexts.get = (r: unknown, mrt: unknown) => get.call(contexts, r, mrt, 1);
-      renderer.setRenderTarget(target);
-      try {
-        return renderer.compileAsync(object, view.camera, view.scene);
-      } finally {
-        contexts.get = get;
-        renderer.setRenderTarget(previous);
+      const at = (depth: number, rt: typeof target, camera: Camera) => {
+        const previous = renderer.getRenderTarget();
+        contexts.get = (r: unknown, m: unknown) => get.call(contexts, r, m, depth);
+        renderer.setRenderTarget(rt);
+        try {
+          return renderer.compileAsync(object, camera, (view as { scene: Scene }).scene);
+        } finally {
+          contexts.get = get;
+          renderer.setRenderTarget(previous);
+        }
+      };
+      const eye = view.camera;
+      const builds = [at(1, target, eye)];
+      // R38 (plan M6): the mirror's first draw of a part (the aurora, the cloud deck, the cave) built its shaders
+      // mid-flight: 0.45-1.1 s on this laptop with no shader cache, 0.15-0.2 s on the phone. Its camera is a clone
+      // whose matrices are last frame's reflection, so culling is off for the call: everything the part holds is built.
+      // This needs keyBuildsByOwnContext (below): without it the eye's parts drew with the mirror's camera (s12).
+      if (mirror && opts?.mirror !== false) {
+        const culled: Object3D[] = [];
+        object.traverse((o) => {
+          if (o.frustumCulled) {
+            culled.push(o);
+            o.frustumCulled = false;
+          }
+        });
+        try {
+          builds.push(at(2, mirror.target(eye), mirror.camera(eye)));
+        } finally {
+          for (const o of culled) o.frustumCulled = true;
+        }
       }
+      await Promise.all(builds);
     },
     async warmUp() {
       if (!view) return;
@@ -153,5 +183,36 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
       bloomOn = wanted;
       select();
     },
+  };
+}
+
+/**
+ * R38 (plan M6). three.js r186 shares a shader's camera uniforms ("render" group) between every build made under the
+ * same `renderer._currentRenderContext` (NodeBuilder._getBindGroup). A real draw builds with its own context set; a
+ * compileAsync builds after the call has returned, with no context, so the eye's and the mirror's pre-built parts got
+ * one camera buffer, and the mirror's camera, written last, drew the eye's view upside down (s12, s19). Each build is
+ * keyed by its own render object's context, as a real draw would key it.
+ */
+export function keyBuildsByOwnContext(renderer: WebGPURenderer): void {
+  const r = renderer as unknown as {
+    _currentRenderContext: unknown;
+    debug: { onNodeBuilderCreated: ((builder: unknown, renderObject: unknown) => void) | null };
+  };
+  const previous = r.debug.onNodeBuilderCreated;
+  r.debug.onNodeBuilderCreated = (builder, renderObject) => {
+    previous?.(builder, renderObject);
+    const context = (renderObject as { context?: unknown } | undefined)?.context;
+    const b = builder as { _getBindGroup?: (...a: unknown[]) => unknown };
+    const own = b._getBindGroup;
+    if (!context || typeof own !== 'function') return;
+    b._getBindGroup = function (this: unknown, ...args: unknown[]) {
+      const outer = r._currentRenderContext;
+      r._currentRenderContext = context;
+      try {
+        return own.apply(this, args);
+      } finally {
+        r._currentRenderContext = outer;
+      }
+    };
   };
 }

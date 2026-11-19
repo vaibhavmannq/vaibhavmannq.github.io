@@ -124,7 +124,8 @@ async function compileThenAdd(app: App, part: WorldPart, name: string): Promise<
     const shown = part.object.visible;
     part.object.visible = true;
     try {
-      await app.pipeline?.compile(part.object);
+      // the sea is never drawn in its own mirror
+      await app.pipeline?.compile(part.object, { mirror: name !== 'sea' });
     } finally {
       part.object.visible = shown;
     }
@@ -173,6 +174,7 @@ async function loadBase(
   const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon, light);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
+  app.pipeline?.setMirror(sea.mirror);
   // One material for every rock part (D13); the lagoon's fresh water wears no barnacle line (plan M5 Task 1).
   const rock = createRockMaterial(lagoon, light.aurora as unknown as Parameters<typeof createRockMaterial>[1]);
   const parts: [string, WorldPart][] = [
