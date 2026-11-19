@@ -19,6 +19,23 @@ export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
     [-6, 52, 9.0],
     [4, 104, 20.0],
   ],
+  // Blue hour → Night leaves through the arch (plan M4 Task 5; design review §4 "IV → V"): low over the flats, under
+  // the span (its underside 40–45 m up, the opening ~33 m wide at 170–184 m from the stop; .superpowers/m4/tools/
+  // arch-gap.mjs), then a climbing turn to the left, west of the broken block south of the arch (40–55 m high at
+  // x −1240..−1180, y 1040–1120; rock-map.mjs), and on to the high glide toward the land as the stars come out.
+  'bluehour>night': [
+    [-1064.0, 1177.7, 2.5],
+    [-1129.4, 1202.8, 6.0],
+    [-1173.0, 1217.3, 9.0],
+    [-1240.0, 1243.0, 20.0],
+    [-1305.0, 1228.0, 42.0],
+    [-1335.0, 1150.0, 72.0],
+    [-1290.0, 1040.0, 110.0],
+    [-1150.0, 930.0, 160.0],
+    [-801.6, 678.24, 239.81],
+    [-526.4, 40.96, 239.81],
+    [-402.56, -245.82, 120.55],
+  ],
 };
 
 /**
@@ -38,6 +55,24 @@ export const APPROACH: Partial<Record<FlightKey, Vec3[]>> = {
  * headland, which filled over half the screen (M0 look note, M1 shots).
  */
 export const SIDEWAYS: ReadonlySet<FlightKey> = new Set<FlightKey>(['firstlight>sunrise']);
+
+/**
+ * Reveals a flight looks up at (plan M4 Task 5; Amendment 1 §7 "slow at the reveals, through the arch"): near `at`
+ * (coast axes) the gaze tilts up by up to `deg`, eased over `radius` metres of horizontal distance, so the arch's span
+ * passes overhead instead of out of frame.
+ */
+export const LOOK_UP: Partial<Record<FlightKey, { at: [number, number]; deg: number; radius: number }>> = {
+  'bluehour>night': { at: [-1173.0, 1217.3], deg: 30, radius: 55 },
+};
+
+/** Pure: how far a flight's gaze tilts up at coast position (x, y), degrees. */
+export function lookUpAt(key: FlightKey, x: number, y: number): number {
+  const r = LOOK_UP[key];
+  if (!r) return 0;
+  const d = Math.hypot(x - r.at[0], y - r.at[1]);
+  const t = Math.min(1, Math.max(0, (r.radius - d) / (r.radius * 0.75)));
+  return r.deg * t * t * (3 - 2 * t);
+}
 
 const lerp2 = (a: Vec3, b: Vec3, t: number): [number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 

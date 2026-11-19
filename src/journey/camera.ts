@@ -1,6 +1,6 @@
 import { lerp, smootherstep, smoothstep } from '../shared/math';
 import type { FlightPath } from './flights';
-import { SIDEWAYS, sampleFlight } from './flights';
+import { lookUpAt, SIDEWAYS, sampleFlight } from './flights';
 import { STOPS } from './stops';
 import type { FrameState } from './timeline';
 import { type Stop, toThree, type Vec3 } from './types';
@@ -78,7 +78,9 @@ export function poseAt(
   const w1 = smoothstep(0, 0.3, frame.t);
   const w2 = smoothstep(0.7, 1, frame.t);
   const yaw = shortestYaw(shortestYaw(a.landscape.yaw, travelYaw, w1), b.landscape.yaw, w2);
-  const pitch = lerp(lerp(a.landscape.pitch, travelPitch, w1), b.landscape.pitch, w2);
+  const pitch =
+    lerp(lerp(a.landscape.pitch, travelPitch, w1), b.landscape.pitch, w2) +
+    lookUpAt(`${path.from}>${path.to}`, pos[0], pos[1]);
   const lens = lerp(a.landscape.lens, b.landscape.lens, smootherstep(frame.t));
   return { position: toThree(pos), yaw, pitch, fov: fovFor(lens, aspect) };
 }
