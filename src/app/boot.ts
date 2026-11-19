@@ -29,11 +29,12 @@ import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
+import { capInstances } from '../world/caps';
 import { createCave, decodeCave } from '../world/cave';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { createDressing, decodeDressing } from '../world/dressing';
-import { createGrove, decodeGrove } from '../world/grove';
+import { createCaps, createGrove, decodeGrove } from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
@@ -197,6 +198,10 @@ async function loadBase(
   // fetched after the base, so the ground and sea never wait for them, and a failed download costs only that pack
   // (final review I1). One material for every rock part (D13).
   const rock = createRockMaterial();
+  let capsFound: (caps: Float32Array) => void = () => undefined;
+  const capsAt = new Promise<Float32Array>((resolve) => {
+    capsFound = resolve;
+  });
   const surfaceAt = createSurfaceSampler(heights, meta.heights);
   const coveReady = (async () => {
     try {
@@ -208,8 +213,14 @@ async function loadBase(
       const joins: Promise<void>[] = [compileThenAdd(app, createPebbles(surfaceAt, rock), 'pebbles')];
       if (cliffsMeta && cliffsBuf)
         joins.push(compileThenAdd(app, createCliffs(decodeCliffs(cliffsBuf, cliffsMeta), cliffsMeta, rock), 'cliffs'));
-      if (groveMeta && groveBuf)
-        joins.push(compileThenAdd(app, createGrove(decodeGrove(groveBuf, groveMeta), surfaceAt, light), 'grove'));
+      if (groveMeta && groveBuf) {
+        const grove = createGrove(decodeGrove(groveBuf, groveMeta), surfaceAt, light);
+        joins.push(compileThenAdd(app, grove, 'grove'));
+        // the stacks' and the arch's scrub caps share the grove's shrub and material (plan M4 Task 3)
+        joins.push(
+          capsAt.then((caps) => (caps.length ? compileThenAdd(app, createCaps(grove, caps), 'caps') : undefined)),
+        );
+      }
       await Promise.all(joins);
     } catch (error) {
       console.warn('the cove pack failed to load', error);
@@ -224,16 +235,20 @@ async function loadBase(
       const joins: Promise<void>[] = [];
       // Blue hour's sea sparkle lights where the rock meets the water (plan M4 Task 1)
       const feet: Float32Array[] = [];
+      const caps: Float32Array[] = [];
       if (archMeta && archBuf) {
         const parts = decodeArch(archBuf, archMeta);
         feet.push(waterline(parts.position, parts.index, archMeta));
+        caps.push(capInstances(parts.position, parts.index, archMeta, 11));
         joins.push(compileThenAdd(app, createArch(parts, archMeta, rock), 'arch'));
       }
       if (stacksMeta && stacksBuf) {
         const parts = decodeStacks(stacksBuf, stacksMeta);
         feet.push(waterline(parts.position, parts.index, stacksMeta));
+        caps.push(capInstances(parts.position, parts.index, stacksMeta, 12));
         joins.push(compileThenAdd(app, createStacks(parts, stacksMeta, rock), 'stacks'));
       }
+      capsFound(new Float32Array(caps.flatMap((c) => Array.from(c))));
       const all = new Float32Array(feet.reduce((n, a) => n + a.length, 0));
       feet.reduce((o, a) => (all.set(a, o), o + a.length), 0);
       joins.push(compileThenAdd(app, createPlankton(all), 'plankton'));
@@ -241,6 +256,7 @@ async function loadBase(
     } catch (error) {
       console.warn('the headland rock failed to load', error);
     }
+    capsFound(new Float32Array(0)); // no rock, no caps (a second resolve is a no-op)
   })();
   // two waves: what the opening stop shows, then the rest (sharing the driver with far parts slowed the near ones)
   const stop = opening();

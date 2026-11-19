@@ -34,6 +34,7 @@ import { coveInPlay } from './cliffs';
 import type { HeightAt } from './heights';
 import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
 import type { WorldPart } from './part';
+import { stacksInPlay } from './stacks';
 
 /** One model's simplified wood and leaf cards, in its own frame (coast axes: x east, y north, z up; metres). */
 export interface GroveProto {
@@ -298,8 +299,7 @@ const BARK: V3 = [0.055, 0.045, 0.036];
  * one round volume (spec §9.7); the light is worked out per vertex, as the meadow's is, so the back-face flip never
  * enters. Twigs move in the wind, trunks never (reference book §2: force 0–1 leaves tremble; §8). Drawn in the mirror.
  */
-export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUniforms): WorldPart {
-  const g = bakeGrove(grove, groundAt);
+function groveGeometry(g: GroveGeometry): BufferGeometry {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(g.position, 3));
   geometry.setAttribute('normal', new BufferAttribute(g.normal, 3));
@@ -307,6 +307,19 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
   geometry.setAttribute('aux', new BufferAttribute(g.aux, 4));
   geometry.setIndex(new BufferAttribute(g.index, 1));
   geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/** The grove part, and what the scrub caps share with it: its one material and its wind. */
+export interface GrovePart extends WorldPart {
+  readonly material: MeshBasicNodeMaterial;
+  readonly protos: GroveProto[];
+  setWind(w: { windAz: number; beaufort: number }): void;
+}
+
+export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUniforms): GrovePart {
+  const g = bakeGrove(grove, groundAt);
+  const geometry = groveGeometry(g);
 
   const amp = uniform(0.02);
   const windTo = uniform(new Vector2(0, 1));
@@ -361,16 +374,20 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = true;
   mesh.visible = false;
+  const setWind = (w: { windAz: number; beaufort: number }) => {
+    // reference book §2: force 0–1 leaves tremble (2 cm), force 3 leaves and twigs in constant motion (~12 cm)
+    amp.value = 0.02 + 0.035 * Math.max(0, w.beaufort);
+    const az = (w.windAz * Math.PI) / 180;
+    windTo.value.set(-Math.sin(az), Math.cos(az));
+  };
   return {
     object: mesh,
+    material,
+    protos: grove.protos,
+    setWind,
     update(f) {
       mesh.visible = coveInPlay(f.state);
-      if (!mesh.visible) return;
-      const w = f.hour.world;
-      // reference book §2: force 0–1 leaves tremble (2 cm), force 3 leaves and twigs in constant motion (~12 cm)
-      amp.value = 0.02 + 0.035 * Math.max(0, w.beaufort);
-      const az = (w.windAz * Math.PI) / 180;
-      windTo.value.set(-Math.sin(az), Math.cos(az));
+      if (mesh.visible) setWind(f.hour.world);
     },
     setTier(t: TierSettings) {
       geometry.setDrawRange(0, drawCount(g, t.leaves));
@@ -379,6 +396,40 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
       geometry.dispose();
       material.dispose();
       tex?.dispose();
+    },
+  };
+}
+
+/** Leaf cards a scrub cap draws, of its shrub's (they stand 50–500 m away, against the sky): the outline needs fewer. */
+export const CAP_CARD_SHARE = 0.45;
+
+/**
+ * Scrub caps on the stacks and the arch (plan M4 Task 3; caps.ts places them): the grove's shrub in a second geometry
+ * drawn with the grove's own material (no new material, no new shader) wherever the stacks are in play. Wood none
+ * (the shrub is all cards); a tier's leaf share applies to CAP_CARD_SHARE of the cards. In the mirror, as the grove.
+ */
+export function createCaps(grove: GrovePart, instances: Float32Array): WorldPart {
+  const z = new Map<string, number>();
+  for (let i = 0; i < instances.length; i += 10)
+    z.set(`${instances[i + 1]},${instances[i + 2]}`, instances[i + 3] as number);
+  // bakeGrove stands each plant on `groundAt` less its sink: here the ground is the rock top caps.ts found
+  const g = bakeGrove({ instances, protos: grove.protos }, (x, y) => z.get(`${x},${y}`) ?? 0);
+  const geometry = groveGeometry(g);
+  const mesh = new Mesh(geometry, grove.material);
+  mesh.name = 'caps';
+  mesh.frustumCulled = true;
+  mesh.visible = false;
+  return {
+    object: mesh,
+    update(f) {
+      mesh.visible = stacksInPlay(f.state);
+      if (mesh.visible) grove.setWind(f.hour.world);
+    },
+    setTier(t: TierSettings) {
+      geometry.setDrawRange(0, drawCount(g, t.leaves * CAP_CARD_SHARE));
+    },
+    dispose() {
+      geometry.dispose();
     },
   };
 }
