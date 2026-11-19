@@ -10,9 +10,9 @@ import {
   mix,
   mx_noise_float,
   normalize,
-  pow,
   positionLocal,
   positionWorld,
+  pow,
   smoothstep,
   step,
   texture,
@@ -221,7 +221,12 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   material.colorNode = base
     .mul(skyLight.mul(SKY_GAIN).add(moonlight.mul(wrap).mul(MOON_GAIN)))
     .add(moonlight.mul(rim).mul(0.5))
-    .add(moonlight.mul(road).mul(ROAD_GAIN).mul(vec3(0.92, 0.96, 1.0)));
+    .add(
+      moonlight
+        .mul(road)
+        .mul(ROAD_GAIN)
+        .mul(vec3(0.92, 0.96, 1.0)),
+    );
 
   // Thin where the ground comes up through it (coast.py's feather), and at the box's edges.
   const gx1 = meta.x0 + (meta.nx - 1) * meta.step;

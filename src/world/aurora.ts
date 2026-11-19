@@ -1,4 +1,4 @@
-import { attribute, exp, float, mix, uniform, uv, varying, vec2, vec3 } from 'three/tsl';
+import { attribute, exp, float, mix, sin, uniform, uv, varying, vec2, vec3 } from 'three/tsl';
 import {
   AdditiveBlending,
   BufferAttribute,
@@ -44,6 +44,10 @@ const BURST_S = 5;
 
 const NIGHT = STOP_IDS.indexOf('night');
 const MIDNIGHT = STOP_IDS.indexOf('midnight');
+/** Deep midnight's softer foot: the share of the curtain over which its light rises (Night's is the shot's 0.07). */
+export const LATE_FOOT = 0.34;
+/** Deep midnight's aurora is weaker than Night's (late, and a crescent dims it): its shot strength × this. */
+export const LATE_STRENGTH = 0.62;
 const rad = (d: number) => (d * Math.PI) / 180;
 /** A sky direction, coast axes (x east, y north, z up), from azimuth (from north, clockwise) and elevation. */
 const sky = (az: number, el: number): [number, number, number] => [
@@ -172,7 +176,12 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
   const vs = (n: F): F => varying(n) as unknown as F;
   const warp = vs(remap(along(5, 0, 0, 2, 0.45, 0.012), 0.3, 0.7).mul(c.warp));
   const vw = v.sub(warp);
-  const foot = remap(vw, 0, c.foot);
+  /** 1 on Midnight's curtains, 0 on Night's */
+  const late = bandAttr.w;
+  // Deep midnight's aurora is the late-night kind (plan M6 Task 6; reference book §5, pulsating aurora; brief "a softer
+  // aurora foot"): no sharp bright lower edge, the light rising softly over a third of the curtain.
+  const rise = vw.div(mix(float(c.foot), float(LATE_FOOT), late)).clamp(0, 1);
+  const foot = mix(rise, rise.mul(rise).mul(rise.mul(-2).add(3)), late) as unknown as F;
   // s09, against the owner's aurora photos: rays are soft columns of very different widths, not a comb of thin bright
   // spikes. Wide soft rays carry most of the light; the fine ones ride on them at a lower contrast; ends are blunt.
   const wide = vs(remap(along(c.rays * 0.45, 0.5, 5.3, 2, 0.5, 0.03), 0.28, 0.75));
@@ -204,7 +213,28 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
   const surge = float(1)
     .add(burst.mul(0.15))
     .add(burst.mul(0.7).mul(exp(u.sub(burstAt).pow(2).mul(-40))));
-  const strength = mix(float(night.strength).mul(weights.x), float(midnight.strength).mul(weights.y), bandAttr.w);
+  const strength = mix(
+    float(night.strength).mul(weights.x),
+    float(midnight.strength * LATE_STRENGTH).mul(weights.y),
+    bandAttr.w,
+  );
+  // Pulsating patches (reference book §5: soft patches that brighten and dim with periods of a few seconds to tens of
+  // seconds, usually late in the night): three soft patch fields along the curtain, each breathing on its own clock.
+  // They vary only along the curtain, so they are worked out per vertex.
+  const breathe = (scale: number, off: number, period: number, phase: number): F =>
+    remap(along(scale, 0, off, 2, 0.5, 0), 0.42, 0.72).mul(
+      sin(clock.mul((2 * Math.PI) / period).add(seed.mul(phase)))
+        .mul(0.5)
+        .add(0.5),
+    );
+  const pulse = vs(
+    breathe(2.2, 11.3, 6.5, 3.1)
+      .add(breathe(1.4, 17.9, 11, 5.7))
+      .add(breathe(3.1, 23.4, 17, 1.9))
+      .mul(0.75)
+      .add(0.45),
+  );
+  const pulsing = mix(float(1), pulse, late);
 
   const material = new MeshBasicNodeMaterial({
     transparent: true,
@@ -224,7 +254,8 @@ export function createAurora(data: AuroraData, night: AuroraShot, midnight: Auro
     .mul(bandAttr.y)
     .mul(AURORA_GAIN)
     .mul(dim)
-    .mul(surge);
+    .mul(surge)
+    .mul(pulsing);
 
   const geometry = merged([auroraGeometry(data.night, night, 0), auroraGeometry(data.midnight, midnight, 1)]);
   const mesh = new Mesh(geometry, material);
