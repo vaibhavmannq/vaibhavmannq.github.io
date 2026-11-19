@@ -59,46 +59,46 @@ wave). Three.js: `research/threejs-r186-notes.md`. UI/motion: `research/owner-si
 - [x] `docs/handover/research/m7-before-dawn-references.md`; before shots and sheet in `.superpowers/m7/before/`.
 
 ### Task 1: The passage (Fingal's Cave; research §"deeper start")
-- [ ] `passage.ts`: pure, seeded tunnel geometry (columns on the walls, vault, floor), its centreline from the chamber's
+- [x] `passage.ts`: pure, seeded tunnel geometry (columns on the walls, vault, floor), its centreline from the chamber's
   back wall along the mouth's axis reversed; tests: roof under the live ground − 0.5 m, floor level with the chamber,
   flare wider than the shell's opening.
-- [ ] The shell opened where the passage meets it; passage merged into the cave mesh with its own baked light (the
+- [x] The shell opened where the passage meets it; passage merged into the cave mesh with its own baked light (the
   mouth's share by distance and facing).
-- [ ] Shot from the deep point; verdict.
+- [x] Shot from the deep point; verdict.
 
 ### Task 2: The walk and the arrival (Amendment §4 VII, §7; design review VI → VII)
-- [ ] `walk.ts`: pure walk state (time while resting, scroll progress through the stop; 0 at the stop's start, 1 at its
+- [x] `walk.ts`: pure walk state (time while resting, scroll progress through the stop; 0 at the stop's start, 1 at its
   end); tests.
-- [ ] `FrameState` carries the progress through a stop; `poseAt` places the camera on the walk; `WALKS` in `stops.ts`;
+- [x] `FrameState` carries the progress through a stop; `poseAt` places the camera on the walk; `WALKS` in `stops.ts`;
   `bake_flights.ts` ends the flight in at the deep point; re-bake; `?cams=old` and reduced motion stand still.
-- [ ] Frame strips of the arrival and of the walk; verdict in motion.
+- [x] Frame strips of the arrival and of the walk; verdict in motion.
 
 ### Task 3: Light on the rock (owner cave 2, 3, 5; book §9)
-- [ ] Normals; the mouth as an area light; warm bounce; wet near the floor; coloured shadows; a column pattern.
-- [ ] Cost on the laptop (GPU ms at the stop, mid and low) before and after; verdict against the owner's photos.
+- [x] Normals; the mouth as an area light; warm bounce; wet near the floor; coloured shadows; a column pattern.
+- [x] Cost on the laptop (GPU ms at the stop, mid and low) before and after; verdict against the owner's photos.
 
 ### Task 4: Floor and pool (owner cave 2, 4, 5; book §3)
-- [ ] Stumps, boulders and cobbles (seeded, tested: none in the walk's path or the pool); merged into the cave mesh.
-- [ ] One still pool mirroring the mouth, wet sheen elsewhere (no noise blobs); drip rings at 0.25 m/s.
-- [ ] Verdict, still and in motion.
+- [x] Stumps, boulders and cobbles (seeded, tested: none in the walk's path or the pool); merged into the cave mesh.
+- [x] One still pool mirroring the mouth, wet sheen elsewhere (no noise blobs); drip rings at 0.25 m/s.
+- [x] Verdict, still and in motion.
 
 ### Task 5: Fungi (book §6; m2-references §4; inspiration)
-- [ ] Clusters on the walls' feet and stumps (seeded, tested: clustered, not even); faint and steady.
-- [ ] The pointer's slow wave of brightening (≤ 1.6×, ~0.3 s up, ~2 s down); verdict in motion.
+- [x] Clusters on the walls' feet and stumps (seeded, tested: clustered, not even); faint and steady.
+- [x] The pointer's slow wave of brightening (≤ 1.6×, ~0.3 s up, ~2 s down); verdict in motion.
 
 ### Task 6: Vines and moss at the lip (owner cave 5; book §8; D5)
-- [ ] Leaf-shaped alpha-cut cards on strands from the lip, swaying at force 1; moss on the lip's upward faces.
-- [ ] Verdict against the render and owner 5.
+- [x] Leaf-shaped alpha-cut cards on strands from the lip, swaying at force 1; moss on the lip's upward faces.
+- [x] Verdict against the render and owner 5.
 
 ### Task 7: The skylight, as an option (owner cave 1; research §skylight)
-- [ ] Roof hole, faint cool shaft, motes, lit mossy floor patch; `?skylight=off`.
-- [ ] Shots and a strip with and without; my recommendation.
+- [x] Roof hole, faint cool shaft, motes, lit mossy floor patch; `?skylight=off`.
+- [x] Shots and a strip with and without; my recommendation.
 
 ### Task 8: The view out
-- [ ] Check stars against the sky's brightness, the sea's paling, the straight slab; fix what is foreign.
+- [x] Check stars against the sky's brightness, the sea's paling, the straight slab; fix what is foreign. (Slab carried to M8.)
 
 ### Task 9: Speed, R38, phone, verdicts
-- [ ] Census at Before dawn; laptop A/B held still (mid, low) against 32c07a2; cold first rides Midnight → Before dawn
+- [x] Census at Before dawn; laptop A/B held still (mid, low) against 32c07a2; cold first rides Midnight → Before dawn
   → First light (both builds).
-- [ ] Phone over USB (if connected): joined, held still, a visitor's ride through VII.
-- [ ] Gate: unit, `world:report`, e2e, `world:test`; ledger; verdicts; session log; HANDOVER.
+- [ ] Phone over USB (if connected): joined, held still, a visitor's ride through VII. (Not connected in s20.)
+- [x] Gate: unit, `world:report`, e2e, `world:test`; ledger; verdicts; session log; HANDOVER.

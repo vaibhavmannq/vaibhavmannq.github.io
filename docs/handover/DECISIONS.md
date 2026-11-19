@@ -250,3 +250,19 @@ Sunrise 76, Blue hour 82, Night 72, Deep midnight 74. Every carried item is in t
 cameras the owner added: "honestly I really liked the old sunset; if possible try adding some more in view as it feels
 empty; do it in M8". So M8 fills Sunset's new meadow view (more in the frame, the old view's richness as the guide);
 `?cams=old` stays as that reference until the M8 Sunset pass, then goes.
+
+**D39 · 2026-11-19 · (my calls, s20; owner told in the session log) Before dawn, M7.** The stop starts 14 m deeper, in
+a passage of basalt columns made in the browser behind the chamber (`passage.ts`, merged into the cave's one mesh; no
+Blender re-export), and walks to the old camera in 30 s while resting, or with the scroll (`walk.ts`); the flight in
+backs in through the mouth facing the sea and ends at the deep end. The cave is lit by the mouth's form factor computed
+at load (`caveLight.ts`), not cave.bin's bake, shown with its range compressed (share^0.6); the chamber's walls carry
+Fingal's colonnade in the shader. One still pool mirrors the mouth from any eye (ray to the mouth's plane), with two
+drips; cobbles, boulders and stumps on the floor; fungi in clusters that brighten along the pointer; leaf-shaped vines
+on the lip; a skylight shaft, faint and cool (no beam before dawn), on by default with `?skylight=off`. Ledger:
+R112–R122.
+
+**D40 · 2026-11-19 · (owner, s20) M7 closes below the 85 % bar, at Before dawn 72 % (mid), 70 % (low), behaviour 74 %;
+its leftovers go to M8.** Carried: the floor's stones that barely read, the regular colonnade, the very dark deep start,
+thin vines, the straight slab outside, the fungi's pointer wave not judged in motion; R121, R122, R123. The skylight
+stays on by default (`?skylight=off` remains for comparison).
+

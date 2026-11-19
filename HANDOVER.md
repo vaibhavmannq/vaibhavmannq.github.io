@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-19, end of session s19 (M6, Deep midnight, built on my side, and R38 fixed; see `docs/handover/sessions/2026-11-19-s19-m6-deep-midnight.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-19, end of session s20 (M7, Before dawn, built on my side; see `docs/handover/sessions/2026-11-19-s20-m7-before-dawn.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -21,7 +21,7 @@ camera stop with the section's text. Things in the scene respond to hover and op
 floating lanterns at the Night lagoon). Inspired by Wuthering Waves' night moods; everything is original, no game assets,
 no borrowed set pieces (no towers, piano, etc.).
 
-## 2. Where we are (2026-11-19, after s19)
+## 2. Where we are (2026-11-19, after s20)
 
 - **Look: approved.** All nine hours exist as full-quality Blender renders (1920×1080, hybrid style), judged hour by hour
   and called "amazing". They are the **art direction** for each stop, not site pixels.
@@ -207,21 +207,37 @@ no borrowed set pieces (no towers, piano, etc.).
 - **Owner, end of s19 (D38): M3–M6 closed below 85 %, everything carried to M8; Sunset and Dusk keep the new cameras.
   M8 must fill Sunset's meadow view ("it feels empty"; the owner liked the old view): `?cams=old` stays as the
   reference until then.** No owner answers are pending.
-- **Next (s20): M7, Before dawn** (Amendment 1 §4 VII). Exact steps: the s19 log.
-  - Still open: R101 (a ~200 ms first-visit frame into Midnight on the laptop, both builds; the phone showed none);
-    a portrait framing per stop (M8: Midnight's tree leaves the phone's frame); mid at Dusk/Sunrise and the mid rides on
-    this laptop; stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing); the Firefox
-    smoke timing.
+- **s20 (2026-11-19): M7, Before dawn, built on my side; inline, on `world`, not pushed (a722889..).**
+  - Research sheet `research/m7-before-dawn-references.md`; plan `docs/superpowers/plans/2026-11-19-m7-before-dawn.md`;
+    ledger `docs/handover/ledgers/2026-11-19-m7-before-dawn.md` (R112–R122); D39.
+  - Built: a passage of columns behind the chamber, made in the browser (`passage.ts`); the stop starts 14 m deep and
+    walks to the old camera in 30 s or with the scroll (`walk.ts`; `?walk=0..1` holds it); the flight in backs in
+    through the mouth facing the sea; the cave lit by the mouth's form factor (`caveLight.ts`) with Fingal's colonnade;
+    one still pool mirroring the mouth, with drips; stones and stumps (`caveFloor.ts`); fungi in clusters that answer
+    the pointer; leaf-shaped vines and moss (`vines.ts`); a faint skylight shaft, on by default (`?skylight=off`).
+  - **My looks: Before dawn 72 % at mid, 70 % at low** (before 58 %), behaviour 74 %. Not 85 (stones barely read, a
+    regular colonnade, a very dark deep start, thin vines); I recommend closing M7 and carrying the rest into M8.
+  - Speed: census inside D13 (36 draws, 9 materials); laptop low +3–4 ms GPU at the stop, 60 fps; no new download.
+    Cold first ride into Before dawn 0 slow frames; **out of it toward First light both builds freeze ~600 ms once
+    (R121, open, older than M7)**. Phone: Before dawn 59.7 fps held still at mid and high; a ride into it hitches in
+    both builds (worst 285 ms new, 368 old: R123, open).
+- **Owner, end of s20 (D40): M7 closed below 85 %, leftovers to M8.** `world` pushed after the gate.
+- **Next (s21): M8, the whole night polished** (Research phase and plan first; carry lists in the s16–s20 logs; Sunset's
+  meadow view per D38; R121/R123 early).
+  - Still open: R121 (first trip out of the cave), R123 (phone, first ride into it), R122 (sky through the mouth in the flight in), R101 (a ~200 ms
+    first-visit frame into Midnight on the laptop); a portrait framing per stop (M8); mid at Dusk/Sunrise and the mid
+    rides on this laptop; stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing); the
+    Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
-    cache) and `.superpowers/m6/first-ride.mjs` (START, FIRST, WAIT env).
+    cache; restart it between runs) and `.superpowers/m6/first-ride.mjs` (START, FIRST, WAIT env; knows I–IX).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
     before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); Brave must be in front; the scripts
     drive the open `localhost:4181` tab.
   - After a Blender re-export or a coast.py edit: `python tools/world/export_hours.py`, `bake_base.py`,
     `node tools/world/bake_flights.ts`, `bake_dressing.py`, `node tools/world/manifest.ts`, then `npm run world:report`.
-  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/`, `.superpowers/m4/tools/`, `.superpowers/m5/`
-    (s18: `flight-clear.ts`, `lure.mjs`, `lanterns.mjs`, `camcalc.ts`), `.superpowers/m6/` (s19: `first-ride.mjs`,
-    `shot.mjs` with parts hidden, `strip.mjs` frame strips).
+  - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/`, `.superpowers/m4/tools/`, `.superpowers/m5/`,
+    `.superpowers/m6/` (`first-ride.mjs`, `shot.mjs`, `strip.mjs`), `.superpowers/m7/tools/` (`flight-strip.mjs`,
+    `cavebin.mjs`).
 - **How to measure:** phone over USB (D18; memory "Phone over USB"); GPU timer queries, Chrome traces, interleaved A/B
   runs on the laptop (s05 log). World checks: `npm run world:test` (~12 min here, run in the background);
   look check: `npm run aerials -- <url> <outDir> [<beforeDir>]`.
