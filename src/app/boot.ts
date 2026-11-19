@@ -29,7 +29,7 @@ import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
-import { BOWL, createBowl } from '../world/bowl';
+import { BOWL, createBowl, fallsLayout } from '../world/bowl';
 import { capInstances } from '../world/caps';
 import { createCave, decodeCave } from '../world/cave';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
@@ -198,7 +198,8 @@ async function loadBase(
   if (auroraData && night.aurora && midnight.aurora)
     parts.push(['aurora', createAurora(auroraData, night.aurora, midnight.aurora, auroraActive)]);
   if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
-  if (night.falls) parts.push(['falls', createWaterfall(night.falls, light)]);
+  // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
+  if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);
   if (caveShot && caveMeta && caveBuf)
     parts.push(['cave', createCave(decodeCave(caveBuf, caveMeta), caveShot, sky, light)]);
   const byName = new Map(parts);

@@ -39,6 +39,12 @@ export const BOWL = {
 
 /** Where the falls leave the wall (plan M5 Task 2 reads it): the alcove's azimuth. */
 export const FALLS_AZ = BOWL.alcove.az;
+/**
+ * The falls' ledge (plan M5 Task 2; Litlanesfoss, owner `waterfall` 4, 8): in the alcove the three front rows are
+ * broken off at these heights, a stepped ledge halfway down that splits the fall into two tiers.
+ */
+export const ALCOVE_HALF = 6.5;
+export const LEDGE = [15.4, 16.0, 16.5] as const;
 
 export interface Prism {
   /** the axis's foot (coast axes) */
@@ -121,7 +127,8 @@ export function bowlPrisms(clear: readonly { x: number; y: number; r: number }[]
       const runR = mulberry32(BOWL.seed * 1000 + row * 97 + run)();
       const [lo, hi] = ROW_SHARE[row] ?? [0.97, 1];
       const share = lo + (hi - lo) * (0.8 * runR + 0.2 * r());
-      const top = Math.min(rim, rim * share);
+      const ledge = row < LEDGE.length && Math.abs(wrap(az - FALLS_AZ)) < ALCOVE_HALF;
+      const top = ledge ? (LEDGE[row] as number) + (r() - 0.5) * 0.2 : Math.min(rim, rim * share);
       const lean = rad(wallLean(az) + (r() - 0.5) * 1.2);
       const out_ = [Math.sin(rad(az)), Math.cos(rad(az))];
       const x = BOWL.x + out_[0] * rr;
@@ -194,6 +201,79 @@ export function bowlPrisms(clear: readonly { x: number; y: number; r: number }[]
     placed++;
   }
   return out;
+}
+
+/** One ribbon of falling water (coast axes): its lip, its foot, and its half-width at each. */
+export interface Ribbon {
+  x: number;
+  yLip: number;
+  yFoot: number;
+  zTop: number;
+  zFoot: number;
+  w0: number;
+  w1: number;
+  seed: number;
+}
+
+export interface FallsLayout {
+  ribbons: Ribbon[];
+  /** where the lower tier lands: the boiling foam's disc */
+  pool: { x: number; y: number; r: number };
+  /** mist sources: the ledge and the pool (centre, half-width across, depth, height) */
+  mists: { x: number; y: number; z: number; w: number; d: number }[];
+}
+
+/**
+ * Pure: the falls in two tiers from the bowl's alcove (plan M5 Task 2; research/m5-night-references.md "The falls";
+ * owner `waterfall` 2, 4, 8, 10): the upper tier narrow, from the rim onto the ledge; the lower spreading from the ledge
+ * into the lagoon; each tier split into ribbons of different widths, wet rock between. Never one even sheet.
+ */
+export function fallsLayout(): FallsLayout {
+  const R = wallRadius(FALLS_AZ);
+  const step = BOWL.spacing * 0.87;
+  const col = (BOWL.size[0] + BOWL.size[1]) / 2;
+  const y = (r: number) => BOWL.y + r;
+  const x = BOWL.x;
+  const rim = wallHeight(FALLS_AZ) - 0.1;
+  const ledge = LEDGE[LEDGE.length - 1] as number;
+  // the upper tier runs down the face of the first row behind the ledge, the lower from the ledge's front edge
+  const upperFace = R + step * LEDGE.length - col - 0.3;
+  const lowerFace = R - col - 0.3;
+  const upper = (dx: number, w0: number, w1: number, seed: number): Ribbon => ({
+    x: x + dx,
+    yLip: y(upperFace),
+    yFoot: y(upperFace - 0.8),
+    zTop: rim,
+    zFoot: ledge,
+    w0,
+    w1,
+    seed,
+  });
+  const lower = (dx: number, w0: number, w1: number, seed: number): Ribbon => ({
+    x: x + dx,
+    yLip: y(lowerFace),
+    yFoot: y(lowerFace - 1.6),
+    zTop: (LEDGE[0] as number) - 0.1,
+    zFoot: 0,
+    w0,
+    w1,
+    seed,
+  });
+  return {
+    ribbons: [
+      upper(-0.8, 1.2, 1.7, 1),
+      upper(3.4, 0.35, 0.55, 2),
+      lower(-4.6, 0.6, 1.0, 3),
+      lower(-1.3, 1.4, 1.95, 4),
+      lower(2.0, 0.8, 1.2, 5),
+      lower(4.6, 0.4, 0.65, 6),
+    ],
+    pool: { x: x - 0.5, y: y(lowerFace - 2.6), r: 6 },
+    mists: [
+      { x: x - 0.5, y: y(lowerFace - 2.2), z: 0.6, w: 8, d: 5 },
+      { x: x - 0.5, y: y(lowerFace + 0.8), z: ledge + 0.3, w: 3, d: 1.2 },
+    ],
+  };
 }
 
 export interface BowlGeometryData {
