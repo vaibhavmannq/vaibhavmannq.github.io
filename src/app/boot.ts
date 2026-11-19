@@ -49,6 +49,7 @@ import { createMist } from '../world/mist';
 import { createNightLife, nightLure, nightWeight } from '../world/nightlife';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
+import { createPeaks } from '../world/peaks';
 import { createPebbles } from '../world/pebbles';
 import { createPlankton, planktonStirs, waterline } from '../world/plankton';
 import { createProjectLanterns } from '../world/projectLanterns';
@@ -203,6 +204,8 @@ async function loadBase(
   const ridgeSite = { x: mid.cam[0], y: mid.cam[1], ground: surface(mid.cam[0], mid.cam[1]), yaw: mid.look[0] };
   const ridgeGround = ridgeHeight(surface, ridgeSite);
   parts.push(['ridge', createRidge(surface, ridgeSite, meta.heights, terrain.material)]);
+  // its ranges fading with distance (plan M6 Task 4)
+  parts.push(['peaks', createPeaks(ridgeSite, ridgeSite.yaw, light)]);
   const cove = scatterCove(surface);
   const ridgePlants = scatterRidge(ridgeGround, ridgeSite, PLANT_STOPS.indexOf('midnight'));
   const plants = new Float32Array(cove.data.length + ridgePlants.length);
@@ -230,7 +233,13 @@ async function loadBase(
             auroraActive,
           ),
     ]);
-  if (midnight.cloudsea) parts.push(['cloud', createCloudSea(midnight.cloudsea, heightMap, meta.heights, light)]);
+  // plan M6 Task 4: the deck reaches north to y = -100 (coast.py's box stops at -420), so the nearest range stands in it
+  // across the whole view; it only forms under a camera above it, so Night's lagoon never sees it from inside
+  if (midnight.cloudsea) {
+    const [bx0, bx1, by0] = midnight.cloudsea.box;
+    const deck = { ...midnight.cloudsea, box: [bx0, bx1, by0, -100] as typeof midnight.cloudsea.box };
+    parts.push(['cloud', createCloudSea(deck, heightMap, meta.heights, light)]);
+  }
   // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);
   if (caveShot && caveMeta && caveBuf)
