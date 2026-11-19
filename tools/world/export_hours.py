@@ -71,7 +71,7 @@ def parts(c):
         out["aurora"] = dict(strength=a.get("strength", 3.0), rays=a.get("rays", 60.0), ray_min=a.get("ray_min", 0.3),
                              foot=a.get("foot", 0.07), warp=a.get("warp", 0.16), haze=a.get("haze", 0.3), lean=a.get("lean", 2.0),
                              core=a.get("core", (0.62, 1.0, 0.35)), low=a.get("low", (0.10, 1.0, 0.50)),
-                             high=a.get("high", (0.72, 0.30, 0.95)), yaw=S["look"][0], bands=a["sky_bands"])
+                             high=a.get("high", (0.72, 0.30, 0.95)), yaw=S.get("aurora_yaw", S["look"][0]), bands=a["sky_bands"])
     cs = S.get("cloudsea")
     if cs:                                # build_cloudsea
         out["cloudsea"] = dict(z=cs["z"], amp=cs.get("amp", 14.0), box=cs["box"], feather=cs.get("feather", 0.0),

@@ -220,3 +220,13 @@ stays; "the arch overhead" is the flight to Night leaving under the span with th
 in one sprite draw, Blue hour only. Stars are shown by magnitude against the sky's own brightness, every night hour.
 Scrub caps are placed in the browser by coast.py's rule and drawn with the grove's material, only at Blue hour and its
 flights. Blue hour's wind is force 0.5 (was 0). A new spot, "Wade out into the flats". Ledger: R76–R83.
+
+**D36 · 2026-11-19 · (my calls, s18; owner told in the session log and on the M5 page) Night, M5.** The bowl of
+basalt columns is made in the browser (`src/world/bowl.ts`), real prisms in the shared rock material, no download;
+coast.py lowers the crater's west rim so the sky opens there (the base re-baked; Night's old view kept in the M1 keep).
+Night's camera stands 1 m over the lagoon inside the south wall (`?cams=old` keeps the old one, without the bowl).
+Night's moon lights as its crescent (lamp 5.0 → 0.7). The falls come in two tiers of ribbons over a stepped ledge.
+Night's aurora is a corona made in the browser (`corona.ts`), every ray toward one apex; Midnight's is unchanged. The
+rock takes a faint aurora green. Fireflies gather where the pointer meets the water; reeds frame the near shallows;
+one lantern per project plus the visitor's floats on the lagoon, hover lifts it, click opens a card, each has a
+keyboard twin. Night → Midnight goes up beside the falls. Ledger: R84–R98.

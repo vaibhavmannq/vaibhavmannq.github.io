@@ -65,7 +65,7 @@ def _meta(folder, **keys):
 
 def export_aurora(g, folder):
     S, hour = g["S"], g["HOUR"]
-    cfg = S["aurora"]; yaw = S["look"][0]
+    cfg = S["aurora"]; yaw = S.get("aurora_yaw", S["look"][0])   # M5: Night's baked curves keep the old view's yaw
     bands = []
     for b, band in enumerate(cfg["sky_bands"]):
         flat = []
