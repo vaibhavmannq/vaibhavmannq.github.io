@@ -47,7 +47,7 @@ const MIDNIGHT = STOP_IDS.indexOf('midnight');
 /** Deep midnight's softer foot: the share of the curtain over which its light rises (Night's is the shot's 0.07). */
 export const LATE_FOOT = 0.34;
 /** Deep midnight's aurora is weaker than Night's (late, and a crescent dims it): its shot strength × this. */
-export const LATE_STRENGTH = 0.62;
+export const LATE_STRENGTH = 0.78;
 const rad = (d: number) => (d * Math.PI) / 180;
 /** A sky direction, coast axes (x east, y north, z up), from azimuth (from north, clockwise) and elevation. */
 const sky = (az: number, el: number): [number, number, number] => [

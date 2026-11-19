@@ -164,9 +164,10 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   // Shaded from the noise's height (round bright tops, shadow pooling between), not |noise|, whose zero lines s09 saw
   // as dark veins (marble, not cotton).
   const lumpAt = (p: V2): F =>
-    mx_noise_float(p.mul(1 / 16))
+    // s19 (plan M6 Task 5; owner cloud-sea 3: lumps much smaller and more numerous): 10 m and 4 m (were 16 and 6.7)
+    mx_noise_float(p.mul(1 / 10))
       .mul(0.65)
-      .add(mx_noise_float(p.mul(1 / 6.7).add(vec2(5.2, 1.3))).mul(0.35))
+      .add(mx_noise_float(p.mul(1 / 4).add(vec2(5.2, 1.3))).mul(0.35))
       .mul(0.5)
       .add(0.5);
   const lp = wxy.sub(carried);
