@@ -10,6 +10,7 @@ import {
   mix,
   mx_noise_float,
   normalize,
+  pow,
   positionLocal,
   positionWorld,
   smoothstep,
@@ -46,8 +47,12 @@ export const CLOUD_STEP = 8;
 /** The share of `amp` the swell and the crests can add above the deck's level (0.5 swell + 0.45 crests). */
 const TOP_SHARE = 0.95;
 /** How strongly the moon and the sky light the deck, tuned against the Midnight render. */
-const MOON_GAIN = 0.26;
-const SKY_GAIN = 0.8;
+const MOON_GAIN = 0.13;
+const SKY_GAIN = 0.36;
+/** The moon's road on the deck (plan M6 Task 5): forward scatter toward a low moon, broken by the lumps. */
+const ROAD_GAIN = 2.6;
+/** How narrow the road's lobe is (a power of the cosine between the view and the moon). */
+export const ROAD_POWER = 55;
 /** The billows' height as a share of `amp`: gentler than coast.py's 0.45, whose crests Blender's soft light flattened. */
 const CREST_SHARE = 0.26;
 /** Valley fog lies under an inversion and moves slower than the ridge wind above it (reference book §4: slow), so the deck drifts at this share of the wind. */
@@ -198,15 +203,25 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   const rim = float(1)
     .sub(max(dot(n, v), 0))
     .pow(1.6)
-    .mul(max(dot(v.negate(), u.moonDir), 0).pow(2))
+    // s19 (plan M6 Task 5): squared, this lobe lit the whole deck evenly whenever the view faced a low moon
+    .mul(max(dot(v.negate(), u.moonDir), 0).pow(12))
     .mul(tops.mul(0.6).add(0.4))
     .mul(crease);
   // The sky's light, half drained of its colour: cloud is white, and the aurora's green must not dye the deck.
   const sky = u.ambSky as unknown as V3;
   const skyLight = mix(sky, vec3(dot(sky, vec3(0.2126, 0.7152, 0.0722))), 0.5);
+  // The moon's road (research/m6-midnight-references.md "The sea of cloud"; owner night-sky 4, 5, 8: the moon lights the
+  // cloud beside it): cloud scatters forward, so the tops between the eye and a low moon brighten into a broad silver
+  // band toward it, widest under the moon, broken where a lump faces away; the troughs stay in shade.
+  const forward = max(dot(v.negate(), u.moonDir), 0);
+  const road = pow(forward, ROAD_POWER)
+    .mul(smoothstep(0.25, 0.75, lump).mul(lumps).add(float(1).sub(lumps).mul(0.6)))
+    .mul(tops.mul(0.7).add(0.3))
+    .mul(facing.mul(0.4).add(1));
   material.colorNode = base
     .mul(skyLight.mul(SKY_GAIN).add(moonlight.mul(wrap).mul(MOON_GAIN)))
-    .add(moonlight.mul(rim).mul(0.5));
+    .add(moonlight.mul(rim).mul(0.5))
+    .add(moonlight.mul(road).mul(ROAD_GAIN).mul(vec3(0.92, 0.96, 1.0)));
 
   // Thin where the ground comes up through it (coast.py's feather), and at the box's edges.
   const gx1 = meta.x0 + (meta.nx - 1) * meta.step;
