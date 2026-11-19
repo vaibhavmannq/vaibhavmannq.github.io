@@ -47,6 +47,6 @@ describe("Night's bowl of columns (plan M5 Task 1; Amendment 1 §5 'Shape')", ()
     let mossTop = 0;
     for (let i = 0; i < g.light.length; i++) if ((g.normal[i * 3 + 2] as number) > 0.95) mossTop += g.moss[i] as number;
     expect(mossTop).toBeGreaterThan(1000);
-    expect(Math.min(...g.light)).toBeGreaterThanOrEqual(0.12);
+    expect(Math.min(...g.light)).toBeGreaterThan(0.119); // float32
   });
 });
