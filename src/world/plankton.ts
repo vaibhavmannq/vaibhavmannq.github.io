@@ -100,9 +100,10 @@ export const LONG_RIPPLE = { dx: 0.9, dz: 0.42, k: 0.6, w: Math.sqrt(9.8 * 0.6) 
  *   about 1.5 s; water stirred again at once is dimmer (stir.ts).
  * One sprite draw, additive, drawn for the eye only (a spark on the surface is its own reflection). Each spark keeps
  * a few pixels whatever its distance, as the render's plankton did (coast.py `build_plankton`), and the shader drops
- * the ones that are dark this frame to nothing.
+ * the ones that are dark this frame to nothing. Under reduced motion nothing flashes on its own: only the water the
+ * visitor stirs lights, without the flicker.
  */
-export function createPlankton(feet: Float32Array): WorldPart {
+export function createPlankton(feet: Float32Array, reduced = false): WorldPart {
   const nFeet = Math.min(FEET_MAX, feet.length / 2);
   const n = nFeet + FLATS + STIR_N * STIR_SPARKS;
   const r = mulberry32(475);
@@ -206,10 +207,11 @@ export function createPlankton(feet: Float32Array): WorldPart {
     .mul(h5.mul(0.8).add(0.9))
     .mul(
       sin(time.mul(31).add(h5.mul(6.28)))
-        .mul(0.2)
+        .mul(reduced ? 0 : 0.2)
         .add(0.8),
     );
-  const b = select(isFeet, feetB, select(isFlats, flatsB, stirB)).mul(strength) as F;
+  const ownLight = reduced ? 0 : 1;
+  const b = select(isFeet, feetB.mul(ownLight), select(isFlats, flatsB.mul(ownLight), stirB)).mul(strength) as F;
 
   const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
   m.name = 'plankton.material';
