@@ -76,7 +76,7 @@ export function createSkylight(cave: CaveShot, sky: Sky, roofZ: number): WorldPa
     update(f) {
       clock.value = f.timeS;
       const [px, , pz] = f.pose.position;
-      mesh.visible = Math.hypot(px - x, pz - z) < 120;
+      mesh.visible = Math.hypot(px - x, pz - z) < 60;
     },
     setTier() {},
     dispose() {

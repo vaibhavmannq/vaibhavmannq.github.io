@@ -268,7 +268,7 @@ export function createCave(
   }
   if (st) {
     const glow = fungiLight(st.position, parts.fungi);
-    for (let i = 0; i < nst; i++) info.set([-2, ff.stones[i] ?? 0, glow[i] ?? 0, 0.3], (ns + nf + np + i) * 4);
+    for (let i = 0; i < nst; i++) info.set([-2, ff.stones[i] ?? 0, glow[i] ?? 0, 0.6], (ns + nf + np + i) * 4);
   }
   const extra = (passage?.index.length ?? 0) + (st?.index.length ?? 0);
   const index = new Uint32Array(parts.shell.index.length + parts.floor.index.length + extra);
@@ -441,7 +441,7 @@ export function createCave(
   const headland = smoothstep(0.6, -0.6, rEl.sub(headTop)).mul(smoothstep(-10, -12, rAz));
   const skyR = mix(sky.colorAt(r as unknown as V3), vec3(...HEADLAND), headland);
   const mirrored = skyR.mul(through).mul(0.75);
-  const sheen = skyR.mul(throughSoft).mul(0.07).mul(isFloor).mul(float(1).sub(pool));
+  const sheen = skyR.mul(throughSoft).mul(0.1).mul(isFloor).mul(float(1).sub(pool));
   // the sea reaches the mouth: tide bands on the shell's steep faces (rock.ts), per pixel (a few smoothsteps)
   const banded = rockLit.mul(columns).mul(tideBands(wz, normalWorld.y.abs(), float(1).sub(isFloor)));
   // the pool: dark (it shows the floor through it straight down) and a mirror at a low angle (Fresnel, book §3)

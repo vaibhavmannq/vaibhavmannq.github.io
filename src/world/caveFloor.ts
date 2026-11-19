@@ -56,7 +56,7 @@ export function scatterFloor(
     // a long tail: mostly 0.06–0.2 m cobbles, a few 0.4–0.9 m boulders
     const r = 0.06 + 0.84 * u ** 4;
     const wall = site.nearWall(x, y);
-    if (rnd() > 0.12 + 0.88 * wall) continue;
+    if (rnd() > 0.4 + 0.6 * wall) continue;
     if (!site.inside(x, y, r * 0.8)) continue;
     if (distToSegment(x, y, site.walk) < site.walk.half + r) continue;
     if (site.clear.some((c) => Math.hypot(x - c.x, y - c.y) < c.r + r)) continue;

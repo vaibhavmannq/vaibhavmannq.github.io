@@ -139,7 +139,8 @@ export function createVines(leaves: Float32Array, cave: CaveShot, sky: Sky): Wor
       clock.value = f.timeS;
       const [x, , z] = f.pose.position;
       const [cx, , cz] = toThree([cave.x, cave.y, 0]);
-      mesh.visible = Math.hypot(x - cx, z - cz) < 400;
+      // only near the cave (census, D13: elsewhere it is a draw and a material for nothing)
+      mesh.visible = Math.hypot(x - cx, z - cz) < 60;
     },
     setTier() {},
     dispose() {
