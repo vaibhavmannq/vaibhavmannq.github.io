@@ -34,9 +34,10 @@ import type { WorldPart } from './part';
  * Golden's paper lantern (Amendment 1 §4 I; owner `lanterns` video 4; reference book §7), the first near layer.
  * Golden's camera stands ~10 m up the beach, so a lantern 2–4 m away lies on the wet sand at the swash's edge
  * (ruling R27): washed up on its float, rocking a little, a warm barred streak under it on the wet sand.
- * Coast axes: 3.2 m from the camera, 8° left of its gaze; z is the sand there (coastlib).
+ * Coast axes: 3.2 m from the camera, 15° left of its gaze (s16; was 8°); z is the sand there (coastlib).
  */
-export const LANTERN_AT: Vec3 = [7.9, -1.23, 0.147];
+// s16: 15 deg left of the gaze (was 8): out of the sun's glitter road, so its own warm glow reads on the sand
+export const LANTERN_AT: Vec3 = [7.574, -1.444, 0.158];
 const PAPER = { w: 0.3, h: 0.32 };
 const FLOAT_H = 0.05;
 

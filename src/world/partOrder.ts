@@ -23,6 +23,7 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   cliffs: COVE_SEEN_FROM,
   grove: COVE_SEEN_FROM,
   lanterns: new Set(['dusk']),
+  pebbles: new Set(['golden']),
   shallows: new Set(['firstlight', 'sunrise']),
 };
 

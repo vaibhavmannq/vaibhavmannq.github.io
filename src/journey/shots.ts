@@ -86,3 +86,18 @@ export interface Shot {
 }
 
 export const SHOTS = data as unknown as Record<StopId, Shot>;
+
+/**
+ * The cameras Sunset and Dusk had before M3 (D31; acd7442~1), for a side-by-side in the running site: `?cams=old`.
+ * Read once, before the stops, the plants and the flights are built from the shots (boot.ts swaps the three flights
+ * that touch them). The spots at those two stops start from the new cameras, so they are hidden there.
+ */
+export const OLD_CAMS: Partial<Record<StopId, Pick<Shot, 'cam' | 'look' | 'lens' | 'ground' | 'eyeZ'>>> = {
+  sunset: { cam: [25.0, 141.0, 1.7], look: [-47.0, 0.5], lens: 28, ground: 14.3584, eyeZ: 16.0584 },
+  dusk: { cam: [30.0, 40.0, 1.7], look: [-40.0, -5.5], lens: 24, ground: 25.5974, eyeZ: 27.2974 },
+};
+
+export const OLD_CAMS_ON =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).get('cams') === 'old';
+
+if (OLD_CAMS_ON) for (const [id, old] of Object.entries(OLD_CAMS)) Object.assign(SHOTS[id as StopId], old);

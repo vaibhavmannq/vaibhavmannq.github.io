@@ -194,7 +194,9 @@ export interface DuskLanterns extends WorldPart {
  * (reference book §7). A second instanced draw lays each one's streak on the water. The visitor's lantern (the
  * thread) is a little warmer and brighter than the rest.
  */
-export function createDuskLanterns(): DuskLanterns {
+export function createDuskLanterns(reducedMotion = false): DuskLanterns {
+  // reduced motion (M3 final review): the lanterns hold still and their streaks stop shimmering; they still light up
+  const t = reducedMotion ? float(0) : time;
   const field = lanternField();
   const n = field.length;
   const g = lanternShape() as InstancedBufferGeometry;
@@ -218,14 +220,14 @@ export function createDuskLanterns(): DuskLanterns {
   const part = attribute('part', 'float');
   const scale = a1.x;
   const phase = a1.y;
-  const yaw = a0.z.add(sin(time.mul(0.02).add(phase)).mul(0.4)); // a slow turn
+  const yaw = a0.z.add(sin(t.mul(0.02).add(phase)).mul(0.4)); // a slow turn
   // the shape's own position: once positionNode is set, three r186 reassigns positionLocal to its result, so the
   // colour must read the attribute (s16: the streaks had read world metres since s14 and never showed)
   const lp = positionGeometry.mul(scale);
   const c = yaw.cos();
   const s = yaw.sin();
   const turned = vec3(lp.x.mul(c).sub(lp.z.mul(s)), lp.y, lp.x.mul(s).add(lp.z.mul(c)));
-  const bob = sin(time.mul(2 * Math.PI * 0.22).add(phase)).mul(0.025);
+  const bob = sin(t.mul(2 * Math.PI * 0.22).add(phase)).mul(0.025);
   const material = new MeshBasicNodeMaterial({ side: DoubleSide });
   material.name = 'lanterns.material';
   material.positionNode = vec3(a0.x.add(drift.x), bob, a0.y.add(drift.y)).add(turned);
@@ -234,7 +236,7 @@ export function createDuskLanterns(): DuskLanterns {
   const start = k.div(Math.max(1, n - 1)).mul(LIGHT_SPAN);
   const lit = smoothstep(start, start.add(LIGHT_EACH), since);
   const isMine = float(1).sub(step(0.5, float(instanceIndex).sub(mine).abs()));
-  const shiver = float(1).add(flick.mul(sin(time.mul(2 * Math.PI * 10).add(phase.mul(7)))));
+  const shiver = float(1).add(flick.mul(sin(t.mul(2 * Math.PI * 10).add(phase.mul(7)))));
   // seen from 40–150 m a lantern is a few pixels: its paper glows above white so the bloom gives it a halo (video 4:
   // the lanterns are the brightest things on the dusk water)
   const glow = lit.mul(shiver).mul(isMine.mul(0.35).add(1)).mul(DUSK_GLOW);
@@ -285,7 +287,7 @@ export function createDuskLanterns(): DuskLanterns {
     vp
       .mul(STREAK.l / 0.22)
       .mul(2 * Math.PI)
-      .sub(time.mul(1.3))
+      .sub(t.mul(1.3))
       .add(phase),
   )
     .mul(0.5)
@@ -343,7 +345,7 @@ export function createDuskLanterns(): DuskLanterns {
       const w = f.hour.world;
       const az = (w.windAz * Math.PI) / 180;
       windTo.set(-Math.sin(az), 0, Math.cos(az));
-      const d = driftOffset(f.timeS);
+      const d = reducedMotion ? 0 : driftOffset(f.timeS);
       drift.value.set(windTo.x * d, windTo.z * d);
       flick.value = w.beaufort < 2 ? 0 : 0.05 * Math.min(1, w.beaufort - 1);
     },

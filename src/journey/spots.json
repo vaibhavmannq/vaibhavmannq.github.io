@@ -11,7 +11,7 @@
     "stop": "golden",
     "label": "Kneel by the lantern",
     "points": [[9.5, -4.0, 0.9151], [9.45, -3.16, 0.95], [8.61, -2.32, 0.75]],
-    "look": [-33, -14]
+    "look": [-45, -14]
   },
   {
     "id": "flowers",

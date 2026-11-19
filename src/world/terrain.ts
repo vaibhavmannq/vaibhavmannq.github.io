@@ -1,5 +1,6 @@
 import {
   cameraPosition,
+  dot,
   float,
   max,
   mix,
@@ -7,7 +8,9 @@ import {
   normalize,
   normalWorld,
   positionWorld,
+  pow,
   reflect,
+  saturate,
   smoothstep,
   step,
   texture,
@@ -25,6 +28,7 @@ import {
   type Texture,
 } from 'three/webgpu';
 import type { GridMeta, RingMeta } from './heights';
+import type { LightUniforms } from './light';
 import type { WorldPart } from './part';
 import { type FreshWater, seaWetNode, tideBands } from './rock';
 import type { Sky } from './sky';
@@ -131,6 +135,7 @@ export function createTerrain(
   sky: Sky,
   cut?: { x: number; y: number; rx: number; ry: number },
   fresh?: FreshWater,
+  light?: Pick<LightUniforms, 'keyDir' | 'keyColor' | 'keyStrength'>,
 ): WorldPart {
   colour.colorSpace = SRGBColorSpace;
   const material = new MeshStandardNodeMaterial();
@@ -148,7 +153,26 @@ export function createTerrain(
   const v = normalize(cameraPosition.sub(positionWorld));
   const fresnel = float(0.02).add(float(0.98).mul(float(1).sub(max(v.y, 0)).pow(5)));
   const near = smoothstep(70.0, 20.0, cameraPosition.sub(positionWorld).length());
-  material.emissiveNode = sky.colorAt(reflect(v.negate(), vec3(0, 1, 0))).mul(wet.mul(0.35).mul(fresnel).mul(near));
+  const sheen = sky.colorAt(reflect(v.negate(), vec3(0, 1, 0))).mul(wet.mul(0.35).mul(fresnel).mul(near));
+  // s16: a meadow seen against a low sun glows (reference book §8: grass backlit shows bright yellow-green tops); the
+  // 8 m ground has no blades, so its gentle grassy slopes above the beach take the meadow's own light-through term
+  // (meadow.ts `through`, in patches: denser and thinner grass). Sunset's mid-ground was a flat dark brown.
+  const backlit = light
+    ? light.keyColor
+        .mul(light.keyStrength)
+        .mul(vec3(0.42, 0.55, 0.14))
+        .mul(
+          mx_noise_float(vec3(wxy.mul(0.09), 4.0))
+            .mul(0.45)
+            .add(0.8),
+        ) // denser and thinner patches
+        .mul(pow(saturate(dot(v.negate(), light.keyDir)), 4.0))
+        .mul(smoothstep(0.82, 0.95, normalWorld.y))
+        .mul(smoothstep(2.0, 5.0, z))
+        .mul(texture(colour, uv()).g.mul(2.2).clamp(0, 1))
+        .mul(0.5)
+    : vec3(0);
+  material.emissiveNode = sheen.add(backlit);
   material.roughnessNode = mix(float(0.92), float(0.3), wet);
   material.metalnessNode = float(0);
   if (cut) {

@@ -5,12 +5,13 @@ import type { Manifest } from '../assets/manifest';
 import { createSkyStore, skyAmbients } from '../assets/skies';
 import { fovFor, type Pose, poseAt, shortestYaw } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
+import flightPathsOld from '../journey/flightPathsOld.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
 import { createLook, dragEnded, touchIntent } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
-import { SHOTS } from '../journey/shots';
+import { OLD_CAMS, OLD_CAMS_ON, SHOTS } from '../journey/shots';
 import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsAt, spotsOpen } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
 import { loadThread, saveThread } from '../journey/thread';
@@ -42,6 +43,7 @@ import { createMeadow, EYE_ONLY_LAYER } from '../world/meadow';
 import { createMist } from '../world/mist';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
+import { createPebbles } from '../world/pebbles';
 import { scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
@@ -159,7 +161,7 @@ async function loadBase(
   // and the camera; 120 m reaches the bowl's walls.
   const nightFalls = SHOTS.night.falls;
   const lagoon = nightFalls ? { x: nightFalls.x, y: (nightFalls.poolY + SHOTS.night.cam[1]) / 2, r: 120 } : undefined;
-  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon);
+  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon, light);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   const parts: [string, WorldPart][] = [
@@ -200,7 +202,8 @@ async function loadBase(
         cliffsMeta ? fetchBinary(cliffsMeta.file) : null,
         groveMeta ? fetchBinary(groveMeta.file) : null,
       ]);
-      const joins: Promise<void>[] = [];
+      // Golden's pebbles (s16): made here, drawn with the rock material, so they join with the cove pack
+      const joins: Promise<void>[] = [compileThenAdd(app, createPebbles(surfaceAt, rock), 'pebbles')];
       if (cliffsMeta && cliffsBuf)
         joins.push(compileThenAdd(app, createCliffs(decodeCliffs(cliffsBuf, cliffsMeta), cliffsMeta, rock), 'cliffs'));
       if (groveMeta && groveBuf)
@@ -373,7 +376,10 @@ export async function boot(): Promise<App> {
   };
   appRef = app;
 
-  const paths = flightPaths as FlightPath[];
+  // `?cams=old` (D31): Sunset's and Dusk's pre-M3 cameras, with the flights baked to them then
+  const paths = (flightPaths as FlightPath[]).map((p) =>
+    OLD_CAMS_ON ? ((flightPathsOld as FlightPath[]).find((o) => o.from === p.from && o.to === p.to) ?? p) : p,
+  );
   const ambients = skyAmbients(manifest);
   const light = createLightUniforms();
   light.install(scene);
@@ -402,7 +408,9 @@ export async function boot(): Promise<App> {
   // they join with the first view.
   // Both are compiled before they join, so opening anywhere else they never compile mid-flight (final review M7).
   const lantern = createLantern();
-  const glints = createSpotGlints(SPOTS);
+  // the walks at Sunset and Dusk start from the new cameras: none there under `?cams=old`
+  const LIVE_SPOTS = OLD_CAMS_ON ? SPOTS.filter((sp) => !(sp.stop in OLD_CAMS)) : SPOTS;
+  const glints = createSpotGlints(LIVE_SPOTS);
   // The lantern thread (plan M3 Task 5): the lantern claimed at Golden drifts among Dusk's and rests in First light's
   // shallows. Kept for this visit (sessionStorage; the accessor itself can throw in a locked-down browser).
   const store = (() => {
@@ -413,7 +421,7 @@ export async function boot(): Promise<App> {
     }
   })();
   const thread = loadThread(store);
-  const duskLanterns = createDuskLanterns();
+  const duskLanterns = createDuskLanterns(caps.reducedMotion);
   const [fl, sr] = [STOP_IDS.indexOf('firstlight'), STOP_IDS.indexOf('sunrise')];
   const shallows = createLantern({
     at: SHALLOWS_AT,
@@ -450,7 +458,7 @@ export async function boot(): Promise<App> {
   let walkW = 0;
   let spotPose: Pose | null = null;
   const startWalk = (spot: SpotPath | undefined) => {
-    if (!spot || !spotsOpen(walk !== null, walkW)) return;
+    if (!spot || !LIVE_SPOTS.includes(spot) || !spotsOpen(walk !== null, walkW)) return;
     walk = { spot, startMs: performance.now(), durMs: SPOT_WALK_MS(spot) };
     glints.setWalking(true);
   };
@@ -596,7 +604,7 @@ export async function boot(): Promise<App> {
       pose.yaw = shortestYaw(pose.yaw, spotPose.yaw, w);
       pose.pitch += (spotPose.pitch - pose.pitch) * w;
     }
-    const twinsHidden = !(state.resting && spotsAt(state.a).length > 0 && open);
+    const twinsHidden = !(state.resting && spotsAt(state.a).some((sp) => LIVE_SPOTS.includes(sp)) && open);
     if (spotsEl && spotsEl.hidden !== twinsHidden) spotsEl.hidden = twinsHidden;
     if (!twinsHidden && twinsAt !== state.a) {
       // each stop offers its own spots (plan M3 Task 7)
