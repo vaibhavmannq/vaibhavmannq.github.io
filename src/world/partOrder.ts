@@ -25,6 +25,7 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   lanterns: new Set(['dusk']),
   pebbles: new Set(['golden', 'firstlight']),
   shallows: new Set(['firstlight', 'sunrise']),
+  plankton: new Set(['bluehour']),
 };
 
 /** Pure: the order to compile and add `names`, opening at `stop`. Ties keep the given order; unknown names go last. */

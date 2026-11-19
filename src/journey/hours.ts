@@ -61,6 +61,23 @@ export const MIST: Record<StopId, number> = {
   sunrise: 0.35,
 };
 
+/**
+ * How much sea sparkle the water holds (plan M4 Task 1; reference book §6: cells flash only at night, by a body clock;
+ * research/m4-blue-hour-references.md). Blue hour's flats have it. Night's lagoon is fresh water under the falls, and
+ * from Midnight on the camera is inland or high: none.
+ */
+export const PLANKTON: Record<StopId, number> = {
+  golden: 0,
+  sunset: 0,
+  dusk: 0,
+  bluehour: 1,
+  night: 0,
+  midnight: 0,
+  beforedawn: 0,
+  firstlight: 0,
+  sunrise: 0,
+};
+
 function preset(id: StopId): HourPreset {
   const s = SHOTS[id];
   // one moon: the world state's moonEl is its height (the lamp's own height in s.moon still aims the key light)
@@ -83,6 +100,7 @@ function preset(id: StopId): HourPreset {
     cloud: s.cloudsea ? 1 : 0,
     shadowFloor: SHADOW_FLOOR[id],
     mist: MIST[id],
+    plankton: PLANKTON[id],
   };
 }
 
@@ -179,5 +197,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     cloud: lerp(a.cloud, b.cloud, w),
     shadowFloor: mix3(a.shadowFloor, b.shadowFloor, w),
     mist: lerp(a.mist, b.mist, w),
+    plankton: lerp(a.plankton, b.plankton, w),
   };
 }

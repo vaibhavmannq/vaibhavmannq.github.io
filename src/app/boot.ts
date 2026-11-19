@@ -44,11 +44,13 @@ import { createMist } from '../world/mist';
 import type { WorldFrame, WorldPart } from '../world/part';
 import { PART_STOPS, partOrder } from '../world/partOrder';
 import { createPebbles } from '../world/pebbles';
+import { createPlankton, planktonStirs, waterline } from '../world/plankton';
 import { scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
 import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
+import { STIR_SPACING, stir, waterHit } from '../world/stir';
 import { createTerrain } from '../world/terrain';
 import { createWaterfall } from '../world/waterfall';
 import { installBench } from './bench';
@@ -220,10 +222,21 @@ async function loadBase(
         stacksMeta ? fetchBinary(stacksMeta.file) : null,
       ]);
       const joins: Promise<void>[] = [];
-      if (archMeta && archBuf)
-        joins.push(compileThenAdd(app, createArch(decodeArch(archBuf, archMeta), archMeta, rock), 'arch'));
-      if (stacksMeta && stacksBuf)
-        joins.push(compileThenAdd(app, createStacks(decodeStacks(stacksBuf, stacksMeta), stacksMeta, rock), 'stacks'));
+      // Blue hour's sea sparkle lights where the rock meets the water (plan M4 Task 1)
+      const feet: Float32Array[] = [];
+      if (archMeta && archBuf) {
+        const parts = decodeArch(archBuf, archMeta);
+        feet.push(waterline(parts.position, parts.index, archMeta));
+        joins.push(compileThenAdd(app, createArch(parts, archMeta, rock), 'arch'));
+      }
+      if (stacksMeta && stacksBuf) {
+        const parts = decodeStacks(stacksBuf, stacksMeta);
+        feet.push(waterline(parts.position, parts.index, stacksMeta));
+        joins.push(compileThenAdd(app, createStacks(parts, stacksMeta, rock), 'stacks'));
+      }
+      const all = new Float32Array(feet.reduce((n, a) => n + a.length, 0));
+      feet.reduce((o, a) => (all.set(a, o), o + a.length), 0);
+      joins.push(compileThenAdd(app, createPlankton(all), 'plankton'));
       await Promise.all(joins);
     } catch (error) {
       console.warn('the headland rock failed to load', error);
@@ -504,19 +517,46 @@ export async function boot(): Promise<App> {
   // Pointer parallax (D28): a mouse or pen moves the view at once; touch scrolls, and gets tilt later (D27).
   const pointer: [number, number] = [0, 0];
   const slide: [number, number] = [0, 0];
+  let touchAt: [number, number] | null = null;
+  let pointerSeen = false;
+  const ray = new Vector3();
   window.addEventListener(
     'pointermove',
     (event) => {
-      if (event.pointerType === 'touch') return;
-      pointer[0] = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
-      pointer[1] = 1 - (event.clientY / Math.max(1, window.innerHeight)) * 2;
+      const x = (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+      const y = 1 - (event.clientY / Math.max(1, window.innerHeight)) * 2;
+      // a finger on the water stirs it while it is down (plan M4 Task 1); it never moves the parallax
+      if (event.pointerType === 'touch') {
+        if (touchAt) touchAt = [x, y];
+        return;
+      }
+      pointer[0] = x;
+      pointer[1] = y;
+      pointerSeen = true;
     },
     { passive: true },
   );
   document.documentElement.addEventListener('pointerleave', () => {
     pointer[0] = 0;
     pointer[1] = 0;
+    pointerSeen = false;
   });
+  window.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (event.pointerType !== 'touch') return;
+      touchAt = [
+        (event.clientX / Math.max(1, window.innerWidth)) * 2 - 1,
+        1 - (event.clientY / Math.max(1, window.innerHeight)) * 2,
+      ];
+    },
+    { passive: true },
+  );
+  const lift = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') touchAt = null;
+  };
+  window.addEventListener('pointerup', lift, { passive: true });
+  window.addEventListener('pointercancel', lift, { passive: true });
 
   // Look-around (plan M2.5 Task 6; Amendment 1 §6): drag on the world to turn the head. A mouse drags with the button
   // held; a touch drag turns the head when its first 12 px run more sideways than up or down (the world layer is
@@ -647,6 +687,20 @@ export async function boot(): Promise<App> {
     const ambA = ambients[state.a] ?? ambients[0];
     const ambB = ambients[state.b] ?? ambients[0];
     if (ambA && ambB) light.apply(lightValues(hour, ambA, ambB, state.skyWeight), camera.position);
+    // Sea sparkle answers the pointer and a wading visitor's feet (plan M4 Task 1): stir where they meet the water.
+    if (hour.plankton > 0.01) {
+      // one stroke at a time: the feet while wading, else the pointer (both share the ring's last point)
+      const at = touchAt ?? (pointerSeen ? pointer : null);
+      if (walk && pose.position[1] < 1.6) stir(planktonStirs, pose.position[0], pose.position[2], timeS, 1.4, 0.6);
+      else if (at) {
+        const d = ray.set(at[0], at[1], 0.5).unproject(camera).sub(camera.position);
+        const hit = waterHit([camera.position.x, camera.position.y, camera.position.z], [d.x, d.y, d.z]);
+        if (hit) {
+          const far = Math.hypot(hit[0] - camera.position.x, hit[1] - camera.position.z);
+          stir(planktonStirs, hit[0], hit[1], timeS, 1, Math.max(STIR_SPACING, far * 0.03));
+        }
+      }
+    }
     last = state;
     return { state, hour, pose, timeS, dtS };
   };

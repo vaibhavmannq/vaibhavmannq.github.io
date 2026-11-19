@@ -94,4 +94,6 @@ export interface HourPreset {
   shadowFloor: RGB;
   /** 0..1: First light's mist, a flat band on the water (plan M3 Task 3); 0 at every other hour but Sunrise. */
   mist: number;
+  /** 0..1: how much sea sparkle the water holds (plan M4 Task 1): Blue hour only; never in daylight (book §6). */
+  plankton: number;
 }
