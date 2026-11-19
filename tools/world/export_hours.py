@@ -20,7 +20,7 @@ WORLD = {
     "golden":     dict(sunEl=4,   moonEl=None, moonPhase=0.12, windAz=340, beaufort=1),
     "sunset":     dict(sunEl=0,   moonEl=None, moonPhase=0.12, windAz=345, beaufort=2),
     "dusk":       dict(sunEl=-3,  moonEl=None, moonPhase=0.12, windAz=305, beaufort=1),
-    "bluehour":   dict(sunEl=-6,  moonEl=None, moonPhase=0.12, windAz=35,  beaufort=0),
+    "bluehour":   dict(sunEl=-6,  moonEl=None, moonPhase=0.12, windAz=35,  beaufort=0.5),  # s17: between calm and a light air, as the render's water (M4 Task 4)
     "night":      dict(sunEl=-30, moonEl=22,   moonPhase=0.12, windAz=5,   beaufort=0),
     "midnight":   dict(sunEl=-30, moonEl=7,    moonPhase=0.12, windAz=330, beaufort=2),
     "beforedawn": dict(sunEl=-10, moonEl=None, moonPhase=0.12, windAz=355, beaufort=1),

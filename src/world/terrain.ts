@@ -2,6 +2,7 @@ import {
   cameraPosition,
   dot,
   float,
+  fwidth,
   max,
   mix,
   mx_noise_float,
@@ -11,6 +12,7 @@ import {
   pow,
   reflect,
   saturate,
+  sin,
   smoothstep,
   step,
   texture,
@@ -144,9 +146,24 @@ export function createTerrain(
   const variation = mx_noise_float(vec3(wxy.mul(0.02), 1.0))
     .mul(0.18)
     .add(1.0);
+  // Sand ribs under shallow water (plan M4 Task 4; research/m4-blue-hour-references.md: wave ripples 5–15 cm apart,
+  // about 1 cm high): a faint rippled bottom seen through the water near the feet. Sharp crests, broad troughs, the
+  // lines bent by noise; gone wherever one rib is under about two pixels (no stripes far off), and only under water.
+  const ribWarp = mx_noise_float(vec3(wxy.mul(0.7), 7.0)).mul(2.2);
+  const ribPhase = wxy.x
+    .mul(0.83)
+    .add(wxy.y.mul(0.56))
+    .mul((2 * Math.PI) / 0.12)
+    .add(ribWarp.mul(Math.PI));
+  const rib = sin(ribPhase).mul(0.5).add(0.5).pow(3.0);
+  const ribFade = smoothstep(1.4, 0.45, fwidth(ribPhase))
+    .mul(smoothstep(-0.03, -0.12, z))
+    .mul(smoothstep(-1.2, -0.6, z));
+  const ribs = rib.mul(0.5).sub(0.12).mul(ribFade).add(1);
   // tide bands where the ground is a sea cliff (rock.ts; flat sand keeps its colour)
   material.colorNode = texture(colour, uv())
     .rgb.mul(variation)
+    .mul(ribs)
     .mul(tideBands(z, normalWorld.y, seaWetNode(wxy, fresh)));
   // Wet sand near the waterline mirrors the sky, only near the camera (s02: far sheen drew white lines on every shore).
   const wet = smoothstep(0.42, 0.31, z).mul(smoothstep(-0.4, 0.0, z));
