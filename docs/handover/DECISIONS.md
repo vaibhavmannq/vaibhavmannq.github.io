@@ -207,3 +207,9 @@ the water's mirror.** A new plant in coast.py's grove (`LONE_TREE`, group "lone"
 scale 2.2) is Sunset's subject (owner `meadow-and-flowers` 10), so the grove the other places show is unchanged. Dusk's
 lanterns and their streaks draw for the eye only: the streak is their reflection, and the mirror's first build of them
 hitched the first flight into Dusk. Ledger: R65–R71.
+
+**D34 · 2026-11-19 · (my call, s16; owner asked to "cover and finish M3 here" and is asked on the M3 page to confirm)
+M3 closes below the 85 % bar, at Golden 76 %, Sunset 80 %, Dusk 74 %, First light 74 %, Sunrise 76 %.** The look items
+left (Golden's glare, Sunset's clump, Dusk's mirror resolution and foreground, First light's mist, Sunrise's sun shafts,
+faceted flower heads) move to M8 polish, where the whole night is judged together. `?cams=old` stays until the owner
+picks the Sunset and Dusk cameras. Rulings R72–R75 (pebbles, the backlit meadow, the lantern's place, the switch).

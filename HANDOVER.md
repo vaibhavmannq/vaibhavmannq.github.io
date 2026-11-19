@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-18, end of session s16 (M3: the Dusk hitch fixed, the look pass, the final review; see `docs/handover/sessions/2026-11-18-s16-m3-hitch-and-look.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-19, end of session s16 (M3 finished on my side: the Dusk hitch fixed, the look pass, the final review; see `docs/handover/sessions/2026-11-18-s16-m3-hitch-and-look.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -147,7 +147,7 @@ no borrowed set pieces (no towers, piano, etc.).
   - Low 54–60 fps at the cove stops; mist and life cost nothing measurable; Golden at 14 materials (the cap).
   - Phone: cove stops 59–60 fps at mid and high; the first flight into Dusk hitches (3 frames, worst 117 ms;
     present in the s14 build too). Task 8 open: final review, owner page.
-- **s16 (2026-11-18): M3 hitch fixed, look pass, final review; inline, on `world`, not pushed (98d9b58..be480e5).**
+- **s16 (2026-11-18/19): M3 hitch fixed, look pass, final review, M3 finished; inline, on `world`, pushed (98d9b58..).**
   - The first flight into Dusk no longer builds shaders mid-flight (near parts compiled before the scene existed;
     Dusk's lanterns left the mirror, R65). Phone: 0 slow frames into Dusk, but measured on a build missing the grove.
   - Look: lanterns with a crown and a lit inside; light pools under Dusk's lanterns (their streaks had never shown:
@@ -155,12 +155,18 @@ no borrowed set pieces (no towers, piano, etc.).
     arch; **Sunset's subject is one lone tree** (coast.py `LONE_TREE`, cove pack re-exported).
   - `world:report` now fails when the manifest is stale (the re-exported grove was refused at load).
   - Final review of M3 done: three important bugs, all fixed this session; two minors open (ledger).
-  - My looks: Golden 70 %, Sunset 76 %, Dusk 70 %, First light 69 %, Sunrise 75 %. **Still none at 85 %; no owner page.**
-- **Next (s17):** finish the gate (`world:test` was stopped part-way, e2e not run); the phone check on HEAD (the owner runs it; `phone-visitor.mjs` twice, `phone-cove5.mjs`); then decide
-  with the owner: one more look session (Sunset, Golden nearest) or close M3 and carry the rest into M8. Exact steps:
-  the s16 session log.
-  - Still open: R38 (Night/Midnight first builds, M6); mid at the cove stops; `?cams=old`; stage-B pop-in (M8);
-    packs fetched at every start; `horizon.spec.ts` (pre-existing); Dusk's lanterns ignore reduced motion.
+  - Day 1 looks: Golden 70 %, Sunset 76 %, Dusk 70 %, First light 69 %, Sunrise 75 %.
+  - **Day 2 (2026-11-19), M3 finished on my side (611323e, 1737fff):** `?cams=old` built; a backlit glow on the
+    meadow's ground (Sunset); pebbles at Golden and First light; Golden's lantern out of the sun's road; a bolder First
+    light mist. Phone (final s16 build): high all night, 0 slow frames into Dusk; cove stops 59.5–59.7. Gate green
+    (`world:test` passed; e2e 23 passed, `horizon.spec` ×2 pre-existing).
+  - **Final looks: Golden 76 %, Sunset 80 %, Dusk 74 %, First light 74 %, Sunrise 76 %.** None at 85 %; my
+    recommendation: close M3 and carry the rest into M8 (list in the s16 log). Owner page with two questions (close
+    M3? old or new cameras?): https://claude.ai/artifact/PrcvXudVZYCPSbpSAmFfU4
+- **Next (s17): M4, Blue hour.** First read the owner's answers on the M3 page; a quick phone check of HEAD (day 2's
+  additions); then M4's Research phase and plan. Exact steps: the s16 session log.
+  - Still open: R38 (Night/Midnight first builds, M6); mid at the cove stops; stage-B pop-in (M8);
+    packs fetched at every start; `horizon.spec.ts` (pre-existing).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
     before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); the scripts drive the open
     `localhost:4181` tab (the phone's browser is Brave).
