@@ -137,8 +137,8 @@ export function createTerrain(
   sky: Sky,
   cut?: { x: number; y: number; rx: number; ry: number },
   fresh?: FreshWater,
-  light?: Pick<LightUniforms, 'keyDir' | 'keyColor' | 'keyStrength'>,
-): WorldPart {
+  light?: Pick<LightUniforms, 'keyDir' | 'keyColor' | 'keyStrength' | 'moonStrength'>,
+): WorldPart & { material: MeshStandardNodeMaterial } {
   colour.colorSpace = SRGBColorSpace;
   const material = new MeshStandardNodeMaterial();
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
@@ -161,10 +161,15 @@ export function createTerrain(
     .mul(smoothstep(-1.2, -0.6, z));
   const ribs = rib.mul(0.36).sub(0.09).mul(ribFade).add(1);
   // tide bands where the ground is a sea cliff (rock.ts; flat sand keeps its colour)
-  material.colorNode = texture(colour, uv())
+  const ground = texture(colour, uv())
     .rgb.mul(variation)
     .mul(ribs)
     .mul(tideBands(z, normalWorld.y, seaWetNode(wxy, fresh)));
+  // Under the moon the eye sees little colour (reference book §1, the Purkinje shift; plan M6 Task 4): in the moon's
+  // hours the turf greys toward a cool blue, keeping a third of its own green (Midnight's hills read as daylight turf).
+  const moonlit = light ? smoothstep(0.0, 4.0, light.moonStrength) : float(0);
+  const greyGround = vec3(dot(ground, vec3(0.2126, 0.7152, 0.0722))).mul(vec3(0.8, 0.92, 1.25));
+  material.colorNode = mix(ground, greyGround, moonlit.mul(0.62));
   // Wet sand near the waterline mirrors the sky, only near the camera (s02: far sheen drew white lines on every shore).
   const wet = smoothstep(0.42, 0.31, z).mul(smoothstep(-0.4, 0.0, z));
   const v = normalize(cameraPosition.sub(positionWorld));
@@ -189,7 +194,8 @@ export function createTerrain(
         .mul(texture(colour, uv()).g.mul(2.2).clamp(0, 1))
         .mul(0.5)
     : vec3(0);
-  material.emissiveNode = sheen.add(backlit);
+  // a crescent behind the turf lights no glow through it (Midnight's hills glowed daylight green, plan M6 Task 4)
+  material.emissiveNode = sheen.add(backlit.mul(float(1).sub(moonlit)));
   material.roughnessNode = mix(float(0.92), float(0.3), wet);
   material.metalnessNode = float(0);
   if (cut) {
@@ -207,6 +213,7 @@ export function createTerrain(
   group.add(base, far);
   return {
     object: group,
+    material,
     update() {},
     setTier() {},
     dispose() {

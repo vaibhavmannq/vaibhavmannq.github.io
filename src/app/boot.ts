@@ -44,7 +44,7 @@ import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLife } from '../world/life';
 import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
-import { createMeadow, EYE_ONLY_LAYER } from '../world/meadow';
+import { createMeadow, EYE_ONLY_LAYER, PLANT_STOPS } from '../world/meadow';
 import { createMist } from '../world/mist';
 import { createNightLife, nightLure, nightWeight } from '../world/nightlife';
 import type { WorldFrame, WorldPart } from '../world/part';
@@ -52,7 +52,8 @@ import { PART_STOPS, partOrder } from '../world/partOrder';
 import { createPebbles } from '../world/pebbles';
 import { createPlankton, planktonStirs, waterline } from '../world/plankton';
 import { createProjectLanterns } from '../world/projectLanterns';
-import { scatterCove } from '../world/scatter';
+import { createRidge, ridgeHeight, scatterRidge } from '../world/ridge';
+import { PLANT_STRIDE, scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
 import { createSpotGlints } from '../world/spotGlints';
@@ -195,7 +196,19 @@ async function loadBase(
       ),
     ]);
   // The cove's grass and flowers (plan M3 Task 1): made here from the base heights, no download.
-  parts.push(['meadow', createMeadow(scatterCove(createSurfaceSampler(heights, meta.heights)), light)]);
+  // Deep midnight's ridge top (plan M6 Task 2): a designed ground around the eye, in the terrain's material, and its
+  // heather and grass as the meadow's sixth stop
+  const surface = createSurfaceSampler(heights, meta.heights);
+  const mid = SHOTS.midnight;
+  const ridgeSite = { x: mid.cam[0], y: mid.cam[1], ground: surface(mid.cam[0], mid.cam[1]), yaw: mid.look[0] };
+  const ridgeGround = ridgeHeight(surface, ridgeSite);
+  parts.push(['ridge', createRidge(surface, ridgeSite, meta.heights, terrain.material)]);
+  const cove = scatterCove(surface);
+  const ridgePlants = scatterRidge(ridgeGround, ridgeSite, PLANT_STOPS.indexOf('midnight'));
+  const plants = new Float32Array(cove.data.length + ridgePlants.length);
+  plants.set(cove.data);
+  plants.set(ridgePlants, cove.data.length);
+  parts.push(['meadow', createMeadow({ data: plants, count: plants.length / PLANT_STRIDE }, light)]);
   // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
   parts.push(['life', createLife(light, createSurfaceSampler(heights, meta.heights), reducedMotion)]);
   if (dressingMeta && dressingBuf) {

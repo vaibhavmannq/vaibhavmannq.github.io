@@ -168,8 +168,37 @@ export function flowerClump(): Shape {
   return s;
 }
 
+/**
+ * A clump of heather (plan M6 Task 2; reference book §8): a low, dense mound of short stiff sprigs, more upright and
+ * many more than the short meadow's blades; the upper half of each sprig is the flowering spike.
+ */
+export function heatherMound(): Shape {
+  const s: Shape = { pos: [], bend: [], part: [] };
+  const r = mulberry32(505);
+  for (let i = 0; i < 26; i++) {
+    const rr = 0.32 * Math.sqrt(r());
+    const a = r() * 2 * Math.PI;
+    // sprigs at the rim lower and leaning out, so the clump is a dome
+    const out = rr / 0.32;
+    blade(
+      s,
+      r,
+      Math.cos(a) * rr,
+      Math.sin(a) * rr,
+      (0.95 - 0.45 * out * out) * (0.75 + 0.25 * r()),
+      0.075,
+      0.08 + 0.35 * out,
+      1,
+    );
+  }
+  return s;
+}
+
+/** The stops that draw plants of their own: the cove's five, then Deep midnight's ridge (plan M6 Task 2). */
+export const PLANT_STOPS = [...COVE_STOPS, 'midnight'] as const;
+
 export interface Meadow extends WorldPart {
-  /** instances drawn per shape (tall, short, flower), summed over the stops, at the current tier */
+  /** instances drawn per shape (tall, short, flower, heather), summed over the stops, at the current tier */
   readonly drawn: readonly number[];
 }
 
@@ -271,7 +300,10 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   );
   const flower = mix(stalk, head.mul(part), step(0.3, part));
   const grass = mix(tall, short, step(0.5, kind));
-  const albedo = mix(grass, flower, step(1.5, kind)).mul(vary);
+  // heather (plan M6 Task 2; research/m6-midnight-references.md): dark woody stems, the flowering upper half mauve;
+  // the moon's light and the grade turn it grey-violet
+  const heather = mix(vec3(0.022, 0.02, 0.018), vec3(0.3, 0.15, 0.3), smoothstep(0.35, 0.85, bend));
+  const albedo = mix(mix(grass, flower, step(1.5, kind)), heather, step(4.5, kind)).mul(vary);
   // light through the blades when the sun is behind them (reference book §8: bright yellow-green edges backlit,
   // duller front-lit); the tips glow most, a flower head a little
   const toSun = saturate(dot(normalize(positionWorld.sub(cameraPosition)), light.keyDir));
@@ -283,18 +315,26 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
     .mul(vec3(0.55, 0.62, 0.16))
     .mul(through)
     .mul(0.25);
-  // per vertex: the blades are thin, so the eye cannot tell, and the pixels do only the fog
-  material.colorNode = varying(albedo.mul(irradiance).add(glow));
+  // per vertex: the blades are thin, so the eye cannot tell, and the pixels do only the fog. Under the moon the eye
+  // sees little colour (reference book §1, the Purkinje shift; plan M6 Task 2): in the moon's hours the colours grey
+  // toward a cool blue, keeping a third of their own (heather stays grey-violet, grass grey-green).
+  const moonlit = smoothstep(0.0, 4.0, light.moonStrength);
+  // a crescent behind the blades sends little light through them (the glow is sized for a low sun)
+  const seen = albedo.mul(irradiance).add(glow.mul(float(1).sub(moonlit.mul(0.85))));
+  const grey = dot(seen, vec3(0.2126, 0.7152, 0.0722));
+  material.colorNode = varying(mix(seen, vec3(grey).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)));
 
   const group = new Group();
   const shapes = [
     [tallTuft(), (k: number) => k === PLANT.tall],
     [shortTuft(), (k: number) => k === PLANT.short],
-    [flowerClump(), (k: number) => k >= PLANT.pink],
+    [flowerClump(), (k: number) => k >= PLANT.pink && k <= PLANT.white],
+    [heatherMound(), (k: number) => k === PLANT.heather],
   ] as const;
-  const meshes = COVE_STOPS.flatMap((id, owner) =>
-    shapes.map(([shape, pick], shapeIndex) => {
+  const meshes = PLANT_STOPS.flatMap((id, owner) =>
+    shapes.flatMap(([shape, pick], shapeIndex) => {
       const { a0, a1, n } = instances(plants, owner, pick);
+      if (n === 0) return [];
       const g = new InstancedBufferGeometry();
       g.setAttribute('position', new BufferAttribute(new Float32Array(shape.pos), 3));
       g.setAttribute('bend', new BufferAttribute(new Float32Array(shape.bend), 1));
@@ -307,11 +347,11 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
       mesh.layers.set(EYE_ONLY_LAYER);
       mesh.userData.weight = 1;
       group.add(mesh);
-      return { mesh, g, n, shapeIndex, stopIndex: STOP_IDS.indexOf(id) };
+      return [{ mesh, g, n, shapeIndex, stopIndex: STOP_IDS.indexOf(id) }];
     }),
   );
   group.layers.set(EYE_ONLY_LAYER);
-  const drawn = [0, 0, 0];
+  const drawn = [0, 0, 0, 0];
   const count = (share: number) => {
     drawn.fill(0);
     for (const m of meshes) {

@@ -14,7 +14,7 @@ export const COVE_STOPS = ['golden', 'sunset', 'dusk', 'firstlight', 'sunrise'] 
 export type CoveStop = (typeof COVE_STOPS)[number];
 
 /** Plant kinds; the three flowers come last (thrift pink, yellow, white: reference book §8, coast.py plant_mats). */
-export const PLANT = { tall: 0, short: 1, pink: 2, yellow: 3, white: 4 } as const;
+export const PLANT = { tall: 0, short: 1, pink: 2, yellow: 3, white: 4, heather: 5 } as const;
 /**
  * Floats per plant: x, y, z (coast, z = foot), yaw, height (m), kind, and the cove stop it was placed for (its index in
  * COVE_STOPS): each stop draws only its own plants (meadow.ts), so their cost does not add up across the cove.
