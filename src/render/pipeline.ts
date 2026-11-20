@@ -25,6 +25,9 @@ import {
 import type { LightUniforms } from '../world/light';
 import type { Mirror } from '../world/sea';
 
+/** The brightest a pixel may feed the bloom, scene-linear (s22: Golden's and Blue hour's glare). */
+export const BLOOM_CAP = 3;
+
 /** The two settings the pipeline itself changes (the tier table lives in quality/tiers.ts). */
 export interface PipelineTier {
   scale: number;
@@ -108,7 +111,11 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
         return vec4(sRGBTransferOETF(g) as Node<'vec3'>, 1);
       };
       plain = grade(color as unknown as Node<'vec4'>);
-      glow = grade(color.add(bloom(color, 0.22, 0.45, 1.6)) as Node<'vec4'>);
+      // The glow is fed light capped at BLOOM_CAP (plan M8 Task 7, s22): the sun's road on the water reaches tens of
+      // units, and uncapped its bloom spread a white haze over Golden's near sand and lantern and a hot patch at Blue
+      // hour's arch (the renders show a compact sun and its reflection). Lanterns, falls and fireflies sit under it.
+      const capped = vec4((color as unknown as Node<'vec4'>).rgb.min(BLOOM_CAP), 1) as unknown as typeof color;
+      glow = grade(color.add(bloom(capped, 0.22, 0.45, 1.6)) as Node<'vec4'>);
       select();
     },
     setTier(t, devicePixelRatio) {
