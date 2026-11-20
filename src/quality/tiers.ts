@@ -19,7 +19,9 @@ export interface TierSettings {
 
 export const TIERS: Readonly<Record<Tier, TierSettings>> = {
   0: { scale: 0.5, reflect: 0.25, bloom: false, grass: 0.4, leaves: 0.8 },
-  1: { scale: 0.75, reflect: 0.35, bloom: true, grass: 0.7, leaves: 1.0 },
+  // mid's mirror 0.35 → 0.3 since the mirror is read smooth (mirrorSample.ts): 27 % fewer mirror pixels, the same look
+  // (plan M8 Task 10, s22); still above low's, as every setting rises with the tier
+  1: { scale: 0.75, reflect: 0.3, bloom: true, grass: 0.7, leaves: 1.0 },
   2: { scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0 },
 };
 

@@ -26,6 +26,7 @@ import {
   Group,
   Mesh,
   MeshStandardNodeMaterial,
+  type Node,
   SRGBColorSpace,
   type Texture,
 } from 'three/webgpu';
@@ -143,13 +144,19 @@ export function createTerrain(
   const material = new MeshStandardNodeMaterial();
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const z = positionWorld.y;
-  const variation = mx_noise_float(vec3(wxy.mul(0.02), 1.0))
+  // Broad tone variation and the ribs' warp as products of sines, not gradient noise (plan M8 Task 10, s22: the terrain
+  // cost 5–8 ms at mid on this laptop, its three noise calls 2.3–3 ms of it; these two only need slow, irregular change)
+  const sines = (q: Node<'vec2'>) =>
+    sin(q.x.add(sin(q.y.mul(0.63)).mul(1.7)))
+      .mul(sin(q.y.mul(0.81).add(sin(q.x.mul(0.47)).mul(1.3))))
+      .mul(0.5);
+  const variation = sines(wxy.mul(0.02 * 2.4))
     .mul(0.18)
     .add(1.0);
   // Sand ribs under shallow water (plan M4 Task 4; research/m4-blue-hour-references.md: wave ripples 5–15 cm apart,
   // about 1 cm high): a faint rippled bottom seen through the water near the feet. Sharp crests, broad troughs, the
   // lines bent by noise; gone wherever one rib is under about two pixels (no stripes far off), and only under water.
-  const ribWarp = mx_noise_float(vec3(wxy.mul(1.3), 7.0)).mul(3.0);
+  const ribWarp = sines(wxy.mul(1.3 * 2.4).add(7.0)).mul(3.0);
   const ribPhase = wxy.x
     .mul(0.83)
     .add(wxy.y.mul(0.56))

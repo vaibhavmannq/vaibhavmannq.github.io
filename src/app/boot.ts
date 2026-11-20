@@ -995,6 +995,7 @@ export async function boot(): Promise<App> {
     const revealBy = performance.now() + REVEAL_WAIT_MS;
     showProgress(0.3);
 
+    const benchHeld = new Set<string>();
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
       for (const part of parts) part.update(f);
@@ -1003,6 +1004,15 @@ export async function boot(): Promise<App> {
         const held = named.get(name);
         if (held) held.object.visible = false;
       }
+      // a part the benchmark lets go of is shown again (s22: parts that never set their own visibility stayed hidden,
+      // so "each part off in turn" measured them off together); parts that decide their own visibility do so next frame
+      for (const name of benchHeld) {
+        if (app.partsOff.has(name)) continue;
+        const was = named.get(name);
+        if (was) was.object.visible = true;
+        benchHeld.delete(name);
+      }
+      for (const name of app.partsOff) benchHeld.add(name);
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
       // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).
