@@ -35,7 +35,7 @@ type V3 = Node<'vec3'>;
 export const SHEET_ROWS = 40;
 export const SHEET_COLS = 10;
 export const FOAM_SEGMENTS = 32;
-export const SPRAY_COUNT = 28; // SPRAY_SPLIT's sum
+export const SPRAY_COUNT = 46; // SPRAY_SPLIT's sum (s22: 36 in the pool's mist, was 18)
 /**
  * How strongly the moon and the sky light the water. s09 look: the sheet measured (192, 204, 209) against the render's
  * (169, 180, 194), and lamp-white; the reference book (§3) says a fall at night is as bright as its light, so the gains
@@ -49,7 +49,7 @@ const GLASS: [number, number, number] = [0.36, 0.44, 0.45];
 const G = 9.8;
 
 /** Spray sprites: most in the pool's mist, the rest where the upper tier lands on the ledge. */
-export const SPRAY_SPLIT = [18, 10] as const;
+export const SPRAY_SPLIT = [36, 10] as const;
 
 /**
  * The falls as one mesh (three.js axes). `info` = (kind, a, b, c): kind 0 is a ribbon of the sheet (uv: across, and
@@ -181,9 +181,9 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
     .sub(clock);
   const coarse = fbm2(vec2(metres.mul(0.75), fallen.mul(1.1)), 3, 0.55);
   const fine = fbm2(vec2(metres.mul(2.0).add(9), fallen.mul(2.6)), 2, 0.5);
-  const streaks = remap(coarse.mul(0.65).add(fine.mul(0.35)), 0.36, 0.6, 0.12, 0.95);
-  const streams = remap(fbm2(vec2(metres.mul(0.3).add(4.2), clock.mul(0.03)), 1), 0.38, 0.6, 0.55, 1);
-  const sides = remap(across, 0, 0.18).mul(remap(across, 1, 0.82));
+  const streaks = remap(coarse.mul(0.65).add(fine.mul(0.35)), 0.36, 0.6, 0.3, 0.95);
+  const streams = remap(fbm2(vec2(metres.mul(0.3).add(4.2), clock.mul(0.03)), 1), 0.38, 0.6, 0.75, 1);
+  const sides = remap(across, 0, 0.08).mul(remap(across, 1, 0.92));
   // The lip is glassy: one smooth sheet that breaks white over the first few metres (reference book §3). In "time
   // fallen" the pattern is crowded near the lip (water there is slow), which s09 saw as flickering specks.
   // the lower tier arrives already white from the ledge
