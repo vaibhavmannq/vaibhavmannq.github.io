@@ -75,3 +75,19 @@ Rulings continue from M7's R123.
   Test `portraitYaw.test.ts` (each subject within 60 % of the half-width).
 - After (`portrait1.jpg`): every subject inside the frame; Sunset loses its framing tree in portrait (the lone tree wins).
 - **Verdict:** look 82 % in portrait across the nine (was ~65 %), behaviour 85 %. Not yet on the phone itself.
+
+### Task 5: the first view, without pop-in; the hairline loader (Task 8's loader done here)
+- Filmstrip of a first visit at Golden on 10 Mbit/s (`firstvisit-strip.mjs`, `visit-strip.jpg`): at 2.2 s the scene
+  showed sky, a flat sea and the lantern over nothing; the ground snapped in at 3.4 s, the cliffs and grove at 5.1 s,
+  the arch at 5.8 s.
+- **R132 (my call, owner to hear):** the reveal waits for the parts the opening stop shows (`openingParts`, from
+  PART_STOPS), capped at 3 s past stage A; the blurred poster and the name stay up meanwhile. D9's "first view < 3 s"
+  now means the poster; the live world arrives whole at ~4.5 s on 10 Mbit/s (sooner on any faster line).
+- **R133:** opening on a cove stop, the cove pack is fetched with the base, not after it: cliffs and grove joined at
+  4.2 s (was 4.8), the ground at 4.0 s (was 3.1, sharing the line).
+- **R134:** the hairline under the name (owner-sites: Originkit "Hairline Loader"), filling with the share of the
+  opening stop's parts joined (0.3 after stage A), fading with the reveal; no motion under reduced motion.
+- After (`visit3-strip.jpg`): poster with the line until ~4.1 s, then the whole cove fades in at once; only the far arch
+  and stacks arrive a second later, small at the frame's left. `load.spec` alone: name 360 ms, stage A 1.17 s.
+- **Verdict:** behaviour 84 % (no half-built world shown; the line sits still at 0.3 while the base downloads: real
+  byte progress would read better); look of the loader 78 % (quiet, low contrast on the bright poster).

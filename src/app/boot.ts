@@ -38,6 +38,7 @@ import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../wo
 import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { coronaCurves, coronaShot } from '../world/corona';
+import { COVE_SEEN_FROM } from '../world/cove';
 import { createDressing, decodeDressing } from '../world/dressing';
 import {
   createCaps,
@@ -57,7 +58,7 @@ import { createMeadow, EYE_ONLY_LAYER, PLANT_STOPS } from '../world/meadow';
 import { createMist } from '../world/mist';
 import { createNightLife, nightLure, nightWeight } from '../world/nightlife';
 import type { WorldFrame, WorldPart } from '../world/part';
-import { PART_STOPS, partOrder } from '../world/partOrder';
+import { joinedShare, openingParts, PART_STOPS, partOrder } from '../world/partOrder';
 import {
   buildPassage,
   junctionVisible,
@@ -120,6 +121,11 @@ export interface App {
 }
 
 const html = document.documentElement;
+/** How long past stage A the first view may wait for the opening stop's parts (plan M8 Task 5), ms. */
+const REVEAL_WAIT_MS = 3000;
+/** The hairline under the name (owner-sites: Originkit "Hairline Loader"): 0..1 of the first view loaded. */
+const showProgress = (share: number) =>
+  document.getElementById('hairline')?.style.setProperty('--p', Math.min(1, Math.max(0, share)).toFixed(3));
 const rad = (d: number) => (d * Math.PI) / 180;
 const _look = new Vector3();
 
@@ -174,6 +180,12 @@ async function loadBase(
   const stacksMeta = app.manifest.base.stacks;
   const cliffsMeta = app.manifest.base.cliffs;
   const groveMeta = app.manifest.base.grove;
+  // Opening on a cove stop, the cove pack (its cliffs and grove, 0.75 MB) is fetched with the base, not after it: on
+  // 10 Mbit/s they joined 1.7 s after the ground and popped into Golden's first view (plan M8 Task 5).
+  const coveFiles = () =>
+    Promise.all([cliffsMeta ? fetchBinary(cliffsMeta.file) : null, groveMeta ? fetchBinary(groveMeta.file) : null]);
+  const coveEarly = COVE_SEEN_FROM.has(opening()) ? coveFiles() : null;
+  coveEarly?.catch(() => undefined); // its failure is handled where it is awaited
   const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
@@ -325,10 +337,7 @@ async function loadBase(
   const surfaceAt = createSurfaceSampler(heights, meta.heights);
   const coveReady = (async () => {
     try {
-      const [cliffsBuf, groveBuf] = await Promise.all([
-        cliffsMeta ? fetchBinary(cliffsMeta.file) : null,
-        groveMeta ? fetchBinary(groveMeta.file) : null,
-      ]);
+      const [cliffsBuf, groveBuf] = await (coveEarly ?? coveFiles());
       // Golden's pebbles (s16): made here, drawn with the rock material, so they join with the cove pack
       const joins: Promise<void>[] = [compileThenAdd(app, createPebbles(surfaceAt, rock), 'pebbles')];
       if (cliffsMeta && cliffsBuf)
@@ -950,7 +959,12 @@ export async function boot(): Promise<App> {
     const first = frame(performance.now(), 1 / 60);
     for (const part of parts) part.update(first);
     await active.warmUp();
-    html.classList.add('is-scene-ready');
+    // The first view waits for what the opening stop shows (plan M8 Task 5): the poster stays up while the ground, the
+    // sea and that stop's packs join, so a first visit no longer sees the lantern over a bare plane and then the land
+    // snap in. Capped, so a slow connection still gets the world; the hairline under the name shows the progress.
+    const wanted = openingParts(STOP_IDS[start.a] ?? 'golden');
+    const revealBy = performance.now() + REVEAL_WAIT_MS;
+    showProgress(0.3);
 
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
@@ -979,6 +993,13 @@ export async function boot(): Promise<App> {
     app.stageB = loadBase(app, sky, light, params.auroraActive, opening, caps.reducedMotion)
       .then(() => governor.reset(app.tier, performance.now()))
       .catch((error: unknown) => console.warn('world base failed to load', error));
+    const watchReveal = () => {
+      const share = joinedShare(new Set(app.joined.keys()), wanted);
+      showProgress(0.3 + 0.7 * share);
+      if (share >= 1 || performance.now() >= revealBy) html.classList.add('is-scene-ready');
+      else requestAnimationFrame(watchReveal);
+    };
+    watchReveal();
   } else {
     void joinNear();
   }

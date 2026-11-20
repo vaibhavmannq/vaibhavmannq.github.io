@@ -52,3 +52,16 @@ export function partOrder(names: readonly string[], stop: StopId): string[] {
     .sort((a, b) => a.d - b.d || a.i - b.i)
     .map((p) => p.name);
 }
+
+/** Pure: the stage-B parts the visitor sees at `stop` (plan M8 Task 5); the first view waits for these, capped. */
+export function openingParts(stop: StopId): string[] {
+  return Object.entries(PART_STOPS)
+    .filter(([, shows]) => shows.has(stop))
+    .map(([name]) => name);
+}
+
+/** Pure: the share of `wanted` that has joined; 1 when nothing is wanted. */
+export function joinedShare(joined: ReadonlySet<string>, wanted: readonly string[]): number {
+  if (wanted.length === 0) return 1;
+  return wanted.filter((n) => joined.has(n)).length / wanted.length;
+}

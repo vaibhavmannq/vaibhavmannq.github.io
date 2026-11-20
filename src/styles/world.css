@@ -100,6 +100,40 @@ html.is-stills .world {
   color: var(--ink-soft);
 }
 
+/* The loading line (plan M8 Task 5; owner-sites: Originkit "Hairline Loader"): a hairline under the name that fills as
+   the first view loads, then fades once the world is in. --p is set by boot.ts. */
+.hairline {
+  display: block;
+  position: relative;
+  width: min(14rem, 45vw);
+  height: 1px;
+  margin-top: 0.7rem;
+  background: rgb(255 255 255 / 0.16);
+  overflow: hidden;
+  transition: opacity 600ms ease 300ms;
+}
+
+.hairline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(255 246 230 / 0.85);
+  transform: scaleX(var(--p, 0.08));
+  transform-origin: left;
+  transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.is-scene-ready .hairline {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hairline,
+  .hairline::after {
+    transition: none;
+  }
+}
+
 .place {
   position: absolute;
   left: 1.5rem;
