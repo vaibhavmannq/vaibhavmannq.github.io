@@ -231,10 +231,10 @@ no borrowed set pieces (no towers, piano, etc.).
     Sunset 83 % mid / 82 % low.
   - A portrait framing per stop (`portraitYaw`); the first view waits behind the poster and a hairline loader for the
     opening stop's parts (cap 3 s past stage A); the cove pack is fetched with the base; the night cursor.
-  - Open: R127 (a ~200 ms frame ~30 s after arriving at a stop, resting), R122, R101; the phone not yet measured on the
-    s21 changes (it dropped off USB).
-- **Next (s22): M8 continues** at the s21 log's "Next": the phone check, then Task 6 (flights as shots), Task 7 (look
-  passes), Task 9 (sound design first), Tasks 10–12.
+  - Phone: Sunset 59.6 fps at mid and high (old 59.4/59.7), every portrait subject in frame on the phone's screen.
+  - Open: R127 (a ~200 ms frame ~30 s after arriving at a stop, resting), R122, R101.
+- **Next (s22): M8 continues** at the s21 log's "Next": Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound
+  design first), Tasks 10–12.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk

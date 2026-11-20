@@ -102,6 +102,13 @@ Rulings continue from M7's R123.
 - **Verdict:** look 76 % (quiet, fits the night; the glow at the tip is almost invisible on a dark scene), behaviour 80 %.
   Not judged on a trackpad by hand.
 
+### Phone check of Tasks 3–4 (end of s21)
+- USB, Brave, WebGPU, every part joined (31 with the new tree; `.superpowers/m8/phone-hold.mjs`, `phone-hold.log`).
+  Held still: **Sunset 59.6 fps at mid and high** (old build b1e50c7: 59.4 / 59.7), Midnight 59.6–59.7 both builds,
+  Golden 59.4 / 59.7, Night 59.6 / 59.6, Sunrise 59.5 / 59.7. Sunset's new plants and tree cost nothing seen here.
+- Portrait on the phone (`phone-portrait.jpg`): Golden's lantern, Sunset's lone tree, Night's falls, Midnight's tree
+  (absent in the old build) and Sunrise's grove all in frame. Portrait verdict stands at 82 % look, now seen on the
+  phone; behaviour 85 %. Midnight's tree, now central, covers part of the aurora's foot: watch in the Midnight pass.
+
 ### Where s21 stopped
-- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor). Next: the phone check of Sunset and the portrait framings (the
-  phone dropped off USB), then Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
+- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), and their phone check. Next: Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
