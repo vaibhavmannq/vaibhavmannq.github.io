@@ -506,6 +506,18 @@ export async function boot(): Promise<App> {
     }
   }
   if (!pipeline) html.classList.add('is-stills');
+  // A phone may drop the GPU when the browser goes to the background (plan M8 Task 10; threejs-r186-notes §4): three
+  // then stops drawing and the visitor would keep a frozen frame. The stills take over, as on a device with no GPU path
+  // (WebGPU's device lost and WebGL2's context lost both arrive here).
+  if (pipeline) {
+    const r = pipeline.renderer as unknown as { onDeviceLost?: (info: unknown) => void };
+    const own = r.onDeviceLost?.bind(r);
+    r.onDeviceLost = (info) => {
+      own?.(info);
+      html.classList.add('is-stills');
+      if (appRef) appRef.stills = true;
+    };
+  }
 
   const parts: WorldPart[] = [];
   const named = new Map<string, WorldPart>();
