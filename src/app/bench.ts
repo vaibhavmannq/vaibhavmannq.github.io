@@ -28,6 +28,8 @@ declare global {
     __flight(tier: (typeof TIER_NAMES)[number], seconds: number): Promise<FlightResult>;
     /** One frame at every stop: draws, triangles and distinct materials (spec §14). */
     __census(): Promise<CensusRow[]>;
+    /** The part (and object) that draws with material `id` (a pipeline label's number), for first-build hunts. */
+    __whoIs(id: number): string[];
     /** Hold the camera on flight `flight` (from stop `flight`) at fraction `t`; resolves after three rendered frames. */
     __flightPose(flight: number, t: number): Promise<void>;
     /** When each part joined the scene, ms after navigation start, and when the scene was first shown. */
@@ -186,6 +188,17 @@ export function installBench(app: App): void {
     if (!seg) throw new Error(`no flight ${flight}`);
     app.override = seg.start + (seg.end - seg.start) * t;
     await afterRenders(app, 3);
+  };
+
+  window.__whoIs = (id) => {
+    const out: string[] = [];
+    for (const [name, part] of app.parts)
+      part.object.traverse((o) => {
+        const m = (o as Mesh).material;
+        if (m && (Array.isArray(m) ? m : [m]).some((x) => (x as unknown as { id: number }).id === id))
+          out.push(`${name}/${o.name || o.type}`);
+      });
+    return out;
   };
 
   window.__census = async () => {

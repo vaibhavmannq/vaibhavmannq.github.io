@@ -18,7 +18,6 @@ import {
   sin,
   smoothstep,
   step,
-  texture,
   time,
   vec2,
   vec3,
@@ -27,6 +26,7 @@ import { BackSide, Mesh, MeshBasicNodeMaterial, type Node, SphereGeometry, type 
 import type { SkyStore } from '../assets/skies';
 import { type LightUniforms, MIN_MOON_RADIUS } from './light';
 import type { WorldPart } from './part';
+import { slotTexture } from './slotTexture';
 
 type V3 = Node<'vec3'>;
 type F = Node<'float'>;
@@ -51,8 +51,9 @@ export interface Sky extends WorldPart {
 }
 
 export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sky {
-  const texA = texture(first);
-  const texB = texture(first);
+  // each slot its own binding, so the shaders built at a stop (one texture in both) serve the flights (R121)
+  const texA = slotTexture(first, 'sky-a');
+  const texB = slotTexture(first, 'sky-b');
 
   const colorAt = (dir: V3, row?: number): V3 => {
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);

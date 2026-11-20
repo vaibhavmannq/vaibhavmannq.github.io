@@ -1,8 +1,8 @@
 import { cameraPosition, densityFogFactor, fog, positionWorld } from 'three/tsl';
-import { DataTexture, PerspectiveCamera, RGBAFormat, Scene, TextureLoader, Vector3 } from 'three/webgpu';
+import { PerspectiveCamera, Scene, TextureLoader, Vector3 } from 'three/webgpu';
 import { fetchBinary, fetchJson, loadManifest } from '../assets/loader';
 import type { Manifest } from '../assets/manifest';
-import { createSkyStore, skyAmbients } from '../assets/skies';
+import { blankSky, createSkyStore, skyAmbients } from '../assets/skies';
 import { projects } from '../content/projects';
 import { fovFor, type Pose, poseAt, shortestYaw } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
@@ -544,8 +544,7 @@ export async function boot(): Promise<App> {
   const ambients = skyAmbients(manifest);
   const light = createLightUniforms();
   light.install(scene);
-  const blank = new DataTexture(new Uint8Array([20, 18, 32, 255]), 1, 1, RGBAFormat);
-  blank.needsUpdate = true;
+  const blank = blankSky();
   const skies = createSkyStore(manifest, blank, {
     onLoaded: (t) => {
       pipeline?.renderer.initTexture(t);

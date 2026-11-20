@@ -57,7 +57,7 @@ export interface SkyStore {
 }
 
 /** Sky photos are 8-bit HDR-encoded data, not colours: no colour space, no mipmaps, wrapped around the horizon. */
-function prepare(t: Texture): Texture {
+export function prepareSky(t: Texture): Texture {
   t.colorSpace = NoColorSpace;
   t.wrapS = RepeatWrapping;
   t.generateMipmaps = false;
@@ -114,6 +114,14 @@ export function skyTextureFromPixels(pixels: { width: number; height: number; da
   return t;
 }
 
+/**
+ * The sky shown until the first photo arrives: one dusky pixel, sampled exactly like a photo (R121, plan M8 Task 1).
+ * Parts pre-built while it sat in the sky's slots must get the shader the real skies need, or they rebuild mid-flight.
+ */
+export function blankSky(): Texture {
+  return prepareSky(skyTextureFromPixels({ width: 1, height: 1, data: new Uint8Array([20, 18, 32, 255]) }));
+}
+
 /** Skies decoded to raw bytes in a worker (see skyDecode.worker.ts); one worker serves every sky. */
 function workerLoader(): (url: string) => Promise<Texture> {
   const worker = new Worker(new URL('./skyDecode.worker.ts', import.meta.url), { type: 'module' });
@@ -165,7 +173,7 @@ export function createSkyStore(manifest: Manifest, fallback: Texture, options: S
       (t) => {
         pending.delete(index);
         failedAt.delete(index);
-        loaded.set(index, prepare(t));
+        loaded.set(index, prepareSky(t));
         options.onLoaded?.(t);
         return t;
       },

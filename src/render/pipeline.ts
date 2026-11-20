@@ -150,24 +150,26 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
         }
       };
       const eye = view.camera;
-      const builds = [at(1, target, eye)];
-      // R38 (plan M6): the mirror's first draw of a part (the aurora, the cloud deck, the cave) built its shaders
-      // mid-flight: 0.45-1.1 s on this laptop with no shader cache, 0.15-0.2 s on the phone. Its camera is a clone
-      // whose matrices are last frame's reflection, so culling is off for the call: everything the part holds is built.
-      // This needs keyBuildsByOwnContext (below): without it the eye's parts drew with the mirror's camera (s12).
-      if (mirror && opts?.mirror !== false) {
-        const culled: Object3D[] = [];
-        object.traverse((o) => {
-          if (o.frustumCulled) {
-            culled.push(o);
-            o.frustumCulled = false;
-          }
-        });
-        try {
-          builds.push(at(2, mirror.target(eye), mirror.camera(eye)));
-        } finally {
-          for (const o of culled) o.frustumCulled = true;
+      // Culling is off for both calls, so everything the part holds is built wherever the eye is: the eye's own call
+      // culled by the current view, so a part out of view when it joined (the spots' glints, opening at Midnight)
+      // built on its first trip, mid-flight (R121, plan M8 Task 1).
+      const culled: Object3D[] = [];
+      object.traverse((o) => {
+        if (o.frustumCulled) {
+          culled.push(o);
+          o.frustumCulled = false;
         }
+      });
+      const builds: Promise<unknown>[] = [];
+      try {
+        builds.push(at(1, target, eye));
+        // R38 (plan M6): the mirror's first draw of a part (the aurora, the cloud deck, the cave) built its shaders
+        // mid-flight: 0.45-1.1 s on this laptop with no shader cache, 0.15-0.2 s on the phone. Its camera is a clone
+        // whose matrices are last frame's reflection. This needs keyBuildsByOwnContext (below): without it the eye's
+        // parts drew with the mirror's camera (s12).
+        if (mirror && opts?.mirror !== false) builds.push(at(2, mirror.target(eye), mirror.camera(eye)));
+      } finally {
+        for (const o of culled) o.frustumCulled = true;
       }
       await Promise.all(builds);
     },
