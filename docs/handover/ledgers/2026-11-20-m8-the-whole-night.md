@@ -80,7 +80,7 @@ Rulings continue from M7's R123.
 - Filmstrip of a first visit at Golden on 10 Mbit/s (`firstvisit-strip.mjs`, `visit-strip.jpg`): at 2.2 s the scene
   showed sky, a flat sea and the lantern over nothing; the ground snapped in at 3.4 s, the cliffs and grove at 5.1 s,
   the arch at 5.8 s.
-- **R132 (my call, owner to hear):** the reveal waits for the parts the opening stop shows (`openingParts`, from
+- **R132 (my call; the owner kept it, D42):** the reveal waits for the parts the opening stop shows (`openingParts`, from
   PART_STOPS), capped at 3 s past stage A; the blurred poster and the name stay up meanwhile. D9's "first view < 3 s"
   now means the poster; the live world arrives whole at ~4.5 s on 10 Mbit/s (sooner on any faster line).
 - **R133:** opening on a cove stop, the cove pack is fetched with the base, not after it: cliffs and grove joined at

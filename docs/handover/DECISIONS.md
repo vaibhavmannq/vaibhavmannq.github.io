@@ -275,3 +275,7 @@ the opening stop shows (capped at 3 s past stage A), and the cove pack is fetche
 a cove stop: D9's "first view < 3 s" is met by the poster, the whole live view following (~4.5 s on 10 Mbit/s). A
 night cursor (a glow and short trail, mouse only, night hours). Ledger: R124–R135.
 
+**D42 · 2026-11-20 · (owner, s21) The first view waits until the opening place is whole.** Asked to choose between keeping
+the wait (poster, name and loading line until the opening stop's parts have joined, capped 3 s past stage A; the live
+world at ~4.5 s on 10 Mbit/s), a 1.5 s cap (~3 s, with late pop-in), or the old half-built world at ~2.2 s, the owner
+kept the wait. D9's "first view < 3 s" is met by the poster and the name; the live world must arrive whole. Ruling R132.
