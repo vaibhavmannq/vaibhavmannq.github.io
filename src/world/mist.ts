@@ -1,4 +1,5 @@
-import { abs, cameraPosition, exp, max, positionWorld, select, sin, uniform, vec2 } from 'three/tsl';
+import { abs, cameraPosition, exp, max, positionWorld, select, sin, smoothstep, uniform, vec2 } from 'three/tsl';
+import type { Node } from 'three/webgpu';
 import { Group, Vector2 } from 'three/webgpu';
 import { windVector } from '../journey/hours';
 import type { WorldState } from '../journey/types';
@@ -21,6 +22,17 @@ export const MIST_DENSITY = 0.0135;
 export const MIST_TOP = 2.0;
 /** The thin rest at Sunrise lies lower: the top falls toward this as the mist thins. */
 export const MIST_TOP_THIN = 0.8;
+/**
+ * The far bank (plan M8 Task 7, s22; owner `mist` 1, 6, 8: each layer behind paler, the far shore's foot lost): past
+ * BANK_NEAR the ray also crosses a bank BANK_DENSITY× as dense and BANK_TOP× as tall, fading in by BANK_FAR. Only the
+ * ray's far part crosses it, so the water at the feet and the far treetops keep the band's rules (s21: a denser,
+ * taller band everywhere hid 16 % at the feet).
+ */
+export const BANK_NEAR = 40;
+export const BANK_FAR = 180;
+export const BANK_DENSITY = 1.5;
+export const BANK_TOP = 1.5;
+
 /** Mist hangs (reference book §4: "never streams"; plan: drift ≤ 0.1 m/s). */
 export const MIST_DRIFT_MAX = 0.08;
 
@@ -36,12 +48,18 @@ export function mistFog(amount: number): { density: number; top: number } {
  * straight ray is density·dist·(e^(−k·y0) − e^(−k·y1)) / (k·(y1 − y0)). The shader below is the same formula.
  */
 export function mistAmount(eyeY: number, y: number, dist: number, density: number, top: number): number {
-  const k = Math.LN10 / top;
+  const along = (k: number, a: number, b: number) =>
+    Math.abs(b - a) > 0.01 ? (Math.exp(-k * a) - Math.exp(-k * b)) / (k * (b - a)) : Math.exp(-k * (a + b) * 0.5);
   const y0 = Math.max(eyeY, 0);
   const y1 = Math.max(y, 0);
-  const dy = y1 - y0;
-  const f = Math.abs(dy) > 0.01 ? (Math.exp(-k * y0) - Math.exp(-k * y1)) / (k * dy) : Math.exp(-k * (y0 + y1) * 0.5);
-  return 1 - Math.exp(-density * dist * f);
+  const band = density * dist * along(Math.LN10 / top, y0, y1);
+  // the far bank: the ray's part past BANK_NEAR, from the height it has there
+  const t = Math.min(Math.max((dist - BANK_NEAR) / (BANK_FAR - BANK_NEAR), 0), 1);
+  const ramp = t * t * (3 - 2 * t);
+  const past = Math.max(dist - BANK_NEAR, 0);
+  const ya = y0 + (y1 - y0) * Math.min(BANK_NEAR / Math.max(dist, 1e-6), 1);
+  const bank = density * BANK_DENSITY * past * ramp * along(Math.LN10 / (top * BANK_TOP), ya, y1);
+  return 1 - Math.exp(-(band + bank));
 }
 
 /** Pure: how fast the mist's patches move, m/s in coast axes [x east, y north]: with the wind, capped. */
@@ -67,15 +85,25 @@ export function createMist() {
   // mistAmount(), on the GPU. In the mirror pass the eye is under the sea; clamped to the sea it still crosses the band.
   const y0 = max(cameraPosition.y, 0);
   const y1 = max(positionWorld.y, 0);
-  const dy = y1.sub(y0);
-  const e0 = exp(k.negate().mul(y0));
-  const f = select(
-    abs(dy).greaterThan(0.01),
-    e0.sub(exp(k.negate().mul(y1))).div(k.mul(dy)),
-    exp(k.negate().mul(y0.add(y1).mul(0.5))),
-  );
+  type F = Node<'float'>;
+  const along = (kk: F, a: F, b: F) =>
+    select(
+      abs(b.sub(a)).greaterThan(0.01),
+      exp(kk.negate().mul(a))
+        .sub(exp(kk.negate().mul(b)))
+        .div(kk.mul(b.sub(a))),
+      exp(kk.negate().mul(a.add(b).mul(0.5))),
+    );
   const dist = positionWorld.sub(cameraPosition).length();
-  const factor = exp(density.mul(patch).mul(dist).mul(f).negate()).oneMinus();
+  const band = dist.mul(along(k as unknown as F, y0, y1));
+  // the far bank, as mistAmount()
+  const past = dist.sub(BANK_NEAR).max(0);
+  const ya = y0.add(y1.sub(y0).mul(dist.max(1e-6).reciprocal().mul(BANK_NEAR).min(1)));
+  const bank = past
+    .mul(smoothstep(BANK_NEAR, BANK_FAR, dist))
+    .mul(along(k.div(BANK_TOP) as unknown as F, ya, y1))
+    .mul(BANK_DENSITY);
+  const factor = exp(density.mul(patch).mul(band.add(bank)).negate()).oneMinus();
   const off: [number, number] = [0, 0];
 
   const part: WorldPart = {

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { blendHours, HOURS } from '../../src/journey/hours';
 import { STOP_IDS } from '../../src/journey/types';
-import { MIST_DRIFT_MAX, mistAmount, mistDrift, mistFog } from '../../src/world/mist';
+import {
+  BANK_DENSITY,
+  BANK_NEAR,
+  BANK_TOP,
+  MIST_DRIFT_MAX,
+  mistAmount,
+  mistDrift,
+  mistFog,
+} from '../../src/world/mist';
 import { foamLevel } from '../../src/world/sea';
 
 // plan M3 Task 3: First light's mist (reference book §4: radiation fog, a flat layer a metre or two deep, almost
@@ -51,6 +59,22 @@ describe("First light's mist", () => {
     // from above the layer the same far sea is hidden less than from inside it
     expect(mistAmount(4, 0, 300, density, top)).toBeLessThan(mistAmount(eye, 0, 300, density, top));
     expect(mistAmount(eye, 0, 300, 0, top)).toBe(0);
+  });
+
+  it('banks up with distance: the far shore more hidden than by the band alone, the near water untouched (s22)', () => {
+    const { density, top } = mistFog(HOURS.firstlight.mist);
+    const eye = 0.55;
+    // the band alone, as before the bank: the same closed form with the bank's share taken out
+    const k = Math.LN10 / top;
+    const bandOnly = (y: number, d: number) =>
+      1 - Math.exp((-density * d * (Math.exp(-k * eye) - Math.exp(-k * y))) / (k * (y - eye)));
+    expect(mistAmount(eye, 1.5, 150, density, top)).toBeGreaterThan(bandOnly(1.5, 150) + 0.15); // the far shore's foot
+    expect(mistAmount(eye, 0, BANK_NEAR - 1, density, top)).toBeCloseTo(
+      1 - Math.exp(-density * (BANK_NEAR - 1) * ((Math.exp(-k * 0) - Math.exp(-k * eye)) / (k * eye))),
+      6,
+    );
+    expect(BANK_DENSITY).toBeGreaterThan(1);
+    expect(top * BANK_TOP).toBeLessThanOrEqual(4); // still a low bank, never a wall
   });
 
   it('hangs: drifts with the wind at no more than 0.1 m/s', () => {
