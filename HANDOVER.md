@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-19, end of session s20 (M7, Before dawn, built on my side; see `docs/handover/sessions/2026-11-19-s20-m7-before-dawn.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-20, end of session s21 (M8 started; see `docs/handover/sessions/2026-11-20-s21-m8-started.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -222,12 +222,21 @@ no borrowed set pieces (no towers, piano, etc.).
     (R121, open, older than M7)**. Phone: Before dawn 59.7 fps held still at mid and high; a ride into it hitches in
     both builds (worst 285 ms new, 368 old: R123, open).
 - **Owner, end of s20 (D40): M7 closed below 85 %, leftovers to M8.** `world` pushed after the gate.
-- **Next (s21): M8, the whole night polished** (Research phase and plan first; carry lists in the s16–s20 logs; Sunset's
-  meadow view per D38; R121/R123 early).
-  - Still open: R121 (first trip out of the cave), R123 (phone, first ride into it), R122 (sky through the mouth in the flight in), R101 (a ~200 ms
-    first-visit frame into Midnight on the laptop); a portrait framing per stop (M8); mid at Dusk/Sunrise and the mid
-    rides on this laptop; stage-B pop-in (M8); packs fetched at every start; `horizon.spec.ts` (pre-existing); the
-    Firefox smoke timing.
+- **s21 (2026-11-20): M8 started, inline, on `world`, not pushed (625bfe3..).** Research sheet
+  `research/m8-whole-night-references.md`; plan `docs/superpowers/plans/2026-11-20-m8-the-whole-night-polished.md`
+  (12 tasks); ledger `docs/handover/ledgers/2026-11-20-m8-the-whole-night.md` (R124–R135); D41.
+  - **R121 and R123 fixed (one cause):** the sky's hour slots get a binding each (`slotTexture`), the placeholder sky
+    samples like a photo (`blankSky`), the eye's pre-build no longer culls. Cold whole night: 0 late pipelines.
+  - **Sunset filled (D38):** a framing tree 8 m left, grass at the lens, drifts up the slope; `?cams=old` removed.
+    Sunset 83 % mid / 82 % low.
+  - A portrait framing per stop (`portraitYaw`); the first view waits behind the poster and a hairline loader for the
+    opening stop's parts (cap 3 s past stage A); the cove pack is fetched with the base; the night cursor.
+  - Open: R127 (a ~200 ms frame ~30 s after arriving at a stop, resting), R122, R101; the phone not yet measured on the
+    s21 changes (it dropped off USB).
+- **Next (s22): M8 continues** at the s21 log's "Next": the phone check, then Task 6 (flights as shots), Task 7 (look
+  passes), Task 9 (sound design first), Tasks 10–12.
+  - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
+    start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
     cache; restart it between runs) and `.superpowers/m6/first-ride.mjs` (START, FIRST, WAIT env; knows I–IX).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right

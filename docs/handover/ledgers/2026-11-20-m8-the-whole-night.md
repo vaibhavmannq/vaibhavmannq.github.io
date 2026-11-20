@@ -101,3 +101,7 @@ Rulings continue from M7's R123.
   the fireflies' brightness; off at Golden.
 - **Verdict:** look 76 % (quiet, fits the night; the glow at the tip is almost invisible on a dark scene), behaviour 80 %.
   Not judged on a trackpad by hand.
+
+### Where s21 stopped
+- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor). Next: the phone check of Sunset and the portrait framings (the
+  phone dropped off USB), then Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.

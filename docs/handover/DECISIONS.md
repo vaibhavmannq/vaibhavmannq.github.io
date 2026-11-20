@@ -266,3 +266,12 @@ its leftovers go to M8.** Carried: the floor's stones that barely read, the regu
 thin vines, the straight slab outside, the fungi's pointer wave not judged in motion; R121, R122, R123. The skylight
 stays on by default (`?skylight=off` remains for comparison).
 
+**D41 · 2026-11-20 · (my calls, s21; owner told in the session log) M8's first parts.** The sky's hour slots keep a
+binding each and the placeholder sky samples like a photo, so no shader is rebuilt on a first trip (R121 and R123, one
+cause). Sunset's meadow view gets a framing tree 8 m to the left (the old tree's model, grove material), grass at the
+lens sides and flower drifts up the slope; `?cams=old` is removed (D38's condition met). On a portrait screen each stop
+turns toward its subject. The first view waits, behind the poster and a hairline loader under the name, for the parts
+the opening stop shows (capped at 3 s past stage A), and the cove pack is fetched with the base when the visit opens on
+a cove stop: D9's "first view < 3 s" is met by the poster, the whole live view following (~4.5 s on 10 Mbit/s). A
+night cursor (a glow and short trail, mouse only, night hours). Ledger: R124–R135.
+
