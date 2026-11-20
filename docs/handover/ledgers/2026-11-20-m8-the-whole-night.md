@@ -300,8 +300,23 @@ untrustworthy (long main-thread tasks in old and new builds alike); GPU A/B as r
   cost seen. On the phone's screen: Dusk's mirror smooth, First light's headland foot in the bank, Night's falls wide
   with spray at the foot.
 
-### Task 9: sound
-- One-page design for the owner: `docs/superpowers/specs/2026-11-20-sound-design.md`. Waiting for the owner's yes.
+### Task 9: sound (owner: "yes, do all 3 steps"; 91a11d0)
+- Design approved. **Pixabay refused automated access (403);** Freesound's public search pages and CDN previews worked:
+  CC0 recordings only (Amendment §8), three candidates per loop (24), each cut to a 36 s loop (tail cross-faded 3 s into
+  the head), −24 LUFS, mono AAC 48 kbit/s, ~220 kB (`tools/world/sources.json` lists source, title, author).
+- **R156:** AAC starts with ~5 ms of encoder padding (measured in Chrome's decode: the first two 2.5 ms windows near
+  silent in every loop): each file carries its first 0.1 s again at the end and the player loops 0.1 s → end
+  (`LOOP_START`); after: sound on both sides of every join.
+- Built: `src/sound/mixer.ts` (pure: each place's bed cross-faded by the hour weight; wind × force/3; the cove water by
+  the eye's height; the falls by 1/distance from their foot, full at Night's camera (~83 m), silent past 280 m, panned by
+  side), `engine.ts` (AudioContext made in the tap, loops fetched after it, the place in view first; levels glide; fade
+  in 1.5 s, out 0.4 s; paused while the tab is hidden), `toggle.ts` (top right, `aria-pressed`, remembered for the visit,
+  re-armed on the first tap after a reload).
+- Tests: unit `soundMixer.test.ts` (7); e2e `sound.spec.ts` (nothing fetched before the tap; Blue hour fetches
+  `open-sea` first; keyboard; off again). Unit 388; world:report inside budgets.
+- Picks (owner's listening page `.superpowers/sound-listen/`): cove-lap 1, cove-evening 1, open-sea 1, falls 2,
+  night-air 2, ridge-wind 3, cave 1, dawn-chorus 1. **Owner, after listening on the laptop: "looks and sounds good."**
+- **Verdict:** behaviour 85 % (everything measurable checked; not yet heard on the phone); the sound itself: the owner's.
 
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;

@@ -243,18 +243,18 @@ no borrowed set pieces (no towers, piano, etc.).
     after each run** (owner, s21: the test browsers were hogging RAM). `quiet-browser.mjs` now shuts its Chrome down
     when a check ends or crashes.
 - **Owner, end of s21 (D42): the first view keeps waiting until the opening place is whole.** `world` pushed.
-- **s22 (2026-11-20): M8 look passes, on branch `s22` (worktree `.claude/worktrees/s22`), not merged into `world` yet,
-  not pushed.** A background session may not touch the main checkout, so the work sits on `s22`; fast-forward `world`
-  to it first (`git merge --ff-only s22` in the main checkout), then remove the worktree with `git worktree remove`.
+- **s22 (2026-11-20): M8 look passes and sound.** Run as a background job, which may not edit the main checkout: the work
+  was done in worktrees (`s22`, then `s22-sound`) and fast-forwarded into `world`; the look passes are pushed (4cfdab0).
   - Task 7 closed: Dusk 78 % (mirror read smooth, the sky lights the land after sunset, grass at the lens), Golden 79 %
     (bloom capped at 3), Blue hour 83 %, Sunrise 78 % (side-lit blades, dew), Night 78 % (falls as wide as their
     layout), First light 78 % (a far mist bank); Sunset's slope probed, kept (needs content, not light). D43, R148–R155.
-  - Task 9: the sound design for the owner, `docs/superpowers/specs/2026-11-20-sound-design.md`; build after the yes.
+  - **Task 9, sound: built and approved (D44).** Eight CC0 loops (Freesound), `src/sound/`, the Sound button top right;
+    picks and candidates on `.superpowers/sound-listen/` (local).
   - Task 10 in part: a lost GPU hands the view to the stills; the manifest preloaded.
   - Phone: Dusk, Night, First light, Sunrise 59.6–59.7 fps at mid and high (old 59.4–59.8). Not measured: R138, R127
     (laptop 0.9–2.2 GB free all day). 0 pipelines on every cold
     flight (R38 holds).
-- **Next (s23):** merge `s22` into `world`; Task 9's build after the owner's yes; Task 10's
+- **Next (s23):** sound on the phone; Task 10's
   rest, Task 11 (stills), Task 12 (gate, whole-branch review). The s22 log's "Next" has the exact steps.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.

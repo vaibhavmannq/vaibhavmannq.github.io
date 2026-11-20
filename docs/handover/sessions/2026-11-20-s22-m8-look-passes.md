@@ -19,6 +19,9 @@ this docs commit. Not pushed.
 6. **First light** (d8be1bc): the mist banks up past 40 m; the near water and far treetops keep the reference rules.
 7. **Task 9 design** (282b3b4): `docs/superpowers/specs/2026-11-20-sound-design.md`, for the owner's yes.
 8. **Task 10, part** (7ca3d7f): a lost GPU hands the view to the stills (e2e `gpuLoss.spec.ts`); the manifest preloaded.
+9. **Task 9, sound, built and approved** (91a11d0, on `s22-sound`): eight CC0 loops from Freesound (Pixabay refused automated
+   access), cross-faded by place and hour, the falls placed by distance and side, wind by force; silent and unfetched
+   until the Sound button (top right). Owner listened on the laptop: "looks and sounds good" (D44).
 
 ## Decisions
 - D43 (my calls, owner told here): the list in DECISIONS.md. The one to look at: no sun shafts at Sunrise.
@@ -50,13 +53,12 @@ this docs commit. Not pushed.
 
 ## Where M8 stopped (end of s22)
 - Done: Tasks 0–8 (Task 7 closed: every place had a pass), Task 10 in part (GPU loss, preload).
-- Waiting: Task 9's build (owner's yes on the sound design).
+- Done after the first close: Task 9, sound (D44).
 - Not started: Task 10's mid-tier speed, Task 11 (stills), Task 12 (gate, whole-branch review).
 
 ## Next (s23)
-0. **First, from the main checkout:** `git merge --ff-only s22` on `world` (then push after the owner's yes); remove
-   the worktree with `git worktree remove .claude/worktrees/s22` (never a recursive delete: its node_modules is a
-   junction). If the next session is a background job too, set it up the same way or ask the owner to allow edits.
+0. Done in s22: `s22` merged and pushed (4cfdab0); `s22-sound` merged into `world` locally (push on the owner's word).
+   A background session works in a worktree (memory "background-session-worktree"); never delete one recursively.
 1. R138 cold with memory free (the phone pass of s22's stops is done).
-2. Task 9: build the sound after the owner's yes (files from Pixabay, `src/sound/`, the toggle).
+2. Sound on the phone (heard over its speaker; nothing fetched before the tap).
 3. Task 10's rest (mid at Dusk/Sunrise; half-size bloom for low), Task 11 (stills), Task 12 (gate, review).

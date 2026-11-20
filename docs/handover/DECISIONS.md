@@ -288,3 +288,9 @@ Sunrise's dew is 160 points. **No sun shafts at Sunrise** (the sun is 76° off t
 render has none). Night's falls read as wide as their layout, with denser spray at the foot. First light's mist banks up
 past 40 m while the water at the feet and the far treetops keep the reference rules. A lost GPU hands the view to the
 stills. Sunset's shaded slope is kept (probed: no sun reaches it; it needs content, not light). Ledger: R148–R155.
+
+**D44 · 2026-11-20 · (owner, s22) Sound is in, as designed.** The owner approved the one-page sound design
+(`docs/superpowers/specs/2026-11-20-sound-design.md`) and, after listening on the laptop, the build and its eight loops
+("looks and sounds good"). The files come from Freesound (CC0) instead of Pixabay, which refuses automated access; each
+file's source and author is in `tools/world/sources.json`; candidates stay on the owner's listening page
+(`.superpowers/sound-listen/`, local). Ambience only, no music; silent and unfetched until the Sound button. Ruling R156.
