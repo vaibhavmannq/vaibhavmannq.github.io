@@ -279,3 +279,12 @@ night cursor (a glow and short trail, mouse only, night hours). Ledger: R124–R
 the wait (poster, name and loading line until the opening stop's parts have joined, capped 3 s past stage A; the live
 world at ~4.5 s on 10 Mbit/s), a 1.5 s cap (~3 s, with late pop-in), or the old half-built world at ~2.2 s, the owner
 kept the wait. D9's "first view < 3 s" is met by the poster and the name; the live world must arrive whole. Ruling R132.
+
+**D43 · 2026-11-20 · (my calls, s22; owner told in the session log) M8's look passes.** The sea's mirror is read with a
+cubic B-spline filter at every hour (its edges were stair-stepped blocks). After sunset the sky's dome lights the land
+twice as strongly at Dusk (`SKY_FILL`), plants and grove included. The bloom is fed light capped at 3, so the sun's road
+no longer spreads a haze (Golden) and Blue hour's arch-foot glow softens. Upright blades take a low sun from the side;
+Sunrise's dew is 160 points. **No sun shafts at Sunrise** (the sun is 76° off the gaze, out of frame; the approved
+render has none). Night's falls read as wide as their layout, with denser spray at the foot. First light's mist banks up
+past 40 m while the water at the feet and the far treetops keep the reference rules. A lost GPU hands the view to the
+stills. Sunset's shaded slope is kept (probed: no sun reaches it; it needs content, not light). Ledger: R148–R155.

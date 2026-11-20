@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-20, end of session s21 (M8 started; see `docs/handover/sessions/2026-11-20-s21-m8-started.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-20, end of session s22 (M8 look passes; see `docs/handover/sessions/2026-11-20-s22-m8-look-passes.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -243,8 +243,18 @@ no borrowed set pieces (no towers, piano, etc.).
     after each run** (owner, s21: the test browsers were hogging RAM). `quiet-browser.mjs` now shuts its Chrome down
     when a check ends or crashes.
 - **Owner, end of s21 (D42): the first view keeps waiting until the opening place is whole.** `world` pushed.
-- **Next (s22): M8 continues** at the s21 log's "Next": Task 7's look passes (Dusk, the glare, Sunrise, Night's falls,
-  Sunset's slope, First light's mist), R138 re-measured with memory free, Task 9 (sound design first), Tasks 10–12.
+- **s22 (2026-11-20): M8 look passes, on branch `s22` (worktree `.claude/worktrees/s22`), not merged into `world` yet,
+  not pushed.** A background session may not touch the main checkout, so the work sits on `s22`; fast-forward `world`
+  to it first (`git merge --ff-only s22` in the main checkout), then remove the worktree with `git worktree remove`.
+  - Task 7 closed: Dusk 78 % (mirror read smooth, the sky lights the land after sunset, grass at the lens), Golden 79 %
+    (bloom capped at 3), Blue hour 83 %, Sunrise 78 % (side-lit blades, dew), Night 78 % (falls as wide as their
+    layout), First light 78 % (a far mist bank); Sunset's slope probed, kept (needs content, not light). D43, R148–R155.
+  - Task 9: the sound design for the owner, `docs/superpowers/specs/2026-11-20-sound-design.md`; build after the yes.
+  - Task 10 in part: a lost GPU hands the view to the stills; the manifest preloaded.
+  - Not measured: R138, R127 (laptop 0.9–2.2 GB free all day), the phone (not connected). 0 pipelines on every cold
+    flight (R38 holds).
+- **Next (s23):** merge `s22` into `world`; phone pass of today's stops; Task 9's build after the owner's yes; Task 10's
+  rest, Task 11 (stills), Task 12 (gate, whole-branch review). The s22 log's "Next" has the exact steps.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
