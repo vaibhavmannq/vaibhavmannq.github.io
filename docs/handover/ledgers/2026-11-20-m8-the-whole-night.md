@@ -222,6 +222,80 @@ Rulings continue from M7's R123.
   hidden at 10 m); at a 2 m top, 0.024 hides 16 % at the feet. The s16 values sit at the edge of both rules, so a
   thicker look needs mist that banks up with distance (patches, a far bank), not more density. Reverted.
 
+## Session s22 (2026-11-20)
+
+Work on branch `s22` (a worktree at `.claude/worktrees/s22`: the background session may not edit the main checkout);
+`world` is fast-forwarded to it at the end. Laptop: 0.9–2.2 GB free all day, so every frame timing today is
+untrustworthy (long main-thread tasks in old and new builds alike); GPU A/B as relative numbers only.
+
+### Task 7: Dusk (dd846bb)
+- Shots (`.superpowers/m8/dusk0/`): the mirror's tree and cliff edges stair-stepped (worse at low); the headland's near
+  rock and turf one flat tone; a hard far horizon with faint stacks.
+- **R148, the mirror read smooth:** the mirror is drawn at 25 % (low) / 35 % (mid) of an already reduced canvas
+  (240×135 px at low on 1080p), and one bilinear tap magnified it into blocks. `mirrorSample.ts` reads it with a cubic
+  B-spline in four bilinear taps (GPU Gems 2 ch. 20), every hour. Twice the resolution only made smaller blocks
+  (`dusk-mirror-cmp.jpg`).
+- **R149, the sky lights the land after sunset:** every shadowed pixel sat at the grade's floor (32, 24, 43). Probed:
+  the directional fill ×4 changed little; the hemisphere ×2 brought the rock and turf's form back. `SKY_FILL` per hour
+  in hours.ts (Dusk 2, others 1), blended through flights, into the hemisphere light and (since the Sunrise commit) the
+  meadow and grove, which light themselves (`light.skyFill` uniform). Test in light.test.ts.
+- **R150:** Dusk gets two grass clumps at the lens sides and 900 near flowers (was 500); lens clumps now obey the tall
+  grass slope rule (`TALL_SLOPE`; a clump point reached the cliff's lip at 1.003, scatter test).
+- GPU A/B (A = 70db310): low Dusk 17.6 / 16.8 ms, mid 29.9 / 31.3, both builds 38–49 fps at low on the strained
+  laptop; differences flip round to round: no cost separable from noise. Cold ride Sunset → Dusk → Blue hour: 0
+  pipelines (`s22-cold-dusk.log`); 106–107 frames over 50 ms on each ride with 30+ long tasks: the laptop, not evidence.
+- **Verdict:** Dusk **look 78 % at mid, 77 % at low** (was 74), behaviour unchanged. Left: the near grass barely enters
+  the frame (owner photo: plumes in the corner), the hard far horizon, the spot's glint mid-right.
+
+### Task 7: the glare at Golden and Blue hour (6bb5c40)
+- Against the renders: **Blue hour's glow at the arch's right foot is in the approved render too**; Golden's render has a
+  compact sun and reflection where ours spread a white haze over the near sand and the lantern (mid only: low has no
+  bloom). The top-third brightness at Golden shows at low too: the sky and tone curve, left as it is.
+- **R151:** the bloom is fed light capped at 3 (`BLOOM_CAP`, pipeline.ts). A threshold of 3 only dimmed everything; a
+  cap of 6 changed nothing. Dusk's lanterns and Night unchanged with the cap (`glare-side.jpg`).
+- **Verdicts:** Golden **79 % at mid** (was 76), low 76 (the road on the shallows is still a wide bar: the glitter's
+  facet spread, a calm-shallows question); Blue hour **83 % at mid** (was 82). Left: Blue hour's boxy fallen blocks.
+
+### Task 7: Sunrise (1009183)
+- The sun is 76° right of the gaze (az 50, 14° high), out of frame: **no sun shafts** (the render has none; beams from
+  out of frame at that angle would be faint and fake). Finding: the plants were lit with one up normal, so a sun 14°
+  high gave them sin 14° of its light; most of the dark is the turf itself, facing away from the sun (hiding the grove
+  changed nothing).
+- **R152:** upright blades take a low sun from the side (meadow.ts, `BLADE_UP` 0.6 × 2/π × cos elevation × the share
+  seen lit, not under the moon, not from below the horizon). Small visible gain (`side1-crop.jpg`).
+- **R153, dew:** 160 points (was 40; life sprite buffer 96 → 224): the slope sparkles point by point (`side2-crop.jpg`).
+- **Verdict:** Sunrise **78 % at mid, 77 % at low** (was 76). Left: the turf turned from the sun stays dim (the render's
+  slope glows gold); the spot's glint blob.
+
+### Task 7: Night's falls (8ffdbaa)
+- The ribbons cover 10.9 m at the foot, but the shader faded 18 % off each side, dimmed 3 m bands to 55 % and let
+  streaks fall to 12 %: about half the width read as water. **R154:** sides 8 %, bands ≥ 75 %, streaks ≥ 30 %; the pool's
+  spray 36 puffs (was 18; `SPRAY_COUNT` 46). Wet rock still shows between ribbons (bowl/waterfall tests green).
+- **Verdict:** Night **78 % at mid, 76 % at low** (was 76 / 74). Left: the ribbons' straight edges, the aurora's top blob,
+  the boxy rocks low left.
+
+### Task 7: Sunset's shaded slope (probed, nothing kept)
+- One pixel on each side of the slope with each light off (`sprobe/`): right slope key 0 → no change (no direct sun
+  reaches it), glow off 78 → 49 (the glow is already its main light), hemisphere off 78 → 62, fill off −5; left side
+  key off 111 → 78. A cool, stronger fill from the anti-sun side barely shows (the warm glow dominates, the turf is
+  yellow-green); glow ×1.8 flattens the slope to even mustard. **Finding: the shade is right; the slope needs content
+  (backlit tufts and heads catching the rim light), not light.** Reverted.
+
+### Task 7: First light's mist (d8be1bc)
+- **R155, a far bank:** past 40 m the ray also crosses a bank 1.5× as dense and 1.5× as tall, fading in by 180 m, only
+  along the ray's far part (`mistAmount` and the shader, same closed form per segment). Every reference rule holds (the
+  feet < 10 % at 10 m, treetops at 150 m < 10 %) plus a new test that the far shore's foot is hidden more than by the
+  band alone. `fl5.jpg`: the headland's foot sinks into the bank, the far shore fades, the beach stays clear.
+- **Verdict:** First light **78 % at mid, 77 % at low** (was 74).
+
+### Cold whole night after the look passes
+- QUIET_COLD=1, START=golden, eight rides, low (`s22-cold-night.log`): **0 render pipelines on every flight** (R38 holds
+  with the new sea, mist, meadow and falls shaders). Frame times: 12–109 frames over 50 ms per flight, worst 164–600 ms,
+  long tasks throughout: the laptop's state today (2.2 GB free), not evidence. **R138 not re-measurable today.**
+
+### Task 9: sound
+- One-page design for the owner: `docs/superpowers/specs/2026-11-20-sound-design.md`. Waiting for the owner's yes.
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
   First light → Sunrise kept), and Task 7 at Night (76 %), Midnight (77 %) and Before dawn (75 %). Next: Task 7 at, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
