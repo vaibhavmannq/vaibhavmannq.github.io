@@ -32,6 +32,25 @@ export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
     [-6, 52, 9.0],
     [4, 104, 20.0],
   ],
+  // Dusk → Blue hour skims out among the lanterns (plan M8 Task 6; design review §4 "III → IV"): step off the headland
+  // and drop to ~3 m over the water where the lanterns' string starts (lanterns.ts DUSK_LANTERNS, (−12, 52) →
+  // (−150, 190)), skim along it as it spreads, then stay low over open sea (floor −17..−22 m, s21 heights-line.ts) with
+  // the arch dead ahead (bearing −45°, the flight −43°) growing all the way, and ease down onto the flats. Was a 211 m
+  // high glide whose middle was a white haze.
+  'dusk>bluehour': [
+    [24.0, 35.5, 28.2],
+    [13.0, 42.5, 25.5],
+    [3.0, 48.5, 14.0],
+    [-10.0, 54.0, 4.5],
+    [-18.0, 58.5, 3.2],
+    [-62.0, 102.0, 2.8],
+    [-112.0, 152.0, 3.4],
+    [-160.0, 202.0, 4.6],
+    [-330.0, 375.0, 9.0],
+    [-560.0, 620.0, 12.0],
+    [-800.0, 880.0, 8.0],
+    [-930.0, 1060.0, 3.5],
+  ],
   // Blue hour → Night leaves through the arch (plan M4 Task 5; design review §4 "IV → V"): low over the flats, under
   // the span (its underside 40–45 m up, the opening ~33 m wide at 170–184 m from the stop; .superpowers/m4/tools/
   // arch-gap.mjs), then a climbing turn to the left, west of the broken block south of the arch (40–55 m high at
@@ -83,7 +102,7 @@ export const APPROACH: Partial<Record<FlightKey, Vec3[]>> = {
  * direction of travel. First light → Sunrise: both look out to sea, and nose-first the camera turned east into the unlit
  * headland, which filled over half the screen (M0 look note, M1 shots).
  */
-export const SIDEWAYS: ReadonlySet<FlightKey> = new Set<FlightKey>(['firstlight>sunrise']);
+export const SIDEWAYS: ReadonlySet<FlightKey> = new Set<FlightKey>(['sunset>dusk', 'firstlight>sunrise']);
 
 /**
  * Reveals a flight looks up at (plan M4 Task 5; Amendment 1 §7 "slow at the reveals, through the arch"): near `at`

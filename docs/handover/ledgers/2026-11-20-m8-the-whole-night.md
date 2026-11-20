@@ -110,5 +110,28 @@ Rulings continue from M7's R123.
   (absent in the old build) and Sunrise's grove all in frame. Portrait verdict stands at 82 % look, now seen on the
   phone; behaviour 85 %. Midnight's tree, now central, covers part of the aurora's foot: watch in the Midnight pass.
 
+### Task 6: flights as shots (first two)
+- Strips of the five generic flights (`.superpowers/m8/flights0.jpg`), my % before: I→II 65, II→III 50 (the middle
+  faced dark hills inland), III→IV 55 (a 211 m glide whose middle was a white haze; the arch only at the end), VII→VIII
+  60 (a dark slab outside the cave), VIII→IX 72.
+- **R136, III → IV skims among the lanterns** (design review §4): `FLIGHT_OVERRIDES['dusk>bluehour']`: off the headland
+  at its own height until ~10 m past the cliff edge (the cliff test wants 6 m from a column; the first try passed 1.4 m),
+  drop to ~3 m where the lanterns' string starts, along it as it spreads, low (9–12 m) over open sea (floor −17..−22 m,
+  `heights-line.ts`) with the arch dead ahead all the way (bearing −45°, the flight −43°), easing onto the flats. Top
+  29 m (was 211). Strip `flight34-new.jpg`: the lanterns below on the step-off, a mirror of clouds, the arch faint in the
+  haze at t 0.4 and filling the frame on arrival. **Look 84 %, behaviour 80 %** (was 55).
+- **R137, II → III sideways** (`SIDEWAYS`): the gaze stays seaward (−48° → −54°) while the camera slides south-west,
+  so the flight passes Sunset's framing tree, the grove clump crossing the stacks and the sun, and comes down onto
+  Dusk's water (`flight23-side.jpg`). **Look 80 %, behaviour 78 %** (was 50).
+- Tests: flights (2 m clearance, no rising ground ahead), grove/cliffs, arch, stacks clearance: green; unit 375.
+- Cold rides (one test browser; the laptop had 0.8–2.2 GB of 7.7 free, the owner's apps open): Sunset → Dusk clean in
+  the flight (`flights-cold2.log`). Dusk → Blue hour: one 316–366 ms frame ~5 s in, no pipeline, texture or long task
+  (`flights-cold2.log`, `flights-cold3.log`). **The old path, same build, same moment: 216 ms** (`flights-cold-oldpath.log`),
+  so not the new path; the s21 whole-night run earlier (more memory free) had none on this flight. Stepping poses
+  (`step-flight.mjs`) shows nothing: it needs real-time riding. **R138, open:** re-measure III → IV cold with memory
+  free; if it stays, find what starts ~1/3 into the flight (the sky's second photo starts fading in at t 0.3).
+- A first measuring run with both test Chromes open (the owner: "it's hogging the RAM") gave 116 slow frames at rest:
+  discarded. Only one test browser at a time from now on; stop it after each run.
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), and their phone check. Next: Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
