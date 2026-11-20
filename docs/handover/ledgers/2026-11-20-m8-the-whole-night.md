@@ -211,6 +211,17 @@ Rulings continue from M7's R123.
   Left: the skylight's shaft reads as a pale rectangle top right, the deep start still very dark, thin vines, the
   foreground stones dark (true to the light, but the floor still bare near the lens).
 
+### Task 7: Sunset's shaded slope and First light's mist (tried, reverted, findings)
+- **Sunset's slope:** the ground's backlit glow let onto sloping turf (normal 0.55–0.85, was 0.82–0.95) and the plants'
+  light-through ×1.6: **no visible change** at Sunset, Golden or Sunrise (`glow.jpg`). So glow strength is not what keeps
+  the right half dark; suspects: the colour map's green channel gating the ground's glow (`texture(colour).g × 2.2`),
+  or the slope simply in the hill's shadow. Next: probe one pixel of that slope (the `bisect-pixel.mjs` way) with each
+  light term off before changing anything. Reverted.
+- **First light's mist:** denser (0.024) and taller (3.5 m) read well (the grove floats on a mist bank, `fl-mist.jpg`)
+  but breaks both reference rules the tests hold (book §4: a band 1–2 m deep; the water at your feet clear, < 10 %
+  hidden at 10 m); at a 2 m top, 0.024 hides 16 % at the feet. The s16 values sit at the edge of both rules, so a
+  thicker look needs mist that banks up with distance (patches, a far bank), not more density. Reverted.
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
   First light → Sunrise kept), and Task 7 at Night (76 %), Midnight (77 %) and Before dawn (75 %). Next: Task 7 at, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
