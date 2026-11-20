@@ -33,6 +33,8 @@ interface Rules {
   /** plants need ground above this and land this far from the shore line, or ground over 2.5 m (coast.py) */
   zmin: number;
   dland: number;
+  /** flower drifts over the field in view, `from`–`to` metres out; a patch noise over `patch` keeps a point */
+  field?: { candidates: number; from: number; to: number; patch: number };
 }
 
 const RULES: Record<CoveStop, Rules> = {
@@ -47,8 +49,22 @@ const RULES: Record<CoveStop, Rules> = {
     zmin: 0.8,
     dland: 7,
   },
-  // II looks from inside the flowers (owner meadow 1-6): no tall grass in the first 30 m, more flowers near the lens
-  sunset: { candidates: 22000, near: [], nearFlowers: 1600, lensClear: 30, zmin: 0.8, dland: 7 },
+  // II looks from inside the flowers (owner meadow 1-6): flowers near the lens, tall grass clumps at its sides and
+  // seed heads in the field from 6 m (s16 kept tall grass out of the first 30 m: the slope read as bare turf, D38),
+  // drifts of flowers up the slope to its crest
+  sunset: {
+    candidates: 22000,
+    near: [
+      [-40, 1.8, 0.5],
+      [38, 2.2, 0.45],
+      [-12, 3.2, 0.3],
+    ],
+    nearFlowers: 1600,
+    lensClear: 6,
+    zmin: 0.8,
+    dland: 7,
+    field: { candidates: 13000, from: 8, to: 32, patch: 0.3 },
+  },
   dusk: { candidates: 18000, near: [], nearFlowers: 500, lensClear: 6, zmin: 0.8, dland: 7 },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
   sunrise: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 6, zmin: 0.3, dland: 1.5 },
@@ -206,6 +222,22 @@ export function scatterCove(surface: HeightAt): Plants {
       const kind = mix < 0.5 ? PLANT.pink : mix < 0.62 ? PLANT.white : PLANT.yellow;
       put(x, y, 0.28 * (0.9 + 0.6 * r()), kind, r() * 2 * Math.PI);
       placed++;
+    }
+
+    // drifts across the slope the stop looks up (plan M8 Task 3, D38; owner meadow 1, 2, 5): patches of ~14 m, one
+    // kind per band of ~40 m, heads a little larger further out so a drift still reads as colour at 30 m
+    const F = R.field;
+    for (let i = 0; F && i < F.candidates; i++) {
+      const d = F.from + (F.to - F.from) * r() ** 1.4;
+      const a = yaw + (r() * 2 - 1) * 0.75;
+      const x = cx + d * Math.sin(a);
+      const y = cy + d * Math.cos(a);
+      const z = surface(x, y);
+      if (!ok(x, y, z, slopeAt(x, y))) continue;
+      if (coastFbm(x * 0.07 + 31, y * 0.07 + 17, 3) <= F.patch) continue;
+      const band = coastFbm(x * 0.025 + 9, y * 0.025 + 41, 3);
+      const kind = band < 0.42 ? PLANT.pink : band < 0.58 ? PLANT.yellow : PLANT.white;
+      put(x, y, 0.28 * (0.9 + 0.5 * r()) * (1 + Math.min(1, d / 80)), kind, r() * 2 * Math.PI);
     }
   });
 

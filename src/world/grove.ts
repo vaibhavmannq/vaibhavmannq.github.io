@@ -495,3 +495,57 @@ export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart 
     },
   };
 }
+
+/**
+ * Sunset's framing tree (plan M8 Task 3, D38: "the old sunset" with a tree framing the left; owner meadow 10): the
+ * old tree's model 8 m out, 36° left of the gaze, so the canopy reaches over the frame's top-left corner and the
+ * pointer's parallax has a near layer; the sea, the arch and the lone tree stay open.
+ */
+export const SUNSET_FRAME: readonly ScrubSpot[] = [[-36, 8, 1.4, 0]];
+
+/** A shrub or tree placed from a stop's eye: degrees right of the gaze, metres out, scale, model (GROVE_KINDS index). */
+export type ScrubSpot = readonly [offsetDeg: number, metres: number, scale: number, model: number];
+
+/** Pure: grove instances (10 floats each) for `spots` seen from `eye` (coast x, y) looking at `yawDeg`. */
+export function scrubInstances(
+  eye: readonly [number, number],
+  yawDeg: number,
+  spots: readonly ScrubSpot[],
+  groundAt: HeightAt,
+): Float32Array {
+  const out: number[] = [];
+  spots.forEach(([off, d, scale, model], i) => {
+    const a = ((yawDeg + off) * Math.PI) / 180;
+    const x = eye[0] + d * Math.sin(a);
+    const y = eye[1] + d * Math.cos(a);
+    out.push(model, x, y, groundAt(x, y), scale, scale, scale, 0, 0, i * 2.39996);
+  });
+  return Float32Array.from(out);
+}
+
+/**
+ * Trees placed in the browser around Sunset's meadow view (plan M8 Task 3, D38), drawn with the grove's material (no
+ * download, no new material), only at Sunset and its two flights. In the mirror, as the grove.
+ */
+export function createMeadowScrub(grove: GrovePart, instances: Float32Array, groundAt: HeightAt): WorldPart {
+  const g = bakeGrove({ instances, protos: grove.protos }, groundAt);
+  const geometry = groveGeometry(g);
+  const mesh = new Mesh(geometry, grove.material);
+  mesh.name = 'scrub';
+  mesh.visible = false;
+  const sunset = STOP_IDS.indexOf('sunset');
+  return {
+    object: mesh,
+    update(f) {
+      // at a stop only its own (a stop's state can name the next stop as b), in a flight either end
+      mesh.visible = f.state.kind === 'stop' ? f.state.a === sunset : f.state.a === sunset || f.state.b === sunset;
+      if (mesh.visible) grove.setWind(f.hour.world);
+    },
+    setTier(tier: TierSettings) {
+      geometry.setDrawRange(0, drawCount(g, tier.leaves));
+    },
+    dispose() {
+      geometry.dispose();
+    },
+  };
+}

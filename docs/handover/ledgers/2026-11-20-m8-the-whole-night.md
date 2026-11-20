@@ -28,7 +28,7 @@ Rulings continue from M7's R123.
 - **After** (cold, same ride, `r121-fix2.log`, `r121-fix3.log`): **0 late pipelines on both rides** (was 2); into
   Before dawn worst 34–51 ms, out of it no frame over 50 ms in the flight.
 - **Whole night, cold, low** (START=golden, eight rides, `night-cold-new.log`): **0 late pipelines on every flight**;
-  every flight's frames ≤ 50 ms except one 66–83 ms pair arriving at Blue hour.
+  every flight's frames ≤ 50 ms; a 66–83 ms pair ~29 s after arriving at Blue hour (with a 67 ms long task, resting).
 - **R123, phone** (USB, Brave, WebGPU; `.superpowers/m8/phone-ride.mjs`, all 30 parts joined): old build (b1e50c7) into
   Before dawn 2 frames over 50 ms, worst 301 ms, right after the same `MeshStandardNodeMaterial_38`; out of it a late
   rock and glint build again. **New build: 0 frames over 50 ms on both rides, worst 34 ms, no pipeline made.** R121 and
@@ -40,3 +40,28 @@ Rulings continue from M7's R123.
   left open, below the visible work.
 - **Verdict, Task 1:** behaviour 92 % (no first-trip build left on any flight, laptop cold and phone); not 100 because
   of R127's resting frame.
+
+### Task 3: Sunset's meadow view (D38)
+- Shots (`.superpowers/m8/sunset0.jpg`): the new view's lower half was one smooth olive mound, flowers only in a patch,
+  no tall stems near the lens (s16 kept tall grass out of the first 30 m), a bare crest line; the old view's richness
+  came from a big tree framing the left, the sun's road on the mirror and a lit flower edge.
+- Tried (URL knobs, removed): drifts out to 110 m (hidden: the slope's crest is ~25–30 m out, everything past it
+  unseen); drifts at 3–40 m (a near band; the right half of the slope faces away from the low sun and stays dark);
+  searsia shrubs on the slope (scale 2: a wall; scale 0.5–1: dark lumps); a near framing tree (8 m, the old tree's
+  model): the one that changed the picture (`sunset1`–`sunset6.jpg`).
+- **R128:** Sunset's framing tree, `SUNSET_FRAME` (36° left, 8 m, scale 1.4, island_tree_01), placed in the browser and
+  drawn with the grove's material (`createMeadowScrub`, part `scrub`): at Sunset and its two flights only (at a stop
+  only its own: a stop's state can name the next stop). The flight out now passes its trunk (design review §4 "around
+  its trunk"); no clipping in strips (`strip-sunset.jpg`).
+- **R129:** Sunset's plants: grass clumps at the lens sides, tall tufts from 6 m (was 30), and flower drifts on the slope
+  8–32 m (13 000 candidates; one kind per ~40 m band). The plant test's 60 k cap holds (was 73 k at 30 000).
+- **R130:** `?cams=old` removed (OLD_CAMS, `flightPathsOld.json`, the old aurora/cave branches).
+- Speed (A = b1e50c7, `ab-builds.mjs`): Sunset low GPU 10.4–10.5 → 11.0–11.1 ms, 60 fps; mid 15.7–15.8 → 16.8–17.2 ms
+  (mid was under 60 here already). At 30 000 candidates it had been +1.5–2.5 ms at low (57.5 fps): halved. Census
+  Sunset 47 draws, 11 materials; Dusk unchanged once the tree stopped showing there.
+- Cold first ride Golden → Sunset (both builds, `sunset-cold-ab.log`): new 2 frames over 50 ms (worst 83), old 1 (66);
+  no pipeline. A first run in a fresh cold Chrome had main-thread long tasks at Sunset; not reproduced.
+- **Verdict:** Sunset **look 83 % at mid, 82 % at low** (was 80), behaviour 80 %. Likes: a frame within the frame
+  again, near grass for the parallax, the sea and arch stay open, the lone tree still the subject. Dislikes: the shaded
+  right half of the slope is still bare dark turf; the near pink band is even and its heads faceted; the spot's white
+  glint sits mid-frame. Carried to the Sunset look pass (Task 7): backlit flower heads in the shade, mixed drifts.

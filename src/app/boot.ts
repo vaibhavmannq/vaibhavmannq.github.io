@@ -6,13 +6,12 @@ import { blankSky, createSkyStore, skyAmbients } from '../assets/skies';
 import { projects } from '../content/projects';
 import { fovFor, type Pose, poseAt, shortestYaw } from '../journey/camera';
 import flightPaths from '../journey/flightPaths.json';
-import flightPathsOld from '../journey/flightPathsOld.json';
 import type { FlightPath } from '../journey/flights';
 import { blendHours, HOURS } from '../journey/hours';
 import { createLook, dragEnded, touchIntent } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
-import { OLD_CAMS, OLD_CAMS_ON, SHOTS } from '../journey/shots';
+import { SHOTS } from '../journey/shots';
 import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsAt, spotsOpen } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
 import { loadThread, saveThread } from '../journey/thread';
@@ -40,7 +39,15 @@ import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { coronaCurves, coronaShot } from '../world/corona';
 import { createDressing, decodeDressing } from '../world/dressing';
-import { createCaps, createGrove, createLoneTree, decodeGrove } from '../world/grove';
+import {
+  createCaps,
+  createGrove,
+  createLoneTree,
+  createMeadowScrub,
+  decodeGrove,
+  SUNSET_FRAME,
+  scrubInstances,
+} from '../world/grove';
 import { createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
@@ -199,9 +206,8 @@ async function loadBase(
   ];
   // Night's fireflies and glowing reeds (plan M5 Task 4)
   parts.push(['nightlife', createNightLife(reducedMotion)]);
-  // Night's bowl of basalt columns (plan M5 Task 1): made here, no download. Not with `?cams=old`: the old camera
-  // stands behind the new south wall.
-  if (SHOTS.night.falls && !OLD_CAMS_ON)
+  // Night's bowl of basalt columns (plan M5 Task 1): made here, no download.
+  if (SHOTS.night.falls)
     parts.push([
       'bowl',
       createBowl(
@@ -238,14 +244,7 @@ async function loadBase(
     // Night's curtains are the corona made here (plan M5 Task 3); Midnight keeps the baked ones
     parts.push([
       'aurora',
-      OLD_CAMS_ON
-        ? createAurora(auroraData, night.aurora, midnight.aurora, auroraActive)
-        : createAurora(
-            { ...auroraData, night: coronaCurves() },
-            coronaShot(night.aurora),
-            midnight.aurora,
-            auroraActive,
-          ),
+      createAurora({ ...auroraData, night: coronaCurves() }, coronaShot(night.aurora), midnight.aurora, auroraActive),
     ]);
   // plan M6 Task 4: the deck reaches north to y = -100 (coast.py's box stops at -420), so the nearest range stands in it
   // across the whole view; it only forms under a camera above it, so Night's lagoon never sees it from inside
@@ -258,65 +257,56 @@ async function loadBase(
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);
   if (caveShot && caveMeta && caveBuf) {
     const caveParts = decodeCave(caveBuf, caveMeta);
-    if (OLD_CAMS_ON) parts.push(['cave', createCave(caveParts, caveShot, sky, light)]);
-    else {
-      // Before dawn starts deeper (plan M7 Task 1): a passage of columns behind the chamber, its back wall opened
-      const site = passageSite(caveShot, SHOTS.beforedawn);
-      const mouthOpen = caveParts.shell.open;
-      caveParts.shell.open = openShell(caveParts.shell.position, mouthOpen, site);
-      // the skylight (plan M7 Task 7), an option: `?skylight=off` keeps the roof whole
-      const skylightOn = new URLSearchParams(location.search).get('skylight') !== 'off';
-      if (skylightOn) {
-        caveParts.shell.open = openRoof(caveParts.shell.position, caveParts.shell.open);
-        parts.push(['skylight', createSkylight(caveShot, sky, roofAbove(caveParts.shell.position, SKYLIGHT))]);
-      }
-      const passage = buildPassage(
-        site,
-        shellSampler(caveParts.shell.position, site),
-        surface,
-        caveShot.floor,
-        caveShot,
-      );
-      const frame = passageFrame(site);
-      const inPassage = (x: number, y: number) => {
-        const s = frame.along(x - caveShot.x, y - caveShot.y);
-        return s > 0 && s < PASSAGE_END + 1 && Math.abs(frame.lateral(x - caveShot.x, y - caveShot.y)) < 4;
-      };
-      // its floor: cobbles, boulders and column stumps (plan M7 Task 4)
-      const floorStones = scatterFloor(
-        caveFloorSite({
-          ...frame,
-          halfW: 2.6,
-          passageEnd: PASSAGE_END,
-          walkDepth: WALK_DEPTH,
-          pool: { x: caveShot.pool.x - caveShot.x, y: caveShot.pool.y - caveShot.y, r: 3.2 },
-        }),
-        [-9.5, -26, 9.5, 9.5],
-      );
-      const stones = floorGeometry(floorStones);
-      // the fungi in clusters (plan M7 Task 5), in place of cave.bin's ring along the floor's edge
-      caveParts.fungi = fungiClusters({
-        shell: caveParts.shell.position,
-        passage,
-        stones: floorStones,
-        along: frame.along,
-        lateral: frame.lateral,
-      });
-      // vines on the mouth's lip (plan M7 Task 6), their own small draw
-      parts.push(['vines', createVines(vineLeaves(caveParts.shell.position, mouthOpen, 2.9), caveShot, sky)]);
-      parts.push([
-        'cave',
-        createCave(caveParts, caveShot, sky, light, {
-          passage,
-          inPassage,
-          mouthOpen,
-          throughJunction: junctionVisible(site),
-          alongOf: frame.along,
-          stones,
-          ...(skylightOn ? { skylight: SKYLIGHT } : {}),
-        }),
-      ]);
+    // Before dawn starts deeper (plan M7 Task 1): a passage of columns behind the chamber, its back wall opened
+    const site = passageSite(caveShot, SHOTS.beforedawn);
+    const mouthOpen = caveParts.shell.open;
+    caveParts.shell.open = openShell(caveParts.shell.position, mouthOpen, site);
+    // the skylight (plan M7 Task 7), an option: `?skylight=off` keeps the roof whole
+    const skylightOn = new URLSearchParams(location.search).get('skylight') !== 'off';
+    if (skylightOn) {
+      caveParts.shell.open = openRoof(caveParts.shell.position, caveParts.shell.open);
+      parts.push(['skylight', createSkylight(caveShot, sky, roofAbove(caveParts.shell.position, SKYLIGHT))]);
     }
+    const passage = buildPassage(site, shellSampler(caveParts.shell.position, site), surface, caveShot.floor, caveShot);
+    const frame = passageFrame(site);
+    const inPassage = (x: number, y: number) => {
+      const s = frame.along(x - caveShot.x, y - caveShot.y);
+      return s > 0 && s < PASSAGE_END + 1 && Math.abs(frame.lateral(x - caveShot.x, y - caveShot.y)) < 4;
+    };
+    // its floor: cobbles, boulders and column stumps (plan M7 Task 4)
+    const floorStones = scatterFloor(
+      caveFloorSite({
+        ...frame,
+        halfW: 2.6,
+        passageEnd: PASSAGE_END,
+        walkDepth: WALK_DEPTH,
+        pool: { x: caveShot.pool.x - caveShot.x, y: caveShot.pool.y - caveShot.y, r: 3.2 },
+      }),
+      [-9.5, -26, 9.5, 9.5],
+    );
+    const stones = floorGeometry(floorStones);
+    // the fungi in clusters (plan M7 Task 5), in place of cave.bin's ring along the floor's edge
+    caveParts.fungi = fungiClusters({
+      shell: caveParts.shell.position,
+      passage,
+      stones: floorStones,
+      along: frame.along,
+      lateral: frame.lateral,
+    });
+    // vines on the mouth's lip (plan M7 Task 6), their own small draw
+    parts.push(['vines', createVines(vineLeaves(caveParts.shell.position, mouthOpen, 2.9), caveShot, sky)]);
+    parts.push([
+      'cave',
+      createCave(caveParts, caveShot, sky, light, {
+        passage,
+        inPassage,
+        mouthOpen,
+        throughJunction: junctionVisible(site),
+        alongOf: frame.along,
+        stones,
+        ...(skylightOn ? { skylight: SKYLIGHT } : {}),
+      }),
+    ]);
   }
   const byName = new Map(parts);
   // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
@@ -348,6 +338,10 @@ async function loadBase(
         joins.push(compileThenAdd(app, grove, 'grove'));
         // Deep midnight's lone tree on the ridge's knoll (plan M6 Task 3)
         joins.push(compileThenAdd(app, createLoneTree(grove, ridgeGround), 'lonetree'));
+        // Sunset's framing tree (plan M8 Task 3, D38)
+        const sunsetEye = [SHOTS.sunset.cam[0], SHOTS.sunset.cam[1]] as const;
+        const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], SUNSET_FRAME, surfaceAt);
+        joins.push(compileThenAdd(app, createMeadowScrub(grove, frame, surfaceAt), 'scrub'));
         // the stacks' and the arch's scrub caps share the grove's shrub and material (plan M4 Task 3)
         joins.push(
           capsAt.then((caps) => (caps.length ? compileThenAdd(app, createCaps(grove, caps), 'caps') : undefined)),
@@ -537,10 +531,7 @@ export async function boot(): Promise<App> {
   };
   appRef = app;
 
-  // `?cams=old` (D31): Sunset's and Dusk's pre-M3 cameras, with the flights baked to them then
-  const paths = (flightPaths as FlightPath[]).map((p) =>
-    OLD_CAMS_ON ? ((flightPathsOld as FlightPath[]).find((o) => o.from === p.from && o.to === p.to) ?? p) : p,
-  );
+  const paths = flightPaths as FlightPath[];
   const ambients = skyAmbients(manifest);
   const light = createLightUniforms();
   light.install(scene);
@@ -568,8 +559,7 @@ export async function boot(): Promise<App> {
   // they join with the first view.
   // Both are compiled before they join, so opening anywhere else they never compile mid-flight (final review M7).
   const lantern = createLantern();
-  // the walks at Sunset and Dusk start from the new cameras: none there under `?cams=old`
-  const LIVE_SPOTS = OLD_CAMS_ON ? SPOTS.filter((sp) => !(sp.stop in OLD_CAMS)) : SPOTS;
+  const LIVE_SPOTS = SPOTS;
   const glints = createSpotGlints(LIVE_SPOTS);
   // The lantern thread (plan M3 Task 5): the lantern claimed at Golden drifts among Dusk's and rests in First light's
   // shallows. Kept for this visit (sessionStorage; the accessor itself can throw in a locked-down browser).

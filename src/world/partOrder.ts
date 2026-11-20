@@ -15,6 +15,7 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   meadow: new Set(['golden', 'sunset', 'dusk', 'firstlight', 'sunrise', 'midnight']),
   ridge: new Set(['midnight']),
   lonetree: new Set(['midnight']),
+  scrub: new Set(['sunset']),
   peaks: new Set(['midnight']),
   life: new Set(['golden', 'sunset', 'dusk', 'firstlight', 'sunrise']),
   aurora: new Set(['night', 'midnight']),

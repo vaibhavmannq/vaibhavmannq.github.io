@@ -213,7 +213,8 @@ SHOTS["midnight"].update(aurora=dict(AUR3, dist=3000.0, strength=2.8,
 # in from the right at a three-quarter angle, the buttress rising out of frame on the left 10 m away, the open west
 # side centre-left. Moonlight is a crescent's (world moonPhase 0.12, 13 % lit): lamp 5.0 -> 0.7.
 # Before (s17): cam (-320, -437, 0.9) look (0, 12) lens 20. aurora_yaw keeps the baked curves (aurora.json) on the old
-# view's yaw: the live Night draws its own corona (src/world/corona.ts); only ?cams=old uses them.
+# view's yaw: the live Night draws its own corona (src/world/corona.ts); since s21 (`?cams=old` removed) the site no longer reads
+# Night's baked curves.
 SHOTS["night"].update(cam=(-316.8, -416.9, 1.0), look=(-19.0, 2.0), lens=20, over_water=True, aurora_yaw=0.0, falls_r=(49.5, 46.0),
     moon=(140.0, 22.0, 0.9, 35.0, 0.7))
 SHOTS["golden"].update(cliff_rocks=((22.5, 14.0, 5.0, 18.1, 0.0), (21.3, 21.0, 4.0, 14.5, -0.03), (23.3, 27.0, 5.5, 18.4, 0.02), (21.9, 34.0, 4.5, 15.1, 0.0), (23.9, 41.0, 6.0, 16.8, -0.02), (21.5, 47.0, 4.0, 12.2, 0.03), (22.9, 54.0, 5.0, 15.1, 0.0), (22.1, 61.0, 5.5, 16.5, -0.03), (23.5, 67.0, 4.5, 11.9, 0.02), (21.7, 74.0, 5.0, 12.7, 0.0), (23.1, 81.0, 4.0, 9.9, -0.02), (22.5, 88.0, 5.0, 11.4, 0.03),))
