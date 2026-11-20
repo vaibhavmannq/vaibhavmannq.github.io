@@ -232,9 +232,14 @@ no borrowed set pieces (no towers, piano, etc.).
   - A portrait framing per stop (`portraitYaw`); the first view waits behind the poster and a hairline loader for the
     opening stop's parts (cap 3 s past stage A); the cove pack is fetched with the base; the night cursor.
   - Phone: Sunset 59.6 fps at mid and high (old 59.4/59.7), every portrait subject in frame on the phone's screen.
-  - Open: R127 (a ~200 ms frame ~30 s after arriving at a stop, resting), R122, R101.
-- **Next (s22): M8 continues** at the s21 log's "Next": Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound
-  design first), Tasks 10–12.
+  - Flights as shots, first two: Dusk → Blue hour skims among the lanterns toward the arch (84 %); Sunset → Dusk
+    sideways with the sea in view (80 %).
+  - Open: R138 (a 216–366 ms frame ~1/3 into Dusk → Blue hour on cold rides, old path too, measured under low memory),
+    R127 (a ~200 ms frame ~30 s after arriving at a stop, resting), R122, R101.
+  - **This laptop has 7.7 GB; with the owner's apps open only ~1–2 GB is free. One test browser at a time, stopped
+    after each run** (owner, s21: the test browsers were hogging RAM).
+- **Next (s22): M8 continues** at the s21 log's "Next": re-measure R138, the rest of Task 6 (VII→VIII, I→II, VIII→IX),
+  Task 7 (look passes), Task 9 (sound design first), Tasks 10–12.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk

@@ -134,4 +134,5 @@ Rulings continue from M7's R123.
   discarded. Only one test browser at a time from now on; stop it after each run.
 
 ### Where s21 stopped
-- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), and their phone check. Next: Task 6 (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
+- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6's first two flights (III → IV,
+  II → III). Next: R138 re-measured, then the rest of Task 6 (VII→VIII, I→II, VIII→IX) (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
