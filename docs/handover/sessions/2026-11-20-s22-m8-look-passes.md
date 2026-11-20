@@ -38,8 +38,9 @@ this docs commit. Not pushed.
 ## Open
 - **R138 and R127 not re-measured:** the laptop had 0.9–2.2 GB free all day; every cold ride showed long main-thread
   tasks and 50–110 slow frames per flight in old and new builds alike. 0 render pipelines on every flight (R38 holds).
-- **Phone not checked** this session (not connected): today's changes need a phone pass (Dusk, Night, First light,
-  Sunrise at mid and high).
+- **Phone, at the end** (USB, Brave, WebGPU, all parts joined): Dusk, Night, First light, Sunrise **59.6–59.7 fps at mid
+  and high** (old build 59.4–59.8): no cost. Playwright could not attach to Brave (a stuck blank tab); a raw-CDP script
+  drove the tab instead (in the job's scratch folder; copy it to `.superpowers/m8/` if needed again).
 - Task 10's mid at Dusk/Sunrise on this laptop: not measurable today.
 - Carried looks: Sunset's slope content; Dusk's near grass in frame and far horizon; Golden low's wide road on the
   shallows; Blue hour's boxy blocks; Night's ribbon edges and aurora blob; Sunrise's dim turf; the spots' glint blobs.
@@ -56,6 +57,6 @@ this docs commit. Not pushed.
 0. **First, from the main checkout:** `git merge --ff-only s22` on `world` (then push after the owner's yes); remove
    the worktree with `git worktree remove .claude/worktrees/s22` (never a recursive delete: its node_modules is a
    junction). If the next session is a background job too, set it up the same way or ask the owner to allow edits.
-1. Phone over USB: today's stops at mid and high; R138 cold with memory free.
+1. R138 cold with memory free (the phone pass of s22's stops is done).
 2. Task 9: build the sound after the owner's yes (files from Pixabay, `src/sound/`, the toggle).
 3. Task 10's rest (mid at Dusk/Sunrise; half-size bloom for low), Task 11 (stills), Task 12 (gate, review).

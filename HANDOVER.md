@@ -251,9 +251,10 @@ no borrowed set pieces (no towers, piano, etc.).
     layout), First light 78 % (a far mist bank); Sunset's slope probed, kept (needs content, not light). D43, R148–R155.
   - Task 9: the sound design for the owner, `docs/superpowers/specs/2026-11-20-sound-design.md`; build after the yes.
   - Task 10 in part: a lost GPU hands the view to the stills; the manifest preloaded.
-  - Not measured: R138, R127 (laptop 0.9–2.2 GB free all day), the phone (not connected). 0 pipelines on every cold
+  - Phone: Dusk, Night, First light, Sunrise 59.6–59.7 fps at mid and high (old 59.4–59.8). Not measured: R138, R127
+    (laptop 0.9–2.2 GB free all day). 0 pipelines on every cold
     flight (R38 holds).
-- **Next (s23):** merge `s22` into `world`; phone pass of today's stops; Task 9's build after the owner's yes; Task 10's
+- **Next (s23):** merge `s22` into `world`; Task 9's build after the owner's yes; Task 10's
   rest, Task 11 (stills), Task 12 (gate, whole-branch review). The s22 log's "Next" has the exact steps.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.

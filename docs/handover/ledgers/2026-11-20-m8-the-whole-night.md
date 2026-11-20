@@ -293,6 +293,13 @@ untrustworthy (long main-thread tasks in old and new builds alike); GPU A/B as r
   with the new sea, mist, meadow and falls shaders). Frame times: 12–109 frames over 50 ms per flight, worst 164–600 ms,
   long tasks throughout: the laptop's state today (2.2 GB free), not evidence. **R138 not re-measurable today.**
 
+### Phone pass of the look passes (end of s22)
+- USB, Brave, WebGPU, every part joined (32 new, 31 old), held still 10 s per tier. Playwright's `connectOverCDP` hung on
+  a stuck blank tab; a raw-CDP copy of `phone-hold.mjs` drove the open localhost tab (opened with `adb shell am start`).
+- **New (s22): Dusk, Night, First light, Sunrise 59.6–59.7 fps at mid and high**; old build (70db310): 59.4–59.8. No
+  cost seen. On the phone's screen: Dusk's mirror smooth, First light's headland foot in the bank, Night's falls wide
+  with spray at the foot.
+
 ### Task 9: sound
 - One-page design for the owner: `docs/superpowers/specs/2026-11-20-sound-design.md`. Waiting for the owner's yes.
 
