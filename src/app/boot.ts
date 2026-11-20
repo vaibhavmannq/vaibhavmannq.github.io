@@ -30,6 +30,8 @@ import { bootTier, TIERS, type Tier } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
+import { createSound } from '../sound/engine';
+import { mountSoundToggle } from '../sound/toggle';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { BOWL, createBowl, fallsLayout, rimTrees } from '../world/bowl';
@@ -479,11 +481,15 @@ export async function boot(): Promise<App> {
     () => cameraU(performance.now()),
     () => params.p === undefined,
   );
+  // Sound (plan M8 Task 9): silent until the visitor presses the toggle; it follows the places with or without a GPU.
+  const sound = createSound();
+  mountSoundToggle(document.getElementById('stage') as HTMLElement, sound);
   const overlayTick = (nowMs: number) => {
     scroll.raf(nowMs);
     const u = appRef?.override ?? cameraU(nowMs);
     ride.update(u);
     const state = frameAt(track, u, caps.reducedMotion);
+    sound.frame(state);
     const nearest = nearestStop(track, u);
     stage.update(state, nearest, appRef?.stills ?? params.stills);
     rail.setCurrent(nearest);
@@ -992,6 +998,7 @@ export async function boot(): Promise<App> {
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
       for (const part of parts) part.update(f);
+      sound.eye(f.pose.position, f.pose.yaw);
       for (const name of app.partsOff) {
         const held = named.get(name);
         if (held) held.object.visible = false;

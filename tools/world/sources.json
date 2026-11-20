@@ -14,6 +14,83 @@
     "syferfontein_0d_clear_puresky",
     "the_sky_is_on_fire"
   ],
-  "models": ["coastal_cliff_04", "island_tree_01", "island_tree_02", "island_tree_03", "searsia_burchellii"],
-  "textures": ["coast_sand_03", "damp_beach_sand", "seaside_rock"]
+  "models": [
+    "coastal_cliff_04",
+    "island_tree_01",
+    "island_tree_02",
+    "island_tree_03",
+    "searsia_burchellii"
+  ],
+  "textures": [
+    "coast_sand_03",
+    "damp_beach_sand",
+    "seaside_rock"
+  ],
+  "sound": [
+    {
+      "file": "public/world/sound/cove-lap.m4a",
+      "source": "https://freesound.org/people/Alex_hears_things/sounds/352356/",
+      "title": "Gentle small waves lapping on shore.wav",
+      "author": "Alex_hears_things",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/cove-evening.m4a",
+      "source": "https://freesound.org/people/RyanKingArt/sounds/746366/",
+      "title": "Southern Summer Evening Ambience with Crickets 5",
+      "author": "RyanKingArt",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/open-sea.m4a",
+      "source": "https://freesound.org/people/emainta/sounds/648860/",
+      "title": "Sea Waves Against Rocks",
+      "author": "emainta",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/falls.m4a",
+      "source": "https://freesound.org/people/datapopstar2/sounds/650699/",
+      "title": "Waterfall_Meraner_Höhenweg_01_160922.wav",
+      "author": "datapopstar2",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/night-air.m4a",
+      "source": "https://freesound.org/people/kvgarlic/sounds/151241/",
+      "title": "OwlsForestApril82012.wav",
+      "author": "kvgarlic",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/ridge-wind.m4a",
+      "source": "https://freesound.org/people/felix.blume/sounds/146436/",
+      "title": "Dry grass rustling in the wind, in the desert of Chile.",
+      "author": "felix.blume",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/cave.m4a",
+      "source": "https://freesound.org/people/Sclolex/sounds/177958/",
+      "title": "Water Dripping in Cave.wav",
+      "author": "Sclolex",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    },
+    {
+      "file": "public/world/sound/dawn-chorus.m4a",
+      "source": "https://freesound.org/people/nick121087/sounds/342462/",
+      "title": "Morning Birds",
+      "author": "nick121087",
+      "licence": "CC0 1.0 (Freesound)",
+      "made": "36 s from the Freesound HQ preview, tail cross-faded into the head (3 s), -24 LUFS, mono AAC 48 kbit/s"
+    }
+  ],
+  "sound_about": "Ambience loops (plan M8 Task 9). Freesound CC0 recordings: Pixabay (owner-references §15) refused automated access (403), and CC0 is what Amendment 1 §8 asks for. Candidates and the owner's listening page: .superpowers/sound-listen/."
 }
