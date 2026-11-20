@@ -254,8 +254,13 @@ no borrowed set pieces (no towers, piano, etc.).
   - Phone: Dusk, Night, First light, Sunrise 59.6–59.7 fps at mid and high (old 59.4–59.8). Not measured: R138, R127
     (laptop 0.9–2.2 GB free all day). 0 pipelines on every cold
     flight (R38 holds).
-- **Next (s23):** sound on the phone; Task 10's
-  rest, Task 11 (stills), Task 12 (gate, whole-branch review). The s22 log's "Next" has the exact steps.
+  - **Closing round: M8 done on my side.** Sound on the phone 59.5–59.6 fps on every flight; R127/R138 closed (not ours);
+    Task 10 (Golden 60 fps at mid here), Task 11 (stills captured live, landscape + portrait), Task 12 (gate, review:
+    no important findings). D45, R157–R159. None of the nine places at 85 % (Sunset and Blue hour 83).
+- **Owner, end of s22 (D46): M8 closed below 85 %; M8.5 next, before the text.** M8.5 is driven by the owner's own
+  hands-on testing (likes, dislikes, reviews), rounds until nothing he minds; the M8 carry list is its starting backlog.
+  Plan: `docs/superpowers/plans/2026-11-20-m8.5-owner-hands-on.md`.
+- **Next (s23): M8.5 Task 0** (a build the owner can open on his devices), then wait for his Round 1 feedback.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk

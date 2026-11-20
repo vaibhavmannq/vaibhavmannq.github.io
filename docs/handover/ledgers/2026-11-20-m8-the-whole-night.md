@@ -318,6 +318,41 @@ untrustworthy (long main-thread tasks in old and new builds alike); GPU A/B as r
   night-air 2, ridge-wind 3, cave 1, dawn-chorus 1. **Owner, after listening on the laptop: "looks and sounds good."**
 - **Verdict:** behaviour 85 % (everything measurable checked; not yet heard on the phone); the sound itself: the owner's.
 
+### Closing round (owner: "everything is closed, phone is connected - start"; 2.6 GB free)
+
+- **Sound on the phone** (USB, Brave; raw CDP, `phone-sound.mjs` in the job scratch): nothing fetched before the tap;
+  after it all eight loops, Golden's water first; Golden held 59.7 fps at mid with sound off and 59.6–59.7 on; **the
+  whole night ridden with sound on: every flight 59.5–59.6 fps, 0 frames over 50 ms.** The owner listened meanwhile.
+- **R127 closed (not ours):** warm Chrome, 60 s at rest at Dusk, Blue hour and First light (`gc-probe.mjs`): 0 frames over
+  60 ms, 0 long tasks; GC drops of 14–53 MB happen with no pause. The pauses appear only in the cold test Chrome (every
+  GPU shader cache disabled, Chrome's own included: 28 long tasks up to 468 ms at rest, no heap drop with them) or under
+  memory pressure (s21).
+- **R138 closed (Chrome's own first drawing, not ours):** the 333–433 ms frame ~1/3 into Dusk → Blue hour has no long task,
+  no pipeline, no buffer or texture upload before it (`ride-gpu.mjs`, every GPU call logged); hiding the night cursor
+  does not remove it; warm Chrome 0 frames over 50 ms (two rides). The owner's side note asked for a browser that never
+  opened the site: **a brand-new profile straight onto the site: 433 / 216 ms; a brand-new profile after one ordinary
+  page (`everyday.html`: text, shadows, blur, blend): worst 51 ms**, though our shaders were new in all four. So it is
+  Chrome compiling its own page drawing on first use; any browser that has shown a page has done it.
+- **R157, the benchmark hook:** `__parts` hid parts but never showed them again, so "each part off in turn" measured them
+  off together (Dusk's "all again" 7 ms against 23 ms). A part let go is now shown again (boot.ts `benchHeld`).
+- **Task 10 (f5fb0a7):** cost per part at mid, honest numbers: Dusk 23.2 ms (sea 6.1, terrain 5.1, cliffs 1.9), Sunrise
+  21.6 (sea 6.0, terrain 6.7), Golden 17.4 (sea 5.3, terrain 3.7). **R158:** two of the terrain's three gradient-noise calls
+  (tone variation, the sand ribs' warp) as products of sines (the noise was 2.3–3 ms); mid's mirror 0.35 → 0.3 (tiers
+  test: every setting still rises with the tier). After: Dusk 21.3–22.6, Sunrise 19.6–20.5, **Golden 16.2–16.3 (60 fps at
+  mid)**; look unchanged (`t10-look.jpg`). Hiding the sea still saves 7 ms: the water's own glitter shading, not the
+  mirror. Half-size bloom for low not done (low has no GPU to spare here). **Verdict: behaviour 80 %.**
+- **Task 11 (53a5d62, 9c74a14):** the fallback stills captured from the live site at high, every part joined, overlay,
+  scrollbar and the spots' glints hidden, Before dawn at the walk's end, Dusk with its lanterns lit
+  (`stills-capture.mjs`): 1920×1080 and 824×1784 (portrait at 2×) per place, WebP 30–118 kB (smaller than the renders);
+  the poster remade from the new Golden. **R159:** a screen 4:5 or taller loads `<stop>-portrait.webp` (e2e
+  `stills.spec.ts`); the manifest counts portraits against their stop and leaves `sound/` out (opt-in). `npm run compare`
+  reads the approved renders from `.superpowers/brainstorm/lookdev/real/out3/out3/`. **Verdict: look 85 %, behaviour 85 %.**
+- **Task 12, the gate:** unit 388 passed; `world:report` inside every budget (stage A 0.17 MB); e2e 28 passed, 2 failed
+  under load (Firefox smoke's 5 s bar, pre-existing; WebKit's no-GPU still, passes alone with its file's other tests);
+  `load.spec` alone passed (name 372 ms, stage A 1.4 s); `world:test` passed (all world checks). **Whole-branch review of M8
+  (625bfe3^..HEAD, ~1 300 lines):** no important findings. Minor: if a browser refuses to make an AudioContext the
+  button still reads "Sound on"; a phone rotated after loading keeps its first still's shape.
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
   First light → Sunrise kept), and Task 7 at Night (76 %), Midnight (77 %) and Before dawn (75 %). Next: Task 7 at, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.

@@ -23,6 +23,14 @@ this docs commit. Not pushed.
    access), cross-faded by place and hour, the falls placed by distance and side, wind by force; silent and unfetched
    until the Sound button (top right). Owner listened on the laptop: "looks and sounds good" (D44).
 
+10. **Closing round** (owner: "everything is closed, phone is connected"): sound on the phone (59.5–59.6 fps on every
+    flight with sound on, 0 slow frames); R127 and R138 closed with evidence (neither is ours: R127 only in the cold test
+    Chrome or under memory pressure; R138 is Chrome's own first drawing, gone after any ordinary page in a brand-new
+    profile); the benchmark's part toggle fixed (R157); **Task 10** cheaper ground and mid's mirror 0.3 (Golden 60 fps at
+    mid on this laptop; Dusk/Sunrise ~20–22 ms, the laptop settles on low there as designed); **Task 11** stills captured
+    from the live site, landscape and portrait (R159); **Task 12** the gate and a whole-branch review (no important
+    findings). Commits f5fb0a7, 53a5d62, 9c74a14, plus docs.
+
 ## Decisions
 - D43 (my calls, owner told here): the list in DECISIONS.md. The one to look at: no sun shafts at Sunrise.
 
@@ -49,16 +57,22 @@ this docs commit. Not pushed.
   shallows; Blue hour's boxy blocks; Night's ribbon edges and aurora blob; Sunrise's dim turf; the spots' glint blobs.
 
 ## Gate (this session)
-- Unit 381 passed; `world:report` inside every budget; e2e `gpuLoss.spec.ts` 2 passed; `world:test` passed (all world checks). Full e2e not run.
-
+- Final: unit 388 passed; `world:report` inside every budget (stage A 0.17 MB); `world:test` passed (all world checks);
+  e2e 28 passed, 2 failed under load only (Firefox smoke's 5 s bar, pre-existing; WebKit's no-GPU still passes alone);
+  `load.spec` alone passed (name 372 ms, stage A 1.4 s); phone: every flight 59.5–59.6 fps with sound on; whole-branch
+  review: no important findings.
 ## Where M8 stopped (end of s22)
-- Done: Tasks 0–8 (Task 7 closed: every place had a pass), Task 10 in part (GPU loss, preload).
-- Done after the first close: Task 9, sound (D44).
-- Not started: Task 10's mid-tier speed, Task 11 (stills), Task 12 (gate, whole-branch review).
+- **All twelve tasks done on my side.** Places at mid (look): Golden 79, Sunset 83, Dusk 78, Blue hour 83, Night 78,
+  Midnight 77, Before dawn 75, First light 78, Sunrise 78. None at 85. My recommendation: close M8 below 85 like M3–M7,
+  carry the list below into the polish that follows M9/M10, and start M9 (the text).
+- Carried: Sunset's slope content; Dusk's near grass and hard horizon; Golden low's wide road on the shallows; Blue hour's
+  boxy blocks; Night's straight falls edges and the aurora blob; Midnight's far pale band; Before dawn's pale skylight
+  shaft and dark deep start; Sunrise's dim turf; the spots' glint blobs; packs fetched by distance (the headland pack
+  still fetched at every start); the two review minors (ledger, Task 12).
 
 ## Next (s23)
 0. Done in s22: `s22` merged and pushed (4cfdab0); `s22-sound` merged into `world` locally (push on the owner's word).
    A background session works in a worktree (memory "background-session-worktree"); never delete one recursively.
-1. R138 cold with memory free (the phone pass of s22's stops is done).
-2. Sound on the phone (heard over its speaker; nothing fetched before the tap).
-3. Task 10's rest (mid at Dusk/Sunrise; half-size bloom for low), Task 11 (stills), Task 12 (gate, review).
+1. **Owner, end of s22 (D46): M8 closed below 85 %; M8.5 before the text,** driven by his hands-on testing. Start with
+   M8.5 Task 0 (a build he can open on his devices), then his Round 1 feedback
+   (`docs/superpowers/plans/2026-11-20-m8.5-owner-hands-on.md`).

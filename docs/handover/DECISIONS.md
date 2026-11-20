@@ -294,3 +294,16 @@ stills. Sunset's shaded slope is kept (probed: no sun reaches it; it needs conte
 ("looks and sounds good"). The files come from Freesound (CC0) instead of Pixabay, which refuses automated access; each
 file's source and author is in `tools/world/sources.json`; candidates stay on the owner's listening page
 (`.superpowers/sound-listen/`, local). Ambience only, no music; silent and unfetched until the Sound button. Ruling R156.
+
+**D45 · 2026-11-20 · (my calls, s22 closing round; owner told in the session log) M8's last tasks.** The fallback stills
+are captures of the live site (landscape and portrait per place; a screen 4:5 or taller gets the portrait one), as D27
+asked; the Blender renders remain the art direction and `npm run compare`'s reference. Mid's mirror drops to 0.3 of the
+screen and two of the ground's noise calls become sine patterns (Golden holds 60 fps at mid on this laptop). R127 and
+R138 are closed as not ours: R127 appears only in the cold test Chrome or under memory pressure, R138 only in a browser
+that has never drawn a page. Rulings R157–R159.
+
+**D46 · 2026-11-20 · (owner, end of s22) M8 closes below 85 %; M8.5 comes before the text.** M8 closes with every task done
+and none of the nine places at 85 % (Sunset and Blue hour 83, the rest 75–79). Instead of moving to M9, a new milestone
+M8.5 polishes the world from the owner's own hands-on testing: "in M8.5 I will start my hand on testing and will give my
+proper experience to you, my likes and dislikes and reviews on how we can improve it". Plan:
+`docs/superpowers/plans/2026-11-20-m8.5-owner-hands-on.md`; the M8 carry list is its starting backlog.
