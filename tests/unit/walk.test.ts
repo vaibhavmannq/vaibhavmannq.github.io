@@ -66,16 +66,17 @@ describe('the cave floor and fungi (plan M7 Tasks 4, 5)', () => {
     pool: { x: 0, y: 4, r: 3 },
   });
   const stones = scatterFloor(site, [-9.5, -20, 9.5, 9.5]);
-  it('keeps the walk’s line and the pool clear, and gathers stones against the walls', () => {
+  // plan M8 Task 7: small cobbles (r <= 0.15 m, far under the 1.5 m eye) may lie on the walk's line; nothing larger
+  it('keeps the walk’s line clear of all but cobbles, the pool clear, and gathers stones against the walls', () => {
     expect(stones.length).toBeGreaterThan(80);
     let nearWall = 0;
     for (const s of stones) {
       // the walk runs from 14.5 m behind the camera (y = -14.5) out through the mouth
-      if (s.y > -14.5 && s.y < 17) expect(Math.abs(s.x) - s.r).toBeGreaterThan(0.79);
+      if (s.y > -14.5 && s.y < 17 && s.r > 0.15) expect(Math.abs(s.x) - s.r).toBeGreaterThan(0.79);
       expect(Math.hypot(s.x, s.y - 4)).toBeGreaterThan(3 + s.r - 1e-6);
       if (site.nearWall(s.x, s.y) > 0.5) nearWall++;
     }
-    expect(nearWall / stones.length).toBeGreaterThan(0.6);
+    expect(nearWall / stones.length).toBeGreaterThan(0.5);
   });
   it('places fungi in clusters, not evenly (book §6)', () => {
     const shell: number[] = [];

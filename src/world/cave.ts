@@ -268,7 +268,8 @@ export function createCave(
   }
   if (st) {
     const glow = fungiLight(st.position, parts.fungi);
-    for (let i = 0; i < nst; i++) info.set([-2, ff.stones[i] ?? 0, glow[i] ?? 0, 0.6], (ns + nf + np + i) * 4);
+    // kind 0.7: floor-like (wet, never cut, no tide bands) but its own look (plan M8 Task 7)
+    for (let i = 0; i < nst; i++) info.set([-2, ff.stones[i] ?? 0, glow[i] ?? 0, 0.7], (ns + nf + np + i) * 4);
   }
   const extra = (passage?.index.length ?? 0) + (st?.index.length ?? 0);
   const index = new Uint32Array(parts.shell.index.length + parts.floor.index.length + extra);
@@ -299,6 +300,7 @@ export function createCave(
   const kind = a.w;
   const isFloor = step(0.5, kind);
   const chamberFloor = step(0.8, kind);
+  const isStone = step(0.65, kind).mul(float(1).sub(chamberFloor));
   const shellOnly = float(1).sub(step(0.1, kind));
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const wz = positionWorld.y;
@@ -374,7 +376,12 @@ export function createCave(
   const rel = vec2(positionWorld.x.sub(cave.x), positionWorld.z.add(cave.y));
   // metres along the wall; the spacing wanders (two incommensurate waves, never folding back)
   const um = atan(rel.x, rel.y.negate()).mul(10);
-  const cu = um.div(0.8).add(um.mul(1.9).sin().mul(0.18)).add(um.mul(4.3).add(1).sin().mul(0.08));
+  // plan M8 Task 7 (s20 carry "too regular"): a slow wander too, so sets of columns run wider and narrower (±30 %)
+  const cu = um
+    .div(0.8)
+    .add(um.mul(0.37).add(2).sin().mul(0.9))
+    .add(um.mul(1.9).sin().mul(0.18))
+    .add(um.mul(4.3).add(1).sin().mul(0.08));
   const ci = cu.floor();
   const f = cu.fract();
   const radial = normalize(vec3(rel.x, 0, rel.y));
@@ -383,13 +390,13 @@ export function createCave(
   const mouthW = vec3(...toThree([cave.x + ap.c[0], cave.y + ap.c[1], cave.floor + ap.c[2]]));
   const toMouth = normalize(mouthW.sub(positionWorld));
   const side = step(0.5, f).mul(2).sub(1);
-  const facet = side.mul(tangent.dot(toMouth)).mul(0.75).add(1).clamp(0.55, 1.45);
+  const facet = side.mul(tangent.dot(toMouth)).mul(0.5).add(1).clamp(0.7, 1.3);
   const hash = (n: F, k: number) => n.mul(k).sin().mul(43758.5453).fract();
   const groove = smoothstep(0.0, 0.04, f.min(f.oneMinus())).mul(0.5).add(0.5);
   const jf = hz.add(hash(ci, 12.9898).mul(0.7)).div(hash(ci, 78.233).mul(0.6).add(0.5)).fract();
   const joint = smoothstep(0.0, 0.03, jf.min(jf.oneMinus())).mul(0.2).add(0.8);
   // each column its own tone and its own broken top (2.4–4.4 m), the entablature above
-  const tone = hash(ci, 39.3467).mul(0.35).add(0.8);
+  const tone = hash(ci, 39.3467).mul(0.55).add(0.68);
   const topAt = hash(ci, 7.137).mul(2.0).add(2.4);
   const colonnade = smoothstep(topAt.add(0.15), topAt.sub(0.15), hz).mul(shellOnly).mul(camInside);
   const columns = mix(float(1), facet.mul(groove).mul(joint).mul(tone), colonnade);
@@ -441,9 +448,29 @@ export function createCave(
   const headland = smoothstep(0.6, -0.6, rEl.sub(headTop)).mul(smoothstep(-10, -12, rAz));
   const skyR = mix(sky.colorAt(r as unknown as V3), vec3(...HEADLAND), headland);
   const mirrored = skyR.mul(through).mul(0.75);
-  const sheen = skyR.mul(throughSoft).mul(0.1).mul(isFloor).mul(float(1).sub(pool));
+  // plan M8 Task 7 (owner cave 2, 3, 5): wet stones read by their tops catching the mouth's sky, and by tone, stone to
+  // stone; at the floor's faint sheen they were lost in it
+  const stoneTop = smoothstep(0.25, 0.85, normalWorld.y).mul(isStone);
+  const sheen = skyR
+    .mul(throughSoft)
+    .mul(mix(float(0.1), float(0.38), stoneTop))
+    .mul(isFloor)
+    .mul(float(1).sub(pool));
   // the sea reaches the mouth: tide bands on the shell's steep faces (rock.ts), per pixel (a few smoothsteps)
-  const banded = rockLit.mul(columns).mul(tideBands(wz, normalWorld.y.abs(), float(1).sub(isFloor)));
+  // per vertex (s09 cost rule): a stone's faces are ~0.1 m, so its tone varies stone to stone, not per pixel
+  const stoneTone = vs(
+    mix(
+      float(1),
+      mx_noise_float(vec3(wxy.mul(2.2), 3.0))
+        .mul(0.5)
+        .add(0.95),
+      isStone,
+    ) as F,
+  );
+  const banded = rockLit
+    .mul(columns)
+    .mul(tideBands(wz, normalWorld.y.abs(), float(1).sub(isFloor)))
+    .mul(stoneTone);
   // the pool: dark (it shows the floor through it straight down) and a mirror at a low angle (Fresnel, book §3)
   const poolBody = banded.mul(0.35);
   const colour = mix(banded, poolBody.add(mirrored.mul(fresnel.mul(0.7).add(0.3))), pool).add(sheen.mul(fresnel));

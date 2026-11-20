@@ -192,7 +192,25 @@ Rulings continue from M7's R123.
   edges at the ranges' feet, the dark hill's streaky sheen centre left, heather still even in the middle distance,
   nothing answering the pointer.
 
+### Task 7: look pass, Before dawn
+- Shots at both ends of the walk (`bd0.jpg`) against owner `cave` 2–5: their floors are covered in cobbles and boulders
+  catching the mouth's light; ours a smooth dark floor where the stones barely read (s20 carry); the walls' columns
+  even zebra stripes.
+- **R146, the stones:** larger and more of them (0.08–0.9 m, mostly 0.1–0.35; 5 200 tries), more in the open; small
+  cobbles (r ≤ 0.15 m) may lie on the walk's line (the walk test updated to that rule), rounder (0.6–1.0 of their width
+  high: flatter ones read as glass shards). Their own kind in the cave shader (0.7): a tone stone to stone (per
+  vertex) and a wet glint of the mouth's sky on their upward faces (0.38 against the floor's 0.1).
+- **R147, the colonnade:** a slow wander in the columns' spacing (±30 %), the two faces' light flip softened (±75 % →
+  ±50 %), a wider tone range column to column: rock columns, not stripes.
+- Cost: census 36 draws, 9 materials, +6 k triangles. GPU A/B (A = 70db310): with the stones' tone per pixel low was
+  +1–2.5 ms; per vertex, level within noise (low 11.1–11.8 vs 11.6–13.4 ms). The laptop was strained (the old build at
+  41–47 fps at low, where it held 60): relative numbers only.
+- Cold ride Midnight → Before dawn: 0 pipelines; 90 frames over 50 ms on the strained laptop (not evidence; see Midnight's
+  A/B today).
+- **Verdict:** Before dawn **look 75 % at mid, 73 % at low** (was 72 / 70), behaviour 74 % (unchanged). `bd-final.jpg`.
+  Left: the skylight's shaft reads as a pale rectangle top right, the deep start still very dark, thin vines, the
+  foreground stones dark (true to the light, but the floor still bare near the lens).
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
-  First light → Sunrise kept), and Task 7 at Night (76 %) and Midnight (77 %). Next: Task 7 at
-  Before dawn, then, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
+  First light → Sunrise kept), and Task 7 at Night (76 %), Midnight (77 %) and Before dawn (75 %). Next: Task 7 at, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.

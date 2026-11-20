@@ -43,7 +43,7 @@ const distToSegment = (px: number, py: number, w: FloorSite['walk']) => {
 export function scatterFloor(
   site: FloorSite,
   box: [number, number, number, number],
-  tries = 2600,
+  tries = 5200,
   seed = 2027,
 ): Stone[] {
   const rnd = mulberry32(seed);
@@ -53,16 +53,19 @@ export function scatterFloor(
     const x = x0 + rnd() * (x1 - x0);
     const y = y0 + rnd() * (y1 - y0);
     const u = rnd();
-    // a long tail: mostly 0.06–0.2 m cobbles, a few 0.4–0.9 m boulders
-    const r = 0.06 + 0.84 * u ** 4;
+    // a long tail: mostly 0.1–0.35 m cobbles, a few 0.5–0.9 m boulders (plan M8 Task 7: at 0.06–0.2 m the floor read
+    // as bare from the camera; owner cave 2, 3, 5 are covered in fist- to head-sized stones)
+    const r = 0.08 + 0.82 * u ** 2.6;
     const wall = site.nearWall(x, y);
-    if (rnd() > 0.4 + 0.6 * wall) continue;
+    if (rnd() > 0.6 + 0.4 * wall) continue;
     if (!site.inside(x, y, r * 0.8)) continue;
-    if (distToSegment(x, y, site.walk) < site.walk.half + r) continue;
+    // the walk's line keeps clear of anything over a cobble (the eye is 1.5 m up; a boulder there would be walked into)
+    if (r > 0.15 && distToSegment(x, y, site.walk) < site.walk.half + r) continue;
     if (site.clear.some((c) => Math.hypot(x - c.x, y - c.y) < c.r + r)) continue;
     if (out.some((s) => Math.hypot(x - s.x, y - s.y) < (s.r + r) * 0.9)) continue;
+    // stones rounded, 0.6-1.0 of their width high (s21: flatter ones read as glass shards under the wet glint)
     const stump = wall > 0.6 && r > 0.22 && rnd() < 0.45 && (site.stumpOk?.(x, y) ?? true) ? 1 : 0;
-    out.push({ x, y, r, flat: stump ? 0.6 + rnd() * 1.4 : 0.45 + rnd() * 0.35, turn: rnd() * Math.PI * 2, stump });
+    out.push({ x, y, r, flat: stump ? 0.6 + rnd() * 1.4 : 0.6 + rnd() * 0.4, turn: rnd() * Math.PI * 2, stump });
   }
   return out;
 }
