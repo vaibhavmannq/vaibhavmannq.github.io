@@ -96,6 +96,8 @@ export interface HourPreset {
   cloud: number;
   /** The darkest a shadow may show, sRGB on screen after the grade (owner-references §17: never black, tinted). */
   shadowFloor: RGB;
+  /** × the hemisphere light: how strongly the sky's dome lights the land (hours.ts SKY_FILL). */
+  skyFill: number;
   /** 0..1: First light's mist, a flat band on the water (plan M3 Task 3); 0 at every other hour but Sunrise. */
   mist: number;
   /** 0..1: how much sea sparkle the water holds (plan M4 Task 1): Blue hour only; never in daylight (book §6). */

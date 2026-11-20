@@ -116,6 +116,8 @@ export interface LightValues {
   aurora: number;
   cloud: number;
   shadowFloor: RGB;
+  /** × HEMI_INTENSITY (hours.ts SKY_FILL) */
+  skyFill: number;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
@@ -150,6 +152,7 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     aurora: hour.aurora,
     cloud: hour.cloud,
     shadowFloor: shadowFloor(hour),
+    skyFill: hour.skyFill,
   };
 }
 
@@ -218,6 +221,7 @@ export function createLightUniforms() {
       key.target.position.copy(cameraPosition);
       fill.color.setRGB(...v.ambSky);
       fill.intensity = v.keyStrength * FILL_SHARE + 0.3;
+      hemi.intensity = HEMI_INTENSITY * v.skyFill;
       fill.position.set(-u.keyDir.value.x, 0.6, -u.keyDir.value.z).multiplyScalar(500).add(cameraPosition);
       fill.target.position.copy(cameraPosition);
       hemi.color.setRGB(...v.ambSky);

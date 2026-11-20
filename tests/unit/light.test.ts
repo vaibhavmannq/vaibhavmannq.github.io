@@ -1,7 +1,7 @@
 import { Scene } from 'three/webgpu';
 import { describe, expect, it } from 'vitest';
 import type { SkyAmbient } from '../../src/assets/manifest';
-import { HOURS } from '../../src/journey/hours';
+import { blendHours, HOURS } from '../../src/journey/hours';
 import type { HourPreset } from '../../src/journey/types';
 import {
   auroraDim,
@@ -83,6 +83,19 @@ describe('shadows keep colour (plan M2.5 Task 4; owner-references §14.4, §17)'
 
   it('reaches the materials through the light values', () => {
     expect(lightValues(HOURS.night, ambA, ambB, 0).shadowFloor).toEqual(shadowFloor(HOURS.night));
+  });
+});
+
+describe('the sky lights the land after sunset (plan M8 Task 7, s22: Dusk)', () => {
+  it('doubles the sky fill at Dusk only, where the sun is set but the dome still bright', () => {
+    expect(HOURS.dusk.key.strength).toBe(0);
+    expect(HOURS.dusk.skyFill).toBe(2);
+    for (const h of Object.values(HOURS)) if (h.id !== 'dusk') expect(h.skyFill, h.id).toBe(1);
+  });
+
+  it('blends through the flights and reaches the light values', () => {
+    expect(blendHours(HOURS.sunset, HOURS.dusk, 0.5).skyFill).toBeCloseTo(1.5, 9);
+    expect(lightValues(HOURS.dusk, ambA, ambB, 0).skyFill).toBe(2);
   });
 });
 

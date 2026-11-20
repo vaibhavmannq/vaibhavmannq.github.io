@@ -40,6 +40,7 @@ import type { GridMeta } from './heights';
 import { fishRing, RING_SPEED } from './life';
 import { glitterCarry, glitterPower, type LightUniforms } from './light';
 import { EYE_ONLY_LAYER } from './meadow';
+import { mirrorCubic } from './mirrorSample';
 import type { WorldPart } from './part';
 
 /** Six analytic ripples: direction x, direction z, amplitude, frequency (the slice's). */
@@ -183,7 +184,9 @@ export function createSea(
     .mul(u.keyColor)
     .mul(6.0)
     .mul(smoothstep(0.0, 0.05, u.keyStrength));
-  let col = mix(body, reflection.rgb, fresnel).add(glint);
+  // the mirror read smooth (mirrorSample.ts): one bilinear tap stair-stepped its edges at 3–8× magnification (s22)
+  const mirrored = reflection.uvNode ? mirrorCubic(reflection, reflection.uvNode as Node<'vec2'>) : reflection.rgb;
+  let col = mix(body, mirrored, fresnel).add(glint);
 
   // Shore: depth from the heights, foam at the edge, a sheet in the swash, transparent shallows (slice).
   const x1 = meta.x0 + (meta.nx - 1) * meta.step;

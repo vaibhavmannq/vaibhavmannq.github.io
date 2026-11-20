@@ -65,7 +65,19 @@ const RULES: Record<CoveStop, Rules> = {
     dland: 7,
     field: { candidates: 13000, from: 8, to: 32, patch: 0.3 },
   },
-  dusk: { candidates: 18000, near: [], nearFlowers: 500, lensClear: 6, zmin: 0.8, dland: 7 },
+  // III looks down from the headland (owner cove-and-stacks: "from above, with grass in front"): grass clumps at the
+  // lens sides and more flowers near the eye, the near layer the shot lacked (plan M8 Task 7, s22)
+  dusk: {
+    candidates: 18000,
+    near: [
+      [-38, 2.4, 0.45],
+      [36, 2.0, 0.5],
+    ],
+    nearFlowers: 900,
+    lensClear: 6,
+    zmin: 0.8,
+    dland: 7,
+  },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
   sunrise: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 6, zmin: 0.3, dland: 1.5 },
 };
@@ -179,8 +191,10 @@ export function scatterCove(surface: HeightAt): Plants {
         const aa = r() * 2 * Math.PI;
         const x = ncx + rr * Math.cos(aa);
         const y = ncy + rr * Math.sin(aa);
-        // above the swash (First light's camera stands on low sand)
-        if (surface(x, y) > 0.2) points.push({ x, y, forced: true, slope: slopeAt(x, y) });
+        // above the swash (First light's camera stands on low sand), and no steeper than any tall plant (s22: Dusk's
+        // right clump reached the cliff's lip)
+        const slope = slopeAt(x, y);
+        if (surface(x, y) > 0.2 && slope < TALL_SLOPE) points.push({ x, y, forced: true, slope });
       }
     }
 

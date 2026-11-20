@@ -46,6 +46,25 @@ export const SHADOW_FLOOR: Record<StopId, RGB> = {
 };
 
 /**
+ * How strongly the sky's dome lights the land, × the hemisphere light (light.ts HEMI_INTENSITY). 1 at every hour but
+ * Dusk (plan M8 Task 7, s22): there the sun has set (strength 0) but the whole dome is still bright, the land's only
+ * light; at 1 the headland's near faces and turf fell under the grade's shadow floor and showed as one flat tone
+ * (owner-references §14.4 "shadows with something in them"). At 2 the rock and turf keep their form, still darker than
+ * the sky they stand against.
+ */
+export const SKY_FILL: Record<StopId, number> = {
+  golden: 1,
+  sunset: 1,
+  dusk: 2,
+  bluehour: 1,
+  night: 1,
+  midnight: 1,
+  beforedawn: 1,
+  firstlight: 1,
+  sunrise: 1,
+};
+
+/**
  * How much mist lies on the water (plan M3 Task 3; reference book §4: radiation fog forms on calm clear nights and
  * "tends to dissipate soon after sunrise", owner `mist` 8). Only First light has it in full; Sunrise keeps a thin rest.
  */
@@ -99,6 +118,7 @@ function preset(id: StopId): HourPreset {
     aurora: s.aurora ? 1 : 0,
     cloud: s.cloudsea ? 1 : 0,
     shadowFloor: SHADOW_FLOOR[id],
+    skyFill: SKY_FILL[id],
     mist: MIST[id],
     plankton: PLANKTON[id],
   };
@@ -196,6 +216,7 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     aurora: lerp(a.aurora, b.aurora, w),
     cloud: lerp(a.cloud, b.cloud, w),
     shadowFloor: mix3(a.shadowFloor, b.shadowFloor, w),
+    skyFill: lerp(a.skyFill, b.skyFill, w),
     mist: lerp(a.mist, b.mist, w),
     plankton: lerp(a.plankton, b.plankton, w),
   };
