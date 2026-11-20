@@ -50,7 +50,7 @@ import {
   SUNSET_FRAME,
   scrubInstances,
 } from '../world/grove';
-import { createHeightSampler, createSurfaceSampler } from '../world/heights';
+import { createDrawnHeightSampler, createHeightSampler, createSurfaceSampler } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLife } from '../world/life';
@@ -235,8 +235,12 @@ async function loadBase(
   const surface = createSurfaceSampler(heights, meta.heights);
   const mid = SHOTS.midnight;
   const ridgeSite = { x: mid.cam[0], y: mid.cam[1], ground: surface(mid.cam[0], mid.cam[1]), yaw: mid.look[0] };
-  const ridgeGround = ridgeHeight(surface, ridgeSite);
-  parts.push(['ridge', createRidge(surface, ridgeSite, meta.heights, terrain.material)]);
+  // the ridge stands on the base ground as drawn (flat triangles), never under it (plan M8 Task 7: on the steep west drop
+  // the drawn base stood over the smooth height and showed through as a pale bare slab)
+  const drawn = createDrawnHeightSampler(heights, meta.heights);
+  const underRidge = (x: number, y: number) => Math.max(surface(x, y), drawn(x, y));
+  const ridgeGround = ridgeHeight(underRidge, ridgeSite);
+  parts.push(['ridge', createRidge(underRidge, ridgeSite, meta.heights, terrain.material)]);
   // its ranges fading with distance (plan M6 Task 4)
   parts.push(['peaks', createPeaks(ridgeSite, ridgeSite.yaw, light)]);
   const cove = scatterCove(surface);

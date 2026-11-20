@@ -127,7 +127,9 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
           .mul(0.4),
       );
     const crests = puff.mul(1.25).min(1);
-    return swell.mul(cfg.amp).add(crests.mul(CREST_SHARE * cfg.amp));
+    // plan M8 Task 7 (owner cloud-sea 3; s19 carry "rolling swells"): the long swell at half its height, so the deck
+    // reads as many small lumps on a near-level sea, not snowdrifts
+    return swell.mul(cfg.amp * 0.5).add(crests.mul(CREST_SHARE * cfg.amp));
   };
 
   const flat = vec2(positionLocal.x, positionLocal.z.negate());
@@ -188,7 +190,8 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
     return f;
   })();
   const lumps = smoothstep(4, 1.2, pixel);
-  const crease = mix(float(0.85), smoothstep(0.2, 0.62, lump).mul(0.55).add(0.45), lumps);
+  // plan M8 Task 7: deeper blue shadow between the lumps (owner cloud-sea 3: bright tops, dark gaps)
+  const crease = mix(float(0.85), smoothstep(0.2, 0.62, lump).mul(0.72).add(0.28), lumps);
   const shade = crease.mul(float(1).add(facing.mul(0.35).mul(lumps)));
   // the valleys between the big swells sit in shadow (m2-references §2.2)
   const valley = smoothstep(cfg.z - cfg.amp * 0.35, cfg.z + cfg.amp * 0.45, positionWorld.y);

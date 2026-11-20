@@ -173,7 +173,26 @@ Rulings continue from M7's R123.
 - **Verdict:** Night **look 76 % at mid, 74 % at low** (was 72 / 70), behaviour 78 % (unchanged). `night-final.jpg`.
   Left: the falls' width (shader), the aurora's top blob, the boxy rocks low left, firefly size and trails.
 
+### Task 7: look pass, Midnight
+- Shots (`mid0.jpg`): a pale bare slab in the lower left (s19 carry), the cloud deck as big smooth snowdrift swells
+  with a flat pale band at the far ranges' feet (owner `cloud-sea` 3: many small lumps, bright tops, dark gaps).
+- **The slab, found by bisecting one pixel** (`bisect-pixel.mjs`: hiding the terrain changed it, hiding the ridge did
+  not): it was not cloud, not the ridge mesh and not the ground standing over the ridge (three tries that changed
+  nothing, reverted), but **a bare patch of the moor at the visitor's feet**. **R143:** no bare patches within 8 m of the
+  eye (`scatterRidge`); the moor stays patchy further out.
+- **R144:** the ridge and its plants stand on the base ground *as drawn* (8 m cells drawn as flat triangles split b–c,
+  `createDrawnHeightSampler`, tested), never under it: a real guarantee on steep ground, kept although it was not the
+  slab's cause.
+- **R145, the deck:** the long swell at half its height and deeper shadow between the lumps (crease 0.45–1.0 →
+  0.28–1.0): a near-level sea of small lumps (`mid8/mid.png`). The flat pale band at the ranges' feet remains.
+- Census: Midnight 38 draws, 10 materials, 1.79 M triangles (+22 k, the heather at the feet). Unit 378.
+- Cold rides Night → Midnight: 0 pipelines. Frame times today unusable: **the old build (70db310) stalled as much as
+  the new one** (31 vs 34 frames over 50 ms; s19 saw 0), with 2.8 GB free: the laptop's state, not the change.
+- **Verdict:** Midnight **look 77 % at mid** (was 74), behaviour 72 % (unchanged). Left: the far pale band and the hard
+  edges at the ranges' feet, the dark hill's streaky sheen centre left, heather still even in the middle distance,
+  nothing answering the pointer.
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
-  First light → Sunrise kept), and Task 7's first place, Night (76 %). Next: Task 7 at
-  Midnight, then Before dawn, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
+  First light → Sunrise kept), and Task 7 at Night (76 %) and Midnight (77 %). Next: Task 7 at
+  Before dawn, then, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.

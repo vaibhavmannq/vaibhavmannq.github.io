@@ -135,7 +135,8 @@ export function scatterRidge(height: HeightAt, site: RidgeSite, owner: number): 
     const drop = site.ground - z;
     // bare ground and thin turf in winding patches (a moor is never one even carpet; s19 look pass)
     const bare = coastFbm(x * 0.3 + 41, y * 0.3 + 5, 3);
-    if (bare < 0.33 && fine < 0.6) continue;
+    // none at the visitor's feet (plan M8 Task 7): a bare patch within 8 m showed as a pale slab low left under the moon
+    if (bare < 0.33 && fine < 0.6 && d > 8) continue;
     if (patch + 0.25 * fine > 0.47) put(x, y, 0.28 + 0.22 * r(), PLANT.heather);
     else if (drop > 4 && fine > 0.62) put(x, y, 0.5 + 0.3 * r(), PLANT.tall);
     else if (fine > 0.36) put(x, y, 0.18 + 0.14 * r(), PLANT.short);
