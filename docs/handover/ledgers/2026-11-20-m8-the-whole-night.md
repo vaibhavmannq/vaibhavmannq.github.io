@@ -91,3 +91,13 @@ Rulings continue from M7's R123.
   and stacks arrive a second later, small at the frame's left. `load.spec` alone: name 360 ms, stage A 1.17 s.
 - **Verdict:** behaviour 84 % (no half-built world shown; the line sits still at 0.3 while the base downloads: real
   byte progress would read better); look of the loader 78 % (quiet, low contrast on the bright poster).
+
+### Task 8 (cursor half): the night cursor
+- **R135:** a glow under the pointer with a 7-point trail (DOM dots moved by transform, `mix-blend-mode: screen`), shown by
+  the night hours' weight (Blue hour to Before dawn, following the light's turn in flights: `nightWeight`, tested);
+  mouse/trackpad only (`pointer: fine`, pointerType mouse); the system pointer stays; it steps aside over links,
+  buttons and the card; none under reduced motion.
+- Checked mid-sweep (`cursor-night.png`): a short line of soft blue-white points with a faint glow at the tip, under
+  the fireflies' brightness; off at Golden.
+- **Verdict:** look 76 % (quiet, fits the night; the glow at the tip is almost invisible on a dark scene), behaviour 80 %.
+  Not judged on a trackpad by hand.

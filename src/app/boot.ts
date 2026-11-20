@@ -20,6 +20,7 @@ import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
 import { createWalk } from '../journey/walk';
 import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
+import { installNightCursor } from '../overlay/nightCursor';
 import { createProjectCard } from '../overlay/projectCard';
 import { createRail } from '../overlay/rail';
 import { createRide } from '../overlay/ride';
@@ -1006,6 +1007,9 @@ export async function boot(): Promise<App> {
   void last;
   installBench(app);
   if (params.hud) installHud(app);
+  // the night cursor (plan M8 Task 8): a glow with a short trail in the night hours, mouse only
+  const nightCursor = installNightCursor();
+  if (nightCursor) app.onFrame.push((state, _now, dtMs) => nightCursor.update(state, dtMs));
   // Development only: the running app, for checks from the browser console and the headed test browser.
   if (import.meta.env.DEV) (window as unknown as { __app: App }).__app = app;
   return app;

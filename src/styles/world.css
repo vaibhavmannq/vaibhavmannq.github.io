@@ -334,3 +334,39 @@ html.is-scene-ready .poster {
   border-radius: 999px;
   padding: 0.2rem 0.75rem;
 }
+
+/* The night cursor (plan M8 Task 8; owner-sites: Originkit "Aura Cursor", "Ribbon Trails"): a soft glow under the
+   pointer and a short trail, night hours only; the system pointer stays. boot.ts sets the layer's opacity. */
+.night-cursor {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.night-cursor__glow,
+.night-cursor__dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.night-cursor__glow {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  background: radial-gradient(circle, rgb(190 215 255 / 0.22) 0%, rgb(150 180 255 / 0.08) 40%, transparent 70%);
+}
+
+.night-cursor__dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: rgb(215 230 255 / calc(0.45 * var(--k)));
+  box-shadow: 0 0 6px rgb(170 200 255 / calc(0.5 * var(--k)));
+  transform: translate3d(-100px, -100px, 0);
+}
