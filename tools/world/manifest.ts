@@ -25,7 +25,11 @@ function walk(dir: string): string[] {
 
 function stopsOf(path: string): StopId[] | 'all' {
   if (path === 'stills/poster.webp') return ['golden'];
-  const id = path.split('/')[1]?.split('.')[0] as StopId;
+  // a still has a landscape and a portrait version (plan M8 Task 11): both count against their stop
+  const id = path
+    .split('/')[1]
+    ?.split('.')[0]
+    ?.replace(/-portrait$/, '') as StopId;
   if ((path.startsWith('sky/') || path.startsWith('stills/')) && STOP_IDS.includes(id)) return [id];
   if (path.startsWith('base/')) return 'all';
   // the headland's place pack (ruling R15): counted against the stops that see the arch, not the world base
@@ -38,6 +42,8 @@ function stopsOf(path: string): StopId[] | 'all' {
 const files: FileEntry[] = walk(world)
   .map((full) => relative(world, full).split(sep).join('/'))
   .filter((path) => !INLINED.has(path))
+  // sound loads only after the visitor turns it on (plan M8 Task 9), outside the speed bar and the place budgets
+  .filter((path) => !path.startsWith('sound/'))
   .sort()
   .map((path) => {
     const bytes = readFileSync(join(world, path));

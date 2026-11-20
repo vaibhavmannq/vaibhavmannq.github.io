@@ -342,63 +342,126 @@
    ]
   },
   {
-   "path": "stills/beforedawn.webp",
-   "bytes": 93756,
-   "sha256": "5b2910457009632d582ba8d77822caaf6bf72dfe6d4bf7de96ba68a0d1c728b2",
+   "path": "stills/beforedawn-portrait.webp",
+   "bytes": 30890,
+   "sha256": "722b2e17b8285acd0f08816c58d5b9850a33dd8acbbb83f312265faaeba9c65b",
    "stage": "B",
    "stops": [
     "beforedawn"
    ]
   },
   {
-   "path": "stills/bluehour.webp",
-   "bytes": 65400,
-   "sha256": "8567a6a8424ffe1dda8f2a025c60b417d7b018643dcf7c0b3b817e95b70e3039",
+   "path": "stills/beforedawn.webp",
+   "bytes": 41426,
+   "sha256": "784416ecdd55d4df78dccba1f15e3d85b7357805586abdee79ce5122efaa709b",
+   "stage": "B",
+   "stops": [
+    "beforedawn"
+   ]
+  },
+  {
+   "path": "stills/bluehour-portrait.webp",
+   "bytes": 40168,
+   "sha256": "302301678eefef12a851eeec3bcd5749f07032e5b1debc935b57be1df54b1779",
    "stage": "B",
    "stops": [
     "bluehour"
    ]
   },
   {
-   "path": "stills/dusk.webp",
-   "bytes": 88806,
-   "sha256": "9f0aa4943325c8f89d39a1941c5d1af62781e6399613f90aba80598153ad2b55",
+   "path": "stills/bluehour.webp",
+   "bytes": 62960,
+   "sha256": "be334dea9074eb74856a6ec599537e8c745fcd922b3b91975ad0396041d28676",
+   "stage": "B",
+   "stops": [
+    "bluehour"
+   ]
+  },
+  {
+   "path": "stills/dusk-portrait.webp",
+   "bytes": 46904,
+   "sha256": "f07024628813492d251fdce76263f671adf64f18bc5293c4e3884285ab7ea36c",
    "stage": "B",
    "stops": [
     "dusk"
    ]
   },
   {
-   "path": "stills/firstlight.webp",
-   "bytes": 127878,
-   "sha256": "70f9f7ffe2158e04960fe5e21473f2de810217513a48ccea09450c9f10d2bce4",
+   "path": "stills/dusk.webp",
+   "bytes": 68406,
+   "sha256": "10e8c54b3b89544460e3ab340edc7c0aac300567f805355283063d126a9ec0aa",
+   "stage": "B",
+   "stops": [
+    "dusk"
+   ]
+  },
+  {
+   "path": "stills/firstlight-portrait.webp",
+   "bytes": 37832,
+   "sha256": "a19d530807bd6019a7711c6f7cd82ce43664a6c72b3af7e4098bc418dbb91b2d",
    "stage": "B",
    "stops": [
     "firstlight"
    ]
   },
   {
+   "path": "stills/firstlight.webp",
+   "bytes": 55564,
+   "sha256": "5285a68bb14c54292e5142cb9309a012f6c75afe94d692141e6b38d266871621",
+   "stage": "B",
+   "stops": [
+    "firstlight"
+   ]
+  },
+  {
+   "path": "stills/golden-portrait.webp",
+   "bytes": 34554,
+   "sha256": "35f9347b31e546d1ea1a0b250e57f06f526a679fecae85a52518e854eda607e1",
+   "stage": "B",
+   "stops": [
+    "golden"
+   ]
+  },
+  {
    "path": "stills/golden.webp",
-   "bytes": 100970,
-   "sha256": "4e2bb50cc567d5af95514c4c3c5db5247a49c938620eb4e48c0e411dde6cf641",
+   "bytes": 67600,
+   "sha256": "d816ccdae0b51c88550fe13d2b488a5fee598ba31565e16d1553c9d32fefbb2a",
    "stage": "A",
    "stops": [
     "golden"
    ]
   },
   {
-   "path": "stills/midnight.webp",
-   "bytes": 88248,
-   "sha256": "ef36a84c0f352c011d3014f8cf8c0d81cfe6aa8accd24a93318baab68c3ad3d2",
+   "path": "stills/midnight-portrait.webp",
+   "bytes": 64632,
+   "sha256": "ec0c64928c59af4afeb0a38649f2c6007853aa403fddb7c8470cf0cb747bfae8",
    "stage": "B",
    "stops": [
     "midnight"
    ]
   },
   {
+   "path": "stills/midnight.webp",
+   "bytes": 109890,
+   "sha256": "37f6855600af8035fc821d0d92204a42166d1e9a0b2c5f0896a05d895d235b8f",
+   "stage": "B",
+   "stops": [
+    "midnight"
+   ]
+  },
+  {
+   "path": "stills/night-portrait.webp",
+   "bytes": 47282,
+   "sha256": "6869e082809787487ca066e9ac4e51e55fffa7147c1edecc150976057a580db5",
+   "stage": "B",
+   "stops": [
+    "night"
+   ]
+  },
+  {
    "path": "stills/night.webp",
-   "bytes": 89078,
-   "sha256": "78427306b9452da62e20209598856c7f5a42c3f6950f124a6f5e8ab84c339bcd",
+   "bytes": 70136,
+   "sha256": "000e05b26bfadc7e0f7469a916cefc5fb73c7d97c399ab3f4d2e6c1b4d998133",
    "stage": "B",
    "stops": [
     "night"
@@ -406,26 +469,44 @@
   },
   {
    "path": "stills/poster.webp",
-   "bytes": 336,
-   "sha256": "7f8c7b1e2dcceb6b197e31121b2e11343163b98b0e8bfd9549b86c660d709055",
+   "bytes": 414,
+   "sha256": "a93a38de78cf23b66db015050198b0d1ec9a97c8809f25bced1b71c34e162c30",
    "stage": "A",
    "stops": [
     "golden"
    ]
   },
   {
-   "path": "stills/sunrise.webp",
-   "bytes": 112402,
-   "sha256": "7b988bd9ec8391dc25a9adc760cfeb0e617bc19edef3ebe6a0eada6b1279f7d0",
+   "path": "stills/sunrise-portrait.webp",
+   "bytes": 80630,
+   "sha256": "816f8723c6bc6877f44eb979c05ea7db1516266a7974fd3669ec1848f2c7b79e",
    "stage": "B",
    "stops": [
     "sunrise"
    ]
   },
   {
+   "path": "stills/sunrise.webp",
+   "bytes": 103238,
+   "sha256": "a44af091f1155df86f061b97256cc2dec6be7f3409ac1cfd9edaeb40ede3d06c",
+   "stage": "B",
+   "stops": [
+    "sunrise"
+   ]
+  },
+  {
+   "path": "stills/sunset-portrait.webp",
+   "bytes": 81698,
+   "sha256": "6f0c9d726d74e500f71c7098ef694847423ee245cf9fd9000328ec74c469e270",
+   "stage": "B",
+   "stops": [
+    "sunset"
+   ]
+  },
+  {
    "path": "stills/sunset.webp",
-   "bytes": 135518,
-   "sha256": "9c9c43786393722eacc44dcdf2795deb5c2fd2714c197e113ddf0200ca2e9bc5",
+   "bytes": 120948,
+   "sha256": "203a1f27a94f286ea90637b50d026feb343d3ee38836e11895306c746214db75",
    "stage": "B",
    "stops": [
     "sunset"

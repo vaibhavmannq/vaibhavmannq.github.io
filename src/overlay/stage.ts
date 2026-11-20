@@ -10,11 +10,14 @@ export function createStage(stops: readonly Stop[], base = '/world/') {
   const stills = document.getElementById('stills') as HTMLElement;
   const veil = document.getElementById('veil') as HTMLElement;
   const html = document.documentElement;
+  // a tall screen gets each place's portrait still (plan M8 Task 11): the landscape one, cropped to the middle, lost the
+  // subject the live view turns toward (portraitYaw)
+  const tall = typeof matchMedia === 'function' && matchMedia('(max-aspect-ratio: 4/5)').matches;
   const images = stops.map((stop) => {
     const img = document.createElement('img');
     img.alt = '';
     img.decoding = 'async';
-    img.dataset.src = `${base}stills/${stop.id}.webp`;
+    img.dataset.src = `${base}stills/${stop.id}${tall ? '-portrait' : ''}.webp`;
     stills.append(img);
     return img;
   });
