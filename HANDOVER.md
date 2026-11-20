@@ -242,7 +242,9 @@ no borrowed set pieces (no towers, piano, etc.).
   - **This laptop has 7.7 GB; with the owner's apps open only ~1–2 GB is free. One test browser at a time, stopped
     after each run** (owner, s21: the test browsers were hogging RAM). `quiet-browser.mjs` now shuts its Chrome down
     when a check ends or crashes.
-- **Next (s22): M8 continues** at the s21 log's "Next": re-measure R138 (memory free), Task 7 from Sunset's slope on (then Dusk, First light, the glare, Sunrise, Night's falls) (look passes), Task 9 (sound design first), Tasks 10–12.
+- **Owner, end of s21 (D42): the first view keeps waiting until the opening place is whole.** `world` pushed.
+- **Next (s22): M8 continues** at the s21 log's "Next": Task 7's look passes (Dusk, the glare, Sunrise, Night's falls,
+  Sunset's slope, First light's mist), R138 re-measured with memory free, Task 9 (sound design first), Tasks 10–12.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
