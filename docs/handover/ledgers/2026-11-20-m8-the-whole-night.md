@@ -154,6 +154,26 @@ Rulings continue from M7's R123.
   (`.superpowers/quiet-browser.mjs`) now shuts down whole when a check closes or crashes; it used to stay running
   between checks, and a crashed check left its tab rendering the world. Checked: no test Chrome left after a run.
 
+### Task 7: look pass, Night (first place)
+- Shots (`night0.jpg`) against owner `waterfall` 5: the walls an even dark barcode, a bare jagged rim, the falls two
+  thin threads over a block-shaped ledge, a pale aurora blob at the frame's top, boxy rocks low left.
+- **R141, the walls:** per column a tone (0.8–1.25) and dark wet seeps from the rim in streaks a few columns wide,
+  baked into the bowl's `light`; moss in the wet band under 8 m and down the seeps, in patches (`moss`). The bowl's
+  light floor 0.12 holds (its test caught a first try at 0.07). No cost: baked attributes.
+- **R142, trees on the rim:** 13 grove trees and shrubs along the rim the camera sees (`rimTrees()` in bowl.ts; none over
+  the falls, fewer on the low west), each on the rim's top, at 2.1× the first sizes (the first read as specks at
+  50–80 m). Drawn by a new general part, `createGroveProps(grove, instances, groundAt, stop, name)` (Sunset's tree
+  uses it too; was `createMeadowScrub`). Mirrored in the lagoon.
+- The falls ~1.7× wider were tried and reverted: the ribbons then overlapped (their test wants wet rock between), and the
+  falls already *render* much narrower than their layout (lower span 9.6 m drawn as ~125 px at 45 m, where ~230 px
+  would be expected): a falls-shader question for the next Night pass. The foot's mist is larger (w 8 → 11, d 5 → 7).
+- Census: Night 42 draws (+2), **14 materials (the D13 cap: nothing new at Night may add one)**, 1.33 M triangles
+  (+62 k). GPU (A = 70db310 in `../wt-head`, `ab-builds.mjs`): low 10.8–11.2 → 11.1–11.3 ms, 60 fps; mid
+  18.7–19.2 → 19.7–20.1 ms (mid already under 60 here). Cold ride Blue hour → Night: 0 pipelines (`night-cold.log`).
+- **Verdict:** Night **look 76 % at mid, 74 % at low** (was 72 / 70), behaviour 78 % (unchanged). `night-final.jpg`.
+  Left: the falls' width (shader), the aurora's top blob, the boxy rocks low left, firefly size and trails.
+
 ### Where s21 stopped
 - Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
-  First light → Sunrise kept). Next: R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
+  First light → Sunrise kept), and Task 7's first place, Night (76 %). Next: Task 7 at
+  Midnight, then Before dawn, Sunset's slope, Dusk, First light, the glare, Sunrise; R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.

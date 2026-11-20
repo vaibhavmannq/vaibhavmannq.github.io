@@ -30,7 +30,7 @@ import {
 } from 'three/webgpu';
 import type { GroveMeta } from '../assets/manifest';
 import type { FrameState } from '../journey/timeline';
-import { STOP_IDS } from '../journey/types';
+import { STOP_IDS, type StopId } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
 import { mulberry32 } from '../shared/random';
 import { coveInPlay } from './cliffs';
@@ -524,21 +524,28 @@ export function scrubInstances(
 }
 
 /**
- * Trees placed in the browser around Sunset's meadow view (plan M8 Task 3, D38), drawn with the grove's material (no
- * download, no new material), only at Sunset and its two flights. In the mirror, as the grove.
+ * Trees placed in the browser for one stop (plan M8: Sunset's framing tree, Task 3; Night's rim, Task 7), drawn with
+ * the grove's material (no download, no new material), only at that stop and its two flights. In the mirror, as the
+ * grove. `groundAt` stands each plant (bakeGrove less its sink).
  */
-export function createMeadowScrub(grove: GrovePart, instances: Float32Array, groundAt: HeightAt): WorldPart {
+export function createGroveProps(
+  grove: GrovePart,
+  instances: Float32Array,
+  groundAt: HeightAt,
+  stop: StopId,
+  name: string,
+): WorldPart {
   const g = bakeGrove({ instances, protos: grove.protos }, groundAt);
   const geometry = groveGeometry(g);
   const mesh = new Mesh(geometry, grove.material);
-  mesh.name = 'scrub';
+  mesh.name = name;
   mesh.visible = false;
-  const sunset = STOP_IDS.indexOf('sunset');
+  const at = STOP_IDS.indexOf(stop);
   return {
     object: mesh,
     update(f) {
       // at a stop only its own (a stop's state can name the next stop as b), in a flight either end
-      mesh.visible = f.state.kind === 'stop' ? f.state.a === sunset : f.state.a === sunset || f.state.b === sunset;
+      mesh.visible = f.state.kind === 'stop' ? f.state.a === at : f.state.a === at || f.state.b === at;
       if (mesh.visible) grove.setWind(f.hour.world);
     },
     setTier(tier: TierSettings) {

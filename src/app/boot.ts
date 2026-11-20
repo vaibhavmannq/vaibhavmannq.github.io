@@ -32,7 +32,7 @@ import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
-import { BOWL, createBowl, fallsLayout } from '../world/bowl';
+import { BOWL, createBowl, fallsLayout, rimTrees } from '../world/bowl';
 import { capInstances } from '../world/caps';
 import { caveLure, createCave, decodeCave } from '../world/cave';
 import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
@@ -44,8 +44,8 @@ import { createDressing, decodeDressing } from '../world/dressing';
 import {
   createCaps,
   createGrove,
+  createGroveProps,
   createLoneTree,
-  createMeadowScrub,
   decodeGrove,
   SUNSET_FRAME,
   scrubInstances,
@@ -351,7 +351,13 @@ async function loadBase(
         // Sunset's framing tree (plan M8 Task 3, D38)
         const sunsetEye = [SHOTS.sunset.cam[0], SHOTS.sunset.cam[1]] as const;
         const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], SUNSET_FRAME, surfaceAt);
-        joins.push(compileThenAdd(app, createMeadowScrub(grove, frame, surfaceAt), 'scrub'));
+        joins.push(compileThenAdd(app, createGroveProps(grove, frame, surfaceAt, 'sunset', 'scrub'), 'scrub'));
+        // trees along Night's rim (plan M8 Task 7), each standing on the rim's top
+        const rim = rimTrees();
+        const rimZ = new Map<string, number>();
+        for (let i = 0; i < rim.length; i += 10) rimZ.set(`${rim[i + 1]},${rim[i + 2]}`, rim[i + 3] as number);
+        const onRim = (x: number, y: number) => rimZ.get(`${x},${y}`) ?? 0;
+        joins.push(compileThenAdd(app, createGroveProps(grove, rim, onRim, 'night', 'rimtrees'), 'rimtrees'));
         // the stacks' and the arch's scrub caps share the grove's shrub and material (plan M4 Task 3)
         joins.push(
           capsAt.then((caps) => (caps.length ? compileThenAdd(app, createCaps(grove, caps), 'caps') : undefined)),

@@ -271,9 +271,9 @@ export function fallsLayout(): FallsLayout {
       lower(2.0, 0.8, 1.2, 5),
       lower(4.6, 0.4, 0.65, 6),
     ],
-    pool: { x: x - 0.5, y: y(lowerFace - 2.6), r: 6 },
+    pool: { x: x - 0.5, y: y(lowerFace - 2.6), r: 7 },
     mists: [
-      { x: x - 0.5, y: y(lowerFace - 2.2), z: 0.6, w: 8, d: 5 },
+      { x: x - 0.5, y: y(lowerFace - 2.2), z: 0.6, w: 11, d: 7 },
       { x: x - 0.5, y: y(lowerFace + 0.8), z: ledge + 0.3, w: 3, d: 1.2 },
     ],
   };
@@ -338,14 +338,25 @@ export function bowlGeometry(prisms: readonly Prism[], fallsAt: { x: number; y: 
     // sky share: deep in the bowl less sky; the back rows and the rim more
     const fromFalls = Math.hypot(cx - fallsAt.x, cy - fallsAt.y);
     const spray = Math.max(0, 1 - fromFalls / 28);
+    // plan M8 Task 7 (Night; owner waterfall 5, Svartifoss): no two columns the same tone, and dark wet seeps running
+    // down from the rim in streaks a few columns wide, so the wall is faces and stains, not an even barcode (s18 carry)
+    const h = Math.abs(Math.sin(cx * 12.9898 + cy * 78.233) * 43758.5453) % 1;
+    const tone = 0.8 + 0.45 * h;
+    const azr = Math.atan2(cx - BOWL.x, cy - BOWL.y);
+    const streak = Math.sin(azr * 23 + 1.1) * 0.6 + Math.sin(azr * 41 + 0.3) * 0.4;
+    const seep = Math.min(1, Math.max(0, (streak - 0.45) / 0.4));
     const put = (q: number[], n: readonly number[], mossy: number) => {
       position.set(q, v * 3);
       normal.set(n, v * 3);
       const z = q[2]!;
       // deep in the bowl the walls see little sky (owner waterfall 5: the alcove in deep shadow, the falls bright by
       // contrast); the rim sees most of it
-      light[v] = 0.12 + 0.88 * Math.min(1, Math.max(0, (z + 2) / 40)) ** 1.3;
-      moss[v] = Math.min(1, mossy + spray * 0.45);
+      const height = Math.min(1, Math.max(0, (z + 2) / 40));
+      // never under the bowl's floor of 0.12 (no pure black: owner-references §14)
+      light[v] = Math.max(0.12, (0.12 + 0.88 * height ** 1.3) * tone * (1 - 0.35 * seep * (0.4 + 0.6 * height)));
+      // moss in the wet band over the water and down the seeps, in patches (the hash), never on a drum's sides
+      const wet = Math.max(0, 1 - Math.max(0, z) / 8) * 0.45 + seep * 0.3;
+      moss[v] = Math.min(1, mossy + spray * 0.45 + (p.kind === 2 ? 0 : wet * (0.4 + 0.6 * h)));
       column[v * 2] = cx * CELL_SCALE - z * 0.04;
       column[v * 2 + 1] = cy * CELL_SCALE + z * 0.03;
       v++;
@@ -427,4 +438,49 @@ export function createBowl(
       geometry.dispose();
     },
   };
+}
+
+/**
+ * Trees and shrubs along the rim the lagoon's camera sees (plan M8 Task 7; owner waterfall 5: a fringe of trees on top
+ * of the wall; s18 carry "bare rim"): degrees round the bowl, scale, model (grove.ts GROVE_KINDS: 1, 2 island trees,
+ * 3 the searsia shrub). None straight over the falls; fewer on the low west, where the sky opens.
+ */
+const RIM_TREES: readonly (readonly [number, number, number])[] = [
+  [-66, 1.1, 3],
+  [-54, 1.3, 2],
+  [-45, 1.0, 1],
+  [-35, 1.5, 2],
+  [-26, 1.1, 3],
+  [-17, 1.4, 1],
+  [-9, 1.0, 3],
+  [10, 1.2, 3],
+  [17, 1.5, 2],
+  [27, 1.1, 1],
+  [37, 1.4, 3],
+  [48, 1.3, 2],
+  [60, 1.0, 3],
+];
+
+/** Pure: grove instances (10 floats each, z the rim's top) for the rim's trees, a little behind the back row. */
+export function rimTrees(): Float32Array {
+  const back = BOWL.rows * BOWL.spacing * 0.87 + 1.4;
+  const out: number[] = [];
+  RIM_TREES.forEach(([az, size, model], i) => {
+    const r = wallRadius(az) + back;
+    // s21 look check: at 50-80 m the listed sizes read as specks on the rim; the fringe needs twice that
+    const scale = size * 2.1;
+    out.push(
+      model,
+      BOWL.x + Math.sin(rad(az)) * r,
+      BOWL.y + Math.cos(rad(az)) * r,
+      wallHeight(az) - 0.6,
+      scale,
+      scale,
+      scale,
+      0,
+      0,
+      i * 2.39996,
+    );
+  });
+  return Float32Array.from(out);
 }
