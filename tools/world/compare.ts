@@ -15,7 +15,8 @@ const [baseUrl, outDir, stopList, query = 'tier=high'] = process.argv.slice(2);
 if (!baseUrl || !outDir) throw new Error('usage: compare <baseUrl> <outDir> [stops] [query]');
 const stops = stopList ? stopList.split(',') : [...STOP_IDS];
 mkdirSync(outDir, { recursive: true });
-const stills = fileURLToPath(new URL('../../public/world/stills/', import.meta.url));
+// The approved Blender renders (local, not in git); public/world/stills/ holds captures of the live site since M8 Task 11
+const stills = fileURLToPath(new URL('../../.superpowers/brainstorm/lookdev/real/out3/out3/', import.meta.url));
 const SIZES = [
   { name: 'wide', width: 1920, height: 1080 },
   { name: 'phone', width: 412, height: 915 },
@@ -73,7 +74,7 @@ const refColumn = (stop: string) =>
 const rows = stops
   .map(
     (stop) => `<figure><figcaption>${stop}</figcaption>
-<div class="wide${refs[stop] ? ' has-refs' : ''}"><img src="${rel}/${stop}.webp" alt="render, ${stop}"><img src="${stop}-wide.png" alt="live, ${stop}">${refs[stop] ? `<div class="refs">${refColumn(stop)}</div>` : ''}</div>
+<div class="wide${refs[stop] ? ' has-refs' : ''}"><img src="${rel}/${stop}_hybrid_vivid.jpg" alt="render, ${stop}"><img src="${stop}-wide.png" alt="live, ${stop}">${refs[stop] ? `<div class="refs">${refColumn(stop)}</div>` : ''}</div>
 <div class="phone"><img src="${stop}-phone.png" alt="live on a phone, ${stop}"></div></figure>`,
   )
   .join('\n');
