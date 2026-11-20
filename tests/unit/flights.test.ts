@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { generateWaypoints, sampleFlight } from '../../src/journey/flights';
 import { SHOTS } from '../../src/journey/shots';
 import type { Vec3 } from '../../src/journey/types';
+import { SUNSET_FRAME } from '../../src/world/grove';
 
 const flat = () => 0;
 
@@ -81,6 +82,24 @@ describe('the baked flight paths over the real world base', async () => {
       'beforedawn>firstlight',
       'firstlight>sunrise',
     ]);
+  });
+
+  // plan M8 Task 6: Sunset's framing tree (M8 Task 3) stands 8 m from Sunset's eye; the flight in went through it (s21)
+  it("keeps every flight 7 m clear of Sunset's framing tree below its crown", () => {
+    const eye = SHOTS.sunset.cam;
+    for (const [off, d] of SUNSET_FRAME) {
+      const a = ((SHOTS.sunset.look[0] + off) * Math.PI) / 180;
+      const tx = eye[0] + d * Math.sin(a);
+      const ty = eye[1] + d * Math.cos(a);
+      for (const path of paths)
+        for (let i = 0; i <= 400; i++) {
+          const { pos } = sampleFlight(path.points, i / 400);
+          if (pos[2] - heightAt(tx, ty) > 14) continue;
+          expect(Math.hypot(pos[0] - tx, pos[1] - ty), `${path.from}>${path.to} at ${i / 400}`).toBeGreaterThanOrEqual(
+            7,
+          );
+        }
+    }
   });
 
   it('keeps every flight at least 2 m above the ground between take-off and the final descent', () => {

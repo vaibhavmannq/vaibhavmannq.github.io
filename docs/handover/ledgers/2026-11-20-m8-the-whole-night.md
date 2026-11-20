@@ -133,6 +133,27 @@ Rulings continue from M7's R123.
 - A first measuring run with both test Chromes open (the owner: "it's hogging the RAM") gave 116 slow frames at rest:
   discarded. Only one test browser at a time from now on; stop it after each run.
 
+### Task 6 continued: the other three flights
+- **R139, Before dawn → First light** flown with a level gaze (`SIDEWAYS`): the gaze no longer tilts down the slope with
+  the descent (−17°), so from t 0.45 the frame is the cove, its mirror and the dawn sky; the dark slope is a thin band
+  (`flight78-old.jpg` → `flight78-level.jpg`). The hill's dark flank still fills the left at t 0.25–0.35.
+  **Look 72 %, behaviour 75 %** (was 60).
+- **R140, Golden → Sunset**: sideways (gaze on the sun and the sea), and a new end (`FLIGHT_OVERRIDES`): over the cliff
+  edge near (27, 111), across the meadow, in from the north. **The old last leg passed 6.9 m from Sunset's framing
+  tree's trunk, inside its crown** (Task 3 added the tree; its strips faced away and missed it): new test "keeps every
+  flight 7 m clear of Sunset's framing tree below its crown"; Sunset → Dusk's first leg nudged east for the same test
+  (`sunset>dusk` override, the generated hop otherwise). Strip `flight12-new.jpg`: the sun's road and the stacks, the
+  grove passing, the meadow opening at the edge, settling into Sunset as the tree enters left. **Look 80 %, behaviour
+  78 %** (was 65).
+- First light → Sunrise (72 %) left as it is.
+- Tests: unit 376 (flights, grove, camera green). Cold rides, one test browser, 2.3 GB free (`flights-cold4.log`):
+  **0 pipelines on Golden → Sunset → Dusk and Before dawn → First light.** Frame times: Golden → Sunset worst 50 ms;
+  Sunset → Dusk clean in flight (a 300 ms frame at rest +35 s, R127); Before dawn → First light one 199 ms frame as the
+  ride began, then the cold Chrome's 1 Hz throttle (exact 1016 ms frames from +40 s, the s20 artifact): not evidence.
+- **Tooling (owner: "why do you keep tabs open all the time in chrome, it eats up a lot of ram"):** the test Chrome
+  (`.superpowers/quiet-browser.mjs`) now shuts down whole when a check closes or crashes; it used to stay running
+  between checks, and a crashed check left its tab rendering the world. Checked: no test Chrome left after a run.
+
 ### Where s21 stopped
-- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6's first two flights (III → IV,
-  II → III). Next: R138 re-measured, then the rest of Task 6 (VII→VIII, I→II, VIII→IX) (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.
+- Done: Tasks 0–5, Task 8 (loader in Task 5, cursor), their phone check, and Task 6 (four of five flights reshaped;
+  First light → Sunrise kept). Next: R138 re-measured with memory free (flights as shots), Task 7 (look passes), Task 9 (sound design), Tasks 10–12.

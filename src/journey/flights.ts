@@ -26,11 +26,25 @@ export function walkStart(cam: Vec3, yaw: number, depth: number): Vec3 {
 
 /** Hand-placed curves that replace the generated ones. */
 export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
-  // The slice's path over the cove, approved in s02.
+  // The slice's path over the cove (approved in s02), then (plan M8 Task 6; design review §4 "I → II") up over the cliff
+  // edge near (27, 111) so the meadow opens as it is crossed, and in from the north, clear of Sunset's framing tree
+  // (8 m left of Sunset's eye; the old last leg passed 6.9 m from its trunk, inside the crown). Sideways: the gaze stays
+  // on the sea and the sun.
   'golden>sunset': [
     [6, 12, 2.2],
     [-6, 52, 9.0],
-    [4, 104, 20.0],
+    [4, 104, 18.0],
+    [27, 111, 20.0],
+    [52, 118, 21.0],
+    [78, 113, 21.0],
+    [84, 104, 20.2],
+  ],
+  // Sunset → Dusk (plan M8 Task 6): the generated hop, its first leg nudged east of Sunset's framing tree (it brushed the
+  // crown at 6.96 m); flown sideways, the gaze on the sea.
+  'sunset>dusk': [
+    [80.0, 86.0, 24.5],
+    [66.0, 72.0, 29.5],
+    [50.0, 52.0, 32.4],
   ],
   // Dusk → Blue hour skims out among the lanterns (plan M8 Task 6; design review §4 "III → IV"): step off the headland
   // and drop to ~3 m over the water where the lanterns' string starts (lanterns.ts DUSK_LANTERNS, (−12, 52) →
@@ -102,7 +116,12 @@ export const APPROACH: Partial<Record<FlightKey, Vec3[]>> = {
  * direction of travel. First light → Sunrise: both look out to sea, and nose-first the camera turned east into the unlit
  * headland, which filled over half the screen (M0 look note, M1 shots).
  */
-export const SIDEWAYS: ReadonlySet<FlightKey> = new Set<FlightKey>(['sunset>dusk', 'firstlight>sunrise']);
+export const SIDEWAYS: ReadonlySet<FlightKey> = new Set<FlightKey>([
+  'golden>sunset',
+  'sunset>dusk',
+  'beforedawn>firstlight',
+  'firstlight>sunrise',
+]);
 
 /**
  * Reveals a flight looks up at (plan M4 Task 5; Amendment 1 §7 "slow at the reveals, through the arch"): near `at`
