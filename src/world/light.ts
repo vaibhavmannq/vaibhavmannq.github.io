@@ -179,6 +179,8 @@ export function createLightUniforms() {
     aurora: uniform(0),
     cloud: uniform(0),
     shadowFloor: uniform(new Color(0.008, 0.008, 0.02)),
+    /** × HEMI_INTENSITY for the parts that light themselves (meadow, grove): hours.ts SKY_FILL */
+    skyFill: uniform(1),
   };
   const key = new DirectionalLight(0xffffff, 2);
   /** Bounce light from the lit sea and sky opposite the key, so shadowed faces keep their shape (slice). */
@@ -214,6 +216,7 @@ export function createLightUniforms() {
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
       u.shadowFloor.value.setRGB(...v.shadowFloor);
+      u.skyFill.value = v.skyFill;
 
       key.color.setRGB(...v.keyColor);
       key.intensity = v.keyStrength;

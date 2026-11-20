@@ -177,7 +177,8 @@ function placements(groundAt: HeightAt) {
   const s = SHOTS.sunrise;
   const low = s.look[1] - 0.8 * ((Math.atan(18 / s.lens / (16 / 9)) * 180) / Math.PI);
   const dew: { x: number; y: number; z: number; rate: number; phase: number }[] = [];
-  for (let i = 0; i < 40; i++) {
+  // 160 points (s22: 40 read as a few stray specks across the slope; dew sparkles point by point, book §8)
+  for (let i = 0; i < 160; i++) {
     const r = rngFor(500, i);
     const da = 12 + 20 * r(); // the turf on the right of the view
     const beyond = 12 * r();
@@ -341,7 +342,7 @@ export function lifeWeight(s: Pick<FrameState, 'kind' | 'a' | 'b' | 't'>, stop: 
   return 0;
 }
 
-const MAX = 96;
+const MAX = 224;
 const COVE: StopId[] = ['golden', 'sunset', 'dusk', 'firstlight', 'sunrise'];
 
 /** The life layer's one sprite draw, and the fish ring's uniforms each frame. */

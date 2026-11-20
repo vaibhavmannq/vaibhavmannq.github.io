@@ -38,6 +38,9 @@ import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
 import type { WorldPart } from './part';
 import { COVE_STOPS, PLANT, PLANT_STRIDE, type Plants, swayAmplitude } from './scatter';
 
+/** The share of a plant's surface that stands upright and takes a low sun from the side (s22). */
+export const BLADE_UP = 0.6;
+
 /**
  * The cove's ground cover (plan M3 Task 1): tall tufts, a short meadow and three flowers, one instanced draw per
  * shape, one material for all three. Placements come from scatter.ts; the shapes are made here, so the plants cost
@@ -284,7 +287,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
     .mul(light.keyStrength)
     .mul(saturate(light.keyDir.y))
     .add(light.ambSky.mul(light.keyStrength.mul(FILL_SHARE).add(0.3)).mul(fillUp))
-    .add(light.ambSky.mul(HEMI_INTENSITY))
+    .add(light.ambSky.mul(light.skyFill.mul(HEMI_INTENSITY)))
     .mul(1 / Math.PI);
 
   // colours (linear): tall coastal grass dry gold-green; the short meadow greener; flower heads by kind (reference
@@ -319,8 +322,22 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   // sees little colour (reference book §1, the Purkinje shift; plan M6 Task 2): in the moon's hours the colours grey
   // toward a cool blue, keeping a third of their own (heather stays grey-violet, grass grey-green).
   const moonlit = smoothstep(0.0, 4.0, light.moonStrength);
+  // Upright blades catch a low sun from the side (plan M8 Task 7, s22; the Sunrise render's grass lit gold on a slope
+  // turned from the sun): the up normal above gives a sun 14° high only sin 14° of its light. A blade's lit face is
+  // seen when the sun is beside or behind the eye (backlit blades have the glow instead): a vertical two-sided blade
+  // averages 2/π of cos(elevation), for the share of a plant that stands up (BLADE_UP). Not under the moon (its hours
+  // keep their grey look) and not from a sun below the horizon.
+  const look = normalize(vec3(positionWorld.x.sub(cameraPosition.x), 0, positionWorld.z.sub(cameraPosition.z)));
+  const sunFlat = normalize(vec3(light.keyDir.x, 0, light.keyDir.z));
+  const frontLit = float(0.5).sub(dot(look, sunFlat).mul(0.5));
+  const side = light.keyColor
+    .mul(light.keyStrength)
+    .mul(float(1).sub(light.keyDir.y.mul(light.keyDir.y)).max(0).sqrt())
+    .mul(frontLit.mul(((2 / Math.PI) * BLADE_UP) / Math.PI))
+    .mul(smoothstep(-0.03, 0.03, light.keyDir.y))
+    .mul(float(1).sub(moonlit));
   // a crescent behind the blades sends little light through them (the glow is sized for a low sun)
-  const seen = albedo.mul(irradiance).add(glow.mul(float(1).sub(moonlit.mul(0.85))));
+  const seen = albedo.mul(irradiance.add(side)).add(glow.mul(float(1).sub(moonlit.mul(0.85))));
   const grey = dot(seen, vec3(0.2126, 0.7152, 0.0722));
   material.colorNode = varying(mix(seen, vec3(grey).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)));
 

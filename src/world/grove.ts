@@ -343,7 +343,7 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
 
   // light per vertex (as meadow.ts): the key on the (bent) normal, the fill opposite it, the sky and ground bounce
   const fillDir = normalize(vec3(light.keyDir.x.negate(), 0.6, light.keyDir.z.negate()));
-  const hemi = mix(light.ambGround, light.ambSky, N.y.mul(0.5).add(0.5)).mul(HEMI_INTENSITY);
+  const hemi = mix(light.ambGround, light.ambSky, N.y.mul(0.5).add(0.5)).mul(light.skyFill.mul(HEMI_INTENSITY));
   const irradiance = light.keyColor
     .mul(light.keyStrength)
     .mul(saturate(dot(N, light.keyDir)))
