@@ -45,6 +45,8 @@ export interface Stop {
   /** Coast x, y and the absolute eye height (ground + eye). */
   cam: Vec3;
   landscape: Framing;
+  /** Degrees added to the landscape yaw on a portrait screen, toward the stop's subject (plan M8 Task 4). */
+  portraitYaw: number;
 }
 
 /** The light that casts shadows: the sun, or the moon at night. `dir` points toward the light (coast, unit). */

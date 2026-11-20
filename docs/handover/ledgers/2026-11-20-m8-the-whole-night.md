@@ -65,3 +65,13 @@ Rulings continue from M7's R123.
   again, near grass for the parallax, the sea and arch stay open, the lone tree still the subject. Dislikes: the shaded
   right half of the slope is still bare dark turf; the near pink band is even and its heads faceted; the spot's white
   glint sits mid-frame. Carried to the Sunset look pass (Task 7): backlit flower heads in the shade, mixed drifts.
+
+### Task 4: Portrait framing per stop
+- Portrait shots of all nine at 412×892 (`.superpowers/m8/portrait0.jpg`): the view is ~36° wide (±18°), so Golden's
+  lantern (15° left), Sunset's lone tree (23° right), Night's falls (17° right) and Midnight's tree (25° left) sat at
+  or past the edge; Dusk, Blue hour, Before dawn and First light held their subject.
+- **R131:** each stop has a `portraitYaw` (golden −7, sunset +15, night +9, midnight −17, sunrise +8), blended in as the
+  screen goes from square to portrait (`yawFor`, smoothstep 1 → 0.6 aspect); flights and spot walks start from it.
+  Test `portraitYaw.test.ts` (each subject within 60 % of the half-width).
+- After (`portrait1.jpg`): every subject inside the frame; Sunset loses its framing tree in portrait (the lone tree wins).
+- **Verdict:** look 82 % in portrait across the nine (was ~65 %), behaviour 85 %. Not yet on the phone itself.

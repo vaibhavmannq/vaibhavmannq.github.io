@@ -1,4 +1,4 @@
-import { fovFor, type Pose, shortestYaw } from './camera';
+import { fovFor, type Pose, shortestYaw, yawFor } from './camera';
 import data from './spots.json';
 import { STOPS, stopIndex } from './stops';
 import { type StopId, toThree, type Vec3 } from './types';
@@ -72,7 +72,7 @@ export function sampleSpot(s: SpotPath, t: number, aspect = 16 / 9): Pose & { co
   return {
     coast,
     position: toThree(coast),
-    yaw: t >= 1 ? s.look[0] : shortestYaw(from.yaw, s.look[0], g),
+    yaw: t >= 1 ? s.look[0] : shortestYaw(stop ? yawFor(stop, aspect) : from.yaw, s.look[0], g),
     pitch: t >= 1 ? s.look[1] : from.pitch + (s.look[1] - from.pitch) * g,
     fov: fovFor(from.lens, aspect),
   };
