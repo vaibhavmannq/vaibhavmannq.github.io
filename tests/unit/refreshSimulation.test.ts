@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createPacer, MEASURE_SAMPLES } from '../../src/app/refresh';
 import { Governor } from '../../src/quality/governor';
-import type { Tier } from '../../src/quality/tiers';
+import { MAX_TIER, type Tier } from '../../src/quality/tiers';
 
 // The real pacer and the real governor, wired the way boot.ts wires them: the governor judges only rendered frames,
 // only once the pacer knows the screen, never the first frame after a quiet measurement, and the pacer is re-armed
@@ -12,16 +12,19 @@ function simulate(options: {
   costMs: (tier: Tier) => number;
   seconds: number;
   startTier?: Tier;
+  /** The visitor stops touching anything this long into the visit: the loop's idle mode (every other frame). */
+  idleAfterMs?: number;
 }) {
   const pacer = createPacer();
-  const governor = new Governor(options.startTier ?? 2);
+  const governor = new Governor(options.startTier ?? MAX_TIER); // the top: a free GPU has nowhere to climb
   const changes: Tier[] = [];
   const intervals: number[] = [];
   let t = 1000;
   let last = -1;
   while (t < 1000 + options.seconds * 1000) {
     const vsync = 1000 / options.hzAt(t);
-    if (!pacer.tick(t, false)) {
+    const idle = options.idleAfterMs !== undefined && t - 1000 > options.idleAfterMs;
+    if (!pacer.tick(t, idle)) {
       t += vsync;
       continue;
     }
@@ -29,7 +32,7 @@ function simulate(options: {
       const interval = t - last;
       intervals.push(interval);
       governor.setTargetInterval(pacer.targetIntervalMs);
-      const next = governor.sample(interval, t, true);
+      const next = governor.sample(interval, t, true, !idle);
       if (next !== null) {
         changes.push(next);
         pacer.rearm();
@@ -49,7 +52,7 @@ describe('a free GPU on any refresh rate', () => {
       const { changes, intervals, governor } = simulate({ hzAt: () => hz, costMs: () => 2, seconds: 30 });
       expect(changes).toEqual([]);
       expect(new Set(intervals.slice(MEASURE_SAMPLES * 4).map((ms) => ms.toFixed(2))).size).toBe(1);
-      expect(governor.current).toBe(2);
+      expect(governor.current).toBe(MAX_TIER);
     });
   }
 });
@@ -57,7 +60,7 @@ describe('a free GPU on any refresh rate', () => {
 // Final review C1 (2026-09-26): a slow GPU delays the next animation frame, so the pacer used to measure the frame
 // rate it achieved as if it were the screen, the governor judged frames "on time", and never stepped down.
 describe('a GPU that cannot keep up', () => {
-  const cost: Record<Tier, number> = { 2: 35, 1: 24, 0: 12 };
+  const cost: Record<Tier, number> = { 3: 45, 2: 35, 1: 24, 0: 12 };
 
   it('still measures the screen, and the governor steps down until frames are on time', () => {
     const { pacer, governor, changes } = simulate({ hzAt: () => 60, costMs: (tier) => cost[tier], seconds: 30 });
@@ -91,5 +94,24 @@ describe('the screen changes rate mid-visit', () => {
     const { pacer, changes } = simulate({ hzAt: (ms) => (ms < 4000 ? 60 : 144), costMs: () => 3, seconds: 12 });
     expect(pacer.refreshHz).toBeCloseTo(144, 5);
     expect(changes).toEqual([]);
+  });
+});
+
+// s24: the owner's phone spent whole nights on low. After 8 s without input the loop renders every other frame on
+// purpose; the pacer still told the governor a frame was due every vsync, so the idle mode's 33 ms frames read as a
+// struggling GPU and stepped down twice, and the ceiling kept it there for the visit.
+describe('the idle mode', () => {
+  for (const hz of [60, 120]) {
+    it(`${hz} Hz: a visitor who stops to read keeps their tier`, () => {
+      const { changes, governor } = simulate({ hzAt: () => hz, costMs: () => 3, seconds: 30, idleAfterMs: 8000 });
+      expect(changes).toEqual([]);
+      expect(governor.current).toBe(MAX_TIER);
+    });
+  }
+
+  it('still steps down a GPU that is slow while idle', () => {
+    // 50 ms frames miss even the idle mode's 33 ms (60 Hz, every other vsync)
+    const { changes } = simulate({ hzAt: () => 60, costMs: (tier) => (tier >= 1 ? 50 : 3), seconds: 30, idleAfterMs: 2000 });
+    expect(changes.length).toBeGreaterThan(0);
   });
 });

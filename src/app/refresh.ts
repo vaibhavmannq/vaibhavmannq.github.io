@@ -39,7 +39,7 @@ export interface Pacer {
   rearm(): void;
   /** The measured refresh in Hz, or null while measuring. */
   readonly refreshHz: number | null;
-  /** Time between rendered frames when not idle, in ms: the interval the governor judges against. */
+  /** Time between rendered frames, in ms, the idle mode included (twice the interval while idle): what the governor judges against. */
   readonly targetIntervalMs: number;
   /**
    * True while the pacer is measuring or checking the screen and renders nothing. A slow GPU delays the next
@@ -65,6 +65,8 @@ export function createPacer(options: { fallbackFps?: number } = {}): Pacer {
   let slowerArmed = true;
   let resumeNext = false;
   let resumed = false;
+  /** The loop's idle mode, as of the last tick: a frame is then due every other render interval (s24). */
+  let idleNow = false;
 
   const adopt = (hz: number) => {
     vsyncMs = 1000 / hz;
@@ -82,6 +84,7 @@ export function createPacer(options: { fallbackFps?: number } = {}): Pacer {
 
   return {
     tick(nowMs, idle) {
+      idleNow = idle;
       const delta = lastTick >= 0 ? nowMs - lastTick : null;
       lastTick = nowMs;
       resumed = false;
@@ -138,8 +141,10 @@ export function createPacer(options: { fallbackFps?: number } = {}): Pacer {
     get refreshHz() {
       return vsyncMs === null ? null : 1000 / vsyncMs;
     },
+    // Idle renders every other frame on purpose, so "on time" doubles with it. Without this the governor read the idle
+    // mode's 33 ms frames as a slow GPU and stepped every reading visitor down to low for the whole visit (s24).
     get targetIntervalMs() {
-      return vsyncMs === null ? 1000 / fallbackFps : vsyncMs * divisor;
+      return (vsyncMs === null ? 1000 / fallbackFps : vsyncMs * divisor) * (idleNow ? 2 : 1);
     },
     get quiet() {
       return phase !== 'running';
