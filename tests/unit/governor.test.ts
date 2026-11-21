@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_GOVERNOR, Governor, percentile } from '../../src/quality/governor';
-import type { Tier } from '../../src/quality/tiers';
+import { MAX_TIER, type Tier } from '../../src/quality/tiers';
 
 /** Feed ~1 s of frames (62 samples at 60 Hz). Returns the tier change reported during that window, if any. */
 function runWindow(
@@ -108,6 +108,18 @@ describe('Governor', () => {
     expect(c.change).toBe(2);
   });
 
+  it('climbs from high to ultra the same way, and a slow ultra shuts the door on it (s24)', () => {
+    const governor = new Governor(2);
+    let t = 0;
+    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t).endMs;
+    expect(governor.current).toBe(3);
+    // Night too heavy for ultra: one slow window steps back to high, and fast windows never climb again
+    t = runWindow(governor, 30, t + 2100).endMs;
+    expect(governor.current).toBe(2);
+    for (let i = 0; i < 4; i++) t = runWindow(governor, 16.7, t + 2100).endMs;
+    expect(governor.current).toBe(2);
+  });
+
   it('resets the fast-window count after an in-between window', () => {
     const governor = new Governor(1);
     const a = runWindow(governor, 16.7, 0);
@@ -117,11 +129,11 @@ describe('Governor', () => {
     expect(d.change).toBeNull();
   });
 
-  it('never goes above tier 2 (high) or below tier 0 (low), on either backend', () => {
-    const top = new Governor(2);
+  it('never goes above the top tier (ultra) or below tier 0 (low), on either backend', () => {
+    const top = new Governor(MAX_TIER);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(top, 16.7, t).endMs;
-    expect(top.current).toBe(2);
+    expect(top.current).toBe(MAX_TIER);
 
     const floor = new Governor(0);
     expect(runWindow(floor, 40, 0).change).toBeNull();
@@ -136,12 +148,12 @@ describe('Governor', () => {
   // to, so if the tier moves AT ALL over 10 simulated seconds of steady 16.7 ms samples, the
   // thresholds are wrong again.
   it('a steady 60 fps machine stays at its starting tier for 10 simulated seconds', () => {
-    const governor = new Governor(2); // tier 2 is the ceiling
+    const governor = new Governor(MAX_TIER); // the top tier is the ceiling
     let t = 0;
     for (let i = 0; i < 10; i++) {
       t = runWindow(governor, 16.7, t).endMs;
     }
-    expect(governor.current).toBe(2);
+    expect(governor.current).toBe(MAX_TIER);
   });
 
   it('never changes tier while the visitor is scrolling, however slow the frames', () => {
@@ -193,12 +205,12 @@ describe('Governor', () => {
   // Spec 2026-09-25 §4.1: on a 90 Hz screen the pacer renders every second vsync, 22.2 ms apart. That is
   // healthy, not slow.
   it('judges frames against the target interval it is given', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(MAX_TIER);
     governor.setTargetInterval(2000 / 90);
     let t = 0;
     for (let i = 0; i < 10; i++) t = runWindow(governor, 2000 / 90, t).endMs;
-    expect(governor.current).toBe(2);
-    expect(runWindow(governor, 30, t + 2100).change).toBe(1);
+    expect(governor.current).toBe(MAX_TIER);
+    expect(runWindow(governor, 30, t + 2100).change).toBe(MAX_TIER - 1);
   });
 
   // Final review I4: a window open across a change of target judged 60 Hz frames against the 144 Hz budget.
@@ -237,13 +249,13 @@ describe('Governor start-up and hand-picked tiers (review I3)', () => {
   });
 
   it('takes a hand-picked tier as its own, with the door to it open again', () => {
-    const governor = new Governor(2, { ...DEFAULT_GOVERNOR, warmupMs: 0 });
+    const governor = new Governor(MAX_TIER, { ...DEFAULT_GOVERNOR, warmupMs: 0 });
     let t = runWindow(governor, 40, 0).endMs;
-    expect(governor.current).toBe(1);
-    governor.reset(2, t);
-    expect(governor.current).toBe(2);
+    expect(governor.current).toBe(MAX_TIER - 1);
+    governor.reset(MAX_TIER, t);
+    expect(governor.current).toBe(MAX_TIER);
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t + 2100).endMs;
-    expect(governor.current).toBe(2);
+    expect(governor.current).toBe(MAX_TIER);
   });
 });
 

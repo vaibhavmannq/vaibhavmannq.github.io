@@ -1,4 +1,4 @@
-import { clampTier, type Tier } from './tiers';
+import { clampTier, MAX_TIER, type Tier } from './tiers';
 
 export interface GovernorOptions {
   windowMs: number;
@@ -75,7 +75,7 @@ export class Governor {
   constructor(tier: Tier, options: GovernorOptions = DEFAULT_GOVERNOR) {
     this.tier = tier;
     this.options = options;
-    this.ceiling = 2;
+    this.ceiling = MAX_TIER;
   }
 
   // Not read in production (boot.ts tracks its own `tier`); kept for the unit tests, which
@@ -90,7 +90,7 @@ export class Governor {
    */
   reset(tier: Tier, nowMs: number): void {
     this.tier = tier;
-    this.ceiling = 2;
+    this.ceiling = MAX_TIER;
     this.samples = [];
     this.windowStart = null;
     this.fastWindows = 0;

@@ -16,7 +16,8 @@ describe('URL flags (spec §17)', () => {
   it('reads the tier by name', () => {
     expect(readParams('?tier=low').tier).toBe(0);
     expect(readParams('?tier=high').tier).toBe(2);
-    expect(readParams('?tier=ultra').tier).toBeUndefined();
+    expect(readParams('?tier=ultra').tier).toBe(3);
+    expect(readParams('?tier=extreme').tier).toBeUndefined();
   });
 
   it('ignores an unknown stop (Review Focus 2)', () => {

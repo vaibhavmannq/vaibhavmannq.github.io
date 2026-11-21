@@ -1,7 +1,9 @@
-/** low, mid, high (spec §13.1). */
-export type Tier = 0 | 1 | 2;
+/** low, mid, high (spec §13.1), and ultra for strong devices (M8.5, s24). */
+export type Tier = 0 | 1 | 2 | 3;
 
-export const TIER_NAMES = ['low', 'mid', 'high'] as const;
+export const TIER_NAMES = ['low', 'mid', 'high', 'ultra'] as const;
+/** The top tier: the governor may climb to it, never past it. */
+export const MAX_TIER: Tier = 3;
 export type TierName = (typeof TIER_NAMES)[number];
 
 /** Cost only: never composition, camera, colour or content (spec §13.1). */
@@ -23,6 +25,10 @@ export const TIERS: Readonly<Record<Tier, TierSettings>> = {
   // (plan M8 Task 10, s22); still above low's, as every setting rises with the tier
   1: { scale: 0.75, reflect: 0.3, bloom: true, grass: 0.7, leaves: 1.0 },
   2: { scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0 },
+  // ultra (M8.5, s24; owner: "find the absolute limit"): only the drawing size rises. The owner's phone (OnePlus, screen
+  // ratio 3, capped at 2) held 59.8 fps at Night, the heaviest stop, at ×1.15 and fell to 57 at ×1.2 and 53 at ×1.25;
+  // Dusk and Blue hour held 60 at ×1.25. The governor climbs here only where frames prove fast; this laptop never does.
+  3: { scale: 1.15, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0 },
 };
 
 export interface DeviceHints {
@@ -36,7 +42,7 @@ export interface DeviceHints {
 }
 
 export function clampTier(tier: number): Tier {
-  return Math.min(2, Math.max(0, Math.round(tier))) as Tier;
+  return Math.min(MAX_TIER, Math.max(0, Math.round(tier))) as Tier;
 }
 
 /**
