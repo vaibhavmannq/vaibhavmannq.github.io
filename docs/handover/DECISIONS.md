@@ -347,3 +347,11 @@ shoulder (ledger R195). Ledger R196.
 then choose, cloud might be the deal breaker so i accept a bigger job". Three tries were built behind `?sky=` (R207);
 none was ready, so the next try is the bigger one: the photos' painted clouds taken out and one cloud layer of our own,
 judged in motion everywhere (D47). Also s27 (owner, away two hours): "continue and finish everything in round 1".
+
+**D53 · 2026-11-21 · (owner, end of s27) The night's walk to 100 %: the audit's plan approved.** After the audit page
+(https://claude.ai/artifact/MQGMVoiaMGHxiXTuZ7Q2Dz; 44 problems, 8 causes): (1) the limits are relaxed: ≈ 60 MB in all,
+a 5–15 s loading experience, no fixed material/draw caps, the whole coast as far versions with one place's close-up
+detail streamed in a passage on each ride; 60 fps kept; (2) the order: causes first, then place by place, then the
+whole night; (3) the loading experience is the paper lantern; (4) "focus on the journey itself: the camera jerks and
+speed, smoothness and the view along the way", no dead stretches until the view arrives. Design:
+`docs/superpowers/specs/2026-11-21-world-to-100-design.md`. Replaces the rest of M8.5 Round 1 (#3a, #1 inside it).

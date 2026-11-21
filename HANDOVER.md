@@ -304,10 +304,13 @@ no borrowed set pieces (no towers, piano, etc.).
   - #14 part 2: `?sunrise=sun` for the owner; my pick is the original framing.
   - #3a: `?sky=drift|layer|volume` built, none ready (layers vanish into the photo's clouds; +2–8 ms). D52: the
     bigger job next (clouds out of the photos, our own layer).
-- **Owner asked for a full audit (end of s27):** layout page https://claude.ai/artifact/MQGMVoiaMGHxiXTuZ7Q2Dz (44 problems,
-  8 causes, relaxed limits, passages, loading experience, ~10–12 sessions). Waiting for his approval before any build.
-- **Next (s28):** his answers on the audit page first; then the owner tests #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and checks Night's and Golden's
-  reflections; then #3a's bigger job, then #1 waves (D47 rules; batches of 3–5; a whole-night sweep old vs new).
+- **Owner, end of s27 (D53): the audit's plan approved** (page https://claude.ai/artifact/MQGMVoiaMGHxiXTuZ7Q2Dz):
+  relaxed limits (≈ 60 MB, a lantern loading experience, far versions always + close-up sets streamed in passages,
+  60 fps kept), causes first then place by place, and the journey itself (no jerks, smooth speed, no dead stretches).
+  Design: `docs/superpowers/specs/2026-11-21-world-to-100-design.md`.
+- **Next (s28):** write the plan from that design (superpowers:writing-plans), then Phase 0: measure the journey and the
+  new GPU ceiling, the lantern loader, the far layer + streaming + passages skeleton. The owner's test of #8, #9's walls,
+  #10, #12, #14 (+ `?sunrise=sun`) and the reflections still stands when he has time.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
