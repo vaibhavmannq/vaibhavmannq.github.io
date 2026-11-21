@@ -37,3 +37,15 @@ for one effect (D9: the size bar). Nothing may take a scene's attention from the
   - The first screen (Golden): the name large, one line under it, nothing else, the world full-bleed (Supahero's
     portfolio heroes). Matches spec §6.
 - **M10 (launch):** fonts self-hosted as now (no third-party font request), subset to Latin.
+
+## Added in s23 (2026-11-21): Chrome's Modern Web Guidance
+
+The owner asked for https://developer.chrome.com/docs/modern-web-guidance and
+https://github.com/googlechrome/modern-web-guidance in the project. It is a set of agent skills plus an offline search
+CLI over ~200 guides (v1.0, 2026-11-10; Apache-2.0, guides CC-BY 4.0; Chrome, Firefox and Edge maintain it): UX, CSS
+layout, performance (INP, LCP, speculation rules), forms and UI (dialog, popover, anchor positioning, View
+Transitions), accessibility, security. Installed as a Claude Code plugin for this repo (`.claude/settings.json`:
+marketplace `googlechrome`, plugin `modern-web-guidance@googlechrome`, project scope). Without the plugin:
+`npx modern-web-guidance@latest search "<question>"`, then `retrieve "<guide id>"`; `legacy-scan .` lists old patterns.
+**Use it for:** M9's text and overlay (dialogs, the project cards, focus, View Transitions between places), M10's
+loading and Core Web Vitals, and any HTML/CSS/JS outside the 3D world. The world's rendering stays with the r186 notes.

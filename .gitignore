@@ -18,3 +18,7 @@ Thumbs.db
 desktop.ini
 .vscode/*
 !.vscode/extensions.json
+
+# Claude Code: per-machine files (project settings.json is shared)
+.claude/worktrees/
+.claude/settings.local.json
