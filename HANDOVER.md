@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-21, session s23 (M8.5 started; see `docs/handover/sessions/2026-11-21-s23-m8.5-start.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-21, session s24 (see `docs/handover/sessions/2026-11-21-s24-m8.5-round1-batch1-gpu.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -268,9 +268,16 @@ no borrowed set pieces (no towers, piano, etc.).
     second try (c024828: moving ring mesh, lace foam, spray) is **rejected (D47)**: foam like cracked tiles, the water
     "divided" along every flat shore, Blue hour's flares in rows; "the original water looked better". It is still in
     the code on `world` (not pushed). #2 measured and planned. Chrome's Modern Web Guidance installed as a plugin.
-- **Next (s24): revert the sea to 226e1f8 (sea.ts, plankton.ts, the plankton call in boot.ts), ask the owner whether to
-  retry waves, then #2 onward.** Any change to the whole sea/sky/light is judged at all nine stops and along every
-  flight before the owner sees it (D47). Close every test browser after every check.
+- **s24 (2026-11-21): M8.5 Round 1 batch 1 accepted, the GPU's limit, ultra, the governor** (log
+  `sessions/2026-11-21-s24-m8.5-round1-batch1-gpu.md`; ledger R165–R177; D48, D49; not pushed).
+  - Original water back; waves later behind `?sea=new` (D48). Owner accepted #6, #7, #11, #16, the card and scrollbar.
+  - #17 part 1: limits measured (laptop holds 60 up to low ×~0.6; the phone up to ×1.25 everywhere but Night); a fourth
+    tier **ultra** (×1.15); the idle mode no longer drops readers to low; the governor steps up only in flight, any
+    time (D49). Phone: ultra all night, 59–60 fps.
+  - #17d (the upscaler) is a WIP commit, off, never seen running. Check scripts this session: `.superpowers/m85/`
+    (`world-sheet.mjs`, `gpu-sweep.mjs`, `phone-night-cdp.mjs`, `flight-ab.mjs`, `card-check.mjs`).
+- **Next (s25): finish #17d** (wire `?up=1`/`?sharp=` in boot, sea `reflect × scale` when upscaling, measure, judge,
+  show), **then Round 1 from #3b** in the s24 log's order. D47 for every whole-world change (`world-sheet.mjs`).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
