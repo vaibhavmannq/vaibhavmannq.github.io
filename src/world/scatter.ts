@@ -71,7 +71,7 @@ const RULES: Record<CoveStop, Rules> = {
     field: { candidates: 13000, from: 8, to: 32, patch: 0.3 },
     // owner, round 1: "fill the empty meadow with red flowers, also where look-around goes"
     // from 22 m: nearer, the field's drifts already hold flowers (and the cove stays inside its 60 000 plants)
-    poppies: { candidates: 22000, from: 22, to: 115, spread: 1.4, patch: 0.43 },
+    poppies: { candidates: 110000, from: 22, to: 115, spread: 1.4, patch: 0.5 },
   },
   // III looks down from the headland (owner cove-and-stacks: "from above, with grass in front"): grass clumps at the
   // lens sides and more flowers near the eye, the near layer the shot lacked (plan M8 Task 7, s22)
@@ -87,7 +87,7 @@ const RULES: Record<CoveStop, Rules> = {
     dland: 7,
     // M8.5 #5 (owner: "a few more colourful flowers"; the Dusk render's slope of thrift and yellow): drifts on the
     // headland around the eye, pink, yellow and white by band, as Sunset's
-    field: { candidates: 4500, from: 3, to: 24, patch: 0.46 },
+    field: { candidates: 1600, from: 3, to: 24, patch: 0.5 },
   },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
   sunrise: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 6, zmin: 0.3, dland: 1.5 },

@@ -31,7 +31,7 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
   it('places plants around all five cove stops, within the budget', () => {
     expect(n).toBeGreaterThan(8000);
     // 60 000 until M8.5; Sunset's poppies (#4) and Dusk's flower field (#5) add ~6 800, cost measured (R186, R187)
-    expect(n).toBeLessThanOrEqual(68000);
+    expect(n).toBeLessThanOrEqual(72000);
     for (const id of COVE_STOPS) {
       const stop = STOPS.find((s) => s.id === id);
       if (!stop) throw new Error(id);
@@ -132,7 +132,7 @@ describe("Sunset's poppies (M8.5 #4)", () => {
     });
   it('fills the meadow in drifts, only for Sunset, within the budget', () => {
     expect(reds.length).toBeGreaterThan(2000);
-    expect(reds.length).toBeLessThan(7000);
+    expect(reds.length).toBeLessThan(12000); // owner, batch 3: dense drifts (his near-field shot), not specks
     for (const p of reds) expect(p.owner).toBe(owner);
   });
   it('reaches the middle distance and both sides of the turn', () => {
