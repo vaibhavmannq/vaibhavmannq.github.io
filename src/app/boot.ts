@@ -412,7 +412,8 @@ async function loadBase(
       if (stacksMeta && stacksBuf) {
         const parts = decodeStacks(stacksBuf, stacksMeta);
         feet.push(waterline(parts.position, parts.index, stacksMeta));
-        caps.push(capInstances(parts.position, parts.index, stacksMeta, 12));
+        // no scrub caps on the stacks (owner, s25: from Blue hour they read as specks floating over the tops); the
+        // arch keeps its caps
         joins.push(compileThenAdd(app, createStacks(parts, stacksMeta, rock), 'stacks'));
       }
       capsFound(new Float32Array(caps.flatMap((c) => Array.from(c))));
