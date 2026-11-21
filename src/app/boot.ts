@@ -672,9 +672,7 @@ export async function boot(): Promise<App> {
   const flow = createLoadingFlow({ storage: deviceStore, nowMs: () => performance.now(), capMs: ROOM_CAP_MS });
   const roomParam = new URLSearchParams(location.search).get('room');
   let roomOn =
-    pipeline !== null &&
-    roomParam !== 'off' &&
-    (roomParam !== null || (!flow.skip && navigator.webdriver !== true));
+    pipeline !== null && roomParam !== 'off' && (roomParam !== null || (!flow.skip && navigator.webdriver !== true));
   let room: LanternRoom | null = null;
   let worldLooping = false;
   let roomStep: (nowMs: number) => void = () => undefined;
