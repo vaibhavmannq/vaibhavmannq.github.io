@@ -55,6 +55,39 @@ def orientation(S):
     return rodrigues(np.array([0, 0, 1.0]), math.radians(rotz)) @ Rt
 
 
+# M8.5 #7 (owner: "why do we have 2 moons"): Night's and Midnight's photos carry their own moon and its glow; the
+# browser draws the moon (a crescent with its halo), so those two are painted out of the photo.
+MOON_OUT = {"night", "midnight"}
+
+
+def paint_out_moon(sky):
+    """Replace the photo's moon and the glow joined to it by the sky's own colour at each height (feathered)."""
+    lum = sky @ LUM
+    bg = cv2.GaussianBlur(np.percentile(lum, 35, axis=1).astype(np.float32)[:, None], (1, 0), 12)[:, 0]
+    over = (lum > 1.25 * bg[:, None]).astype(np.uint8)
+    over = cv2.dilate(over, np.ones((9, 9), np.uint8))
+    _, labels = cv2.connectedComponents(over)
+    # the moon is the centre of the brightest glow; the brightest single pixel can be a star (Midnight's is)
+    y, x = np.unravel_index(np.argmax(cv2.GaussianBlur(lum, (0, 0), 15)), lum.shape)
+    blob = labels == labels[y, x]
+    keep = ~cv2.dilate(blob.astype(np.uint8), np.ones((41, 41), np.uint8)).astype(bool)
+    rows = np.where(keep.any(1))[0]
+    colour = np.zeros((H, 3), np.float32)
+    for r in rows:
+        colour[r] = np.median(sky[r][keep[r]], 0)
+    for k in range(3):  # rows wholly inside the blob take their neighbours' colour
+        colour[:, k] = np.interp(np.arange(H), rows, colour[rows, k])
+    colour = cv2.GaussianBlur(colour[:, None, :], (1, 0), 6)[:, 0, :]
+    m = cv2.GaussianBlur(cv2.dilate(blob.astype(np.float32), np.ones((25, 25), np.uint8)), (0, 0), 18)[..., None]
+    # the stars and the Milky Way's grain under the glow are kept: only the smooth glow goes. The moon's disc and
+    # its bright core (over twice the sky around, joined to the brightest pixel) keep no detail, or the disc's edge would stay as a ring.
+    detail = np.maximum(sky - cv2.GaussianBlur(sky, (0, 0), 12), 0)  # light only: no dark rings round bright stars
+    _, bright = cv2.connectedComponents((lum > 2 * bg[:, None]).astype(np.uint8))
+    disc = (bright == bright[y, x]).astype(np.float32)  # the moon's own disc, not the stars
+    core = cv2.GaussianBlur(cv2.dilate(disc, np.ones((21, 21), np.uint8)), (0, 0), 10)[..., None]
+    return sky * (1 - m) + np.maximum(colour[:, None, :] + detail * (1 - core), 0) * m, int(blob.sum())
+
+
 def make(hour):
     S = SHOTS[hour]
     img, used = photo(S["hdri"])
@@ -82,14 +115,18 @@ def make(hour):
         lo, hi, z0, z1 = S["sky_grad"]
         t = np.clip((d[..., 2] - z0) / (z1 - z0), 0, 1)[..., None]
         sky = sky * (np.array(lo) * (1 - t) + np.array(hi) * t)
+    lit = sky  # the light the sky gives the land is measured before any paint-out, so the land is lit as before
+    if hour in MOON_OUT:
+        sky, n = paint_out_moon(sky)
+        print(f"{hour:11s} moon and glow painted out ({n} px)")
     enc = np.power(sky / (1 + sky), 1 / 2.2)
     path = os.path.join(OUT, hour + ".jpg")
     cv2.imwrite(path, (np.clip(enc, 0, 1)[..., ::-1] * 255 + 0.5).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 85])
     gain = S["hdri_gain"]
     wgt = np.cos(e)[..., None]
-    up = (sky * wgt)[e > 0].sum(0) / wgt[e > 0].sum()
+    up = (lit * wgt)[e > 0].sum(0) / wgt[e > 0].sum()
     band = (e > 0) & (e < math.radians(10))
-    horizon = (sky * wgt)[band].sum(0) / wgt[band].sum()
+    horizon = (lit * wgt)[band].sum(0) / wgt[band].sum()
     size = os.path.getsize(path)
     assert size <= 0.2e6, (hour, size)
     print(f"{hour:11s} {used:40s} {size / 1e3:6.1f} kB  mean {sky.mean():.3f}")
