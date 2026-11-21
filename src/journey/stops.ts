@@ -22,6 +22,18 @@ const LABELS: Record<StopId, [string, string, string]> = {
   sunrise: ['IX', 'Sunrise', 'The rise'],
 };
 
+/**
+ * TEMP M8.5 #14 part 2 (owner: "a bit of sunrise"): `?sunrise=<yaw>` turns Sunrise's gaze, `?sunrise=sun` to 12°, the
+ * sun's glow (az 50°, 7° up) at the right edge instead of 76° off. A switch until the owner picks (s27: my pick is the old
+ * framing; toward the sun the arch and stacks leave and the view is an empty meadow).
+ */
+function sunriseTurn(): { yaw: number; pitch: number } | null {
+  const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('sunrise');
+  if (q === null) return null;
+  const yaw = q === 'sun' ? 12 : Number(q);
+  return Number.isFinite(yaw) ? { yaw, pitch: -3 } : null;
+}
+
 /** The nine stops, at the render cameras (spec §5). */
 export const STOPS: readonly Stop[] = STOP_IDS.map((id) => {
   const shot = SHOTS[id];
@@ -35,7 +47,7 @@ export const STOPS: readonly Stop[] = STOP_IDS.map((id) => {
     hour,
     place,
     cam,
-    landscape: { yaw: shot.look[0], pitch: shot.look[1], lens: shot.lens },
+    landscape: { yaw: shot.look[0], pitch: shot.look[1], lens: shot.lens, ...(id === 'sunrise' ? sunriseTurn() : null) },
     portraitYaw: PORTRAIT_YAW[id] ?? 0,
   };
 });
