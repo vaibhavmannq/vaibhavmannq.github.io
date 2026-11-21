@@ -613,7 +613,7 @@ export async function boot(): Promise<App> {
   // Night's project lanterns (plan M5 Task 5): one per project, and the visitor's among them once claimed.
   const projectLanterns = createProjectLanterns(caps.reducedMotion);
   projectLanterns.setCount(projects.length, thread.claimed);
-  const card = createProjectCard();
+  const card = createProjectCard(document.body, (open) => scroll.setLocked(open));
   const openProject = (i: number) => {
     const p = projects[i];
     if (p) card.open(p);

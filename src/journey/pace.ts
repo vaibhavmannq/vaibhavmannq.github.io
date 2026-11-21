@@ -23,7 +23,8 @@ export const LEAD_SCREENS = 0.5;
 /** Damping: the share of the remaining gap closed per second is 1 - e^(-rate). About a quarter-second lag. */
 export const FOLLOW_RATE = 3.5;
 
-const minSeconds = (s: Segment): number => (s.kind === 'stop' ? STOP_MIN_SECONDS : flightMinSeconds(s.distance, s.from));
+const minSeconds = (s: Segment): number =>
+  s.kind === 'stop' ? STOP_MIN_SECONDS : flightMinSeconds(s.distance, s.from);
 
 /** Top speed at `u`, screens per second. */
 export function topSpeed(track: Track, u: number): number {

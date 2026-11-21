@@ -9,14 +9,27 @@ export interface ProjectCard {
   readonly isOpen: boolean;
 }
 
-export function createProjectCard(host: HTMLElement = document.body): ProjectCard {
+export function createProjectCard(
+  host: HTMLElement = document.body,
+  /** Told when the card opens and closes: the journey's scroll stops behind an open card (M8.5, s24). */
+  onOpenChange: (open: boolean) => void = () => undefined,
+): ProjectCard {
   const dialog = document.createElement('dialog');
   dialog.className = 'card';
   dialog.setAttribute('aria-labelledby', 'card-title');
+  // A click on the backdrop closes it, a click on the card's own padding does not (Modern Web Guidance,
+  // light-dismiss-a-dialog): `closedby="any"` where supported, else a check that the click fell outside the card.
+  dialog.setAttribute('closedby', 'any');
+  if (!('closedBy' in HTMLDialogElement.prototype))
+    dialog.addEventListener('click', (e) => {
+      if (e.target !== dialog) return;
+      const r = dialog.getBoundingClientRect();
+      const inside = r.top <= e.clientY && e.clientY <= r.bottom && r.left <= e.clientX && e.clientX <= r.right;
+      if (!inside) dialog.close();
+    });
+  // `close` fires however it shuts (Esc, the button, the backdrop)
+  dialog.addEventListener('close', () => onOpenChange(false));
   host.append(dialog);
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close(); // a click on the backdrop
-  });
   return {
     open(p) {
       dialog.replaceChildren();
@@ -54,6 +67,7 @@ export function createProjectCard(host: HTMLElement = document.body): ProjectCar
       }
       dialog.append(close, title, meta, summary, links);
       dialog.showModal();
+      onOpenChange(true);
     },
     get isOpen() {
       return dialog.open;
