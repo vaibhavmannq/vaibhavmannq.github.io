@@ -16,7 +16,10 @@ export type FlightKey = `${StopId}>${StopId}`;
  * drifts toward the mouth"): the walk starts `depth` m behind the stop's camera, along its view reversed, and ends at
  * the stop's camera. The flight in ends at the walk's start (bake_flights.ts).
  */
-export const WALKS: Partial<Record<StopId, { depth: number }>> = { beforedawn: { depth: 14 } };
+export const WALKS: Partial<Record<StopId, { depth: number }>> = {
+  // M8.5 #11 (owner: does not like the narrow path; keep the stop's view): Before dawn no longer walks; the flight in
+  // ends at the stop's camera. Was { beforedawn: { depth: 14 } } (D39).
+};
 
 /** Where a stop's walk starts: `depth` m behind `cam` (coast axes, absolute z), against the view `yaw`. Pure. */
 export function walkStart(cam: Vec3, yaw: number, depth: number): Vec3 {
