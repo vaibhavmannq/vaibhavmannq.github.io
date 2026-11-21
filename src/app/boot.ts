@@ -35,7 +35,7 @@ import { mountSoundToggle } from '../sound/toggle';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { BOWL, createBowl, fallsLayout, rimTrees } from '../world/bowl';
-import { cragPrisms, createCrags } from '../world/crags';
+import { cragPrisms, createCrags, edgeScrub } from '../world/crags';
 import { capInstances } from '../world/caps';
 import { caveLure, createCave, decodeCave } from '../world/cave';
 import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
@@ -261,7 +261,10 @@ async function loadBase(
     y: s.cam[1],
     yaw: s.landscape.yaw,
   }));
-  parts.push(['crags', createCrags(rock, cragPrisms(drawn, cragSites), COVE_SEEN_FROM, STOP_IDS)]);
+  for (const [i, site] of cragSites.entries()) {
+    const prisms = cragPrisms(drawn, [site], 7 + i);
+    if (prisms.length) parts.push([`crags-${site.id}`, createCrags(rock, prisms, site.id, STOP_IDS)]);
+  }
   // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
   parts.push(['life', createLife(light, createSurfaceSampler(heights, meta.heights), reducedMotion)]);
   if (dressingMeta && dressingBuf) {
@@ -369,6 +372,11 @@ async function loadBase(
         const sunsetEye = [SHOTS.sunset.cam[0], SHOTS.sunset.cam[1]] as const;
         const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], SUNSET_FRAME, surfaceAt);
         joins.push(compileThenAdd(app, createGroveProps(grove, frame, surfaceAt, 'sunset', 'scrub'), 'scrub'));
+        // shrubs clinging to the drops below Dusk's and Sunrise's eye (M8.5 #2 part 2), on the ground as drawn
+        for (const site of cragSites.filter((s) => s.id === 'dusk' || s.id === 'sunrise')) {
+          const name = `edge-${site.id}`;
+          joins.push(compileThenAdd(app, createGroveProps(grove, edgeScrub(drawn, site), drawn, site.id, name), name));
+        }
         // trees along Night's rim (plan M8 Task 7), each standing on the rim's top
         const rim = rimTrees();
         const rimZ = new Map<string, number>();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CRAG, type CragSite, cragPrisms } from '../../src/world/crags';
+import { CRAG, type CragSite, cragPrisms, EDGE, edgeScrub } from '../../src/world/crags';
 
 // a beach at +1 m, rising east of x = 15 at slope 2.5 (a bare face like Golden's right), shelving into the sea west of
 // x = -20 at 1:5
@@ -58,5 +58,36 @@ describe('crags (M8.5 #2): columns on the bare faces a turn reveals', () => {
 
   it('adds nothing where the frame has no steep ground', () => {
     expect(cragPrisms(() => 1, [site])).toEqual([]);
+  });
+});
+
+// M8.5 #2 part 2: a drop seen from above (Dusk's and Sunrise's left) gets plants clinging to it, not columns
+describe('edge scrub (M8.5 #2): shrubs on the drops below the eye', () => {
+  // the eye on a clifftop at 20 m; east of x = 15 the cliff falls at slope 2.5 to the beach at 0
+  const cliff = (x: number) => (x < 15 ? 20 : Math.max(0, 20 - (x - 15) * 2.5));
+  const g = (x: number, y: number) => {
+    void y;
+    return cliff(x);
+  };
+  const scrub = edgeScrub(g, site);
+  const n = scrub.length / 10;
+  it('clings to the drop, standing on the ground, the same every visit', () => {
+    expect(n).toBeGreaterThan(8);
+    expect(edgeScrub(g, site)).toEqual(scrub);
+    for (let i = 0; i < n; i++) {
+      const [model, x, y, z, sx] = Array.from(scrub.slice(i * 10, i * 10 + 5));
+      expect(x).toBeGreaterThan(14.5);
+      expect(x).toBeLessThan(23.5);
+      expect(z).toBeCloseTo(g(x as number, y as number), 4);
+      expect([1, 2, 3]).toContain(model);
+      expect(sx).toBeGreaterThanOrEqual(EDGE.scale[0] * (model === 3 ? 1 : 0.6) - 1e-6);
+      expect(sx).toBeLessThanOrEqual(EDGE.scale[1] + 1e-6);
+      const b = Math.abs((Math.atan2(x as number, y as number) * 180) / Math.PI);
+      expect(b).toBeGreaterThan(CRAG.clear - 2);
+    }
+  });
+  it('leaves rising faces and flat ground to the columns and the meadow', () => {
+    expect(edgeScrub(ground, site).length).toBe(0);
+    expect(edgeScrub(() => 1, site).length).toBe(0);
   });
 });

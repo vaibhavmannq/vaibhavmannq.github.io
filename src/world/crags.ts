@@ -119,6 +119,54 @@ export function cragPrisms(h: HeightAt, sites: readonly CragSite[], seed = 7): P
   return out;
 }
 
+export const EDGE = {
+  near: 8,
+  far: 60,
+  /** metres between candidate spots: a shrub clump every few metres reads as a cliff's clinging growth */
+  spacing: 3.2,
+  /** share of spots that get a plant */
+  fill: 0.55,
+  /** shrub scale range; the odd small tree (models 1, 2) is up to 1.6× */
+  scale: [1.1, 2.4] as const,
+  tree: 0.1,
+} as const;
+
+/**
+ * Pure: grove instances (10 floats each: model, x, y, z, scale ×3, turn ×3; grove.ts) for plants clinging to the faces
+ * that fall away below the eye (M8.5 #2 part 2: Dusk's and Sunrise's left, seen from above, where columns showed only
+ * their tops). The grove's shrub, now and then a small tree, on the ground as drawn, inside the turn's cone and outside
+ * the frame's middle, as the crags.
+ */
+export function edgeScrub(h: HeightAt, site: CragSite, seed = 11): Float32Array {
+  const r = mulberry32(seed * 7907 + Math.round(site.x * 13 + site.y * 7));
+  const out: number[] = [];
+  for (let dist = EDGE.near; dist < EDGE.far; dist += EDGE.spacing) {
+    const step = EDGE.spacing / dist;
+    for (let a = -rad(CRAG.cone); a <= rad(CRAG.cone); a += step) {
+      const keep = smooth(CRAG.clear, CRAG.clearTo, Math.abs(a) * (180 / Math.PI)) * EDGE.fill;
+      const jd = dist + (r() - 0.5) * EDGE.spacing * 0.8;
+      const az = rad(site.yaw) + a + (r() - 0.5) * step * 0.8;
+      const roll = r();
+      const pick = r();
+      const size = r();
+      const turn = r();
+      if (roll > keep) continue;
+      const x = site.x + Math.sin(az) * jd;
+      const y = site.y + Math.cos(az) * jd;
+      const z = h(x, y);
+      if (z < 0.8) continue; // not on the beach or in the sea (grove.ts GROVE_MIN_GROUND)
+      const s = slopeAt(h, x, y);
+      if (s.slope < CRAG.minSlope) continue;
+      // only a face falling away from the eye (its uphill side toward the eye)
+      if (s.ux * Math.sin(az) + s.uy * Math.cos(az) > -CRAG.facing) continue;
+      const tree = pick < EDGE.tree;
+      const scale = (EDGE.scale[0] + (EDGE.scale[1] - EDGE.scale[0]) * size) * (tree ? 0.6 : 1);
+      out.push(tree ? (pick < EDGE.tree / 2 ? 1 : 2) : 3, x, y, z, scale, scale, scale, 0, 0, turn * Math.PI * 2);
+    }
+  }
+  return Float32Array.from(out);
+}
+
 /** Vertices per standing column in bowlGeometry: six sides of four, and the top. */
 const VERTS = 30;
 
@@ -129,7 +177,7 @@ const VERTS = 30;
 export function createCrags(
   material: MeshStandardNodeMaterial,
   prisms: readonly Prism[],
-  shows: ReadonlySet<StopId>,
+  stop: StopId,
   stopIds: readonly StopId[],
 ): WorldPart {
   const d = bowlGeometry(prisms, { x: 1e6, y: 1e6 });
@@ -164,13 +212,15 @@ export function createCrags(
   geometry.setIndex(new BufferAttribute(d.index, 1));
   geometry.computeBoundingSphere();
   const mesh = new Mesh(geometry, material);
-  mesh.name = 'crags';
+  mesh.name = `crags-${stop}`;
   mesh.visible = false;
-  const near = (i: number) => shows.has(stopIds[i] as StopId);
+  const at = stopIds.indexOf(stop);
   return {
     object: mesh,
     update(f) {
-      mesh.visible = near(f.state.a) || near(f.state.b);
+      // each stop's own columns, at that stop and on its flights only, as the plants (s25: Dusk's eye stands over
+      // Golden's right bank and saw those columns' flat tops from above)
+      mesh.visible = f.state.kind === 'stop' ? f.state.a === at : f.state.a === at || f.state.b === at;
     },
     setTier() {},
     dispose() {

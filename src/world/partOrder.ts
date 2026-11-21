@@ -30,7 +30,10 @@ export const PART_STOPS: Record<string, ReadonlySet<StopId>> = {
   arch: ARCH_SEEN_FROM,
   stacks: ARCH_SEEN_FROM, // the stacks are seen with the arch (STACKS_SEEN_FROM aliases it)
   cliffs: COVE_SEEN_FROM,
-  crags: COVE_SEEN_FROM,
+  'crags-golden': new Set(['golden']),
+  'crags-firstlight': new Set(['firstlight']),
+  'edge-dusk': new Set(['dusk']),
+  'edge-sunrise': new Set(['sunrise']),
   grove: COVE_SEEN_FROM,
   lanterns: new Set(['dusk']),
   pebbles: new Set(['golden', 'firstlight']),
