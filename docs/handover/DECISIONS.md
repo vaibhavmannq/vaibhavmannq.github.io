@@ -320,3 +320,11 @@ work: (1) the original water is back (e95ad59); waves are tried again only after
 (2) Round 1 goes quick wins first (#7, #6, #11, #16), then #17 sharpness, #3b, #2, then the rest, sent to him in batches
 of 3–5; (3) the two project-card faults Chrome's Modern Web Guidance showed (the journey scrolled behind an open card; a
 click on its padding closed it) are fixed in the first batch. Ledger R165–R171.
+
+**D49 · 2026-11-21 · (owner, s24) Find the GPU's limit; an ultra tier; the tier climbs in flight.** "Forget our limits
+and see the absolute limit of this site on GPU", on the laptop and his phone (sweeps in the ledger, R172). Then "ultra
+first, then the upscaler": a fourth tier, ultra (high at ×1.15 size: what held 60 fps at Night on his phone). How the
+tier is picked: he chose a test behind the poster; built, it failed (the rest of the world is still loading when the
+poster lifts: readings flipped run to run, a false ultra on this laptop, 1–3.8 s more poster), so he chose the second
+option: the governor steps **up only while the camera moves**, at any point in the visit (was: on arriving, first 20 s
+only), and never while the visitor reads. Down steps need two slow seconds in a row. Ledger R172–R176.
