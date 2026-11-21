@@ -1,4 +1,15 @@
-import type { Material, Mesh } from 'three/webgpu';
+import {
+  DataTexture,
+  Group,
+  type Material,
+  Mesh,
+  MeshStandardNodeMaterial,
+  RGBAFormat,
+  SphereGeometry,
+  SRGBColorSpace,
+} from 'three/webgpu';
+import { STOPS } from '../journey/stops';
+import { toThree } from '../journey/types';
 import { stopCentre } from '../journey/timeline';
 import { STOP_IDS, type StopId } from '../journey/types';
 import { TIER_NAMES, type Tier } from '../quality/tiers';
@@ -50,7 +61,21 @@ declare global {
     /** Golden's lantern on screen, CSS pixels (plan M2.5 Task 7: its parallax slide is measured). */
     __lanternPx(): [number, number];
     __projectPx(): number[][];
+    /**
+     * A synthetic close-up set in front of stop `stop`'s camera (world-to-100 Task 3, the GPU ceiling): `draws` lit
+     * meshes sharing `tris` triangles, one 1024² texture each until `texMB`; in the mirror unless `mirror` is false.
+     * Compiled for the eye and the mirror before it shows. `null` removes it.
+     */
+    __load(opts: LoadOptions | null): Promise<{ draws: number; tris: number; texMB: number } | null>;
   }
+}
+
+export interface LoadOptions {
+  stop: StopId;
+  tris?: number;
+  draws?: number;
+  texMB?: number;
+  mirror?: boolean;
 }
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -100,7 +125,84 @@ const pct = (xs: number[], q: number): number => {
   return Math.round((s[Math.min(s.length - 1, Math.floor(s.length * q))] ?? 0) * 100) / 100;
 };
 
+/** One 1024² RGBA texture with its mips: 4 MiB × 4/3. */
+const TEX_MB = (1024 * 1024 * 4 * 4) / 3 / 2 ** 20;
+
+function noiseTexture(seed: number): DataTexture {
+  const n = 1024;
+  const data = new Uint8Array(n * n * 4);
+  let x = seed * 2654435761;
+  for (let i = 0; i < data.length; i++) {
+    x = (x ^ (x << 13)) >>> 0;
+    x = (x ^ (x >>> 17)) >>> 0;
+    x = (x ^ (x << 5)) >>> 0;
+    data[i] = i % 4 === 3 ? 255 : 90 + (x % 120);
+  }
+  const t = new DataTexture(data, n, n, RGBAFormat);
+  t.colorSpace = SRGBColorSpace;
+  t.generateMipmaps = true;
+  t.needsUpdate = true;
+  return t;
+}
+
 export function installBench(app: App): void {
+  let load: { group: Group; dispose(): void } | null = null;
+  window.__load = async (opts) => {
+    if (load) {
+      app.scene.remove(load.group);
+      load.dispose();
+      load = null;
+    }
+    if (!opts) return null;
+    const stop = STOPS[STOP_IDS.indexOf(opts.stop)];
+    if (!stop) throw new Error(`no stop ${opts.stop}`);
+    const textures = Math.ceil((opts.texMB ?? 0) / TEX_MB);
+    const draws = Math.max(1, opts.draws ?? 1, textures);
+    const per = Math.max(2, (opts.tris ?? 0) / draws);
+    const seg = Math.max(3, Math.ceil(Math.sqrt(per / 2)));
+    const geometry = new SphereGeometry(1, seg, seg + 1);
+    const plain = new MeshStandardNodeMaterial({ color: 0x8a8070, roughness: 0.9 });
+    const maps: DataTexture[] = [];
+    const materials: MeshStandardNodeMaterial[] = [plain];
+    const group = new Group();
+    const yaw = (stop.landscape.yaw * Math.PI) / 180;
+    let r = 12345;
+    const rand = () => {
+      r = (r * 16807) % 2147483647;
+      return r / 2147483647;
+    };
+    for (let i = 0; i < draws; i++) {
+      let material = plain;
+      if (i < textures) {
+        const map = noiseTexture(i + 1);
+        maps.push(map);
+        material = new MeshStandardNodeMaterial({ map, roughness: 0.9 });
+        materials.push(material);
+      }
+      const mesh = new Mesh(geometry, material);
+      // scattered 12–80 m ahead, ±35° of the stop's gaze, on the eye's level ±4 m
+      const a = yaw + (rand() - 0.5) * 1.2;
+      const d = 12 + rand() * 68;
+      const c = stop.cam;
+      mesh.position.set(...toThree([c[0] + Math.sin(a) * d, c[1] + Math.cos(a) * d, c[2] + (rand() - 0.5) * 8]));
+      mesh.scale.setScalar(0.4 + rand() * 1.2);
+      if (opts.mirror === false) mesh.layers.set(EYE_ONLY_LAYER);
+      group.add(mesh);
+    }
+    await app.pipeline?.compile(group, { mirror: opts.mirror !== false });
+    app.scene.add(group);
+    load = {
+      group,
+      dispose() {
+        geometry.dispose();
+        for (const m of materials) m.dispose();
+        for (const t of maps) t.dispose();
+      },
+    };
+    const tris = (geometry.index ? geometry.index.count : geometry.attributes.position!.count) / 3;
+    return { draws, tris: Math.round(tris * draws), texMB: Math.round(textures * TEX_MB) };
+  };
+
   window.__joined = () => Object.fromEntries([...app.joined].map(([k, v]) => [k, Math.round(v)]));
   window.__stageB = () => app.stageB;
   window.__quality = (q) => app.setQuality(q);
