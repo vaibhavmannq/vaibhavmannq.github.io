@@ -11,6 +11,7 @@ import { blendHours, HOURS } from '../journey/hours';
 import { createLook, dragEnded, touchIntent } from '../journey/look';
 import { follow, LEAD_SCREENS, rideMs } from '../journey/pace';
 import { nearDistance, PARALLAX_RATE, parallaxOffset, parallaxWeight } from '../journey/parallax';
+import { canSwap } from '../journey/passages';
 import { SHOTS } from '../journey/shots';
 import { SPOT_WALK_MS, SPOTS, type SpotPath, sampleSpot, spotsAt, spotsOpen } from '../journey/spots';
 import { STOPS, stopIndex } from '../journey/stops';
@@ -35,7 +36,6 @@ import { mountSoundToggle } from '../sound/toggle';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { BOWL, bowlPrisms, createBowl, fallsLayout, ledgePlants, rimTrees } from '../world/bowl';
-import { cragPrisms, createCrags, edgeScrub } from '../world/crags';
 import { capInstances } from '../world/caps';
 import { caveLure, createCave, decodeCave } from '../world/cave';
 import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
@@ -43,6 +43,7 @@ import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
 import { coronaCurves, coronaShot } from '../world/corona';
 import { COVE_SEEN_FROM } from '../world/cove';
+import { cragPrisms, createCrags, edgeScrub } from '../world/crags';
 import { createDressing, decodeDressing } from '../world/dressing';
 import {
   createCaps,
@@ -80,6 +81,8 @@ import { createProjectLanterns } from '../world/projectLanterns';
 import { createRidge, ridgeHeight, scatterRidge } from '../world/ridge';
 import { PLANT_STRIDE, scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
+import { createSetStreamer, type SetStreamer } from '../world/setStreamer';
+import { SET_PARTS, wantedSets } from '../world/sets';
 import { createSky, type Sky } from '../world/sky';
 import { skyMode } from '../world/skyClouds';
 import { createSkylight, openRoof, roofAbove, SKYLIGHT } from '../world/skylight';
@@ -117,6 +120,14 @@ export interface App {
   /** When each part joined the scene (performance.now ms), for the benchmarks. */
   readonly joined: Map<string, number>;
   addPart(part: WorldPart, name: string): void;
+  /** Takes a part out of the scene and the loop (a released close-up set); the caller disposes it. */
+  removePart(part: WorldPart, name: string): void;
+  /** Each place's close-up set, built on demand (world-to-100 Task 4); registered by loadBase. */
+  readonly setBuilders: Map<StopId, () => Promise<[string, WorldPart][]>>;
+  /** loadBase calls this once the builders are registered (or the base failed). */
+  setsRegistered(): void;
+  /** The close-up set streamer, once the world runs (bench `__sets`). */
+  streamer: SetStreamer | null;
   /** Called after every rendered frame (HUD, overlay). */
   onFrame: ((frame: FrameState, nowMs: number, dtMs: number) => void)[];
   /** Show the renders at the stops (`?stills=off` and the HUD turn them off). */
@@ -155,16 +166,33 @@ function aimCamera(camera: PerspectiveCamera, pose: Pose): void {
  * objects, so a part that starts hidden is shown for the compile only; its first update decides. A part that fails
  * is left out with a warning; the rest of the world goes on (final review I1).
  */
+async function compileFor(app: App, part: WorldPart, name: string): Promise<void> {
+  const shown = part.object.visible;
+  part.object.visible = true;
+  try {
+    // the sea is never drawn in its own mirror
+    await app.pipeline?.compile(part.object, { mirror: name !== 'sea' });
+  } finally {
+    part.object.visible = shown;
+  }
+}
+
+/** Resolves once place `id`'s close-up set is shown (at once if it has none), or after `capMs`. */
+function setShown(app: App, id: StopId | undefined, capMs: number): Promise<void> {
+  if (!id || SET_PARTS[id].length === 0) return Promise.resolve();
+  const by = performance.now() + capMs;
+  return new Promise((resolve) => {
+    const check = () => {
+      if (app.streamer?.state(id) === 'shown' || performance.now() >= by) resolve();
+      else requestAnimationFrame(check);
+    };
+    check();
+  });
+}
+
 async function compileThenAdd(app: App, part: WorldPart, name: string): Promise<void> {
   try {
-    const shown = part.object.visible;
-    part.object.visible = true;
-    try {
-      // the sea is never drawn in its own mirror
-      await app.pipeline?.compile(part.object, { mirror: name !== 'sea' });
-    } finally {
-      part.object.visible = shown;
-    }
+    await compileFor(app, part, name);
     app.addPart(part, name);
   } catch (error) {
     console.warn(`${name} failed to join`, error);
@@ -193,13 +221,12 @@ async function loadBase(
     Promise.all([cliffsMeta ? fetchBinary(cliffsMeta.file) : null, groveMeta ? fetchBinary(groveMeta.file) : null]);
   const coveEarly = COVE_SEEN_FROM.has(opening()) ? coveFiles() : null;
   coveEarly?.catch(() => undefined); // its failure is handled where it is awaited
-  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, caveBuf] = await Promise.all([
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
     dressingMeta ? fetchBinary(dressingMeta.file) : null,
     auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
-    caveMeta ? fetchBinary(caveMeta.file) : null,
   ]);
   const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
@@ -208,7 +235,7 @@ async function loadBase(
   app.nearM = STOPS.map((s) =>
     nearDistance(s.cam, s.landscape.yaw, s.landscape.pitch, fovFor(s.landscape.lens, 16 / 9), heightAt),
   );
-  const cut = caveShot && caveBuf ? { x: caveShot.x, y: caveShot.y, rx: 12.2, ry: 10.2 } : undefined;
+  const cut = caveShot && caveMeta ? { x: caveShot.x, y: caveShot.y, rx: 12.2, ry: 10.2 } : undefined;
   // Night's lagoon is fed by the falls, not the sea: no tide bands there (rock.ts). Its middle lies between the pool
   // and the camera; 120 m reaches the bowl's walls.
   // s18: the bowl's own middle (plan M5 Task 1); its walls stand 34-48 m out, the crater's 8 m slopes up to 70 m.
@@ -287,63 +314,79 @@ async function loadBase(
   if (midnight.cloudsea) {
     const [bx0, bx1, by0] = midnight.cloudsea.box;
     const deck = { ...midnight.cloudsea, box: [bx0, bx1, by0, -100] as typeof midnight.cloudsea.box };
-    parts.push(['cloud', createCloudSea(deck, heightMap, meta.heights, light, { x: mid.cam[0], y: mid.cam[1], z: mid.eyeZ })]);
+    parts.push([
+      'cloud',
+      createCloudSea(deck, heightMap, meta.heights, light, { x: mid.cam[0], y: mid.cam[1], z: mid.eyeZ }),
+    ]);
   }
   // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);
-  if (caveShot && caveMeta && caveBuf) {
-    const caveParts = decodeCave(caveBuf, caveMeta);
-    // Before dawn starts deeper (plan M7 Task 1): a passage of columns behind the chamber, its back wall opened
-    const site = passageSite(caveShot, SHOTS.beforedawn);
-    const mouthOpen = caveParts.shell.open;
-    caveParts.shell.open = openShell(caveParts.shell.position, mouthOpen, site);
-    // the skylight (plan M7 Task 7), an option: `?skylight=off` keeps the roof whole
-    const skylightOn = new URLSearchParams(location.search).get('skylight') !== 'off';
-    if (skylightOn) {
-      caveParts.shell.open = openRoof(caveParts.shell.position, caveParts.shell.open);
-      parts.push(['skylight', createSkylight(caveShot, sky, roofAbove(caveParts.shell.position, SKYLIGHT))]);
-    }
-    const passage = buildPassage(site, shellSampler(caveParts.shell.position, site), surface, caveShot.floor, caveShot);
-    const frame = passageFrame(site);
-    const inPassage = (x: number, y: number) => {
-      const s = frame.along(x - caveShot.x, y - caveShot.y);
-      return s > 0 && s < PASSAGE_END + 1 && Math.abs(frame.lateral(x - caveShot.x, y - caveShot.y)) < 4;
-    };
-    // its floor: cobbles, boulders and column stumps (plan M7 Task 4)
-    const floorStones = scatterFloor(
-      caveFloorSite({
-        ...frame,
-        halfW: 2.6,
-        passageEnd: PASSAGE_END,
-        walkDepth: WALK_DEPTH,
-        pool: { x: caveShot.pool.x - caveShot.x, y: caveShot.pool.y - caveShot.y, r: 3.2 },
-      }),
-      [-9.5, -26, 9.5, 9.5],
-    );
-    const stones = floorGeometry(floorStones);
-    // the fungi in clusters (plan M7 Task 5), in place of cave.bin's ring along the floor's edge
-    caveParts.fungi = fungiClusters({
-      shell: caveParts.shell.position,
-      passage,
-      stones: floorStones,
-      along: frame.along,
-      lateral: frame.lateral,
-    });
-    // vines on the mouth's lip (plan M7 Task 6), their own small draw
-    parts.push(['vines', createVines(vineLeaves(caveParts.shell.position, mouthOpen, 2.9), caveShot, sky)]);
-    parts.push([
-      'cave',
-      createCave(caveParts, caveShot, sky, light, {
+  // Before dawn's cave is its place's close-up set (world-to-100 Task 4, R211): fetched while resting at Midnight,
+  // compiled off-screen, shown inside the ride's passage, released two places on.
+  if (caveShot && caveMeta)
+    app.setBuilders.set('beforedawn', async () => {
+      const parts: [string, WorldPart][] = [];
+      const caveBuf = await fetchBinary(caveMeta.file);
+      const caveParts = decodeCave(caveBuf, caveMeta);
+      // Before dawn starts deeper (plan M7 Task 1): a passage of columns behind the chamber, its back wall opened
+      const site = passageSite(caveShot, SHOTS.beforedawn);
+      const mouthOpen = caveParts.shell.open;
+      caveParts.shell.open = openShell(caveParts.shell.position, mouthOpen, site);
+      // the skylight (plan M7 Task 7), an option: `?skylight=off` keeps the roof whole
+      const skylightOn = new URLSearchParams(location.search).get('skylight') !== 'off';
+      if (skylightOn) {
+        caveParts.shell.open = openRoof(caveParts.shell.position, caveParts.shell.open);
+        parts.push(['skylight', createSkylight(caveShot, sky, roofAbove(caveParts.shell.position, SKYLIGHT))]);
+      }
+      const passage = buildPassage(
+        site,
+        shellSampler(caveParts.shell.position, site),
+        surface,
+        caveShot.floor,
+        caveShot,
+      );
+      const frame = passageFrame(site);
+      const inPassage = (x: number, y: number) => {
+        const s = frame.along(x - caveShot.x, y - caveShot.y);
+        return s > 0 && s < PASSAGE_END + 1 && Math.abs(frame.lateral(x - caveShot.x, y - caveShot.y)) < 4;
+      };
+      // its floor: cobbles, boulders and column stumps (plan M7 Task 4)
+      const floorStones = scatterFloor(
+        caveFloorSite({
+          ...frame,
+          halfW: 2.6,
+          passageEnd: PASSAGE_END,
+          walkDepth: WALK_DEPTH,
+          pool: { x: caveShot.pool.x - caveShot.x, y: caveShot.pool.y - caveShot.y, r: 3.2 },
+        }),
+        [-9.5, -26, 9.5, 9.5],
+      );
+      const stones = floorGeometry(floorStones);
+      // the fungi in clusters (plan M7 Task 5), in place of cave.bin's ring along the floor's edge
+      caveParts.fungi = fungiClusters({
+        shell: caveParts.shell.position,
         passage,
-        inPassage,
-        mouthOpen,
-        throughJunction: junctionVisible(site),
-        alongOf: frame.along,
-        stones,
-        ...(skylightOn ? { skylight: SKYLIGHT } : {}),
-      }),
-    ]);
-  }
+        stones: floorStones,
+        along: frame.along,
+        lateral: frame.lateral,
+      });
+      // vines on the mouth's lip (plan M7 Task 6), their own small draw
+      parts.push(['vines', createVines(vineLeaves(caveParts.shell.position, mouthOpen, 2.9), caveShot, sky)]);
+      parts.push([
+        'cave',
+        createCave(caveParts, caveShot, sky, light, {
+          passage,
+          inPassage,
+          mouthOpen,
+          throughJunction: junctionVisible(site),
+          alongOf: frame.along,
+          stones,
+          ...(skylightOn ? { skylight: SKYLIGHT } : {}),
+        }),
+      ]);
+      return parts;
+    });
+  app.setsRegistered();
   const byName = new Map(parts);
   // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
   // soon as its own shader is ready, never waiting for one that is slower but not needed here (plan M2.5 Task 8).
@@ -437,6 +480,9 @@ async function loadBase(
   const order = partOrder([...byName.keys()], stop);
   const here = order.filter((n) => PART_STOPS[n]?.has(stop));
   await Promise.all(here.map(join));
+  // opening at a place with a close-up set, that set compiles before the rest of the world (R211: it competed with the
+  // second wave and missed the first view's 3 s cap at Before dawn)
+  await setShown(app, stop, REVEAL_WAIT_MS);
   await Promise.all(order.filter((n) => !here.includes(n)).map(join));
   await Promise.all([rockReady, coveReady]);
 }
@@ -475,7 +521,12 @@ export async function boot(): Promise<App> {
   // The overlay runs from the first frame, GPU or not: labels, stills, rail, links, touch snap (spec §2).
   let appRef: App | null = null;
   const stage = createStage(STOPS);
-  const jumps = createJumps(scroll, track, (opacity) => stage.setVeil(opacity));
+  // the jump veil's opacity: close-up sets may swap behind it (passages.ts)
+  let veil = 0;
+  const jumps = createJumps(scroll, track, (opacity) => {
+    veil = opacity;
+    stage.setVeil(opacity);
+  });
   const rail = createRail(document.getElementById('rail') as HTMLElement, STOPS, (i) => void jumps.go(i));
   /** Set by look-around when a touch turns the head; such a touch never snaps the scroll. */
   const gesture = { turned: false };
@@ -552,6 +603,10 @@ export async function boot(): Promise<App> {
   }
 
   const parts: WorldPart[] = [];
+  let setsIn: () => void = () => undefined;
+  const setsRegisteredP = new Promise<void>((resolve) => {
+    setsIn = resolve;
+  });
   const named = new Map<string, WorldPart>();
   let tier: Tier = params.tier ?? bootTier(caps);
   // Loading hitches in the first seconds say nothing about the device (s04: the owner's phone fell to low in its first
@@ -605,6 +660,16 @@ export async function boot(): Promise<App> {
       scene.add(part.object);
       part.setTier(settings(tier));
     },
+    removePart(part, name) {
+      const i = parts.indexOf(part);
+      if (i >= 0) parts.splice(i, 1);
+      if (named.get(name) === part) named.delete(name);
+      app.joined.delete(name);
+      scene.remove(part.object);
+    },
+    setBuilders: new Map(),
+    setsRegistered: () => setsIn(),
+    streamer: null,
     onFrame: [],
     stills: params.stills,
     stageB: Promise.resolve(),
@@ -623,7 +688,8 @@ export async function boot(): Promise<App> {
     },
   });
   // With no GPU nothing shows the skies, so jumps never wait for them (review I5).
-  if (pipeline) jumps.ready = (i) => skies.ready(i);
+  if (pipeline)
+    jumps.ready = (i) => Promise.all([skies.ready(i), setShown(app, STOP_IDS[i], 3000)]).then(() => undefined);
   const sky = createSky(light, skies, blank, skyMode(location.search));
   // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
   // First light's mist (plan M3 Task 3) is height fog in the same colour, folded into the one fog: no draw, and the
@@ -1038,9 +1104,52 @@ export async function boot(): Promise<App> {
     const revealBy = performance.now() + REVEAL_WAIT_MS;
     showProgress(0.3);
 
+    // Close-up sets (world-to-100 Tasks 4–5): fetched ahead, compiled off-screen, shown and released in passages.
+    const setNames = new Map<WorldPart, string>();
+    const streamer = createSetStreamer({
+      async fetchSet(id) {
+        await setsRegisteredP;
+        const build = app.setBuilders.get(id);
+        if (!build) return [];
+        const built = await build();
+        for (const [n, p] of built) setNames.set(p, n);
+        return built.map(([, p]) => p);
+      },
+      async compile(ps) {
+        await Promise.all(ps.map((p) => compileFor(app, p, setNames.get(p) ?? 'set')));
+      },
+      add(ps) {
+        for (const p of ps) app.addPart(p, setNames.get(p) ?? 'set');
+      },
+      remove(ps) {
+        for (const p of ps) {
+          app.removePart(p, setNames.get(p) ?? 'set');
+          setNames.delete(p);
+        }
+      },
+    });
+    app.streamer = streamer;
+    const updateSets = (state: FrameState) => {
+      const here = STOP_IDS[state.a];
+      const own = state.kind === 'stop' && here !== undefined && SET_PARTS[here].length > 0;
+      streamer.update(
+        wantedSets(state, state.resting),
+        canSwap(state, {
+          reducedMotion: caps.reducedMotion,
+          firstShown: html.classList.contains('is-scene-ready'),
+          veil,
+          ownSetMissing: own && streamer.state(here) !== 'shown',
+        }),
+      );
+    };
+
+    // the opening place's set is asked for now, not on the loop's first frame (R211: that came after the reveal)
+    updateSets(start);
+
     const benchHeld = new Set<string>();
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
+      updateSets(f.state);
       for (const part of parts) part.update(f);
       sound.eye(f.pose.position, f.pose.yaw);
       for (const name of app.partsOff) {
@@ -1075,7 +1184,8 @@ export async function boot(): Promise<App> {
       STOP_IDS[last ? (last.kind === 'stop' || last.t < 0.5 ? last.a : last.b) : 0] ?? 'golden';
     app.stageB = loadBase(app, sky, light, params.auroraActive, opening, caps.reducedMotion)
       .then(() => governor.reset(app.tier, performance.now()))
-      .catch((error: unknown) => console.warn('world base failed to load', error));
+      .catch((error: unknown) => console.warn('world base failed to load', error))
+      .finally(() => app.setsRegistered());
     const watchReveal = () => {
       const share = joinedShare(new Set(app.joined.keys()), wanted);
       showProgress(0.3 + 0.7 * share);

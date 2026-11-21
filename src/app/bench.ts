@@ -9,9 +9,8 @@ import {
   SRGBColorSpace,
 } from 'three/webgpu';
 import { STOPS } from '../journey/stops';
-import { toThree } from '../journey/types';
 import { stopCentre } from '../journey/timeline';
-import { STOP_IDS, type StopId } from '../journey/types';
+import { STOP_IDS, type StopId, toThree } from '../journey/types';
 import { TIER_NAMES, type Tier } from '../quality/tiers';
 import { EYE_ONLY_LAYER } from '../world/meadow';
 import type { App } from './boot';
@@ -66,6 +65,8 @@ declare global {
      * meshes sharing `tris` triangles, one 1024² texture each until `texMB`; in the mirror unless `mirror` is false.
      * Compiled for the eye and the mirror before it shows. `null` removes it.
      */
+    /** Each place's close-up set state (world-to-100 Task 4): none, fetching, ready or shown. */
+    __sets(): Record<string, string>;
     __load(opts: LoadOptions | null): Promise<{ draws: number; tris: number; texMB: number } | null>;
   }
 }
@@ -146,6 +147,7 @@ function noiseTexture(seed: number): DataTexture {
 }
 
 export function installBench(app: App): void {
+  window.__sets = () => Object.fromEntries(STOP_IDS.map((id) => [id, app.streamer?.state(id) ?? 'none']));
   let load: { group: Group; dispose(): void } | null = null;
   window.__load = async (opts) => {
     if (load) {
