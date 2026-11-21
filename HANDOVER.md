@@ -282,7 +282,8 @@ no borrowed set pieces (no towers, piano, etc.).
   - #2: columns on Golden's right bank, shrubs on Dusk's slopes (`src/world/crags.ts`, per stop); Sunrise's left is #13.
   - Owner: stacks' scrub caps removed. Research for #9 and #13 in `docs/handover/research/m85-*.md`; the owner's photos
     and the yardstick in `research/m85-owner-photos-s25.md`. Batch-end checks: `world-sheet.mjs`, `netcheck.mjs`, `census.mjs`.
-- **Next (s26):** batch-2 verdicts and the two owner questions (s25 log, Open), then Round 1 from #4/#5, #13, #9, #10, #8,
+  - Batch 2 accepted and pushed (D50). #4 Sunset's poppies and #5 Dusk's silhouetted stacks and flowers built (batch 3).
+- **Next (s26):** batch-3 verdicts (#4, #5) and whether #3a (the sky, D50) moves earlier; then Round 1: #13, #9, #10, #8,
   #12, #14, #3a, waves (D47 rules; batches of 3–5).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
