@@ -118,6 +118,8 @@ export interface LightValues {
   shadowFloor: RGB;
   /** × HEMI_INTENSITY (hours.ts SKY_FILL) */
   skyFill: number;
+  /** 0..1: the sea's sun or moon road (HourPreset.road) */
+  road: number;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
@@ -153,6 +155,7 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     cloud: hour.cloud,
     shadowFloor: shadowFloor(hour),
     skyFill: hour.skyFill,
+    road: hour.road,
   };
 }
 
@@ -181,6 +184,8 @@ export function createLightUniforms() {
     shadowFloor: uniform(new Color(0.008, 0.008, 0.02)),
     /** × HEMI_INTENSITY for the parts that light themselves (meadow, grove): hours.ts SKY_FILL */
     skyFill: uniform(1),
+    /** 0..1: the sea's sun or moon road (HourPreset.road; M8.5 #3b) */
+    road: uniform(1),
   };
   const key = new DirectionalLight(0xffffff, 2);
   /** Bounce light from the lit sea and sky opposite the key, so shadowed faces keep their shape (slice). */
@@ -213,6 +218,7 @@ export function createLightUniforms() {
       u.moonStrength.value = v.moonStrength;
       u.moonShadowDir.value.set(...v.moonShadowDir).normalize();
       u.moonLit.value = v.moonLit;
+      u.road.value = v.road;
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
       u.shadowFloor.value.setRGB(...v.shadowFloor);

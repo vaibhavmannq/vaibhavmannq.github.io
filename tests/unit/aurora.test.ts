@@ -53,4 +53,17 @@ describe('the aurora (spec §9.4, D4)', () => {
     expect(n0).toBeLessThan(1);
     expect(m0).toBe(0);
   });
+
+  // M8.5 #3b: the light turns through the whole flight now, so Night's curtains tinted a still-bright Blue hour sky at a
+  // quarter of the way; an aurora from an hour without one waits for the dark, as the moon does.
+  it('brings an aurora in from an hour without one only as the sky darkens', () => {
+    const before = track.segments.find((s) => s.kind === 'flight' && s.to === STOP_IDS.indexOf('night'));
+    const after = track.segments.find((s) => s.kind === 'flight' && s.from === STOP_IDS.indexOf('midnight'));
+    if (!before || !after) throw new Error('no flight');
+    const at = (seg: typeof before, t: number) => frameAt(track, seg.start + (seg.end - seg.start) * t, false);
+    expect(auroraWeights(at(before, 0.25))[0]).toBe(0);
+    expect(auroraWeights(at(before, 0.9))[0]).toBeGreaterThan(0.9);
+    expect(auroraWeights(at(after, 0.1))[1]).toBeGreaterThan(0.9);
+    expect(auroraWeights(at(after, 0.75))[1]).toBe(0);
+  });
 });

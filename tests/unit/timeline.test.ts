@@ -74,10 +74,24 @@ describe('the track', () => {
     expect(f.skyWeight).toBeCloseTo(0.5, 6);
   });
 
-  it('holds the light, then turns it in the middle third of a flight (owner-references §17: hold, then a short blend)', () => {
-    expect(frameAt(track, within(5, 0.3), false).hourWeight).toBe(0);
-    expect(frameAt(track, within(5, 0.7), false).hourWeight).toBe(1);
-    expect(frameAt(track, within(5, 0.4), false).hourWeight).toBeGreaterThan(0);
+  // M8.5 #3b (owner, round 1: "the change between places should feel like time shifting"): the old hold-turn-hold read
+  // as a jump in the world. The light and the sky now turn through the whole flight, gently at both ends.
+  it('turns the light and the sky through the whole flight, never in a jump', () => {
+    const w = (t: number) => frameAt(track, within(5, t), false);
+    expect(w(0.15).hourWeight).toBeGreaterThan(0.03);
+    expect(w(0.85).hourWeight).toBeLessThan(0.97);
+    expect(w(0.15).skyWeight).toBeGreaterThan(0.02);
+    let last = { h: 0, s: 0 };
+    for (let i = 1; i < 100; i++) {
+      const f = w(i / 100);
+      // at most 1.6 % of the change per 1 % of the flight (the old middle third: 5.6 %)
+      expect(f.hourWeight - last.h).toBeLessThanOrEqual(0.016 + 1e-9);
+      expect(f.skyWeight - last.s).toBeLessThanOrEqual(0.017 + 1e-9);
+      expect(f.hourWeight).toBeGreaterThanOrEqual(last.h);
+      last = { h: f.hourWeight, s: f.skyWeight };
+    }
+    // the sky photo stays with the light: never more than a tenth apart
+    for (let i = 0; i < 100; i++) expect(Math.abs(w(i / 100).skyWeight - w(i / 100).hourWeight)).toBeLessThan(0.1);
   });
 
   it('fades the still out at the start of a flight and back in at its end', () => {

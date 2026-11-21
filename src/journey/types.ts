@@ -102,4 +102,9 @@ export interface HourPreset {
   mist: number;
   /** 0..1: how much sea sparkle the water holds (plan M4 Task 1): Blue hour only; never in daylight (book §6). */
   plankton: number;
+  /**
+   * 0..1: how much of the sun's or moon's road the sea shows. 1 at every hour; between two hours lit from different
+   * directions it dips while the key light swings through directions where no light is (M8.5 #3b).
+   */
+  road: number;
 }

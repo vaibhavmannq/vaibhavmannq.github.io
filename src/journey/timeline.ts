@@ -1,4 +1,4 @@
-import { clamp01, smootherstep, smoothstep } from '../shared/math';
+import { clamp01, smoothstep } from '../shared/math';
 import type { Stop } from './types';
 
 /** Scroll length of a stop, in screen heights (Amendment 1 §7: was 1.0). */
@@ -109,10 +109,12 @@ export function frameAt(track: Track, u: number, reducedMotion: boolean): FrameS
     b: s.to,
     t,
     resting: false,
-    // Hold the light, then turn it in the middle third (owner-references §17, from the game's weather study: each
-    // place sits in a stable light and the change happens in a short band between places).
-    hourWeight: smootherstep(clamp01((t - 1 / 3) * 3)),
-    skyWeight: smoothstep(0.3, 0.7, t),
+    // The light turns through the whole flight, gently at both ends (M8.5 #3b, owner: "it should feel like time
+    // shifting"). It used to hold, turn in the middle third and hold again (owner-references §17, from the game's
+    // weather study); in the world that read as a jump. The sky photos dissolve with it, a little later in and earlier
+    // out so the double exposure is shortest.
+    hourWeight: smoothstep(0, 1, t),
+    skyWeight: smoothstep(0.05, 0.95, t),
     stillWeight,
     fade: 0,
   };

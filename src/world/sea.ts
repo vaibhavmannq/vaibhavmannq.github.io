@@ -183,7 +183,9 @@ export function createSea(
   const glint = max(facetGlint(4.0, 0), facetGlint(0.5, 11))
     .mul(u.keyColor)
     .mul(6.0)
-    .mul(smoothstep(0.0, 0.05, u.keyStrength));
+    .mul(smoothstep(0.0, 0.05, u.keyStrength))
+    // and none while the key light swings from one light to another (M8.5 #3b: a blob on Blue hour → Night's water)
+    .mul(u.road);
   // the mirror read smooth (mirrorSample.ts): one bilinear tap stair-stepped its edges at 3–8× magnification (s22)
   const mirrored = reflection.uvNode ? mirrorCubic(reflection, reflection.uvNode as Node<'vec2'>) : reflection.rgb;
   let col = mix(body, mirrored, fresnel).add(glint);

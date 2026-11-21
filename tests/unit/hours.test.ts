@@ -35,9 +35,32 @@ describe('hour presets from coast.py (spec §9.1)', () => {
     expect(blendHours(HOURS.bluehour, HOURS.night, 0.25).aurora).toBe(0.25);
   });
 
-  it('fade the moon out when only one side has it', () => {
-    const half = blendHours(HOURS.night, HOURS.sunrise, 0.5);
-    expect(half.moon?.strength).toBeCloseTo((HOURS.night.moon?.strength ?? 0) / 2, 6);
+  // M8.5 #3b: the light now turns through the whole flight, so a moon that rose with it showed (and its reflection, a
+  // white blob) while the sky was still Blue hour's. A moon only one side has comes in late and goes out early.
+  it('fade a moon only one side has in as the sky darkens, and out before it lightens', () => {
+    const full = HOURS.night.moon?.strength ?? 0;
+    const into = (w: number) => blendHours(HOURS.bluehour, HOURS.night, w).moon?.strength ?? 0;
+    const out = (w: number) => blendHours(HOURS.night, HOURS.sunrise, w).moon?.strength ?? 0;
+    expect(into(0.25)).toBe(0);
+    expect(into(0.5)).toBeGreaterThan(0);
+    expect(into(0.5)).toBeLessThan(full / 2);
+    expect(into(0.85)).toBeCloseTo(full, 6);
+    expect(out(0.15)).toBeCloseTo(full, 6);
+    expect(out(0.5)).toBeLessThan(full / 2);
+    expect(out(0.75)).toBe(0);
+  });
+
+  // M8.5 #3b: between two hours lit from different directions (Blue hour's sun under the horizon, Night's moon) the key
+  // light swings through directions where no light is; the sea's road followed it as a white blob on the water.
+  it('show the sun or moon road only near a real light while the key light hands over', () => {
+    for (const id of STOP_IDS) expect(HOURS[id].road).toBe(1);
+    const road = (w: number) => blendHours(HOURS.bluehour, HOURS.night, w).road;
+    expect(road(0.3)).toBe(0);
+    expect(road(0.6)).toBe(0);
+    expect(road(0.15)).toBe(0);
+    expect(road(0.98)).toBeGreaterThan(0.5);
+    // the same light moving a little (Golden's sun to Sunset's) keeps its road all the way
+    for (const w of [0.25, 0.5, 0.75]) expect(blendHours(HOURS.golden, HOURS.sunset, w).road).toBe(1);
   });
 
   it('give every hour a world state in range', () => {

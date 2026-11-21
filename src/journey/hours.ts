@@ -1,4 +1,4 @@
-import { lerp } from '../shared/math';
+import { lerp, smoothstep } from '../shared/math';
 import { SHOTS } from './shots';
 import {
   type HourPreset,
@@ -121,6 +121,7 @@ function preset(id: StopId): HourPreset {
     skyFill: SKY_FILL[id],
     mist: MIST[id],
     plankton: PLANKTON[id],
+    road: 1,
   };
 }
 
@@ -155,8 +156,11 @@ function blendMoon(a: Moon | null, b: Moon | null, w: number): Moon | null {
       sizeDeg: lerp(a.sizeDeg, b.sizeDeg, w),
       strength: lerp(a.strength, b.strength, w),
     };
+  // A moon only one side has comes in as the sky darkens and goes out before it lightens (M8.5 #3b): with the light
+  // turning through the whole flight, a moon that rose with it lit up a Blue hour sky, and its reflection a white blob.
   const only = (a ?? b) as Moon;
-  return { ...only, strength: lerp(a ? only.strength : 0, b ? only.strength : 0, w) };
+  const shown = b ? smoothstep(0.3, 0.8, w) : 1 - smoothstep(0.2, 0.7, w);
+  return { ...only, strength: only.strength * shown };
 }
 
 /** Angles in degrees, blended the short way round (350 to 10 passes through 0, not 180). */
@@ -193,6 +197,24 @@ export function windVector(world: Pick<WorldState, 'windAz' | 'beaufort'>): [num
   return [-Math.sin(az) * speed, -Math.cos(az) * speed];
 }
 
+/** Two key lights further apart than this are two different lights, not one light moving (cos 25°). */
+const SAME_LIGHT_COS = Math.cos((25 * Math.PI) / 180);
+
+/** While the light hands over, the road shows only while the key is this close to a real light. */
+const ROAD_NEAR_RAD = (10 * Math.PI) / 180;
+
+/**
+ * The road while the light hands over (M8.5 #3b): the same light moving keeps its road; a hand-over (sun to moon, or a
+ * moon to a far sun) shows it only while the swinging key is within 10° of either real light.
+ */
+function roadBetween(a: HourPreset, b: HourPreset, w: number): number {
+  const [x, y] = [a.key.dir, b.key.dir];
+  const cos = (x[0] * y[0] + x[1] * y[1] + x[2] * y[2]) / (Math.hypot(...x) * Math.hypot(...y));
+  if (cos >= SAME_LIGHT_COS) return lerp(a.road, b.road, w);
+  const span = ROAD_NEAR_RAD / Math.acos(Math.max(-1, cos)); // the share of the swing that is 10°
+  return a.road * (1 - smoothstep(0, span, w)) + b.road * smoothstep(1 - span, 1, w);
+}
+
 /** The light between two hours, `w` = 0 (all of a) to 1 (all of b). */
 export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset {
   if (w <= 0) return a;
@@ -219,5 +241,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     skyFill: lerp(a.skyFill, b.skyFill, w),
     mist: lerp(a.mist, b.mist, w),
     plankton: lerp(a.plankton, b.plankton, w),
+    road: roadBetween(a, b, w),
   };
 }

@@ -12,6 +12,7 @@ import {
 import type { AuroraShot } from '../journey/shots';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS, toThree } from '../journey/types';
+import { smoothstep } from '../shared/math';
 import { mulberry32 } from '../shared/random';
 import { auroraDim } from './light';
 import { fbm2, remap } from './noise';
@@ -134,10 +135,16 @@ function merged(parts: BufferGeometry[]): BufferGeometry {
   return g;
 }
 
-/** How much of Night's and of Midnight's aurora shows: each hour's own curtains come and go with its light. */
+/**
+ * How much of Night's and of Midnight's aurora shows: each hour's own curtains come and go with its light. Between the
+ * two they cross-fade; from or to an hour without one they wait for the dark (M8.5 #3b), as the moon does (hours.ts).
+ */
 export function auroraWeights(state: FrameState): [number, number] {
-  const of = (stop: number) =>
-    (state.a === stop ? 1 - state.hourWeight : 0) + (state.b === stop ? state.hourWeight : 0);
+  const w = state.hourWeight;
+  const both = (state.a === NIGHT || state.a === MIDNIGHT) && (state.b === NIGHT || state.b === MIDNIGHT);
+  const out = both ? 1 - w : 1 - smoothstep(0.2, 0.7, w);
+  const into = both ? w : smoothstep(0.3, 0.8, w);
+  const of = (stop: number) => (state.a === stop ? out : 0) + (state.b === stop ? into : 0);
   return state.a === state.b ? [state.a === NIGHT ? 1 : 0, state.a === MIDNIGHT ? 1 : 0] : [of(NIGHT), of(MIDNIGHT)];
 }
 

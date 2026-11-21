@@ -69,9 +69,14 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   const dir = normalize(positionWorld.sub(cameraPosition));
   let col = mix(colorAt(dir), horizonAt(dir), smoothstep(0.0, -0.025, dir.y));
 
-  // The sun's disc, only while the key light is the sun (at night the key is the moon, drawn below).
+  // The sun's disc, only while the key light is the sun (at night the key is the moon, drawn below), and not while the
+  // key swings from one light to another (M8.5 #3b: a false sun crossed Blue hour → Night's sky, mirrored as a blob).
   const isSun = float(1).sub(step(0.001, u.moonStrength));
-  const sunDisc = smoothstep(0.999984, 0.999994, dot(dir, u.keyDir)).mul(40.0).mul(min(u.keyStrength, 1)).mul(isSun);
+  const sunDisc = smoothstep(0.999984, 0.999994, dot(dir, u.keyDir))
+    .mul(40.0)
+    .mul(min(u.keyStrength, 1))
+    .mul(isSun)
+    .mul(u.road);
   col = col.add(u.keyColor.mul(sunDisc));
 
   // The moon (owner night-sky-and-moon 3, 4, 5, 8): a small sharp disc, lit as a crescent by its phase, the dark part
