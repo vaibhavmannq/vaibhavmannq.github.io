@@ -399,7 +399,7 @@ async function loadBase(
       capsFound(new Float32Array(caps.flatMap((c) => Array.from(c))));
       const all = new Float32Array(feet.reduce((n, a) => n + a.length, 0));
       feet.reduce((o, a) => (all.set(a, o), o + a.length), 0);
-      joins.push(compileThenAdd(app, createPlankton(all, reducedMotion), 'plankton'));
+      joins.push(compileThenAdd(app, createPlankton(all, reducedMotion, light), 'plankton'));
       await Promise.all(joins);
     } catch (error) {
       console.warn('the headland rock failed to load', error);
