@@ -264,7 +264,10 @@ no borrowed set pieces (no towers, piano, etc.).
   `ledgers/2026-11-21-m8.5-owner-hands-on.md`). The owner tests at `http://localhost:4181` (laptop Chrome; phone Brave
   over USB + `adb reverse`); his guide: `docs/handover/m8.5-how-to-test.md`; starter `.superpowers/m85/start-test-build.cmd`.
   The `?hud` panel moved below the Sound button (R160).
-- **Next: the owner's Round 1 feedback** → triage in the M8.5 ledger, then fixes in the order a visitor meets things.
+  - **Round 1 in (owner, 22 screenshots): 17 items triaged in the ledger.** #1 the sea alive done (swell, surf, wash;
+    d6eade1). Chrome's Modern Web Guidance installed as a project plugin (D-less, owner's ask).
+- **Next: M8.5 #2** (rock on the steep faces each stop can see, `crags.ts`, planned in the ledger), then #3b … #17 in the
+  ledger's order. The owner re-tests when Golden → Dusk (#1–#5) are done.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
