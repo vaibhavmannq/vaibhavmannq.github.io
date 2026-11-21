@@ -19,6 +19,8 @@ import { loadThread, saveThread } from '../journey/thread';
 import { buildTrack, type FrameState, frameAt, nearestStop, type Track } from '../journey/timeline';
 import { STOP_IDS, type StopId, toThree, type Vec3 } from '../journey/types';
 import { createWalk } from '../journey/walk';
+import { createLoadingFlow, lightsLantern } from '../loading/flow';
+import { createLanternRoom, type LanternRoom, type RoomLook } from '../loading/lanternRoom';
 import { installHud } from '../overlay/hud';
 import { createJumps, snapStops, targetFromLocation } from '../overlay/links';
 import { installNightCursor } from '../overlay/nightCursor';
@@ -142,7 +144,15 @@ const html = document.documentElement;
 /** How long past stage A the first view may wait for the opening stop's parts (plan M8 Task 5), ms. */
 const REVEAL_WAIT_MS = 3000;
 /** The hairline under the name (owner-sites: Originkit "Hairline Loader"): 0..1 of the first view loaded. */
-const showProgress = (share: number) =>
+/** The first view's load share, 0..1, as last shown (the lantern room's glow reads it). */
+let loadShare = 0;
+/** The lantern room never holds a first visit longer than this (spec §4.1: 5–15 s). */
+const ROOM_CAP_MS = 15000;
+const showProgress = (share: number) => {
+  loadShare = Math.max(loadShare, share);
+  showHairline(share);
+};
+const showHairline = (share: number) =>
   document.getElementById('hairline')?.style.setProperty('--p', Math.min(1, Math.max(0, share)).toFixed(3));
 const rad = (d: number) => (d * Math.PI) / 180;
 const _look = new Vector3();
@@ -589,6 +599,86 @@ export async function boot(): Promise<App> {
     }
   }
   if (!pipeline) html.classList.add('is-stills');
+  // The lantern room (plan world-to-100 Task 6): on a first visit in this tab, from the moment the GPU is ready. Test
+  // browsers skip it unless `?room=` asks for it (R213: every check would wait on it); `?room=off` skips it.
+  const sessionStore = (() => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const flow = createLoadingFlow({ storage: sessionStore, nowMs: () => performance.now(), capMs: ROOM_CAP_MS });
+  const roomParam = new URLSearchParams(location.search).get('room');
+  let roomOn =
+    pipeline !== null && roomParam !== 'off' && !flow.skip && (roomParam !== null || navigator.webdriver !== true);
+  let room: LanternRoom | null = null;
+  let worldLooping = false;
+  let roomStep: (nowMs: number) => void = () => undefined;
+  /** Set once the journey's lantern exists: the room's lantern becomes the visitor's if they lit it. */
+  let claimFromRoom: () => void = () => undefined;
+  if (roomOn && pipeline) {
+    const look: RoomLook = roomParam === 'b' || roomParam === 'c' ? roomParam : 'a';
+    const r = createLanternRoom(pipeline.renderer, look, host.clientWidth / Math.max(1, host.clientHeight));
+    room = r;
+    html.classList.add('is-room');
+    new ResizeObserver(() => r.resize(host.clientWidth, host.clientHeight)).observe(host);
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const held = new URLSearchParams(location.search).has('roomhold');
+    const t0 = performance.now();
+    let lastMs = t0;
+    let glow = 0;
+    let releaseAt = -1;
+    const finish = () => {
+      roomOn = false;
+      flow.release();
+      if (flow.litByVisitor()) claimFromRoom();
+      r.dispose();
+      room = null;
+      if (!worldLooping) {
+        // the world is not drawing yet (a slow stage A at the cap): the poster and its hairline take over as before
+        html.classList.remove('is-room', 'is-room-lit');
+        return;
+      }
+      html.classList.add('is-room-out');
+      requestAnimationFrame(() => {
+        html.classList.remove('is-room', 'is-room-lit', 'is-room-out');
+        html.classList.add('is-scene-ready');
+      });
+    };
+    roomStep = (nowMs) => {
+      const dt = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
+      lastMs = nowMs;
+      flow.progress(loadShare);
+      if (!held) flow.tick();
+      const st = flow.state();
+      html.classList.toggle('is-room-lit', !flow.hint());
+      // unlit, the paper fills faintly as the world loads; lit, the flame grows with it
+      const target = st === 'waiting' ? 0.14 * loadShare : 0.4 + 0.6 * loadShare;
+      glow += (target - glow) * (1 - Math.exp(-3 * dt));
+      if (st === 'ready' && releaseAt < 0) releaseAt = nowMs;
+      let lift = 0;
+      let dark = 0;
+      if (releaseAt >= 0) {
+        const e = (nowMs - releaseAt) / 1000;
+        lift = reduced ? 0 : Math.min(1, e / 1.5);
+        dark = Math.min(1, Math.max(0, (e - (reduced ? 0.2 : 0.9)) / 0.5));
+      }
+      r.update((nowMs - t0) / 1000, glow, lift, dark);
+      r.render();
+      if (dark >= 1 && roomOn) finish();
+    };
+    pipeline.renderer.setAnimationLoop(roomStep);
+    const lightUp = (event: Event) => {
+      if (!roomOn) return;
+      if (event instanceof KeyboardEvent && !lightsLantern(event.key)) return;
+      if (event.target instanceof Element && event.target.closest('a, button')) return;
+      if (event instanceof KeyboardEvent) event.preventDefault();
+      flow.light();
+    };
+    window.addEventListener('pointerdown', lightUp);
+    window.addEventListener('keydown', lightUp);
+  }
   // A phone may drop the GPU when the browser goes to the background (plan M8 Task 10; threejs-r186-notes §4): three
   // then stops drawing and the visitor would keep a frozen frame. The stills take over, as on a device with no GPU path
   // (WebGPU's device lost and WebGL2's context lost both arrive here).
@@ -755,6 +845,9 @@ export async function boot(): Promise<App> {
     saveThread(store, thread);
     duskLanterns.setMine(true);
     projectLanterns.setCount(projects.length, true);
+  };
+  claimFromRoom = () => {
+    if (!thread.claimed) claimLantern();
   };
   if (thread.claimed) {
     lantern.claim();
@@ -1097,6 +1190,8 @@ export async function boot(): Promise<App> {
     const first = frame(performance.now(), 1 / 60);
     for (const part of parts) part.update(first);
     await active.warmUp();
+    // the warm-up drew the world to the screen: the room draws over it in the same task, so that frame never shows
+    if (room) roomStep(performance.now());
     // The first view waits for what the opening stop shows (plan M8 Task 5): the poster stays up while the ground, the
     // sea and that stop's packs join, so a first visit no longer sees the lantern over a bare plane and then the land
     // snap in. Capped, so a slow connection still gets the world; the hairline under the name shows the progress.
@@ -1150,6 +1245,11 @@ export async function boot(): Promise<App> {
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
       updateSets(f.state);
+      // the lantern room is up: it draws, the world keeps loading behind it
+      if (room) {
+        roomStep(nowMs);
+        return;
+      }
       for (const part of parts) part.update(f);
       sound.eye(f.pose.position, f.pose.yaw);
       for (const name of app.partsOff) {
@@ -1178,6 +1278,7 @@ export async function boot(): Promise<App> {
       for (const fn of app.onFrame) fn(f.state, nowMs, dtS * 1000);
     });
     loop.start(active.renderer);
+    worldLooping = true;
 
     // Stage B: the world base (ground and sea), compiled off-screen before it joins the scene (spec §12).
     const opening = (): StopId =>
@@ -1189,6 +1290,11 @@ export async function boot(): Promise<App> {
     const watchReveal = () => {
       const share = joinedShare(new Set(app.joined.keys()), wanted);
       showProgress(0.3 + 0.7 * share);
+      // with the lantern room up, the room reveals the world (it waits up to its own cap, 15 s)
+      if (roomOn) {
+        requestAnimationFrame(watchReveal);
+        return;
+      }
       if (share >= 1 || performance.now() >= revealBy) html.classList.add('is-scene-ready');
       else requestAnimationFrame(watchReveal);
     };

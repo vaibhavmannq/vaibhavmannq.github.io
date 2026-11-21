@@ -444,3 +444,53 @@ html.is-scene-ready .poster {
   box-shadow: 0 0 6px rgb(170 200 255 / calc(0.5 * var(--k)));
   transform: translate3d(-100px, -100px, 0);
 }
+
+/* The lantern room (plan world-to-100 Task 6): the canvas shows from the start, the poster and hairline step aside (the
+   lantern's glow is the progress); the hint waits a moment, then leaves once the lantern is lit. */
+.room-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 14vh;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: rgb(255 240 220 / 0.78);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 700ms ease;
+}
+
+html.is-room .room-hint {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 900ms;
+}
+
+html.is-room-lit .room-hint {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+html.is-room .world {
+  opacity: 1;
+  transition: none;
+}
+
+html.is-room .poster,
+html.is-room .hairline {
+  visibility: hidden;
+}
+
+html.is-room-out .world {
+  opacity: 0;
+  transition: none;
+}
+
+/* the journey's own labels wait until the night begins */
+html.is-room .place,
+html.is-room .rail,
+html.is-room .ride {
+  visibility: hidden;
+}

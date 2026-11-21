@@ -24,7 +24,7 @@ describe('the lantern room', () => {
     f.light();
     expect(f.state()).toBe('lit');
     f.progress(1);
-    run(f, c, 600);
+    run(f, c, 1100);
     expect(f.state()).toBe('ready');
   });
 
@@ -34,16 +34,28 @@ describe('the lantern room', () => {
     expect(f.hint()).toBe(true);
   });
 
-  it('unlit at full progress lights itself after 3 s', () => {
+  it('unlit, it lights itself at 70 % loaded', () => {
     const c = clock();
     const f = createLoadingFlow({ storage: memory(), nowMs: c.now, capMs: 15000 });
-    run(f, c, 2000);
-    f.progress(1);
-    run(f, c, 2900);
+    f.progress(0.6);
+    run(f, c, 3000);
     expect(f.state()).toBe('waiting');
+    f.progress(0.7);
+    run(f, c, 50);
+    expect(f.state()).toBe('lit');
+    expect(f.litByVisitor()).toBe(false);
+  });
+
+  it('the flame burns at least 1 s before the night', () => {
+    const c = clock();
+    const f = createLoadingFlow({ storage: memory(), nowMs: c.now, capMs: 15000 });
+    f.progress(0.5);
+    run(f, c, 4000);
+    f.light();
+    f.progress(1);
+    run(f, c, 900);
+    expect(f.state()).toBe('lit');
     run(f, c, 200);
-    expect(['lit', 'ready']).toContain(f.state());
-    run(f, c, 600);
     expect(f.state()).toBe('ready');
   });
 
@@ -108,6 +120,18 @@ describe('the lantern room', () => {
     expect(f.state()).not.toBe('ready');
     run(f, c, 300);
     expect(f.state()).toBe('ready');
+  });
+
+  it("only the visitor's own gesture makes it theirs", () => {
+    const c = clock();
+    const mine = createLoadingFlow({ storage: memory(), nowMs: c.now, capMs: 15000 });
+    mine.light();
+    expect(mine.litByVisitor()).toBe(true);
+    const auto = createLoadingFlow({ storage: memory(), nowMs: c.now, capMs: 15000 });
+    auto.progress(1);
+    run(auto, c, 2500);
+    expect(auto.state()).toBe('ready');
+    expect(auto.litByVisitor()).toBe(false);
   });
 
   it('Enter and Space light the lantern', () => {

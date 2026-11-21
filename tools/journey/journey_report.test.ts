@@ -16,7 +16,8 @@ const NUM = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
 const f = (x: number, d = 1) => x.toFixed(d).padStart(7);
 /** The dead measure (spec §4.3; R209: calibrated by eye, the stops read 0.06–0.15 and the empty frames 0.00–0.02). */
 const EDGE_DEAD = 0.03;
-const pct = (xs: number[], q: number) => [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(q * xs.length))] ?? 0;
+const pct = (xs: number[], q: number) =>
+  [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(q * xs.length))] ?? 0;
 
 it('prints the journey report', () => {
   const paths = JSON.parse(readFileSync('src/journey/flightPaths.json', 'utf8')) as FlightPath[];
@@ -28,10 +29,8 @@ it('prints the journey report', () => {
   const edges = existsSync(edgesPath)
     ? (JSON.parse(readFileSync(edgesPath, 'utf8')) as Record<string, { t: number; edge: number }[]>)
     : null;
-  const lines = [
-    'ride        secs  wait  v p50  v max  a max  j p95  j max  g°/s  g°/s² g°/s³  steps (t s: dv m/s)',
-  ];
-  const look = ['ride      far%   scr p50  scr max  max/p50   dead%  longest dead s'];
+  const lines = ['ride        secs  wait  v p50  v max  a max  j p95  j max  g°/s  g°/s² g°/s³  steps (t s: dv m/s)'];
+  const look = ['ride      far%   scr p50  scr max  max/p50   dead%  longest dead s  longest far s'];
   for (let i = 0; i + 1 < STOPS.length; i++) {
     const s = simulateRide(track, paths, i, i + 1);
     const m = motionStats(s);
@@ -50,6 +49,13 @@ it('prints the journey report', () => {
     const dist = live.map((x) => nearestHit(x.pose, heightAt));
     const scr = live.slice(1).map((x, k) => screenMotion(live[k]!, x, Math.min(dist[k]!, dist[k + 1]!)));
     const far = dist.filter((d) => !Number.isFinite(d)).length / Math.max(1, dist.length);
+    // the stricter measure (s28 note): nothing within 300 m at the frame's centre, sky or not, however busy the sky
+    let farRun = 0;
+    let longestFar = 0;
+    for (const d of dist) {
+      farRun = Number.isFinite(d) ? 0 : farRun + 1 / 30;
+      longestFar = Math.max(longestFar, farRun);
+    }
     let deadShare = Number.NaN;
     let longest = Number.NaN;
     const rideEdges = edges?.[String(i)];
@@ -73,7 +79,7 @@ it('prints the journey report', () => {
     const p50 = pct(scr, 0.5);
     const mx = Math.max(0, ...scr);
     look.push(
-      `${name}${f(far * 100, 0)}${f(p50, 2).padStart(10)}${f(mx, 2).padStart(9)}${f(mx / Math.max(1e-6, p50), 1).padStart(9)}${f(deadShare * 100, 0)}${f(longest, 1).padStart(10)}`,
+      `${name}${f(far * 100, 0)}${f(p50, 2).padStart(10)}${f(mx, 2).padStart(9)}${f(mx / Math.max(1e-6, p50), 1).padStart(9)}${f(deadShare * 100, 0)}${f(longest, 1).padStart(10)}${f(longestFar, 1).padStart(12)}`,
     );
   }
   mkdirSync('.superpowers/w100', { recursive: true });

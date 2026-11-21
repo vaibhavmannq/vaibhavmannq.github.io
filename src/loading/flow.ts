@@ -2,11 +2,13 @@
 export const LANTERN_KEY = 'eventide.lantern';
 /** The room never ends sooner than this on a first visit, even with everything cached: a 2 s beat, not a flash. */
 const MIN_MS = 2000;
-/** Everything loaded and the lantern still unlit: it lights itself this long after (nobody is held at the door). */
-const AUTO_LIGHT_MS = 3000;
-/** Everything was already cached (full within this long of the start): the lantern lights itself almost at once. */
-const CACHED_MS = 1000;
-const CACHED_LIGHT_MS = 800;
+/**
+ * Unlit when the world is this far loaded, the lantern lights itself (nobody is held at the door; R213: lighting 3 s
+ * after a full load kept a cached, untouching visitor 10 s on this laptop).
+ */
+const AUTO_LIGHT_AT = 0.7;
+/** Once lit, the flame burns at least this long before the night begins. */
+const BURN_MS = 1000;
 
 export type LoadingState = 'waiting' | 'lit' | 'ready' | 'released' | 'stills';
 
@@ -18,6 +20,8 @@ export interface LoadingFlow {
   hint(): boolean;
   /** The visitor lit it (pointer, touch, Enter, Space). */
   light(): void;
+  /** It was the visitor who lit it (then it is theirs on the journey: the lantern thread's claim). */
+  litByVisitor(): boolean;
   /** 0..1 (progress.ts). */
   progress(p: number): void;
   /** Each frame: lights itself when the visitor has not, ends the wait at the cap. */
@@ -38,7 +42,10 @@ export function createLoadingFlow(opts: { storage: Storage | null; nowMs: () => 
   const start = opts.nowMs();
   let state: LoadingState = 'waiting';
   let fullAt: number | null = null;
+  let loaded = 0;
+  let litAt = 0;
   let skip = false;
+  let byVisitor = false;
   try {
     skip = opts.storage?.getItem(LANTERN_KEY) === '1';
   } catch {
@@ -50,9 +57,14 @@ export function createLoadingFlow(opts: { storage: Storage | null; nowMs: () => 
     state: () => state,
     hint: () => state === 'waiting',
     light() {
-      if (state === 'waiting') state = 'lit';
+      if (state !== 'waiting') return;
+      state = 'lit';
+      litAt = opts.nowMs();
+      byVisitor = true;
     },
+    litByVisitor: () => byVisitor,
     progress(p) {
+      loaded = Math.max(loaded, p);
       if (p >= 1 && fullAt === null) fullAt = opts.nowMs();
     },
     tick() {
@@ -62,11 +74,11 @@ export function createLoadingFlow(opts: { storage: Storage | null; nowMs: () => 
         state = 'ready';
         return;
       }
-      if (state === 'waiting' && fullAt !== null) {
-        const autoAt = fullAt - start < CACHED_MS ? start + CACHED_LIGHT_MS : fullAt + AUTO_LIGHT_MS;
-        if (now >= autoAt) state = 'lit';
+      if (state === 'waiting' && loaded >= AUTO_LIGHT_AT) {
+        state = 'lit';
+        litAt = now;
       }
-      if (state === 'lit' && fullAt !== null && now - start >= MIN_MS) state = 'ready';
+      if (state === 'lit' && fullAt !== null && now - litAt >= BURN_MS && now - start >= MIN_MS) state = 'ready';
     },
     release() {
       state = 'released';
