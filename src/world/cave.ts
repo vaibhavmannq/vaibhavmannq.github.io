@@ -35,7 +35,7 @@ import {
 import type { CaveMeta } from '../assets/manifest';
 import type { CaveShot } from '../journey/shots';
 import { toThree, type Vec3 } from '../journey/types';
-import { apertureEllipse, aperturePatches, formFactor } from './caveLight';
+import { apertureEllipse, aperturePatches, formFactor, formFactorInto } from './caveLight';
 import type { LightUniforms } from './light';
 import { fbm2, remap } from './noise';
 import type { WorldPart } from './part';
@@ -126,8 +126,28 @@ export function decodeCave(buf: ArrayBuffer, meta: CaveMeta): CaveParts {
 /** Per vertex, the fungi's light: sum of 1 / (1 + (d / reach)^2), capped at 1. Pure. */
 export function fungiLight(positions: Float32Array, fungi: Float32Array): Float32Array {
   const out = new Float32Array(positions.length / 3);
+  fungiLightInto(positions, fungi, out, 0, out.length);
+  return out;
+}
+
+/** `fungiLight` spread over frames, `slice` vertices at a time (s28). */
+export async function fungiLightSliced(
+  positions: Float32Array,
+  fungi: Float32Array,
+  breathe: () => Promise<void>,
+  slice = 400,
+): Promise<Float32Array> {
+  const out = new Float32Array(positions.length / 3);
+  for (let from = 0; from < out.length; from += slice) {
+    fungiLightInto(positions, fungi, out, from, Math.min(out.length, from + slice));
+    await breathe();
+  }
+  return out;
+}
+
+function fungiLightInto(positions: Float32Array, fungi: Float32Array, out: Float32Array, from: number, to: number) {
   const reach2 = FUNGI_REACH * FUNGI_REACH;
-  for (let i = 0; i < out.length; i++) {
+  for (let i = from; i < to; i++) {
     const x = positions[i * 3] ?? 0;
     const y = positions[i * 3 + 1] ?? 0;
     const z = positions[i * 3 + 2] ?? 0;
@@ -138,7 +158,6 @@ export function fungiLight(positions: Float32Array, fungi: Float32Array): Float3
     }
     out[i] = Math.min(1, sum);
   }
-  return out;
 }
 
 /**
@@ -187,7 +206,13 @@ export interface CaveExtras {
   skylight?: { x: number; y: number };
   /** stones and stumps on the floor (caveFloor.ts; plan M7 Task 4), cave-local */
   stones?: { position: Float32Array; index: Uint32Array };
+  /** the light already worked out (`caveLightSliced`, spread over frames); otherwise createCave works it out at once */
+  light?: CaveLight;
+  /** the fungi's glow on the shell and floor, already worked out (`fungiLightSliced`) */
+  fungiGlow?: { shell: Float32Array; floor: Float32Array; passage?: Float32Array; stones?: Float32Array };
 }
+
+export type CaveLight = ReturnType<typeof caveLight>;
 
 /** Per-vertex normals of an indexed mesh (smooth where vertices are shared, flat where each face has its own). */
 function normalsOf(position: Float32Array, index: ArrayLike<number>): Float32Array {
@@ -224,6 +249,49 @@ export function caveLight(parts: CaveParts, extras: CaveExtras = {}) {
   return { shell, floor, passage, stones, patches };
 }
 
+/**
+ * `caveLight`, the same numbers, worked out `slice` vertices at a time with `breathe()` between slices, so building the
+ * cave never holds a frame (s28: in one block it froze the phone 529 ms on arriving at Midnight).
+ */
+export async function caveLightSliced(
+  parts: CaveParts,
+  extras: CaveExtras,
+  breathe: () => Promise<void>,
+  slice = 400,
+): Promise<CaveLight> {
+  const patches = aperturePatches(parts.shell.position, extras.mouthOpen ?? parts.shell.open, parts.shell.index);
+  const run = async (
+    position: Float32Array,
+    normal: Float32Array,
+    visible: (i: number, px: number, py: number, pz: number) => number = () => 1,
+  ) => {
+    const out = new Float32Array(position.length / 3);
+    for (let from = 0; from < out.length; from += slice) {
+      formFactorInto(position, normal, patches, visible, out, from, Math.min(out.length, from + slice));
+      await breathe();
+    }
+    return out;
+  };
+  const shell = await run(parts.shell.position, normalsOf(parts.shell.position, parts.shell.index));
+  const up = new Float32Array(parts.floor.position.length).map((_, i) => (i % 3 === 2 ? 1 : 0));
+  const floor = await run(parts.floor.position, up);
+  const st = extras.stones;
+  const stones = st ? await run(st.position, normalsOf(st.position, st.index)) : new Float32Array(0);
+  const p = extras.passage;
+  const through = extras.throughJunction;
+  const passage = p
+    ? await run(
+        p.position,
+        normalsOf(p.position, p.index),
+        through
+          ? (i, qx, qy, qz) =>
+              through(p.position[i * 3] ?? 0, p.position[i * 3 + 1] ?? 0, p.position[i * 3 + 2] ?? 0, qx, qy, qz)
+          : undefined,
+      )
+    : new Float32Array(0);
+  return { shell, floor, passage, stones, patches };
+}
+
 export function createCave(
   parts: CaveParts,
   cave: CaveShot,
@@ -233,9 +301,9 @@ export function createCave(
 ): WorldPart {
   const { passage, inPassage = () => false } = extras;
   const along = (p: Float32Array, i: number) => extras.alongOf?.(p[i * 3] ?? 0, p[i * 3 + 1] ?? 0) ?? 0;
-  const ff = caveLight(parts, extras);
-  const shellFungi = fungiLight(parts.shell.position, parts.fungi);
-  const floorFungi = fungiLight(parts.floor.position, parts.fungi);
+  const ff = extras.light ?? caveLight(parts, extras);
+  const shellFungi = extras.fungiGlow?.shell ?? fungiLight(parts.shell.position, parts.fungi);
+  const floorFungi = extras.fungiGlow?.floor ?? fungiLight(parts.floor.position, parts.fungi);
   const ns = parts.shell.position.length / 3;
   const nf = parts.floor.position.length / 3;
   const np = passage ? passage.position.length / 3 : 0;
@@ -252,7 +320,7 @@ export function createCave(
   for (let i = 0; i < ns; i++) info.set([parts.shell.open[i] ?? 0, ff.shell[i] ?? 0, shellFungi[i] ?? 0, 0], i * 4);
   for (let i = 0; i < nf; i++) info.set([-2, ff.floor[i] ?? 0, floorFungi[i] ?? 0, 1], (ns + i) * 4);
   if (passage) {
-    const glow = fungiLight(passage.position, parts.fungi);
+    const glow = extras.fungiGlow?.passage ?? fungiLight(passage.position, parts.fungi);
     for (let i = 0; i < np; i++)
       info.set(
         [
@@ -267,7 +335,7 @@ export function createCave(
       );
   }
   if (st) {
-    const glow = fungiLight(st.position, parts.fungi);
+    const glow = extras.fungiGlow?.stones ?? fungiLight(st.position, parts.fungi);
     // kind 0.7: floor-like (wet, never cut, no tide bands) but its own look (plan M8 Task 7)
     for (let i = 0; i < nst; i++) info.set([-2, ff.stones[i] ?? 0, glow[i] ?? 0, 0.7], (ns + nf + np + i) * 4);
   }

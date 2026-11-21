@@ -50,8 +50,22 @@ export function createLanternRoom(renderer: WebGPURenderer, look: RoomLook, aspe
   scene.background = new Color(look === 'b' ? 0x040508 : 0x0a0c14);
   const view = VIEWS[look];
   const camera = new PerspectiveCamera(view.fov, aspect, 0.02, 20);
-  camera.position.set(...view.eye);
-  camera.lookAt(...view.at);
+  /**
+   * The view for a screen of this aspect: the landscape framing, and on an upright phone the same width of table kept
+   * (a wider vertical angle, capped) with the lantern brought to the middle (s28: on the phone it filled the screen and
+   * was cut off at the left).
+   */
+  const frame = (a: number) => {
+    const portrait = Math.min(1, Math.max(0, (1.2 - a) / 0.75));
+    const halfWide = Math.atan(Math.tan(((view.fov / 2) * Math.PI) / 180) * (16 / 9));
+    const wide = (2 * Math.atan((Math.tan(halfWide) * 0.8) / Math.max(0.3, a)) * 180) / Math.PI;
+    camera.aspect = a;
+    camera.fov = a >= 1.2 ? view.fov : Math.min(72, Math.max(view.fov, wide));
+    camera.position.set(view.eye[0] * (1 - 0.8 * portrait), view.eye[1], view.eye[2]);
+    camera.lookAt(view.at[0] * (1 - portrait), view.at[1], view.at[2]);
+    camera.updateProjectionMatrix();
+  };
+  frame(aspect);
 
   const glowU = uniform(0);
   const disposables: { dispose(): void }[] = [];
@@ -64,8 +78,9 @@ export function createLanternRoom(renderer: WebGPURenderer, look: RoomLook, aspe
   const wood = keep(new MeshStandardNodeMaterial({ roughness: 0.78, metalness: 0 }));
   const grain = uv().x.mul(90).add(uv().y.mul(7)).sin().mul(0.5).add(0.5);
   wood.colorNode = mix(vec3(0.09, 0.05, 0.028), vec3(0.16, 0.095, 0.055), grain.mul(grain));
-  const table = new Mesh(keep(new BoxGeometry(2.6, 0.05, 1.4)), wood);
-  table.position.y = -0.025;
+  // deep enough to run under the camera, so a tall phone screen never sees its front edge
+  const table = new Mesh(keep(new BoxGeometry(2.6, 0.05, 4.2)), wood);
+  table.position.set(0, -0.025, 1.4);
   scene.add(table);
 
   // the window behind (looks a and c): an evening sky, orange low, deep blue high, two dark mullions
@@ -168,8 +183,7 @@ export function createLanternRoom(renderer: WebGPURenderer, look: RoomLook, aspe
       renderer.render(scene, camera);
     },
     resize(width, height) {
-      camera.aspect = width / Math.max(1, height);
-      camera.updateProjectionMatrix();
+      frame(width / Math.max(1, height));
     },
     dispose() {
       for (const d of disposables) d.dispose();

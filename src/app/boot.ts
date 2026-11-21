@@ -39,7 +39,7 @@ import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { BOWL, bowlPrisms, createBowl, fallsLayout, ledgePlants, rimTrees } from '../world/bowl';
 import { capInstances } from '../world/caps';
-import { caveLure, createCave, decodeCave } from '../world/cave';
+import { caveLightSliced, caveLure, createCave, decodeCave, fungiLightSliced } from '../world/cave';
 import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
 import { createCloudSea } from '../world/cloudSea';
@@ -146,6 +146,10 @@ const REVEAL_WAIT_MS = 3000;
 /** The hairline under the name (owner-sites: Originkit "Hairline Loader"): 0..1 of the first view loaded. */
 /** The first view's load share, 0..1, as last shown (the lantern room's glow reads it). */
 let loadShare = 0;
+/** A visitor rests this long at a place before the next place's set is fetched. */
+const REST_BEFORE_FETCH_MS = 1500;
+/** Resolves on the next animation frame. */
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 /** The lantern room never holds a first visit longer than this (spec §4.1: 5–15 s). */
 const ROOM_CAP_MS = 15000;
 const showProgress = (share: number) => {
@@ -336,8 +340,18 @@ async function loadBase(
   if (caveShot && caveMeta)
     app.setBuilders.set('beforedawn', async () => {
       const parts: [string, WorldPart][] = [];
+      // built a step per frame (s28, phone: in one block it froze the arrival at Midnight for 552 ms)
+      const steps: [string, number][] = [];
+      let stepAt = performance.now();
+      const breathe = async (name: string) => {
+        steps.push([name, Math.round(performance.now() - stepAt)]);
+        await nextFrame();
+        stepAt = performance.now();
+      };
       const caveBuf = await fetchBinary(caveMeta.file);
+      stepAt = performance.now();
       const caveParts = decodeCave(caveBuf, caveMeta);
+      await breathe('decode');
       // Before dawn starts deeper (plan M7 Task 1): a passage of columns behind the chamber, its back wall opened
       const site = passageSite(caveShot, SHOTS.beforedawn);
       const mouthOpen = caveParts.shell.open;
@@ -348,6 +362,7 @@ async function loadBase(
         caveParts.shell.open = openRoof(caveParts.shell.position, caveParts.shell.open);
         parts.push(['skylight', createSkylight(caveShot, sky, roofAbove(caveParts.shell.position, SKYLIGHT))]);
       }
+      await breathe('shell');
       const passage = buildPassage(
         site,
         shellSampler(caveParts.shell.position, site),
@@ -355,6 +370,7 @@ async function loadBase(
         caveShot.floor,
         caveShot,
       );
+      await breathe('passage');
       const frame = passageFrame(site);
       const inPassage = (x: number, y: number) => {
         const s = frame.along(x - caveShot.x, y - caveShot.y);
@@ -371,7 +387,9 @@ async function loadBase(
         }),
         [-9.5, -26, 9.5, 9.5],
       );
+      await breathe('floor');
       const stones = floorGeometry(floorStones);
+      await breathe('stones');
       // the fungi in clusters (plan M7 Task 5), in place of cave.bin's ring along the floor's edge
       caveParts.fungi = fungiClusters({
         shell: caveParts.shell.position,
@@ -380,20 +398,32 @@ async function loadBase(
         along: frame.along,
         lateral: frame.lateral,
       });
+      await breathe('fungi');
       // vines on the mouth's lip (plan M7 Task 6), their own small draw
       parts.push(['vines', createVines(vineLeaves(caveParts.shell.position, mouthOpen, 2.9), caveShot, sky)]);
-      parts.push([
-        'cave',
-        createCave(caveParts, caveShot, sky, light, {
-          passage,
-          inPassage,
-          mouthOpen,
-          throughJunction: junctionVisible(site),
-          alongOf: frame.along,
-          stones,
-          ...(skylightOn ? { skylight: SKYLIGHT } : {}),
-        }),
-      ]);
+      await breathe('vines');
+      const caveExtras = {
+        passage,
+        inPassage,
+        mouthOpen,
+        throughJunction: junctionVisible(site),
+        alongOf: frame.along,
+        stones,
+        ...(skylightOn ? { skylight: SKYLIGHT } : {}),
+      };
+      // the mouth's light, a slice of vertices per frame (s28: 529 ms in one block on the phone)
+      const caveLit = await caveLightSliced(caveParts, caveExtras, nextFrame);
+      await breathe('light');
+      const fungiGlow = {
+        shell: await fungiLightSliced(caveParts.shell.position, caveParts.fungi, nextFrame),
+        floor: await fungiLightSliced(caveParts.floor.position, caveParts.fungi, nextFrame),
+        passage: await fungiLightSliced(passage.position, caveParts.fungi, nextFrame),
+        stones: await fungiLightSliced(stones.position, caveParts.fungi, nextFrame),
+      };
+      await breathe('glow');
+      parts.push(['cave', createCave(caveParts, caveShot, sky, light, { ...caveExtras, light: caveLit, fungiGlow })]);
+      await breathe('cave');
+      (window as unknown as { __caveSteps?: [string, number][] }).__caveSteps = steps;
       return parts;
     });
   app.setsRegistered();
@@ -599,19 +629,22 @@ export async function boot(): Promise<App> {
     }
   }
   if (!pipeline) html.classList.add('is-stills');
-  // The lantern room (plan world-to-100 Task 6): on a first visit in this tab, from the moment the GPU is ready. Test
-  // browsers skip it unless `?room=` asks for it (R213: every check would wait on it); `?room=off` skips it.
-  const sessionStore = (() => {
+  // The lantern room (plan world-to-100 Task 6): on a visitor's first visit on this device (remembered across days,
+  // R215: per tab, a visitor coming back tomorrow sat through it again), from the moment the GPU is ready. Test browsers
+  // skip it unless `?room=` asks for it (R213); `?room=a|b|c` always shows it; `?room=off` skips it.
+  const deviceStore = (() => {
     try {
-      return window.sessionStorage;
+      return window.localStorage;
     } catch {
       return null;
     }
   })();
-  const flow = createLoadingFlow({ storage: sessionStore, nowMs: () => performance.now(), capMs: ROOM_CAP_MS });
+  const flow = createLoadingFlow({ storage: deviceStore, nowMs: () => performance.now(), capMs: ROOM_CAP_MS });
   const roomParam = new URLSearchParams(location.search).get('room');
   let roomOn =
-    pipeline !== null && roomParam !== 'off' && !flow.skip && (roomParam !== null || navigator.webdriver !== true);
+    pipeline !== null &&
+    roomParam !== 'off' &&
+    (roomParam !== null || (!flow.skip && navigator.webdriver !== true));
   let room: LanternRoom | null = null;
   let worldLooping = false;
   let roomStep: (nowMs: number) => void = () => undefined;
@@ -675,6 +708,8 @@ export async function boot(): Promise<App> {
       if (event.target instanceof Element && event.target.closest('a, button')) return;
       if (event instanceof KeyboardEvent) event.preventDefault();
       flow.light();
+      // the hint answers the touch at once, even while loading holds back the next frame
+      html.classList.toggle('is-room-lit', !flow.hint());
     };
     window.addEventListener('pointerdown', lightUp);
     window.addEventListener('keydown', lightUp);
@@ -1224,11 +1259,18 @@ export async function boot(): Promise<App> {
       },
     });
     app.streamer = streamer;
+    // the next place's set is fetched only after a rest of REST_BEFORE_FETCH_MS (s28, phone: fetching on arrival froze
+    // the camera's last metres into Midnight)
+    let restSince = -1;
     const updateSets = (state: FrameState) => {
+      const nowMs = performance.now();
+      if (!state.resting) restSince = -1;
+      else if (restSince < 0) restSince = nowMs;
+      const rested = state.resting && nowMs - restSince >= REST_BEFORE_FETCH_MS;
       const here = STOP_IDS[state.a];
       const own = state.kind === 'stop' && here !== undefined && SET_PARTS[here].length > 0;
       streamer.update(
-        wantedSets(state, state.resting),
+        wantedSets(state, rested),
         canSwap(state, {
           reducedMotion: caps.reducedMotion,
           firstShown: html.classList.contains('is-scene-ready'),

@@ -116,9 +116,22 @@ export function formFactor(
   patches: Float32Array,
   visible: (i: number, px: number, py: number, pz: number) => number = () => 1,
 ): Float32Array {
-  const n = position.length / 3;
-  const out = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
+  const out = new Float32Array(position.length / 3);
+  formFactorInto(position, normal, patches, visible, out, 0, out.length);
+  return out;
+}
+
+/** `formFactor` for vertices `from` .. `to` - 1, written into `out` (so it can be spread over frames; s28). Pure. */
+export function formFactorInto(
+  position: Float32Array,
+  normal: Float32Array,
+  patches: Float32Array,
+  visible: (i: number, px: number, py: number, pz: number) => number,
+  out: Float32Array,
+  from: number,
+  to: number,
+): void {
+  for (let i = from; i < to; i++) {
     const x = position[i * 3] ?? 0;
     const y = position[i * 3 + 1] ?? 0;
     const z = position[i * 3 + 2] ?? 0;
@@ -144,5 +157,4 @@ export function formFactor(
     }
     out[i] = Math.min(1, sum);
   }
-  return out;
 }

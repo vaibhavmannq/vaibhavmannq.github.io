@@ -1,4 +1,4 @@
-/** sessionStorage key: the visitor has been through the lantern room in this tab (spec §4.1: skip for returning visitors). */
+/** localStorage key: the visitor has been through the lantern room on this device (spec §4.1: skip for returning visitors; R215). */
 export const LANTERN_KEY = 'eventide.lantern';
 /** The room never ends sooner than this on a first visit, even with everything cached: a 2 s beat, not a flash. */
 const MIN_MS = 2000;
@@ -13,7 +13,7 @@ const BURN_MS = 1000;
 export type LoadingState = 'waiting' | 'lit' | 'ready' | 'released' | 'stills';
 
 export interface LoadingFlow {
-  /** A returning visitor in this tab: the room is skipped. */
+  /** A returning visitor on this device: the room is skipped. */
   readonly skip: boolean;
   state(): LoadingState;
   /** Show "tap, click or Enter to light" (from the start, until it is lit). */
