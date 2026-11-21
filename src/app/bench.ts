@@ -2,6 +2,7 @@ import type { Material, Mesh } from 'three/webgpu';
 import { stopCentre } from '../journey/timeline';
 import { STOP_IDS, type StopId } from '../journey/types';
 import { TIER_NAMES, type Tier } from '../quality/tiers';
+import { EYE_ONLY_LAYER } from '../world/meadow';
 import type { App } from './boot';
 
 export interface FlightResult {
@@ -40,6 +41,8 @@ declare global {
     __quality(q: Partial<import('../quality/tiers').TierSettings>): void;
     /** Hold the named parts hidden until called again (plan M2 Task 7's on/off switch). */
     __parts(off: string[]): void;
+    /** Keep the named parts out of the sea's mirror (s27 R203 cost probe); [] restores. */
+    __mirrorOff(names: string[]): void;
     /** Rest at a stop (or at track position `u`) for `seconds` at a tier: frame times, and the GPU's own ms per frame when `?gpu` is on. */
     __hold(stop: StopId | number, seconds: number, tier: (typeof TIER_NAMES)[number]): Promise<HoldResult>;
     /** The head's look-around turn now, degrees (plan M2.5 Task 6). */
@@ -104,6 +107,16 @@ export function installBench(app: App): void {
 
   window.__parts = (off) => {
     app.partsOff = new Set(off);
+  };
+
+  const masks = new Map<object, number>();
+  window.__mirrorOff = (names) => {
+    for (const [name, part] of app.parts)
+      part.object.traverse((o) => {
+        if (!masks.has(o)) masks.set(o, o.layers.mask);
+        if (names.includes(name)) o.layers.set(EYE_ONLY_LAYER);
+        else o.layers.mask = masks.get(o) as number;
+      });
   };
 
   window.__hold = async (stop, seconds, tierName) => {

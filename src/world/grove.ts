@@ -36,6 +36,7 @@ import { mulberry32 } from '../shared/random';
 import { coveInPlay } from './cliffs';
 import type { HeightAt } from './heights';
 import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
+import { EYE_ONLY_LAYER } from './meadow';
 import type { WorldPart } from './part';
 
 /** One model's simplified wood and leaf cards, in its own frame (coast axes: x east, y north, z up; metres). */
@@ -385,6 +386,9 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = true;
   mesh.visible = false;
+  // M8.5 R203 (s27): out of the sea's mirror. From under the water the cliff edges hide the trees on the cove's land
+  // (shots with and without: only swaying leaves differ), yet drawing them there cost 0.7-1.2 ms at low.
+  mesh.layers.set(EYE_ONLY_LAYER);
   const setWind = (w: { windAz: number; beaufort: number }) => {
     // reference book §2: force 0–1 leaves tremble (2 cm), force 3 leaves and twigs in constant motion (~12 cm)
     amp.value = 0.02 + 0.035 * Math.max(0, w.beaufort);
@@ -480,6 +484,7 @@ export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart 
   const mesh = new Mesh(geometry, grove.material);
   mesh.name = 'lonetree';
   mesh.visible = false;
+  mesh.layers.set(EYE_ONLY_LAYER); // Midnight's ridge: no water below it in view (R203)
   const midnight = STOP_IDS.indexOf('midnight');
   return {
     object: mesh,
@@ -525,8 +530,8 @@ export function scrubInstances(
 
 /**
  * Trees placed in the browser for one stop (plan M8: Sunset's framing tree, Task 3; Night's rim, Task 7), drawn with
- * the grove's material (no download, no new material), only at that stop and its two flights. In the mirror, as the
- * grove. `groundAt` stands each plant (bakeGrove less its sink).
+ * the grove's material (no download, no new material), only at that stop and its two flights. In the mirror unless
+ * `mirror` is false. `groundAt` stands each plant (bakeGrove less its sink).
  */
 export function createGroveProps(
   grove: GrovePart,
@@ -534,12 +539,14 @@ export function createGroveProps(
   groundAt: HeightAt,
   stop: StopId,
   name: string,
+  mirror = true,
 ): WorldPart {
   const g = bakeGrove({ instances, protos: grove.protos }, groundAt);
   const geometry = groveGeometry(g);
   const mesh = new Mesh(geometry, grove.material);
   mesh.name = name;
   mesh.visible = false;
+  if (!mirror) mesh.layers.set(EYE_ONLY_LAYER);
   const at = STOP_IDS.indexOf(stop);
   return {
     object: mesh,

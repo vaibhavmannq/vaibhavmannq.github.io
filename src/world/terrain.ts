@@ -32,6 +32,8 @@ import {
 } from 'three/webgpu';
 import type { GridMeta, RingMeta } from './heights';
 import type { LightUniforms } from './light';
+import { STOP_IDS } from '../journey/types';
+import { EYE_ONLY_LAYER } from './meadow';
 import type { WorldPart } from './part';
 import { type FreshWater, seaWetNode, tideBands } from './rock';
 import type { Sky } from './sky';
@@ -39,6 +41,9 @@ import type { Sky } from './sky';
 const dequant = (q: number, lo: number, hi: number) => lo + (q * (hi - lo)) / 65535;
 
 /** The base grid as one mesh (three.js axes), with UVs onto the north-up colour map. */
+/** Night's index: the stop where the ground leaves the mirror (R203). */
+const NIGHT = STOP_IDS.indexOf('night');
+
 export function baseGeometry(q: Uint16Array, m: GridMeta): BufferGeometry {
   const pos = new Float32Array(m.nx * m.ny * 3);
   const uvs = new Float32Array(m.nx * m.ny * 2);
@@ -221,7 +226,12 @@ export function createTerrain(
   return {
     object: group,
     material,
-    update() {},
+    update(f) {
+      // R203 (s27): resting at Night, the lagoon's mirror sees the bowl's walls, never the ground behind them (shots with
+      // and without match); leaving the ground out there saves ~1 ms at low. Everywhere else the water mirrors the land.
+      const restingAtNight = f.state.kind === 'stop' && f.state.a === NIGHT;
+      for (const m of [base, far]) m.layers.set(restingAtNight ? EYE_ONLY_LAYER : 0);
+    },
     setTier() {},
     dispose() {
       base.geometry.dispose();

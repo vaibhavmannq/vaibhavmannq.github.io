@@ -378,13 +378,14 @@ async function loadBase(
           joins.push(compileThenAdd(app, createGroveProps(grove, edgeScrub(drawn, site), drawn, site.id, name), name));
         }
         // trees along Night's rim (plan M8 Task 7), each standing on the rim's top
-        // and shrubs on the colonnade's ledge (M8.5 #9), in the same draw
+        // and shrubs on the colonnade's ledge (M8.5 #9), in the same draw; out of the lagoon's mirror (R203, s27: its
+        // soft reflection looks the same without them, which cost 0.8 ms at low)
         const ledge = ledgePlants(bowlPrisms());
         const rim = new Float32Array([...rimTrees(), ...ledge]);
         const rimZ = new Map<string, number>();
         for (let i = 0; i < rim.length; i += 10) rimZ.set(`${rim[i + 1]},${rim[i + 2]}`, rim[i + 3] as number);
         const onRim = (x: number, y: number) => rimZ.get(`${x},${y}`) ?? 0;
-        joins.push(compileThenAdd(app, createGroveProps(grove, rim, onRim, 'night', 'rimtrees'), 'rimtrees'));
+        joins.push(compileThenAdd(app, createGroveProps(grove, rim, onRim, 'night', 'rimtrees', false), 'rimtrees'));
         // the stacks' and the arch's scrub caps share the grove's shrub and material (plan M4 Task 3)
         joins.push(
           capsAt.then((caps) => (caps.length ? compileThenAdd(app, createCaps(grove, caps), 'caps') : undefined)),
