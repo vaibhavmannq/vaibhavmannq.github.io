@@ -177,7 +177,7 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
 
   // spray: each sprite rises and fades on its own clock, and faces the camera
   const life = clock.mul(seed.mul(0.05).add(0.1)).add(seed.mul(7.3)).fract();
-  const size = seed.mul(4).add(6).mul(mistScale); // M8.5 #9: the pool's mist 6-10 m (Abiqua's skirt is wide)
+  const size = seed.mul(4).add(4).mul(mistScale); // (s26: 6-10 m cost the phone and laptop; the skirt carries the width)
   const toCam = cameraPosition.sub(positionLocal);
   const right = normalize(vec3(toCam.z, 0, toCam.x.negate()));
   // mist lies flat and spreads as it rises (reference book §3: it rises from the foot and drifts), 0.4 m/s
@@ -209,7 +209,7 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
   // how white (bowl.ts fallsLayout)
   const broken = uv().y;
   // Surges: thicker water follows thinner down the fall, a few seconds apart, travelling at the water's own speed.
-  const surge = remap(fbm2(vec2(across.mul(1.3), fallen.mul(0.32)), 2), 0.3, 0.7, 0.86, 1.1);
+  const surge = remap(fbm2(vec2(across.mul(1.3), fallen.mul(0.32)), 1), 0.3, 0.7, 0.86, 1.1);
   const sheet = streaks.mul(broken).add(float(0.7).mul(broken.oneMinus())).mul(streams).mul(sides).mul(surge);
 
   // the foam: churning outward from where the water lands, gone by the disc's rim
@@ -230,7 +230,7 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
 
   // the skirt: spray rising slowly from the foot (force 0: ~0.4 m/s), densest low and in the middle
   const sv = uv().y;
-  const lift = fbm2(vec2(uv().x.mul(5), sv.mul(1.6).sub(clock.mul(0.05))), 3, 0.6);
+  const lift = fbm2(vec2(uv().x.mul(5), sv.mul(1.6).sub(clock.mul(0.05))), 2, 0.6);
   const skirt = remap(lift, 0.38, 0.72)
     .mul(sv.oneMinus().pow(1.6))
     .mul(sin(uv().x.mul(Math.PI)))

@@ -81,6 +81,11 @@ export interface Prism {
   spin: number;
   /** 0 a standing column, 1 a thin chaotic column on the rim, 2 a fallen drum (its ends both show) */
   kind: 0 | 1 | 2;
+  /** M8.5 #9: the set of neighbours it broke with (tone by set, not by column) */
+  set?: number;
+  /** M8.5 #9: its top cut at this slant (radians), falling toward slantAz (radians round its axis) */
+  slant?: number;
+  slantAz?: number;
 }
 
 /** How much of the rim each row reaches, front to back (a stepped foot, tall sets, the rim), and the set's size. */
@@ -93,6 +98,12 @@ const ROW_SHARE: readonly (readonly [number, number])[] = [
   [0.97, 1],
 ];
 const RUN = 6;
+/** M5's stepped share of the rim (kept for the old falls' alcove under `?falls=old`). */
+function oldShare(row: number, i: number, jit: number): number {
+  const runR = mulberry32(BOWL.seed * 1000 + row * 97 + Math.floor(i / RUN))();
+  const [lo, hi] = ROW_SHARE[row] ?? [0.97, 1];
+  return lo + (hi - lo) * (0.8 * runR + 0.2 * jit);
+}
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
@@ -127,15 +138,51 @@ export function wallLean(az: number): number {
   return 3.2 * Math.sin(a * 4 + 0.9) + 1.5 * Math.sin(a * 9 + 2.6);
 }
 
+/**
+ * M8.5 #9 (research/m85-night-falls-and-walls.md §2-3; owner waterfall 5, Abiqua; cliffs-and-columns 4): a column wall
+ * reads by its horizontal breaks. The front two rows are the colonnade, broken along this wavy tier line (9-14 m),
+ * set by set; behind them the entablature runs to a rim broken in steps of 1-4 m.
+ */
+export function tierLine(az: number): number {
+  const a = rad(az);
+  return 11.5 + 1.4 * Math.sin(a * 5 + 0.4) + 1.1 * Math.sin(a * 14 + 2.0);
+}
+
+interface WallSet {
+  id: number;
+  a: number;
+  b: number;
+  pillar: boolean;
+  slant: number;
+  slantAz: number;
+}
+
+/** A column's top in its row and set (the alcove's rows are the falls', set apart in bowlPrisms). */
+function setTop(row: number, az: number, rim: number, s: WallSet, jit: number): number {
+  const t1 = Math.min(tierLine(az), rim * 0.62);
+  let top: number;
+  if (row === 0) top = t1 - 1.0 + (s.a - 0.5) * 3.0;
+  else if (row === 1) top = t1 + 0.3 + s.a * 2.2;
+  else if (row === 2) top = rim - 1.0 - 4.0 * s.b;
+  else if (row === 3) top = rim - 2.4 * s.b;
+  else top = rim - 1.2 * s.b;
+  if (row < 2 && s.pillar) top += 5 + 7 * s.b;
+  return Math.max(1, Math.min(rim, top + (jit - 0.5) * 0.3));
+}
+
 /** Pure: every prism of the bowl, seeded. */
 export function bowlPrisms(
   clear: readonly { x: number; y: number; r: number }[] = [],
   kind: FallsKind = fallsKind(),
 ): Prism[] {
   const r = mulberry32(BOWL.seed);
+  const rs = mulberry32(BOWL.seed * 7 + 3); // the sets: their own stream, so every prism stays where it was
+  let setNo = 0;
   const out: Prism[] = [];
   const [s0, s1] = BOWL.size;
   for (let row = 0; row < BOWL.rows; row++) {
+    let left = 0;
+    let set: WallSet = { id: 0, a: 0, b: 0, pillar: false, slant: 0, slantAz: 0 };
     // one full turn per row, the count chosen so neighbours sit `spacing` apart on the mean line
     const mean = BOWL.radius + row * BOWL.spacing * 0.87;
     const n = Math.round((2 * Math.PI * mean) / BOWL.spacing);
@@ -146,14 +193,32 @@ export function bowlPrisms(
       // The face is stepped: the front row broken low (ledges), each row behind taller, the back row the rim.
       // Columns break in runs (a set of neighbours to one height), not one by one.
       // Real walls (Svartifoss, landforms §2): a continuous rim, tall pipes in sets, the foot broken into steps.
-      const run = Math.floor(i / RUN);
-      const runR = mulberry32(BOWL.seed * 1000 + row * 97 + run)();
-      const [lo, hi] = ROW_SHARE[row] ?? [0.97, 1];
-      const share = lo + (hi - lo) * (0.8 * runR + 0.2 * r());
-      const inAlcove = Math.abs(wrap(az - FALLS_AZ)) < ALCOVE_HALF;
-      const ledge = row < LEDGE.length && inAlcove;
+      // M8.5 #9: sets of 2-9 neighbours break together (was runs of exactly six)
+      if (left <= 0) {
+        left = 2 + Math.floor(rs() * 8);
+        set = {
+          id: setNo++,
+          a: rs(),
+          b: rs(),
+          pillar: rs() < 0.17,
+          slant: rs() < 0.42 ? rad(10 + 25 * rs()) : 0,
+          slantAz: rs() * 2 * Math.PI,
+        };
+      }
+      left--;
+      const jit = r();
+      const off = Math.abs(wrap(az - FALLS_AZ));
+      const inAlcove = off < ALCOVE_HALF;
+      // the new falls are 10 m wide at the foot: their stumps reach a little past the alcove (s26: tall colonnade cut
+      // the sheet's lower corners)
+      const ledge = row < LEDGE.length && (inAlcove || (kind !== 'old' && off < ALCOVE_HALF + 6));
       // (one draw of r() in every branch, so every other prism of the bowl stays where it was)
-      let top = ledge ? (LEDGE[row] as number) + (r() - 0.5) * 0.2 : Math.min(rim, rim * share);
+      let top =
+        ledge || (kind === 'old' && inAlcove)
+          ? ledge
+            ? (LEDGE[row] as number) + (r() - 0.5) * 0.2
+            : Math.min(rim, rim * oldShare(row, i, jit))
+          : setTop(row, az, rim, set, jit);
       if (ledge && kind !== 'old') {
         const a = wrap(az - FALLS_AZ);
         const struck = kind === 'shoulder' && a >= SHOULDER.az[0] && a <= SHOULDER.az[1];
@@ -177,6 +242,8 @@ export function bowlPrisms(
         radius: s0 + (s1 - s0) * r(),
         spin: r() * Math.PI,
         kind: 0,
+        set: set.id,
+        ...(row < 2 && !inAlcove && set.slant > 0 ? { slant: set.slant, slantAz: set.slantAz } : {}),
       });
       // the entablature: thin chaotic columns on the back row's top, leaning every way
       if (row === BOWL.rows - 1 && r() < 0.45) {
@@ -486,14 +553,18 @@ export function bowlGeometry(prisms: readonly Prism[], fallsAt: { x: number; y: 
     const ul = Math.hypot(ux, uy, uz);
     const u = [ux / ul, uy / ul, uz / ul];
     const w = [ax[1] * u[2]! - ax[2] * u[1]!, ax[2] * u[0]! - ax[0] * u[2]!, ax[0] * u[1]! - ax[1] * u[0]!];
+    // M8.5 #9: a slanted top: the top ring slides along the axis, falling toward slantAz (same vertices)
+    const tilt = p.slant ? Math.tan(p.slant) : 0;
     const ring = (k: number, end: number) => {
       const a = p.spin + (k * Math.PI) / 3;
       const c = Math.cos(a) * p.radius;
       const s = Math.sin(a) * p.radius;
+      const e =
+        end > 0 && tilt ? end + tilt * p.radius * Math.cos(a - p.spin - (p.slantAz ?? 0)) - tilt * p.radius : end;
       return [
-        p.x + u[0]! * c + w[0]! * s + ax[0] * end,
-        p.y + u[1]! * c + w[1]! * s + ax[1] * end,
-        p.z + u[2]! * c + w[2]! * s + ax[2] * end,
+        p.x + u[0]! * c + w[0]! * s + ax[0] * e,
+        p.y + u[1]! * c + w[1]! * s + ax[1] * e,
+        p.z + u[2]! * c + w[2]! * s + ax[2] * e,
       ];
     };
     const cx = p.x + (ax[0] * p.length) / 2;
@@ -504,7 +575,9 @@ export function bowlGeometry(prisms: readonly Prism[], fallsAt: { x: number; y: 
     // plan M8 Task 7 (Night; owner waterfall 5, Svartifoss): no two columns the same tone, and dark wet seeps running
     // down from the rim in streaks a few columns wide, so the wall is faces and stains, not an even barcode (s18 carry)
     const h = Math.abs(Math.sin(cx * 12.9898 + cy * 78.233) * 43758.5453) % 1;
-    const tone = 0.8 + 0.45 * h;
+    // M8.5 #9: tone by set (±20 %), a column only ±4 % within it (the barcode was every column its own shade)
+    const hs = p.set === undefined ? h : Math.abs(Math.sin(p.set * 12.9898 + 4.1) * 43758.5453) % 1;
+    const tone = p.set === undefined ? 0.8 + 0.45 * h : 1.025 + 0.4 * (hs - 0.5) + 0.08 * (h - 0.5);
     const azr = Math.atan2(cx - BOWL.x, cy - BOWL.y);
     const streak = Math.sin(azr * 23 + 1.1) * 0.6 + Math.sin(azr * 41 + 0.3) * 0.4;
     const seep = Math.min(1, Math.max(0, (streak - 0.45) / 0.4));
@@ -546,7 +619,14 @@ export function bowlGeometry(prisms: readonly Prism[], fallsAt: { x: number; y: 
     }
     const cap = (end: number, sign: number, mossy: number) => {
       const base = v;
-      const n = [ax[0] * sign, ax[1] * sign, ax[2] * sign];
+      let n = [ax[0] * sign, ax[1] * sign, ax[2] * sign];
+      if (sign > 0 && tilt) {
+        const sa = p.spin + (p.slantAz ?? 0);
+        const d = [0, 1, 2].map((i) => (u[i] as number) * Math.cos(sa) + (w[i] as number) * Math.sin(sa));
+        const m = [0, 1, 2].map((i) => (ax[i] as number) - tilt * (d[i] as number));
+        const ml = Math.hypot(m[0] as number, m[1] as number, m[2] as number);
+        n = m.map((q) => q / ml);
+      }
       for (let k = 0; k < 6; k++) put(ring(k, end), n, mossy);
       const order = sign > 0 ? [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5] : [0, 2, 1, 0, 3, 2, 0, 4, 3, 0, 5, 4];
       for (let k = 0; k < 12; k++) index[t * 3 + k] = base + (order[k] as number);
@@ -623,6 +703,35 @@ const RIM_TREES: readonly (readonly [number, number, number])[] = [
   [48, 1.3, 2],
   [60, 1.0, 3],
 ];
+
+/**
+ * Pure (M8.5 #9; research §3 "plant ledges"; owner waterfall 5, 2, 7): shrubs on the colonnade's tops along the tier
+ * line, most near the falls (the spray zone), as grove instances (10 floats each, z the column's top). At Night's light
+ * the shelf barely reads as rock; plants on it draw the line.
+ */
+export function ledgePlants(prisms: readonly Prism[]): Float32Array {
+  const r = mulberry32(BOWL.seed + 17);
+  const used = new Set<number>();
+  const out: number[] = [];
+  // near the falls first (up to 10), then the rest of the wall the stop faces (up to 16 in all)
+  for (const [lo, hi, cap, keep] of [
+    [10, 32, 10, 0.6],
+    [32, 62, 16, 0.25],
+  ] as const)
+    for (const p of prisms) {
+      if (used.size >= cap) break;
+      if (p.kind !== 0 || p.set === undefined || p.slant || used.has(p.set)) continue;
+      const az = (Math.atan2(p.x - BOWL.x, p.y - BOWL.y) * 180) / Math.PI;
+      const off = Math.abs(wrap(az - FALLS_AZ));
+      if (off < lo || off > hi || Math.hypot(p.x - BOWL.x, p.y - BOWL.y) > wallRadius(az) + 1.2) continue;
+      const top = p.z + p.dz * p.length;
+      if (top > tierLine(az) + 3 || r() > keep) continue;
+      used.add(p.set);
+      const scale = 1.0 + 0.6 * r();
+      out.push(3, p.x + p.dx * p.length, p.y + p.dy * p.length, top - 0.15, scale, scale, scale, 0, 0, r() * 6.283);
+    }
+  return Float32Array.from(out);
+}
 
 /** Pure: grove instances (10 floats each, z the rim's top) for the rim's trees, a little behind the back row. */
 export function rimTrees(): Float32Array {

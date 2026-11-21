@@ -90,7 +90,16 @@ const RULES: Record<CoveStop, Rules> = {
     field: { candidates: 1600, from: 3, to: 24, patch: 0.5 },
   },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
-  sunrise: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 6, zmin: 0.3, dland: 1.5 },
+  // M8.5 #14 (owner: "more flowers"): drifts down the rim's slope in the turn, more than Dusk's light scattering
+  sunrise: {
+    candidates: 22000,
+    near: [],
+    nearFlowers: 1100,
+    lensClear: 6,
+    zmin: 0.3,
+    dland: 1.5,
+    field: { candidates: 1300, from: 5, to: 40, patch: 0.42 },
+  },
 };
 
 /**
