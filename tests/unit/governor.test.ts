@@ -3,6 +3,10 @@ import { DEFAULT_GOVERNOR, Governor, percentile } from '../../src/quality/govern
 import { MAX_TIER, type Tier } from '../../src/quality/tiers';
 
 /** Feed ~1 s of frames (62 samples at 60 Hz). Returns the tier change reported during that window, if any. */
+// The tests below were written when one slow window stepped down; they test the cooldown, waiting changes, the ceiling
+// and the warm-up, so they keep a one-window step. The two-window default (s24) is tested at the end.
+const ONE_SLOW = { ...DEFAULT_GOVERNOR, downWindowsRequired: 1 };
+
 function runWindow(
   governor: Governor,
   frameMs: number,
@@ -40,7 +44,7 @@ describe('Governor', () => {
   // change is visible, and scrolling frames are slower than standing-still ones, so the governor stepped
   // down at each stop and back up during each quiet spell, forever.
   it('never returns to a tier that has already proved too slow', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     let t = 0;
 
     ({ endMs: t } = runWindow(governor, 40, t));
@@ -52,7 +56,7 @@ describe('Governor', () => {
   });
 
   it('stops stepping up once the journey has settled, but still steps down', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = 0;
 
     ({ endMs: t } = runWindow(governor, 16, t));
@@ -71,7 +75,7 @@ describe('Governor', () => {
   });
 
   it('waits for a full window before deciding', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     expect(governor.sample(40, 0)).toBeNull();
     expect(governor.sample(40, 500)).toBeNull();
   });
@@ -80,14 +84,14 @@ describe('Governor', () => {
   // loop.ts, so a device that is missing vsyncs sits around 33 ms (one dropped frame), not
   // some arbitrary "slow" number below the frame cap.
   it('steps down when the frame interval exceeds 20 ms (a missed vsync)', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     const { change } = runWindow(governor, 33, 0);
     expect(change).toBe(1);
     expect(governor.current).toBe(1);
   });
 
   it('holds during the cooldown after a change, then steps again', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     const first = runWindow(governor, 33, 0);
     expect(first.change).toBe(1);
     const second = runWindow(governor, 33, first.endMs);
@@ -99,7 +103,7 @@ describe('Governor', () => {
   // 16.7 ms is what a perfectly healthy 60 fps device produces (this is the C1 signal, not an
   // arbitrary fast number) — it must read as "fast" and, after 3 windows, step up.
   it('steps up only after three consecutive fast windows', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     const a = runWindow(governor, 16.7, 0);
     const b = runWindow(governor, 16.7, a.endMs);
     const c = runWindow(governor, 16.7, b.endMs);
@@ -109,7 +113,7 @@ describe('Governor', () => {
   });
 
   it('climbs from high to ultra the same way, and a slow ultra shuts the door on it (s24)', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t).endMs;
     expect(governor.current).toBe(3);
@@ -121,7 +125,7 @@ describe('Governor', () => {
   });
 
   it('resets the fast-window count after an in-between window', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     const a = runWindow(governor, 16.7, 0);
     const b = runWindow(governor, 16.7, a.endMs);
     const c = runWindow(governor, 18.5, b.endMs); // between the two thresholds: neither fast nor slow
@@ -130,12 +134,12 @@ describe('Governor', () => {
   });
 
   it('never goes above the top tier (ultra) or below tier 0 (low), on either backend', () => {
-    const top = new Governor(MAX_TIER);
+    const top = new Governor(MAX_TIER, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(top, 16.7, t).endMs;
     expect(top.current).toBe(MAX_TIER);
 
-    const floor = new Governor(0);
+    const floor = new Governor(0, ONE_SLOW);
     expect(runWindow(floor, 40, 0).change).toBeNull();
     expect(floor.current).toBe(0);
   });
@@ -148,7 +152,7 @@ describe('Governor', () => {
   // to, so if the tier moves AT ALL over 10 simulated seconds of steady 16.7 ms samples, the
   // thresholds are wrong again.
   it('a steady 60 fps machine stays at its starting tier for 10 simulated seconds', () => {
-    const governor = new Governor(MAX_TIER); // the top tier is the ceiling
+    const governor = new Governor(MAX_TIER, ONE_SLOW); // the top tier is the ceiling
     let t = 0;
     for (let i = 0; i < 10; i++) {
       t = runWindow(governor, 16.7, t).endMs;
@@ -157,7 +161,7 @@ describe('Governor', () => {
   });
 
   it('never changes tier while the visitor is scrolling, however slow the frames', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 5; i++) {
       const window = runWindow(governor, 33, t, false);
@@ -168,14 +172,14 @@ describe('Governor', () => {
   });
 
   it('applies a slow verdict on the first window after scrolling stops', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     const scrolling = runWindow(governor, 33, 0, false);
     const settled = runWindow(governor, 33, scrolling.endMs, true);
     expect(settled.change).toBe(1);
   });
 
   it('keeps counting fast windows while scrolling, then steps up once it may', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false).endMs;
     expect(governor.current).toBe(1);
@@ -183,7 +187,7 @@ describe('Governor', () => {
   });
 
   it('ignores a stale window left over from idle, so resuming never steps down on its own (review I4)', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 18; i++) {
       t = i * (1000 / 60);
@@ -195,7 +199,7 @@ describe('Governor', () => {
   });
 
   it('remembers a slow window closed while scrolling and steps down as soon as it may (review M10)', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     const scrolling = runWindow(governor, 33, 0, false);
     expect(scrolling.change).toBeNull();
     // Scrolling has stopped and frames are smooth at rest: the verdict from the scroll still applies.
@@ -205,7 +209,7 @@ describe('Governor', () => {
   // Spec 2026-09-25 §4.1: on a 90 Hz screen the pacer renders every second vsync, 22.2 ms apart. That is
   // healthy, not slow.
   it('judges frames against the target interval it is given', () => {
-    const governor = new Governor(MAX_TIER);
+    const governor = new Governor(MAX_TIER, ONE_SLOW);
     governor.setTargetInterval(2000 / 90);
     let t = 0;
     for (let i = 0; i < 10; i++) t = runWindow(governor, 2000 / 90, t).endMs;
@@ -215,7 +219,7 @@ describe('Governor', () => {
 
   // Final review I4: a window open across a change of target judged 60 Hz frames against the 144 Hz budget.
   it('starts a fresh window when the target interval changes', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     for (let i = 1; i <= 40; i++) governor.sample(1000 / 60, (i * 1000) / 60, true);
     governor.setTargetInterval(1000 / 144);
     for (let i = 1; i <= 300; i++) expect(governor.sample(1000 / 144, 40_000 / 60 + (i * 1000) / 144, true)).toBeNull();
@@ -223,13 +227,13 @@ describe('Governor', () => {
   });
 
   it('keeps S16 exactly at 60 Hz: slow above 20 ms, fast below 17.5 ms', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     expect(runWindow(governor, 19.9, 0).change).toBeNull();
     expect(runWindow(governor, 20.1, 2100).change).toBe(1);
   });
 
   it('keeps a remembered step-down waiting while the visitor is still scrolling', () => {
-    const governor = new Governor(2);
+    const governor = new Governor(2, ONE_SLOW);
     const first = runWindow(governor, 33, 0, false);
     const stillScrolling = runWindow(governor, 16.7, first.endMs, false);
     expect(stillScrolling.change).toBeNull();
@@ -240,7 +244,7 @@ describe('Governor', () => {
 
 describe('Governor start-up and hand-picked tiers (review I3)', () => {
   it('ignores the first seconds, so loading hitches never cost a tier', () => {
-    const governor = new Governor(1, { ...DEFAULT_GOVERNOR, warmupMs: 3000 });
+    const governor = new Governor(1, { ...ONE_SLOW, warmupMs: 3000 });
     let t = 0;
     for (let i = 0; i < 2; i++) t = runWindow(governor, 66, t).endMs;
     expect(governor.current).toBe(1);
@@ -249,7 +253,7 @@ describe('Governor start-up and hand-picked tiers (review I3)', () => {
   });
 
   it('takes a hand-picked tier as its own, with the door to it open again', () => {
-    const governor = new Governor(MAX_TIER, { ...DEFAULT_GOVERNOR, warmupMs: 0 });
+    const governor = new Governor(MAX_TIER, { ...ONE_SLOW, warmupMs: 0 });
     let t = runWindow(governor, 40, 0).endMs;
     expect(governor.current).toBe(MAX_TIER - 1);
     governor.reset(MAX_TIER, t);
@@ -264,14 +268,14 @@ describe('Governor start-up and hand-picked tiers (review I3)', () => {
 // higher tier.
 describe('Governor step-ups judged on moving frames', () => {
   it('never steps up on frames rendered at rest, however fast', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 6; i++) t = runWindow(governor, 16.7, t, true, false).endMs;
     expect(governor.current).toBe(1);
   });
 
   it('steps up after three fast moving windows, on the first frame at rest', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
     expect(governor.current).toBe(1);
@@ -279,7 +283,7 @@ describe('Governor step-ups judged on moving frames', () => {
   });
 
   it('lets resting windows between flights neither count nor break the run of fast moving ones', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     t = runWindow(governor, 16.7, t, false, true).endMs;
     t = runWindow(governor, 16.7, t, false, true).endMs;
@@ -290,18 +294,45 @@ describe('Governor step-ups judged on moving frames', () => {
   });
 
   it('lets a waiting step-down win over a later waiting step-up', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = runWindow(governor, 33, 0, false, true).endMs;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
     expect(governor.sample(16.7, t, true, false)).toBe(0);
   });
 
   it('drops a waiting step-up when a later moving window is slow', () => {
-    const governor = new Governor(1);
+    const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
     t = runWindow(governor, 18.5, t, false, true).endMs; // neither fast nor slow
     expect(governor.sample(16.7, t, true, false)).toBeNull();
     expect(governor.current).toBe(1);
+  });
+});
+
+// s24 (D49): the tier test behind the poster sets the ceiling, and one hiccup is not a slow device.
+describe('Governor after the tier test', () => {
+  it('never climbs above the ceiling the test set', () => {
+    const governor = new Governor(1);
+    governor.reset(1, 0, 1);
+    let t = 0;
+    for (let i = 0; i < 6; i++) t = runWindow(governor, 16.7, t).endMs;
+    expect(governor.current).toBe(1);
+  });
+
+  it('keeps its tier through one slow second (a notification, a background app)', () => {
+    const governor = new Governor(3);
+    let t = runWindow(governor, 16.7, 0).endMs;
+    t = runWindow(governor, 30, t).endMs;
+    t = runWindow(governor, 16.7, t).endMs;
+    expect(governor.current).toBe(3);
+  });
+
+  it('steps down after two slow seconds in a row', () => {
+    const governor = new Governor(3);
+    let t = runWindow(governor, 30, 0).endMs;
+    expect(governor.current).toBe(3);
+    t = runWindow(governor, 30, t).endMs;
+    expect(governor.current).toBe(2);
   });
 });

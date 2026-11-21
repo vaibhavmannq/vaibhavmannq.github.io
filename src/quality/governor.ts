@@ -11,6 +11,11 @@ export interface GovernorOptions {
   /** Count a window as fast below this many target intervals: 1.05 × 16.7 = 17.5 ms at 60 Hz, as S16. */
   upRatio: number;
   upWindowsRequired: number;
+  /**
+   * Slow windows in a row before a step down (s24: one notification or background app on the owner's phone, a 234 ms
+   * frame, cost a tier for the whole visit, as a step down also lowers the ceiling).
+   */
+  downWindowsRequired: number;
   cooldownMs: number;
   /**
    * Step ups are only allowed this long after the journey starts. A tier change is visible — bloom turning
@@ -34,6 +39,7 @@ export const DEFAULT_GOVERNOR: GovernorOptions = {
   downRatio: 1.2,
   upRatio: 1.05,
   upWindowsRequired: 3,
+  downWindowsRequired: 2,
   cooldownMs: 2000,
   settleMs: 20_000,
   warmupMs: 0,
@@ -53,6 +59,7 @@ export class Governor {
   private samples: number[] = [];
   private windowStart: number | null = null;
   private fastWindows = 0;
+  private slowWindows = 0;
   private lastChange = Number.NEGATIVE_INFINITY;
   /** A slow window closed while the visitor was scrolling: step down as soon as a change is allowed. */
   private pendingDown = false;
@@ -88,12 +95,14 @@ export class Governor {
    * Take a tier chosen by hand (the HUD, the benchmark, `?tier=`) or a fresh start (the world base just arrived) as the
    * governor's own: the ceiling opens again and the warm-up starts over.
    */
-  reset(tier: Tier, nowMs: number): void {
+  reset(tier: Tier, nowMs: number, ceiling: Tier = MAX_TIER): void {
     this.tier = tier;
-    this.ceiling = MAX_TIER;
+    // the tier test behind the poster (D49) sets the ceiling: it only steps down from there
+    this.ceiling = Math.max(tier, ceiling) as Tier;
     this.samples = [];
     this.windowStart = null;
     this.fastWindows = 0;
+    this.slowWindows = 0;
     this.pendingDown = false;
     this.pendingUp = false;
     this.moving = 0;
@@ -171,10 +180,14 @@ export class Governor {
     if (slowFrames > this.options.downRatio * this.targetMs) {
       this.fastWindows = 0;
       this.pendingUp = false;
+      this.slowWindows += 1;
+      if (this.slowWindows < this.options.downWindowsRequired) return null;
+      this.slowWindows = 0;
       if (canChange) return this.changeTo(this.tier - 1, nowMs);
       this.pendingDown = true;
       return null;
     }
+    this.slowWindows = 0;
     if (slowFrames < this.options.upRatio * this.targetMs) {
       // A fast window at rest neither vouches for a higher tier nor breaks a run of fast moving ones.
       if (!mostlyMoving) return null;
