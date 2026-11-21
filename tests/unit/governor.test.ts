@@ -55,7 +55,7 @@ describe('Governor', () => {
     expect(governor.current).toBe(1);
   });
 
-  it('stops stepping up once the journey has settled, but still steps down', () => {
+  it('keeps stepping up in later flights (D49: no settle window), and still steps down', () => {
     const governor = new Governor(1, ONE_SLOW);
     let t = 0;
 
@@ -64,14 +64,15 @@ describe('Governor', () => {
     ({ endMs: t } = runWindow(governor, 16, t));
     expect(governor.current).toBe(2);
 
-    // Well past the settle window: quiet, fast frames no longer change the picture under the visitor.
+    // Well past the old 20 s settle window: a fast flight still earns the next tier (s24: the owner's phone read at
+    // Golden for 20 s and never climbed past mid).
     t = 30_000;
-    for (let i = 0; i < 6; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
-    expect(governor.current).toBe(2);
+    for (let i = 0; i < 4; i++) ({ endMs: t } = runWindow(governor, 16, t));
+    expect(governor.current).toBe(3);
 
     // A device that starts struggling is still helped, whenever that happens.
     ({ endMs: t } = runWindow(governor, 40, t + 2100));
-    expect(governor.current).toBe(1);
+    expect(governor.current).toBe(2);
   });
 
   it('waits for a full window before deciding', () => {
@@ -178,12 +179,11 @@ describe('Governor', () => {
     expect(settled.change).toBe(1);
   });
 
-  it('keeps counting fast windows while scrolling, then steps up once it may', () => {
+  it('steps up while the visitor is scrolling (D49: the motion hides it)', () => {
     const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false).endMs;
-    expect(governor.current).toBe(1);
-    expect(runWindow(governor, 16.7, t, true).change).toBe(2);
+    expect(governor.current).toBe(2);
   });
 
   it('ignores a stale window left over from idle, so resuming never steps down on its own (review I4)', () => {
@@ -274,12 +274,12 @@ describe('Governor step-ups judged on moving frames', () => {
     expect(governor.current).toBe(1);
   });
 
-  it('steps up after three fast moving windows, on the first frame at rest', () => {
+  it('steps up after three fast moving windows, in the flight, not on arriving (D49)', () => {
     const governor = new Governor(1, ONE_SLOW);
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
-    expect(governor.current).toBe(1);
-    expect(governor.sample(16.7, t, true, false)).toBe(2);
+    expect(governor.current).toBe(2);
+    expect(governor.sample(16.7, t, true, false)).toBeNull();
   });
 
   it('lets resting windows between flights neither count nor break the run of fast moving ones', () => {
@@ -290,7 +290,7 @@ describe('Governor step-ups judged on moving frames', () => {
     t = runWindow(governor, 16.7, t, true, false).endMs; // resting at a place
     expect(governor.current).toBe(1);
     t = runWindow(governor, 16.7, t, false, true).endMs;
-    expect(governor.sample(16.7, t, true, false)).toBe(2);
+    expect(governor.current).toBe(2);
   });
 
   it('lets a waiting step-down win over a later waiting step-up', () => {
@@ -300,13 +300,18 @@ describe('Governor step-ups judged on moving frames', () => {
     expect(governor.sample(16.7, t, true, false)).toBe(0);
   });
 
-  it('drops a waiting step-up when a later moving window is slow', () => {
+  it('a run of fast moving windows that closes at rest waits for the next moving frame (D49)', () => {
     const governor = new Governor(1, ONE_SLOW);
-    let t = 0;
-    for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t, false, true).endMs;
-    t = runWindow(governor, 18.5, t, false, true).endMs; // neither fast nor slow
-    expect(governor.sample(16.7, t, true, false)).toBeNull();
+    // three windows of a flight with exact edges; the third is closed by the first frame at the place it arrives at
+    governor.sample(16.7, 0, false, true);
+    for (let w = 0; w < 3; w++) {
+      const base = w * 1000;
+      for (let i = 1; i < 60; i++) governor.sample(16.7, base + (i * 1000) / 60, false, true);
+      if (w < 2) expect(governor.sample(16.7, base + 1000, false, true)).toBeNull();
+    }
+    expect(governor.sample(16.7, 3000, true, false)).toBeNull(); // arrived: nothing changes while they read
     expect(governor.current).toBe(1);
+    expect(governor.sample(16.7, 3017, false, true)).toBe(2); // the next flight
   });
 });
 

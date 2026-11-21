@@ -18,11 +18,9 @@ export interface GovernorOptions {
   downWindowsRequired: number;
   cooldownMs: number;
   /**
-   * Step ups are only allowed this long after the journey starts. A tier change is visible — bloom turning
-   * on brightens the whole scene, and a render-scale step changes about 3% of the pixels — and the governor
-   * may only change tier once the visitor stops moving, so late changes read as the page blinking at them
-   * while they read (owner, 2026-09-25). Steps down are never time-limited: a struggling device still gets
-   * help whenever it needs it.
+   * Step ups are only allowed this long after the journey starts. Since D49 (s24) a step up happens only while the
+   * camera moves, where the motion hides it, so it needs no time limit: the owner's phone, reading at Golden for the
+   * first 20 s, never climbed past mid. Kept as an option for the tests.
    */
   settleMs: number;
   /**
@@ -41,7 +39,7 @@ export const DEFAULT_GOVERNOR: GovernorOptions = {
   upWindowsRequired: 3,
   downWindowsRequired: 2,
   cooldownMs: 2000,
-  settleMs: 20_000,
+  settleMs: Number.POSITIVE_INFINITY,
   warmupMs: 0,
 };
 
@@ -145,7 +143,9 @@ export class Governor {
       this.windowStart = null;
       return null;
     }
-    if (this.pendingUp && !this.pendingDown && canChange && nowMs - this.lastChange >= this.options.cooldownMs) {
+    // A step up waits for a moving frame (D49): never while the visitor reads, as a sharper picture popping in at a stop
+    // read as the page blinking (owner, 2026-09-25); in flight the motion hides it.
+    if (this.pendingUp && !this.pendingDown && moving && nowMs - this.lastChange >= this.options.cooldownMs) {
       this.pendingUp = false;
       this.fastWindows = 0;
       if (this.mayStepUp(nowMs)) {
@@ -193,11 +193,11 @@ export class Governor {
       if (!mostlyMoving) return null;
       this.fastWindows += 1;
       if (this.fastWindows >= this.options.upWindowsRequired) {
-        if (canChange && this.mayStepUp(nowMs)) {
+        if (moving && !this.pendingDown && this.mayStepUp(nowMs)) {
           this.fastWindows = 0;
           return this.changeTo(this.tier + 1, nowMs);
         }
-        if (!canChange && !this.pendingDown) this.pendingUp = true;
+        if (!moving && !this.pendingDown) this.pendingUp = true;
       }
       return null;
     }
