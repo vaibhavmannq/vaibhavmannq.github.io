@@ -66,7 +66,8 @@ export function nearestHit(
 export function screenMotion(a: RideSample, b: RideSample, distM: number, aspect = 16 / 9): number {
   const dt = b.tS - a.tS;
   if (dt <= 0) return 0;
-  const dy = (((((b.pose.yaw - a.pose.yaw) % 360) + 540) % 360) - 180) * Math.cos(((a.pose.pitch + b.pose.pitch) / 2) * RAD);
+  const dy =
+    (((((b.pose.yaw - a.pose.yaw) % 360) + 540) % 360) - 180) * Math.cos(((a.pose.pitch + b.pose.pitch) / 2) * RAD);
   const turn = (Math.hypot(dy, b.pose.pitch - a.pose.pitch) * RAD) / dt;
   const pa = toCoast(a.pose.position);
   const pb = toCoast(b.pose.position);

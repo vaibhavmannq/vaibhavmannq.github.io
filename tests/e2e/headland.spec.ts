@@ -45,7 +45,8 @@ test.describe('the headland pack', () => {
     await openAtNight(page);
     await page.evaluate(() => (window as unknown as { __stageB(): Promise<void> }).__stageB());
     const parts = Object.keys(await joined(page));
-    expect(parts).toEqual(expect.arrayContaining(['terrain', 'sea', 'falls', 'cave']));
+    // the cave is Before dawn's streamed set since R211, not loaded at Night: Night's own bowl stands in for it
+    expect(parts).toEqual(expect.arrayContaining(['terrain', 'sea', 'falls', 'bowl']));
     expect(parts).not.toContain('arch');
     expect(warnings.join('\n')).not.toContain('world base failed');
   });
