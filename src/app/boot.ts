@@ -150,6 +150,14 @@ let loadShare = 0;
 const REST_BEFORE_FETCH_MS = 1500;
 /** Resolves on the next animation frame. */
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+/**
+ * Lets the browser run a due frame (the lantern room) without waiting for one: a frame wait serialised the GPU's shader
+ * builds and doubled the load (R216: terrain joined at 12.8 s, not 5.9).
+ */
+const yieldTask = () => {
+  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  return s?.yield ? s.yield() : new Promise<void>((resolve) => setTimeout(resolve, 0));
+};
 /** The lantern room never holds a first visit longer than this (spec §4.1: 5–15 s). */
 const ROOM_CAP_MS = 15000;
 const showProgress = (share: number) => {
@@ -279,6 +287,7 @@ async function loadBase(
   // The cove's grass and flowers (plan M3 Task 1): made here from the base heights, no download.
   // Deep midnight's ridge top (plan M6 Task 2): a designed ground around the eye, in the terrain's material, and its
   // heather and grass as the meadow's sixth stop
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   const surface = createSurfaceSampler(heights, meta.heights);
   const mid = SHOTS.midnight;
   const ridgeSite = { x: mid.cam[0], y: mid.cam[1], ground: surface(mid.cam[0], mid.cam[1]), yaw: mid.look[0] };
@@ -292,12 +301,15 @@ async function loadBase(
   // the far plain under the ranges starts where the deck's box ends (the deck reaches north to -100, below)
   const deckBox = mid.cloudsea ? [mid.cloudsea.box[0], mid.cloudsea.box[1], mid.cloudsea.box[2], -100] : undefined;
   parts.push(['peaks', createPeaks({ x: ridgeSite.x, y: ridgeSite.y, z: mid.eyeZ }, ridgeSite.yaw, light, deckBox)]);
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   const cove = scatterCove(surface);
   const ridgePlants = scatterRidge(ridgeGround, ridgeSite, PLANT_STOPS.indexOf('midnight'));
   const plants = new Float32Array(cove.data.length + ridgePlants.length);
   plants.set(cove.data);
   plants.set(ridgePlants, cove.data.length);
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   parts.push(['meadow', createMeadow({ data: plants, count: plants.length / PLANT_STRIDE }, light)]);
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   // Crags on the bare faces a look-around reveals (M8.5 #2): basalt columns on the ground as drawn (D32), made here.
   const cragSites = STOPS.filter((s) => COVE_SEEN_FROM.has(s.id)).map((s) => ({
     id: s.id,
@@ -309,12 +321,14 @@ async function loadBase(
     const prisms = cragPrisms(drawn, [site], 7 + i);
     if (prisms.length) parts.push([`crags-${site.id}`, createCrags(rock, prisms, site.id, STOP_IDS)]);
   }
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
   parts.push(['life', createLife(light, createSurfaceSampler(heights, meta.heights), reducedMotion)]);
   if (dressingMeta && dressingBuf) {
     const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
     parts.push(['dressing', createDressing(instances, heightAt)]);
   }
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   // The four unknowns (M2). Each hides itself wherever its hour or place is not in play.
   const { night, midnight } = SHOTS;
   if (auroraData && night.aurora && midnight.aurora)
@@ -333,6 +347,7 @@ async function loadBase(
       createCloudSea(deck, heightMap, meta.heights, light, { x: mid.cam[0], y: mid.cam[1], z: mid.eyeZ }),
     ]);
   }
+  await yieldTask(); // the lantern room may draw between build steps (R216)
   // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);
   // Before dawn's cave is its place's close-up set (world-to-100 Task 4, R211): fetched while resting at Midnight,
@@ -519,11 +534,26 @@ async function loadBase(
   const stop = opening();
   const order = partOrder([...byName.keys()], stop);
   const here = order.filter((n) => PART_STOPS[n]?.has(stop));
-  await Promise.all(here.map(join));
+  // each part's compile starts a frame after the last: started together, their shader building ran as one block
+  // that froze the lantern room for 0.5 s (R216); the GPU still builds them side by side
+  const staggered = async (names: string[]) => {
+    const started: Promise<void>[] = [];
+    let since = performance.now();
+    for (const n of names) {
+      started.push(join(n));
+      // cheap starts share a frame; once ~8 ms of building has run, the room gets its frame
+      if (performance.now() - since > 8) {
+        await yieldTask();
+        since = performance.now();
+      }
+    }
+    await Promise.all(started);
+  };
+  await staggered(here);
   // opening at a place with a close-up set, that set compiles before the rest of the world (R211: it competed with the
   // second wave and missed the first view's 3 s cap at Before dawn)
   await setShown(app, stop, REVEAL_WAIT_MS);
-  await Promise.all(order.filter((n) => !here.includes(n)).map(join));
+  await staggered(order.filter((n) => !here.includes(n)));
   await Promise.all([rockReady, coveReady]);
 }
 
@@ -689,6 +719,8 @@ export async function boot(): Promise<App> {
       // unlit, the paper fills faintly as the world loads; lit, the flame grows with it
       const target = st === 'waiting' ? 0.14 * loadShare : 0.4 + 0.6 * loadShare;
       glow += (target - glow) * (1 - Math.exp(-3 * dt));
+      // the flame catches at once when lit (s28, phone: easing up from dark, a tap looked like it did nothing)
+      if (st !== 'waiting') glow = Math.max(glow, 0.4);
       if (st === 'ready' && releaseAt < 0) releaseAt = nowMs;
       let lift = 0;
       let dark = 0;
