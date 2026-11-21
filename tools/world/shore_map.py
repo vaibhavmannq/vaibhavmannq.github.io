@@ -25,7 +25,8 @@ LANTERN_PATH = ((-12.0, 52.0), (-150.0, 190.0))  # src/world/lanterns.ts
 def grid(w, step):
     xs = np.arange(X0, X1 + 1e-6, step)
     ys = np.arange(Y0, Y1 + 1e-6, step)
-    h = np.array([[w.ground_base(float(x), float(y)) for x in xs] for y in ys], dtype=np.float32)
+    X, Y = np.meshgrid(xs, ys)
+    h = np.asarray(w.ground_base(X, Y), dtype=np.float32)
     return xs, ys, h
 
 
@@ -34,7 +35,12 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--before", help="an earlier map's .npz: its 0 m line is drawn dashed")
     ap.add_argument("--step", type=float, default=2.0)
+    ap.add_argument("--coast", help="another coast.py to map (e.g. an older one from git show)")
+    ap.add_argument("--box", type=float, nargs=4, metavar=("X0", "X1", "Y0", "Y1"), help="zoom to this window")
+    ap.add_argument("--title", default="")
     a = ap.parse_args()
+    if a.coast:
+        coastlib.COAST = os.path.abspath(a.coast)
 
     import matplotlib
 
@@ -46,7 +52,8 @@ def main():
     xs, ys, h = grid(w, a.step)
     np.savez_compressed(os.path.splitext(a.out)[0] + ".npz", xs=xs, ys=ys, h=h)
 
-    fig, ax = plt.subplots(figsize=(11, 11.4), dpi=110)
+    bw = a.box or (X0, X1, Y0, Y1)
+    fig, ax = plt.subplots(figsize=(11, 11 * (bw[3] - bw[2]) / (bw[1] - bw[0]) + 0.4), dpi=110)
     shade = LightSource(azdeg=315, altdeg=40).hillshade(h, vert_exag=2.0, dx=a.step, dy=a.step)
     land = np.where(h > 0, 1.0, 0.0)
     rgb = np.dstack([0.25 + 0.55 * shade * land + 0.12 * (1 - land), 0.3 + 0.5 * shade * land + 0.2 * (1 - land),
@@ -77,10 +84,11 @@ def main():
             ax.plot(x, y, "s", color="#333", ms=3)
     (lx0, ly0), (lx1, ly1) = LANTERN_PATH
     ax.plot([lx0, lx1], [ly0, ly1], "--", color="gold", lw=1)
-    ax.set_xlim(X0, X1)
-    ax.set_ylim(Y0, Y1)
+    bx = a.box or (X0, X1, Y0, Y1)
+    ax.set_xlim(bx[0], bx[1])
+    ax.set_ylim(bx[2], bx[3])
     ax.set_aspect("equal")
-    ax.set_title("The cove in plan (coast.py ground_base): white = waterline, red = cove cameras (frame solid, ±40° dotted)",
+    ax.set_title(a.title or "The cove in plan (coast.py ground_base): white = waterline, red = cove cameras (frame solid, ±40° dotted)",
                  fontsize=9)
     fig.tight_layout()
     fig.savefig(a.out)

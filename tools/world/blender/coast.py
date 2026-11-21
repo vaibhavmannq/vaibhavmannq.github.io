@@ -217,10 +217,9 @@ SHOTS["midnight"].update(aurora=dict(AUR3, dist=3000.0, strength=2.8,
 # Night's baked curves.
 SHOTS["night"].update(cam=(-316.8, -416.9, 1.0), look=(-19.0, 2.0), lens=20, over_water=True, aurora_yaw=0.0, falls_r=(49.5, 46.0),
     moon=(140.0, 22.0, 0.9, 35.0, 0.7))
-SHOTS["golden"].update(cliff_rocks=((22.5, 14.0, 5.0, 18.1, 0.0), (21.3, 21.0, 4.0, 14.5, -0.03), (23.3, 27.0, 5.5, 18.4, 0.02), (21.9, 34.0, 4.5, 15.1, 0.0), (23.9, 41.0, 6.0, 16.8, -0.02), (21.5, 47.0, 4.0, 12.2, 0.03), (22.9, 54.0, 5.0, 15.1, 0.0), (22.1, 61.0, 5.5, 16.5, -0.03), (23.5, 67.0, 4.5, 11.9, 0.02), (21.7, 74.0, 5.0, 12.7, 0.0), (23.1, 81.0, 4.0, 9.9, -0.02), (22.5, 88.0, 5.0, 11.4, 0.03),))
+# Golden's and Sunrise's cliff_rocks: laid along the faces by face_rocks() below the ground (M8.5 #13; were two ruler rows).
 SHOTS["sunrise"].update(sky_grad=((1.18, 0.92, 0.78), (0.78, 0.86, 1.15), 0.02, 0.35), ramp=((0.0, (0.22, 0.24, 0.42)), (0.20, (0.58, 0.50, 0.72)), (0.32, (0.98, 0.68, 0.70)), (0.45, (1.0, 0.80, 0.66)), (0.60, (1.0, 0.90, 0.78)), (1.0, (1.0, 0.98, 0.94))),
-    sun_str=5.0, sun_col=(1.0, 0.70, 0.42), patches=((-140.0, -106.0, -10.0, 100.0, 60000, 3.0),),
-    cliff_rocks=((-103.0, -6.0, 7.0, 36.5, 0.0), (-100.2, 1.0, 5.0, 22.8, 0.03), (-104.8, 12.0, 8.5, 33.4, -0.02), (-102.0, 17.0, 6.0, 27.7, 0.0), (-99.8, 27.0, 5.5, 21.4, 0.04), (-103.8, 33.0, 9.0, 27.9, -0.03), (-101.4, 44.0, 6.5, 23.3, 0.0), (-99.5, 50.0, 4.5, 13.8, 0.03), (-104.2, 61.0, 8.0, 20.8, -0.02), (-100.8, 69.0, 6.0, 16.4, 0.0), (-102.2, 80.0, 5.0, 10.7, 0.04), (-101.5, 88.0, 6.5, 7.9, -0.03),))
+    sun_str=5.0, sun_col=(1.0, 0.70, 0.42), patches=((-140.0, -106.0, -10.0, 100.0, 60000, 3.0),))
 SHOTS["sunrise"].update(props=(("searsia_burchellii", 27.0, -7.0, 1.7, 40.0, 0.0), ("searsia_burchellii", 26.0, -2.5, 1.4, 160.0, 0.0), ("searsia_burchellii", 27.8, -11.5, 1.2, 280.0, 0.0)))
 SHOTS["sunrise"].update(frame_tree=None, lgrove=True, sun_el=14.0, sun_az=50.0, swell=0.05, chop=0.2, bumps=(0.03, 0.05),
     extra_rocks=((-62.0, 4.0, 3.5, 2.2, 0.0), (-70.0, 12.0, 5.0, 3.5, 0.05), (-55.0, -2.0, 2.0, 1.0, 0.0),
@@ -264,6 +263,93 @@ def sm(a, b, x):
 
 # ---------------- the land ----------------
 def shore_y(x): return np.where(x > 0, 0.0035, -0.0025) * x * x + 1.4 * np.sin(x * 0.05 + 0.6)   # curves out to the right headland, back inland to the left
+
+# ---------------- the cove's shore in plan (M8.5 #13; research/m85-shore-outline.md) ----------------
+# Until s26 the cove was four axis-aligned boxes: a straight right face at x 15-30, a straight left face at x ~-101, a
+# 13.6 m slab 27 m wide standing into the water like a pier, square corners where they met. Real rocky shores are rough
+# at every scale (coastline dimension D ~1.25: each halving of wavelength keeps ~0.6 of the wander), headland tips are
+# blunt lobes and inside corners are fillets. The 8 m height grid can draw nothing under ~16 m, so the outlines here
+# curve at 16 m and up; rocks carry what is finer. The masks keep their old ramps: only where their edges lie changes.
+# Every cove camera and walk spot is protected: within 20 m nothing moves, by 40 m the new shore is free.
+PROTECT = ((9.5, -4.0), (8.9, -1.2), (8.0, 1.8), (7.1, 4.6), (8.61, -2.32),              # Golden, its two walks
+           (86.0, 96.0), (87.6, 94.6), (85.0, 98.0),                                       # Sunset, its walk, its glint
+           (32.0, 30.0), (30.6, 33.8), (29.26, 37.52),                                     # Dusk, "step to the edge"
+           (-60.0, -14.0), (-55.0, -6.8), (-49.3, 1.3),                                    # First light, the shallows
+           (30.0, -40.0), (29.6, -34.0), (28.9, -24.0))                                    # Sunrise, the rim
+PROTECT_R = (20.0, 40.0)
+def protect_at(x, y):
+    """1 within 20 m of a cove camera or walk spot, falling to 0 by 40 m."""
+    x = np.asarray(x, np.float64); y = np.asarray(y, np.float64); p = np.zeros(np.broadcast(x, y).shape)
+    for px, py in PROTECT:
+        p = np.maximum(p, sm(PROTECT_R[1], PROTECT_R[0], np.hypot(x - px, y - py)))
+    return p
+
+def _wander(s, seed, amp, lam):
+    """A coastline's wander along s (metres): fbm with gain 0.6 per octave (D ~1.25), longest wavelength lam, octaves
+    down to ~16 m; about +-amp."""
+    out = 0.0; a = 1.0; f = 1.0 / lam; tot = 0.0
+    while 1.0 / f >= 16.0:
+        out = out + a * (2.0 * vnoise(s * f + seed, seed * 0.37 + 1.3) - 1.0); tot += a
+        a *= 0.6; f *= 2.0
+    return amp * out / tot
+
+def _wander2(x, y, seed, amp, lam, shortest=16.0):
+    """The same wander as a field over the plan: an outline pushed by it wanders the same way all round."""
+    out = 0.0; a = 1.0; f = 1.0 / lam; tot = 0.0
+    while 1.0 / f >= shortest:
+        out = out + a * (2.0 * vnoise(x * f + seed, y * f - seed) - 1.0); tot += a
+        a *= 0.6; f *= 2.0
+    return amp * out / tot
+
+def right_face_shift(y):
+    """How far east (m) the right headland's face stands back from today's x 15, along y. Zero south of y 55 (Golden's
+    beach corner and Dusk's edge stay); a shallow bay north of Dusk with a spur at its south lip; the north end's
+    corner (seen only from the air) rounded with a radius of ~55 m."""
+    y = np.asarray(y, np.float64)
+    bay = 9.0 * sm(60.0, 84.0, y) * sm(108.0, 86.0, y) - 3.0 * np.exp(-((y - 62.0) / 12.0) ** 2)
+    wav = _wander(y, 4.1, 3.0, 90.0) * sm(55.0, 75.0, y)
+    q = np.clip((y - 152.0) / 55.0, 0.0, 1.0)
+    end = 55.0 * (1.0 - np.sqrt(1.0 - q * q))
+    return (bay + wav) * sm(55.0, 65.0, y) + end
+
+def left_face_shift(y):
+    """How far east (m, + into the cove) the left headland's face moves from today's, along y: a slow wander of 8-12 m
+    from the beach north (only west of today's north of y 55: Golden's line to the arch passes 15 m off its tip). The
+    tip's rounding is in _ground_core (LEFT_TIP)."""
+    y = np.asarray(y, np.float64)
+    wv = 6.0 * np.sin(y * 2 * np.pi / 140.0 + 1.1) + 3.0 * np.sin(y * 2 * np.pi / 64.0 + 4.0) + _wander(y, 7.7, 3.0, 110.0)
+    wv = np.where(y > 55.0, np.minimum(wv, 0.0) * sm(85.0, 55.0, y), wv) * sm(-45.0, -15.0, y)   # north of 55: only west
+    return wv
+
+# The left headland's north tip: its face and its north shore meet in one rounded corner (radius r), the north shore at y.
+# s26: the tip keeps its mass (from Golden it steps down toward the arch, owner cove-and-stacks 12) and loses only
+# its square corner.
+LEFT_TIP = dict(y=101.0, r=26.0)
+
+def _round_inside(a, b, r):
+    """Signed inside-distance of the intersection of two regions (inside-distances a and b), its corner rounded by r."""
+    corner = (a < r) & (b < r)
+    return np.where(corner, r - np.hypot(np.maximum(r - a, 0.0), np.maximum(r - b, 0.0)), np.minimum(a, b))
+
+# The terrace (the shelf with the old tree and its grove): a lobe along an axis from its tip to the right face. Its
+# half-width differs north and south and along the axis: the south face bows out, the north face has a small bay, the tip
+# is a blunt cap (radius >= 14 m), and both sides flare into the headland as fillets. sd + inside, metres.
+TERRACE = dict(axis=((-44.0, 140.0), (116.0, 143.5)), cap=17.0, ramp=9.0, east=13.5)
+def terrace_sd(x, y):
+    x = np.asarray(x, np.float64); y = np.asarray(y, np.float64)
+    (x0, y0), (x1, y1) = TERRACE["axis"]; dx, dy = x1 - x0, y1 - y0; L2 = dx * dx + dy * dy
+    t = np.clip(((x - x0) * dx + (y - y0) * dy) / L2, 0.0, 1.0)
+    px, py = x0 + dx * t, y0 + dy * t
+    d = np.hypot(x - px, y - py)
+    side = np.clip((((x - px) * -dy + (y - py) * dx) / np.sqrt(L2)) / np.maximum(d, 1e-6), -1.0, 1.0)   # +1 north, -1 south
+    flare = sm(-12.0, 26.0, px) ** 2                                  # the fillets, where the lobe meets the right face
+    r_s = TERRACE["cap"] + 3.5 * sm(-28.0, -48.0, px) + 4.5 * np.sin(np.pi * sm(-44.0, 20.0, px)) ** 1.5 + 26.0 * flare * sm(36.0, 22.0, px)   # the south fillet only in the inside corner
+    r_n = TERRACE["cap"] + 2.5 * sm(-44.0, -24.0, px) - 4.0 * np.exp(-((px + 16.0) / 12.0) ** 2) + 4.0 * sm(-4.0, 12.0, px) + 9.0 * flare
+    e2 = sm(30.0, 50.0, px)                                           # inside the headland: the old plateau's width
+    r_s = r_s * (1 - e2) + TERRACE["east"] * e2; r_n = r_n * (1 - e2) + TERRACE["east"] * e2
+    r = r_n * (0.5 + 0.5 * side) + r_s * (0.5 - 0.5 * side)
+    return r - d + _wander2(x, y, 2.9, 5.0, 110.0, 24.0) * sm(20.0, 0.0, px)
+
 def _ground_core(x, y):
     x = np.asarray(x, np.float64); y = np.asarray(y, np.float64)
     d = shore_y(x) - y                                   # + on land, - in the sea (metres from the waterline, roughly)
@@ -271,20 +357,27 @@ def _ground_core(x, y):
     h = np.where(d > 0, 2.5 * np.tanh(0.02 * land) + sm(10, 34, land) * (1.5 + 2.0 * fbm(x * 0.03, y * 0.03)),
                  -0.042 * w - 0.07 * np.maximum(w - 14, 0) - 0.06 * np.maximum(w - 45, 0))
     h = np.maximum(h, -22)
-    # right headland: rises steeply beside the beach, runs out to sea, ends in a cliff
-    rmask = sm(15, 30, x) * sm(150 + PROM_DY, 95 + PROM_DY, y)
+    # right headland: rises steeply beside the beach, runs out to sea, ends in a cliff. M8.5 #13: its face follows
+    # right_face_shift (a bay north of Dusk, a rounded north end), never inside the cove's protected circles
+    free = 1.0 - protect_at(x, y)
+    xr = x - right_face_shift(y) * free
+    rmask = sm(15, 30, xr) * sm(150 + PROM_DY, 95 + PROM_DY, y)
     hr = rmask * (21 + 12 * fbm(x * 0.018 + 3, y * 0.018) + 5.0 * (fbm(x * 0.09, y * 0.09) - 0.5))
     ridges = 1.0 - np.abs(2 * fbm(x * 0.07 + 5, y * 0.07 + 2, 4) - 1)          # eroded gullies and spurs
     hr = hr + rmask * sm(2, 8, hr) * (3.0 * ridges - 1.5 + 1.2 * (fbm(x * 0.35, y * 0.35, 3) - 0.5))
-    band = sm(12, 17, x) * sm(36, 24, x) * sm(150 + PROM_DY, 95 + PROM_DY, y) * sm(1.0, 6.0, hr)   # the face above the beach
+    band = sm(12, 17, xr) * sm(36, 24, xr) * sm(150 + PROM_DY, 95 + PROM_DY, y) * sm(1.0, 6.0, hr)   # the face above the beach
     rid2 = 1.0 - np.abs(2 * fbm(x * 0.10 + 9, y * 0.05 + 4, 4) - 1)
     hr = hr + band * (3.5 * rid2 - 1.2 + 1.4 * (fbm(x * 0.45 + 2, y * 0.45, 3) - 0.5) + 0.9 * np.round(2.0 * fbm(x * 0.2, y * 0.08 + 7, 3)))
     # left headland, far across the cove
     le = -101.0 + 9.0 * (fbm(y * 0.03 + 2.0, x * 0.0 + 1.3, 4) - 0.5) + 2.5 * (fbm(y * 0.2 + 5.0, 0.7, 3) - 0.5)   # wandering cliff edge
-    lmask = sm(le + 1.5, le - 7.0, x) * sm(220, 140, y)
+    le = le + left_face_shift(y) * free                                                # M8.5 #13: more wander, a D-shaped tip
+    # M8.5 #13: the tip's corner rounded; its north edge only near the cove (further west the shore lies far south of
+    # it, and inland the left headland's mask carries the land to the world's edge)
+    ld = _round_inside(le - x, LEFT_TIP["y"] - y + 1000.0 * sm(-170.0, -230.0, x), LEFT_TIP["r"])
+    lmask = sm(-1.5, 7.0, ld) * sm(220, 140, y)
     hl = lmask * (np.clip(37.0 - 0.24 * y, 9.0, 40.0) + 8 * fbm(x * 0.02 + 8, y * 0.02))
     lrid = 1.0 - np.abs(2 * fbm(x * 0.12 + 3, y * 0.06 + 8, 4) - 1)                  # spurs and gullies down the face
-    hl = hl + sm(le + 1.5, le - 4.0, x) * sm(le - 12.0, le - 6.0, x) * sm(220, 140, y) * (4.0 * lrid - 2.0 + 0.8 * np.round(2.0 * fbm(x * 0.15, y * 0.25 + 3, 3)))
+    hl = hl + sm(le + 1.5, le - 4.0, x) * sm(le - 12.0, le - 6.0, x) * sm(LEFT_TIP["y"] - 2.0, LEFT_TIP["y"] - 14.0, y) * (4.0 * lrid - 2.0 + 0.8 * np.round(2.0 * fbm(x * 0.15, y * 0.25 + 3, 3)))
     h = h + hr + hl
     h = h + 0.25 * (fbm(x * 0.09, y * 0.09) - 0.5) * sm(0.5, 3, h)
     return h
@@ -319,10 +412,17 @@ def _ground_world(x, y):
     hl = np.where(r < 58, bowl, 0.4 + wall)
     out_ = sm(92, 115, r)
     h = np.where(r < 115, hl * (1 - out_) + h * out_, h)
-    # the plateau on top of the scanned cliff (fills its flat cut-off top with real ground)
-    pm = sm(70 + PROM_DY, 79 + PROM_DY, y) * sm(97 + PROM_DY, 90 + PROM_DY, y) * sm(-48, -36, x) * sm(116, 104, x)
-    hum = sm(72 + PROM_DY, 81 + PROM_DY, y) * sm(-40, -28, x) * (2.6 * fbm(x * 0.035 + 6, y * 0.05 + 1, 4) + 0.9 * fbm(x * 0.16, y * 0.16 + 4, 3) - 1.0)
-    h = np.where(pm > 0, np.maximum(h, pm * (13.6 + 0.6 * fbm(x * 0.08 + 2, y * 0.08, 3) + np.maximum(hum, 0.0))), h)   # only under the plateau (a bare max clamped the whole sea floor to 0)
+    # the plateau on top of the scanned cliff (fills its flat cut-off top with real ground). M8.5 #13: its plan is the
+    # terrace's lobe (terrace_sd), not a box: a blunt tip, a bowed south face, fillets into the headland
+    # East of the right face the lobe narrows back to the old plateau's width (the meadow's far ridge under Sunset's
+    # lone tree, inside the headland).
+    tsd = terrace_sd(x, y)
+    pm = sm(0.0, TERRACE["ramp"], tsd)
+    hum = sm(2.0, 2.0 + TERRACE["ramp"], tsd) * (2.6 * fbm(x * 0.035 + 6, y * 0.05 + 1, 4) + 0.9 * fbm(x * 0.16, y * 0.16 + 4, 3) - 1.0)
+    # s26: one 13.6 m top read as a cake from every cove stop; a knoll near the middle, a saddle by the north bay and a
+    # tip that steps down give the skyline its rise and fall (grove plants keep 10 m and more)
+    top = 13.6 + 3.2 * np.exp(-((x + 27.0) / 12.0) ** 2) - 1.2 * np.exp(-((x + 6.0) / 7.0) ** 2) - 2.6 * sm(-40.0, -58.0, x)
+    h = np.where(pm > 0, np.maximum(h, pm * (top + 0.6 * fbm(x * 0.08 + 2, y * 0.08, 3) + np.maximum(hum, 0.0))), h)   # only under the plateau (a bare max clamped the whole sea floor to 0)
     # the cave hill
     ch = np.hypot(x - CAVE_HILL[0], y - CAVE_HILL[1])
     h = h + 46 * np.exp(-(ch / 95.0) ** 2)
@@ -378,6 +478,75 @@ def ground(x, y):
     hb = ground_base(xw, yw)
     h = hb + f * relief(xw, yw) * sm(3.0, 20.0, hb)          # relief only on land, nothing new at sea
     return np.where(hb > 3.0, np.maximum(h, 3.0), h)         # gullies never cut land below 3 m (no inland sea)
+
+# ---------------- the cove's cliff columns along the new faces (M8.5 #13 Task 3) ----------------
+# Until s26 they stood in two ruler-straight rows (x 21-24 and x -99..-105, every 6-11 m): palisades. Now each face is
+# found by scanning the ground for its waterline, and the columns stand 1-4 m inland of it, 6-8 m apart, as tall as a
+# share of the cliff behind them; a few low blocks lie at the foot as an apron (owner cliffs-and-columns 11; landforms
+# §2: a cliff's foot is a heap of its fallen pieces). Pure and seeded: same numbers every run.
+def _waterline_x(y, x_from, step):
+    xs = x_from + step * np.arange(0, 120 / abs(step) * 4)
+    h = ground_base(xs, np.full_like(xs, float(y)))
+    i = int(np.argmax(h > 0.0))
+    return float(xs[i]) if h[i] > 0.0 else None
+
+def _waterline_along(px, py, dx, dy, reach=120.0):
+    s = np.arange(0.0, reach, 0.25)
+    h = ground_base(px + dx * s, py + dy * s)
+    i = int(np.argmax(h > 0.0))
+    return (float(px + dx * s[i]), float(py + dy * s[i])) if h[i] > 0.0 else None
+
+def rocks_along(starts, d, seed, apron, setback=(1.5, 5.0), h_share=(0.6, 0.95), r_range=(3.5, 6.0)):
+    """Columns where scans from `starts` (points in the sea) along the unit direction d meet the shore: set back
+    inland along d, as tall as a share of the land 10 m behind; then `apron` low blocks at the foot."""
+    rr = np.random.default_rng(seed); out = []; blocks = []; dx, dy = d
+    for sx, sy in starts:
+        w = _waterline_along(sx, sy, dx, dy)
+        if w is None: continue
+        k = rr.uniform(*setback); x, y = w[0] + dx * k, w[1] + dy * k
+        top = float(ground_base(x + dx * 10.0, y + dy * 10.0))
+        out.append((round(x, 1), round(y, 1), round(float(rr.uniform(*r_range)), 1), round(float(max(6.0, top * rr.uniform(*h_share))), 1),
+                    round(float(rr.uniform(-0.03, 0.03)), 2)))
+    for k in rr.choice(len(starts), size=min(apron, len(starts)), replace=False):
+        w = _waterline_along(*starts[k], dx, dy)
+        if w is None: continue
+        b = rr.uniform(-0.4, 0.8)                  # at the waterline: the terrace drops straight into 18 m of water
+        blocks.append((round(w[0] + dx * b, 1), round(w[1] + dy * b, 1), round(float(rr.uniform(1.8, 3.2)), 1),
+                       round(float(rr.uniform(2.0, 4.5)), 1), round(float(rr.uniform(-0.06, 0.06)), 2)))
+    return tuple(out + blocks)
+
+def face_rocks(y0, y1, x_from, inland, seed, n, apron, h_share=(0.55, 0.85), r_range=(4.0, 7.0), h_cap=40.0, setback=(1.0, 4.0)):
+    """Columns along the face whose waterline a scan from x_from (in the sea) toward `inland` (+1 east, -1 west) finds,
+    for y0..y1: n columns (x, y, r, h, lean) then `apron` low blocks at the foot."""
+    rr = np.random.default_rng(seed); out = []; blocks = []
+    ys = np.linspace(y0, y1, n) + rr.uniform(-1.5, 1.5, n)
+    for y in ys:
+        xw = _waterline_x(y, x_from, 0.25 * inland)
+        if xw is None: continue
+        x = xw + inland * rr.uniform(*setback)
+        top = float(ground_base(x + inland * 10.0, y))
+        h = float(np.clip(top * rr.uniform(*h_share), 6.0, h_cap))
+        out.append((round(x, 1), round(float(y), 1), round(float(rr.uniform(*r_range)), 1), round(h, 1), round(float(rr.uniform(-0.03, 0.03)), 2)))
+    for y in rr.uniform(y0 + 4, y1 - 4, apron):
+        xw = _waterline_x(y, x_from, 0.25 * inland)
+        if xw is None: continue
+        blocks.append((round(xw - inland * rr.uniform(-0.5, 1.5), 1), round(float(y), 1), round(float(rr.uniform(1.8, 3.2)), 1),
+                       round(float(rr.uniform(2.0, 4.5)), 1), round(float(rr.uniform(-0.06, 0.06)), 2)))
+    return tuple(out + blocks)
+
+# Golden: the right face from its beach corner into the bay north of Dusk (its corner's ground cannot move: Golden's eye
+# is 9.5 m away; s26 tried three low rocks there, and at 10 m they read as one soft blob). Sunrise: the left face from
+# the beach to its rounded tip.
+# The terrace: columns round its south face, its tip and its north face (the faces every cove stop sees), so they read
+# as a column cliff, not a smeared ramp (s26 look: the lobe alone still read as a cake).
+_rng = np.random.default_rng(73)
+TERRACE_ROCKS = (rocks_along([(x + _rng.uniform(-1.5, 1.5), 95.0) for x in np.arange(-50.0, 6.0, 6.5)], (0.0, 1.0), 74, 3)
+                 + rocks_along([(-90.0, y + _rng.uniform(-1.0, 1.0)) for y in (131.0, 138.0, 145.0, 152.0)], (1.0, 0.0), 75, 1)
+                 + rocks_along([(x + _rng.uniform(-1.5, 1.5), 190.0) for x in np.arange(-46.0, -4.0, 7.0)], (0.0, -1.0), 76, 1))
+# Golden's columns stand as deep and as tall as the old row did (s26: closer and taller they cost Golden 1.1 ms of GPU
+# at low, measured part on/off).
+SHOTS["golden"]["cliff_rocks"] = face_rocks(14.0, 100.0, 0.0, +1, 71, 13, 3, h_share=(0.4, 0.62), setback=(2.5, 5.5)) + TERRACE_ROCKS
+SHOTS["sunrise"]["cliff_rocks"] = face_rocks(-6.0, 80.0, -60.0, -1, 72, 12, 3, h_share=(0.6, 0.9))
 
 # ---------------- the arch's shape (pure data; Blender builds the mesh in build_arch) ----------------
 # Owner cliffs-and-columns 1 (Gatklettur) and reference-landforms §2 ("arches are lopsided because rock is not
@@ -805,18 +974,20 @@ def stack_rings(k, step=0.5):
     return zs
 
 # ---------------- the cove's grove (M3 Task 2): trees and scrub as pure data, for the renders and the site's cove pack ----------------
-# Spots around the old tree (TREE): dx, dy, size, turn (deg), lean (deg). Clusters, not a row: the old tree with two companions
+# Spots around the old tree (TREE): dx, dy, size, turn (deg), lean (deg). M8.5 #13 (s26): four moved onto the new
+# terrace's top; one moved west off Sunset's line to the arch (the terrace's north fillet raised its ground 14 m). Clusters, not a row: the old tree with two companions
 # behind it, a pair at the far end, one leaning loner, scrub between (size < 1: a Poly Haven searsia shrub).
-GROVE_SPOTS = ((-6, 7, 2.1, 40, 4), (8.7, 16.2, 1.7, 120, -6), (-14, 15, 1.3, 250, 7),
-               (-40, 4, 1.9, 300, -5), (-46, 12, 1.4, 80, 9),
+GROVE_SPOTS = ((-6, 7, 2.1, 40, 4), (-5.0, 14.0, 1.7, 120, -6), (-14, 13, 1.3, 250, 7),
+               (-40, 4, 1.9, 300, -5), (-46, 10, 1.4, 80, 9),
                (30, 9, 1.6, 20, -4),
                (-55, -5, 1.7, 60, -8), (-60, -8, 1.2, 330, 6), (-34, -3, 1.5, 15, 3), (-64, -2, 0.7, 200, 0), (-58, -9, 0.6, 100, 0),
                (-22, 2, 0.6, 10, 0), (-50, -3, 0.55, 140, 0), (16, -2, 0.6, 260, 0), (-3, -4, 0.5, 330, 0), (24, 14, 0.55, 90, 0))
 # Wind-bent trees and scrub on the left headland's top, set back from its cliff edge: x, y, size, turn, lean, kind.
-LGROVE_SPOTS = ((-109, 50, 2.4, 300, 10, "island_tree_02"), (-108, 66, 2.0, 140, 12, "tree"), (-110, 75, 1.5, 80, 6, "island_tree_03"), (-106, 58, 0.7, 10, 0, "searsia_burchellii"),
+# M8.5 #13: the face moved west and the tip rounded; four spots moved inland with it, four that stood in the water (never
+# placed: under 4 m) dropped.
+LGROVE_SPOTS = ((-109, 50, 2.4, 300, 10, "island_tree_02"), (-113, 64, 2.0, 140, 12, "tree"), (-117, 72, 1.5, 80, 6, "island_tree_03"), (-108, 55.5, 0.7, 10, 0, "searsia_burchellii"),
                 (-114, 58, 1.6, 30, 8, "island_tree_02"), (-119, 66, 1.2, 200, 6, "island_tree_03"), (-125, 52, 0.7, 0, 0, "searsia_burchellii"),
-                (-113, 88, 1.9, 110, 9, "tree"), (-118, 96, 1.3, 260, 4, "island_tree_02"), (-112, 80, 0.6, 50, 0, "searsia_burchellii"),
-                (-117, 114, 1.5, 300, 5, "island_tree_03"), (-113, 106, 0.55, 140, 0, "searsia_burchellii"), (-126, 80, 0.8, 20, 0, "searsia_burchellii"),
+                (-122, 71, 0.6, 50, 0, "searsia_burchellii"), (-126, 80, 0.8, 20, 0, "searsia_burchellii"),
                 (-112, 40, 0.6, 90, 0, "searsia_burchellii"), (-118, 34, 1.4, 70, 7, "island_tree_02"), (-123, 22, 1.1, 160, 3, "tree"))
 LONE_TREE = (62.8, 145.8)       # Sunset's lone tree (grove_plants, group "lone")
 COVE_HOURS = ("golden", "sunset", "dusk", "firstlight", "sunrise")

@@ -59,12 +59,12 @@
   },
   "cliffs": {
    "file": "stops/cove/cliffs.bin",
-   "verts": 23977,
-   "tris": 47039,
+   "verts": 29202,
+   "tris": 56839,
    "indexBytes": 2,
    "scale": 100,
-   "x": -42.1,
-   "y": 40.8
+   "x": -39.3,
+   "y": 74.7
   },
   "grove": {
    "file": "stops/cove/grove.bin",
@@ -234,8 +234,8 @@
   },
   {
    "path": "base/colour.webp",
-   "bytes": 7220,
-   "sha256": "541b32e209575bd5024313a230ed6aeb792802dc0ef979dde6a1112a0a6dc3f0",
+   "bytes": 7228,
+   "sha256": "d9835083a255330ab37e0005e3ff5050723a2310baa4565b080d86b29ec63a38",
    "stage": "B",
    "stops": "all"
   },
@@ -249,7 +249,7 @@
   {
    "path": "base/heights.bin",
    "bytes": 401802,
-   "sha256": "a1d197d9293483db84faff9c85b9f17d2d1629064ad89f1c36abde7e6ed6116f",
+   "sha256": "fcdb3697f3d89cde09a26e69e73b19b52c111e70d3087b6bf3af8ca11320b277",
    "stage": "B",
    "stops": "all"
   },
@@ -514,8 +514,8 @@
   },
   {
    "path": "stops/cove/cliffs.bin",
-   "bytes": 569958,
-   "sha256": "d687f1e3905c123b870ef5f72edd3b55beb43af0ee4df78cc74b34464fe1e64d",
+   "bytes": 691458,
+   "sha256": "ad9eb0aa8f934f2736e8bf21ea4036025cbd2117c81d00b1f7940116bbd5097b",
    "stage": "B",
    "stops": [
     "golden",
@@ -528,7 +528,7 @@
   {
    "path": "stops/cove/grove.bin",
    "bytes": 183840,
-   "sha256": "a331ae0b14af076a094e1285360fdd5d597bd0113113ac4f725c08e8b1c673da",
+   "sha256": "deb9d4b7d216ac2bdf54bc8634958a187edefe115aa87bd2e755935c63fd9d43",
    "stage": "B",
    "stops": [
     "golden",

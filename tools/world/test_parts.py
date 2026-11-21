@@ -388,7 +388,7 @@ def cove_pack_bytes():
 
 
 def test_cove_cliffs():
-    """M3 Task 2: the cliff columns at Golden (x ~ 22) and Sunrise (x ~ -102) from coast.py cliff_rocks, in the cove
+    """M3 Task 2: the cliff columns at Golden (the right face) and Sunrise (the left) from coast.py cliff_rocks, in the cove
     pack, one mesh in the shared rock material: every column there at its height, standing in the ground."""
     import coastlib
     c = coastlib.load("bluehour")
@@ -399,7 +399,7 @@ def test_cove_cliffs():
     from export_parts import cliff_columns, live_ground, CLIFF_CLEAR
     at = live_ground(BASE)
     cols = [t[2:] for t in cliff_columns(c.SHOTS, at)]
-    assert len(cols) == 24
+    assert len(cols) == 55                                                  # M8.5 #13: along the new faces, aprons, corner rocks
     # no column top just pokes out of the turf (s14: a moss blob seen from the land)
     assert all(h - at(x, y) >= CLIFF_CLEAR or h < at(x, y) for (x, y, r, h, lean) in cols)
     # each vertex belongs to the column whose axis is nearest (in its own radii)
@@ -409,7 +409,7 @@ def test_cove_cliffs():
     assert W[:, 2].max() <= 1.35 * max(h for (_, _, _, h, _) in cols) + 1.0, W[:, 2].max()
     for i, (x, y, r, h, lean) in enumerate(cols):
         mine = own == i
-        assert mine.sum() > 100, (x, y, mine.sum())
+        assert mine.sum() > (100 if r >= 3.5 else 40), (x, y, mine.sum())   # s26: the apron blocks are small
         top = W[mine, 2].max()                     # (neighbours overlap into a wall: a taller one may own its top)
         assert 0.75 * h <= top, (x, y, h, top)
         assert W[mine, 2].min() < float(c.ground(x, y)) - 1.0, (x, y)        # no floating foot

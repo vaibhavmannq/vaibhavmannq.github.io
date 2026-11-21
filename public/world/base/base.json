@@ -61,12 +61,12 @@
  },
  "cliffs": {
   "file": "stops/cove/cliffs.bin",
-  "verts": 23977,
-  "tris": 47039,
+  "verts": 29202,
+  "tris": 56839,
   "indexBytes": 2,
   "scale": 100,
-  "x": -42.1,
-  "y": 40.8
+  "x": -39.3,
+  "y": 74.7
  },
  "grove": {
   "file": "stops/cove/grove.bin",

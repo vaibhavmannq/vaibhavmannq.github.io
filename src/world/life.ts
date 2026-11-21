@@ -85,7 +85,7 @@ function from(stop: StopId, da: number, d: number, el: number): [number, number,
   return [s.cam[0] + Math.sin(yaw) * d, s.cam[1] + Math.cos(yaw) * d, s.eyeZ + Math.tan(el * D2R) * d];
 }
 
-function gulls(stop: StopId, t: number, out: Sprite[]) {
+function gulls(stop: StopId, t: number, groundAt: HeightAt, out: Sprite[]) {
   const s = SHOTS[stop];
   const si = STOP_IDS.indexOf(stop);
   for (let i = 0; i < 3; i++) {
@@ -102,11 +102,17 @@ function gulls(stop: StopId, t: number, out: Sprite[]) {
     const period = 6 + 3 * r();
     const local = (t + r() * period) % period;
     const flapping = local < 1.1;
+    const x = cx + rad * Math.cos(th);
+    const y = cy + rad * Math.sin(th);
+    // M8.5 #13: an orbit may pass over the terrace's new tip; a soft floor 10 m over the land lifts it there without a
+    // kink (log-sum-exp, 2 m wide), and changes nothing where the gull already flies high.
+    const zo = cz + 1.5 * Math.sin(th * 0.5 + i);
+    const floor = Math.max(0, groundAt(x, y)) + 10;
     out.push({
       kind: 'gull',
-      x: cx + rad * Math.cos(th),
-      y: cy + rad * Math.sin(th),
-      z: cz + 1.5 * Math.sin(th * 0.5 + i),
+      x,
+      y,
+      z: floor + 2 * Math.log1p(Math.exp((zo - floor) / 2)),
       size: 1.35,
       flap: flapping ? Math.sin(2 * Math.PI * 2.6 * local) : 0.25,
       flapping,
@@ -298,7 +304,7 @@ export function lifeSprites(
   const out: Sprite[] = [];
   const has = (k: LifeKind) => LIFE_STOPS[k].includes(stop);
   if (!reduced) {
-    if (has('gull')) gulls(stop, timeS, out);
+    if (has('gull')) gulls(stop, timeS, groundAt, out);
     if (has('bat')) bats(timeS, out);
     if (has('flock')) flock(sinceS, groundAt, out);
     if (has('petal')) petals(timeS, world, groundAt, out);
