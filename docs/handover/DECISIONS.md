@@ -342,3 +342,8 @@ perfection on this site … they understand human psychology, this website isn't
 to experience." Every piece is judged by how it reads to a person in motion, not by a passing test; tests guard what
 must not break. Also s26 (my call, owner to confirm by flipping `?falls=`): Night's falls are the single plunge, not the
 shoulder (ledger R195). Ledger R196.
+
+**D52 · 2026-11-21 · (owner, s27) The sky: try every way, then choose; a bigger job is accepted.** On #3a: "try all and
+then choose, cloud might be the deal breaker so i accept a bigger job". Three tries were built behind `?sky=` (R207);
+none was ready, so the next try is the bigger one: the photos' painted clouds taken out and one cloud layer of our own,
+judged in motion everywhere (D47). Also s27 (owner, away two hours): "continue and finish everything in round 1".

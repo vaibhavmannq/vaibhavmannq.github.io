@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-21, session s26 (see `docs/handover/sessions/2026-11-21-s26-m8.5-shore-and-falls.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-21, session s27 (see `docs/handover/sessions/2026-11-21-s27-m8.5-speed-rides-sky.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -296,8 +296,16 @@ no borrowed set pieces (no towers, piano, etc.).
     slanted tops, stepped rim, tone by set, ledge shrubs); #12 a glide from the cave; #14 more Sunrise flowers.
   - **Open speed regression (R203):** cove stops 0.5–1 ms slower at low than at s26's start (Golden 58, Sunset 57,
     Sunrise 54 fps). Cause not found; measuring plan in the log.
-- **Next (s27):** R203 first; then the owner tests #8, #9's walls, #12, #14; then #10, #14 part 2 (toward the sun),
-  #3a, waves (D47 rules; batches of 3–5; a whole-night sweep old vs new per batch).
+- **s27 (2026-11-21): R203 fixed, #10, #14 part 2, #3a tries** (log `sessions/2026-11-21-s27-m8.5-speed-rides-sky.md`;
+  ledger R204–R207; D52; not pushed).
+  - R203: the mirror was redrawing the grove, rim trees and Night's ground it cannot show; now left out. Every stop at
+    low is equal or faster than f61ed87; Night back to 60 fps.
+  - #10: Midnight's ranges fade away from its eye, a far plain under them, the deck's edge broken (rides 55 → 72 %).
+  - #14 part 2: `?sunrise=sun` for the owner; my pick is the original framing.
+  - #3a: `?sky=drift|layer|volume` built, none ready (layers vanish into the photo's clouds; +2–8 ms). D52: the
+    bigger job next (clouds out of the photos, our own layer).
+- **Next (s28):** the owner tests #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and checks Night's and Golden's
+  reflections; then #3a's bigger job, then #1 waves (D47 rules; batches of 3–5; a whole-night sweep old vs new).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
