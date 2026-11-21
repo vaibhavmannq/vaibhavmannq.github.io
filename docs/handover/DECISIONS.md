@@ -355,3 +355,10 @@ detail streamed in a passage on each ride; 60 fps kept; (2) the order: causes fi
 whole night; (3) the loading experience is the paper lantern; (4) "focus on the journey itself: the camera jerks and
 speed, smoothness and the view along the way", no dead stretches until the view arrives. Design:
 `docs/superpowers/specs/2026-11-21-world-to-100-design.md`. Replaces the rest of M8.5 Round 1 (#3a, #1 inside it).
+
+**D54 · 2026-11-21 · (owner, end of s28) Higher tiers may add detail.** After the GPU ceilings (R210, R215: this laptop
+at low ~0.4 M extra triangles per place; the owner's phone at high 2–4 M): high and ultra may add detail — denser plants,
+more stones and props near the camera, finer far versions — on top of a complete low. Every visitor still sees the same
+places, framing, light and colour; low is judged on its own and must look whole. This amends spec §13.1 ("tiers change
+cost only, never content") for density and near detail only. Each place's set gets a low version (R210's budget) and a
+rich version (sized to the phone's ceiling at high), both judged.

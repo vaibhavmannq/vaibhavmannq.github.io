@@ -320,8 +320,8 @@ no borrowed set pieces (no towers, piano, etc.).
   - Phone (R215): the cave is built a slice per frame (no freeze arriving at Midnight); the room framed for portrait.
   - Owner page: https://claude.ai/artifact/WenenQWiXj2vn3eS3BCKMD
   - The room on the phone (R216): a real tap works; the room still freezes ~0.7 s while the world loads (halved).
-- **Next (s29):** the owner's answer on whether higher tiers may add detail; then Phase 1's detailed plan, its first
-  task the room's smoothness (R216), then C1, C2, C5.
+- **Owner, end of s28 (D54): higher tiers may add detail** (denser sets on high/ultra over a complete low).
+- **Next (s29):** Phase 1's detailed plan, its first task the room's smoothness (R216), then C1, C2, C5.
   The owner's test of #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and the reflections still stands.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
