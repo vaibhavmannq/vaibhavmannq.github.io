@@ -68,6 +68,13 @@ export const SKY_FILL: Record<StopId, number> = {
  * How much mist lies on the water (plan M3 Task 3; reference book §4: radiation fog forms on calm clear nights and
  * "tends to dissipate soon after sunrise", owner `mist` 8). Only First light has it in full; Sunrise keeps a thin rest.
  */
+/**
+ * The distance fog per hour, × this over coast.py's (M8.5 #5, owner: Dusk's "background looks like a cheap image"): at
+ * Dusk the render's arch and stacks are dark silhouettes with reflections; the live fog, the night's heaviest (0.28),
+ * paled them into flat ghosts in the horizon's own colour.
+ */
+export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
+
 export const MIST: Record<StopId, number> = {
   golden: 0,
   sunset: 0,
@@ -108,7 +115,7 @@ function preset(id: StopId): HourPreset {
     key: keyLight(id),
     exposure: s.expo,
     fogColor: s.fog,
-    fogAmount: s.fog_amt,
+    fogAmount: s.fog_amt * (FOG_TRIM[id] ?? 1),
     skyTint: s.sky_tint,
     skyGain: s.hdri_gain,
     stars: s.stars,

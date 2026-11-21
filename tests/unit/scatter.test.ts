@@ -30,8 +30,8 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
 
   it('places plants around all five cove stops, within the budget', () => {
     expect(n).toBeGreaterThan(8000);
-    // 60 000 until M8.5; Sunset's poppies (#4) add ~2 300, their GPU cost measured at Sunset low (ledger R186)
-    expect(n).toBeLessThanOrEqual(64000);
+    // 60 000 until M8.5; Sunset's poppies (#4) and Dusk's flower field (#5) add ~6 800, cost measured (R186, R187)
+    expect(n).toBeLessThanOrEqual(68000);
     for (const id of COVE_STOPS) {
       const stop = STOPS.find((s) => s.id === id);
       if (!stop) throw new Error(id);

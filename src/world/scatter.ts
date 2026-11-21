@@ -85,6 +85,9 @@ const RULES: Record<CoveStop, Rules> = {
     lensClear: 6,
     zmin: 0.8,
     dland: 7,
+    // M8.5 #5 (owner: "a few more colourful flowers"; the Dusk render's slope of thrift and yellow): drifts on the
+    // headland around the eye, pink, yellow and white by band, as Sunset's
+    field: { candidates: 4500, from: 3, to: 24, patch: 0.46 },
   },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
   sunrise: { candidates: 22000, near: [], nearFlowers: 900, lensClear: 6, zmin: 0.3, dland: 1.5 },
