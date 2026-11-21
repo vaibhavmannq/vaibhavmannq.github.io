@@ -304,7 +304,9 @@ no borrowed set pieces (no towers, piano, etc.).
   - #14 part 2: `?sunrise=sun` for the owner; my pick is the original framing.
   - #3a: `?sky=drift|layer|volume` built, none ready (layers vanish into the photo's clouds; +2–8 ms). D52: the
     bigger job next (clouds out of the photos, our own layer).
-- **Next (s28):** the owner tests #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and checks Night's and Golden's
+- **Owner asked for a full audit (end of s27):** layout page https://claude.ai/artifact/MQGMVoiaMGHxiXTuZ7Q2Dz (44 problems,
+  8 causes, relaxed limits, passages, loading experience, ~10–12 sessions). Waiting for his approval before any build.
+- **Next (s28):** his answers on the audit page first; then the owner tests #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and checks Night's and Golden's
   reflections; then #3a's bigger job, then #1 waves (D47 rules; batches of 3–5; a whole-night sweep old vs new).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
