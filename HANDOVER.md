@@ -308,18 +308,17 @@ no borrowed set pieces (no towers, piano, etc.).
   relaxed limits (≈ 60 MB, a lantern loading experience, far versions always + close-up sets streamed in passages,
   60 fps kept), causes first then place by place, and the journey itself (no jerks, smooth speed, no dead stretches).
   Design: `docs/superpowers/specs/2026-11-21-world-to-100-design.md`.
-- **s28 (2026-11-21): the plan, Phase 0 Tasks 1–5, Task 6 begun** (log `sessions/2026-11-21-s28-w100-phase0.md`; plan
-  `docs/superpowers/plans/2026-11-21-world-to-100.md`; ledger `ledgers/2026-11-21-world-to-100.md` R208–R212; not pushed).
-  - The journey measured (`npm run journey`, `.superpowers/w100/ride-frames.mjs`): long rides' judder fixed (arc-length
-    table); still open: 1.5–2.1 s standing still after Next, gaze whips 232–707 °/s, dead stretches 3.0/5.2/4.8/1.2 s on
-    III→IV…VI→VII.
+- **s28 (2026-11-21): the plan and all of Phase 0** (log `sessions/2026-11-21-s28-w100-phase0.md`; plan
+  `docs/superpowers/plans/2026-11-21-world-to-100.md`; ledger `ledgers/2026-11-21-world-to-100.md` R208–R214; pushed).
+  - The journey measured (`npm run journey`, `.superpowers/w100/ride-frames.mjs`): long rides' judder fixed; open: the
+    1.5–2.1 s stand-still after Next, gaze whips to 707 °/s, nothing near the lens for 4.7/8.4/4.8/7.0 s on III→IV…VI→VII.
   - GPU ceiling at low (provisional): ~3–5 ms headroom; budget per set ≤ 3 ms, 0.4 M tris, 150 draws, 128 MB.
-  - Far layer + streamed sets + passages built; Before dawn's cave is the first streamed set (arch, stacks, cliffs, grove
-    are far layer, R211).
-  - The lantern room's progress and flow tested; it lights itself 3 s after loading (my call; nobody held at the door).
-- **Next (s29):** Task 6 from Step 0 (sketch the room's looks first), Task 7 (gate, phone, rested ceiling, owner page),
-  then Phase 1's detailed plan. Phase 0 is 5 of 7 tasks done. The owner's test of #8, #9's walls, #10, #12, #14
-  (+ `?sunrise=sun`) and the reflections still stands when he has time.
+  - Far layer + streamed sets + passages; Before dawn's cave is the first streamed set (arch, stacks, cliffs, grove are
+    far layer).
+  - **The lantern room** before the first view (`src/loading/`, look a, my 72 %); test browsers skip it unless `?room=`.
+  - Owner page: https://claude.ai/artifact/WenenQWiXj2vn3eS3BCKMD
+- **Next (s29):** plug the phone in (Phase 0's phone checks), then Phase 1's detailed plan (C1, C2, C5) and start it.
+  The owner's test of #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and the reflections still stands.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
