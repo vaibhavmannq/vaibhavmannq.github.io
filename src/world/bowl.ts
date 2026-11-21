@@ -337,14 +337,13 @@ function oldRibbons(): { ribbons: Ribbon[]; pool: FallsLayout['pool']; mists: Fa
 /**
  * The ropes of the new falls (M8.5 #9; Abiqua, owner `waterfall` 5): lip centre, foot centre (x), half-width at lip
  * and foot, seed, and whether it strikes the shoulder. Four ropes of uneven width that touch above and part a little
- * below, and one thin stray strand on the right. Widened to the east: the ride to Midnight passes the left edge.
+ * below (owner, s26: the thin stray strand on the right removed). Widened to the east: the ride to Midnight passes the left edge.
  */
 const ROPES: readonly (readonly [number, number, number, number, number, boolean])[] = [
   [-322.2, -322.6, 1.0, 1.5, 1, false],
   [-319.9, -320.0, 1.3, 1.8, 2, false],
   [-317.7, -317.5, 1.0, 1.4, 3, false],
   [-315.8, -315.3, 0.8, 1.2, 4, true],
-  [-313.6, -312.9, 0.22, 0.4, 5, true],
 ];
 /** The lip's forward speed (m/s): the sheet clears the alcove's stumps and lands ~2.6 m out. */
 const THROW = 0.95;
