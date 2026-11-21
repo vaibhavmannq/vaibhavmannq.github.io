@@ -307,3 +307,9 @@ and none of the nine places at 85 % (Sunset and Blue hour 83, the rest 75–79).
 M8.5 polishes the world from the owner's own hands-on testing: "in M8.5 I will start my hand on testing and will give my
 proper experience to you, my likes and dislikes and reviews on how we can improve it". Plan:
 `docs/superpowers/plans/2026-11-20-m8.5-owner-hands-on.md`; the M8 carry list is its starting backlog.
+
+**D47 · 2026-11-21 · (owner, end of s23) The round-1b sea is rejected; the original water is the baseline.** After
+testing c024828 on his laptop: "the foam looks weird and odd … the original water looked better", "remove symmetry from
+waves/splash in Blue hour", "can you see how the water is divided … I believe you don't think how it would affect the
+world". The next attempt at #1 starts from the water before M8.5 (sea.ts and plankton.ts as at 226e1f8), and any change to
+the whole sea is judged at all nine stops and along every flight before he sees it. Ledger R164.

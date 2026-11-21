@@ -264,10 +264,13 @@ no borrowed set pieces (no towers, piano, etc.).
   `ledgers/2026-11-21-m8.5-owner-hands-on.md`). The owner tests at `http://localhost:4181` (laptop Chrome; phone Brave
   over USB + `adb reverse`); his guide: `docs/handover/m8.5-how-to-test.md`; starter `.superpowers/m85/start-test-build.cmd`.
   The `?hud` panel moved below the Sound button (R160).
-  - **Round 1 in (owner, 22 screenshots): 17 items triaged in the ledger.** #1 the sea alive done (swell, surf, wash;
-    d6eade1). Chrome's Modern Web Guidance installed as a project plugin (D-less, owner's ask).
-- **Next: M8.5 #2** (rock on the steep faces each stop can see, `crags.ts`, planned in the ledger), then #3b … #17 in the
-  ledger's order. The owner re-tests when Golden → Dusk (#1–#5) are done.
+  - **Round 1 in (owner, 22 screenshots): 17 items triaged in the ledger; 0 accepted yet.** #1 (waves) built twice; the
+    second try (c024828: moving ring mesh, lace foam, spray) is **rejected (D47)**: foam like cracked tiles, the water
+    "divided" along every flat shore, Blue hour's flares in rows; "the original water looked better". It is still in
+    the code on `world` (not pushed). #2 measured and planned. Chrome's Modern Web Guidance installed as a plugin.
+- **Next (s24): revert the sea to 226e1f8 (sea.ts, plankton.ts, the plankton call in boot.ts), ask the owner whether to
+  retry waves, then #2 onward.** Any change to the whole sea/sky/light is judged at all nine stops and along every
+  flight before the owner sees it (D47). Close every test browser after every check.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
