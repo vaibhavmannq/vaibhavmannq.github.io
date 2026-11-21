@@ -37,6 +37,7 @@ import type { GridMeta } from './heights';
 import type { LightUniforms } from './light';
 import { fbm2 } from './noise';
 import type { WorldPart } from './part';
+import { peakPresence } from './peaks';
 
 type F = Node<'float'>;
 type V2 = Node<'vec2'>;
@@ -103,11 +104,20 @@ export function cloudGrid(box: CloudShot['box'], stepM: number): BufferGeometry 
  * a rim toward it, thinning to nothing where the hills rise through it. Moonlit cloud inversions roll like a slow
  * ocean: the whole deck drifts with the one wind at DECK_WIND_SHARE of its speed, about 1 m/s at Beaufort 2.
  */
-export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta, u: LightUniforms): WorldPart {
+export function createCloudSea(
+  cfg: CloudShot,
+  heights: Texture,
+  meta: GridMeta,
+  u: LightUniforms,
+  /** M8.5 #10: Midnight's eye; away from it the box's edges are feathered wide and broken by noise */
+  eye?: { x: number; y: number; z: number },
+): WorldPart {
   /** How far the wind has carried the deck, coast metres (reference book §2: the cloud deck drifts with the one wind). */
   const carried = uniform(new Vector2());
   const weight = uniform(0);
   const detail = uniform(1);
+  /** metres over which the box's edges fade: 150 at Midnight's eye (its view is built on it), 700 away from it */
+  const edgeWidth = uniform(150);
   const [x0, x1, y0, y1] = cfg.box;
 
   /** Height above the deck's level at coast (x, y): a long swell plus sharper crests, both drifting. */
@@ -239,8 +249,15 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
   const inside = step(0, hu.x).mul(step(hu.x, 1)).mul(step(0, hu.y)).mul(step(hu.y, 1));
   const ground = mix(float(-30), texture(heights, hu).r, inside);
   const thick = positionWorld.y.sub(ground).div(Math.max(cfg.feather, 1)).clamp(0, 1).pow(0.7);
+  // M8.5 #10 (owner: "cloud lines"): from the rides, high over the deck, its straight box edge read as a cut. Away from
+  // Midnight's eye the edge fades over up to 700 m and wanders by noise, so the deck ends in broken banks.
+  const ragged = mx_noise_float(lp.mul(1 / 260))
+    .mul(0.5)
+    .add(0.5)
+    .mul(edgeWidth.sub(150));
   const border = min(min(wxy.x.sub(x0), float(x1).sub(wxy.x)), min(wxy.y.sub(y0), float(y1).sub(wxy.y)))
-    .div(150)
+    .sub(ragged)
+    .div(edgeWidth)
     .clamp(0, 1);
   material.opacityNode = thick.mul(border).mul(weight);
 
@@ -259,6 +276,9 @@ export function createCloudSea(cfg: CloudShot, heights: Texture, meta: GridMeta,
       carried.value.y += wy * DECK_WIND_SHARE * f.dtS;
       const far = Math.hypot(f.pose.position[0] - cx, f.pose.position[2] - cz) > 4000;
       weight.value = deckWeight(f.hour.cloud, f.pose.position[1], cfg);
+      edgeWidth.value = eye
+        ? 150 + 550 * (1 - peakPresence(eye, f.pose.position[0], -f.pose.position[2], f.pose.position[1]))
+        : 150;
       mesh.visible = weight.value > 0.001 && !far;
     },
     setTier(t) {

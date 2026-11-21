@@ -247,7 +247,9 @@ async function loadBase(
   const ridgeGround = ridgeHeight(underRidge, ridgeSite);
   parts.push(['ridge', createRidge(underRidge, ridgeSite, meta.heights, terrain.material)]);
   // its ranges fading with distance (plan M6 Task 4)
-  parts.push(['peaks', createPeaks(ridgeSite, ridgeSite.yaw, light)]);
+  // the far plain under the ranges starts where the deck's box ends (the deck reaches north to -100, below)
+  const deckBox = mid.cloudsea ? [mid.cloudsea.box[0], mid.cloudsea.box[1], mid.cloudsea.box[2], -100] : undefined;
+  parts.push(['peaks', createPeaks({ x: ridgeSite.x, y: ridgeSite.y, z: mid.eyeZ }, ridgeSite.yaw, light, deckBox)]);
   const cove = scatterCove(surface);
   const ridgePlants = scatterRidge(ridgeGround, ridgeSite, PLANT_STOPS.indexOf('midnight'));
   const plants = new Float32Array(cove.data.length + ridgePlants.length);
@@ -284,7 +286,7 @@ async function loadBase(
   if (midnight.cloudsea) {
     const [bx0, bx1, by0] = midnight.cloudsea.box;
     const deck = { ...midnight.cloudsea, box: [bx0, bx1, by0, -100] as typeof midnight.cloudsea.box };
-    parts.push(['cloud', createCloudSea(deck, heightMap, meta.heights, light)]);
+    parts.push(['cloud', createCloudSea(deck, heightMap, meta.heights, light, { x: mid.cam[0], y: mid.cam[1], z: mid.eyeZ })]);
   }
   // the falls in two tiers come from the bowl's alcove (plan M5 Task 2)
   if (night.falls) parts.push(['falls', createWaterfall(fallsLayout(), light)]);

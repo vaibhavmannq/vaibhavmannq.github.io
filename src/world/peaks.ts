@@ -1,4 +1,4 @@
-import { attribute, cameraPosition, dot, max, mix, normalize, positionWorld, pow, smoothstep, vec3 } from 'three/tsl';
+import { attribute, cameraPosition, dot, max, mix, normalize, positionWorld, pow, smoothstep, uniform, vec3 } from 'three/tsl';
 import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, MeshBasicNodeMaterial } from 'three/webgpu';
 import { STOP_IDS } from '../journey/types';
 import type { LightUniforms } from './light';
@@ -50,7 +50,31 @@ export function peakTop(layer: PeakLayer, index: number, t: number): number {
  * Pure: the ribbons, coast axes in, three.js axes out. Per vertex: `layer` (0 near .. 1 far), `below` (metres under the
  * top at this column, for the rim and the fade into the deck).
  */
-export function peakGeometry(eye: { x: number; y: number }, yawDeg: number) {
+/** The far plain's height, metres: under the deck's highest lumps (172 + 0.95 × 30), where the ranges' feet are plain. */
+export const PLAIN_Z = 188;
+
+/** Pure: how far a ray from `eye` along (dx, dy) runs inside `box` (x0, x1, y0, y1) before leaving it; 0 if outside. */
+export function boxExit(eye: { x: number; y: number }, dx: number, dy: number, box: readonly number[]): number {
+  const [x0, x1, y0, y1] = box as [number, number, number, number];
+  let lo = 0;
+  let hi = Number.POSITIVE_INFINITY;
+  for (const [o, d, a, b] of [
+    [eye.x, dx, x0, x1],
+    [eye.y, dy, y0, y1],
+  ] as const) {
+    if (Math.abs(d) < 1e-9) {
+      if (o < a || o > b) return 0;
+      continue;
+    }
+    const t0 = (a - o) / d;
+    const t1 = (b - o) / d;
+    lo = Math.max(lo, Math.min(t0, t1));
+    hi = Math.min(hi, Math.max(t0, t1));
+  }
+  return hi > lo ? hi : 0;
+}
+
+export function peakGeometry(eye: { x: number; y: number }, yawDeg: number, box?: readonly number[]) {
   const position: number[] = [];
   const layer: number[] = [];
   const below: number[] = [];
@@ -76,6 +100,28 @@ export function peakGeometry(eye: { x: number; y: number }, yawDeg: number) {
       index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
     }
   });
+  // M8.5 #10: the far plain the deck merges into (research "The sea of cloud"), a flat fan at the deck's height from
+  // where the deck's box ends (less an overlap) out past the farthest range, so the ranges' pale feet stand in one
+  // surface: from a little above the eye the ribbons' feet showed as stripes with sky between them.
+  if (box) {
+    const base = position.length / 3;
+    const far = PEAK_LAYERS[PEAK_LAYERS.length - 1]!.dist * 1.2;
+    for (let c = 0; c <= COLUMNS; c++) {
+      const az = ((yawDeg - PEAK_SPAN + (2 * PEAK_SPAN * c) / COLUMNS) * Math.PI) / 180;
+      const dx = Math.sin(az);
+      const dy = Math.cos(az);
+      const near = Math.max(300, boxExit(eye, dx, dy, box) - 120);
+      for (const d of [near, far]) {
+        position.push(eye.x + d * dx, PLAIN_Z, -(eye.y + d * dy));
+        layer.push(1);
+        below.push(1000);
+      }
+    }
+    for (let c = 0; c < COLUMNS; c++) {
+      const a = base + c * 2;
+      index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+  }
   return {
     position: new Float32Array(position),
     layer: new Float32Array(layer),
@@ -86,15 +132,39 @@ export function peakGeometry(eye: { x: number; y: number }, yawDeg: number) {
 
 const MIDNIGHT = STOP_IDS.indexOf('midnight');
 
-export function createPeaks(eye: { x: number; y: number }, yawDeg: number, u: LightUniforms): WorldPart {
-  const d = peakGeometry(eye, yawDeg);
+const ramp = (x: number, a: number, b: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * Pure (M8.5 #10): how much of the ranges shows with the camera at (x, y, z) in coast metres. They are ribbons built
+ * round Midnight's eye, true only from there: the rides in and out climb ~120 m over it and pass 300-700 m from it,
+ * where the ribbons read as cut-out cards and their pale feet as stripes (owner: "cloud lines and static images").
+ * Full within 50 m and 20 m of height of the eye, gone by 170 m away or 60 m above or below.
+ */
+export function peakPresence(eye: { x: number; y: number; z: number }, x: number, y: number, z: number): number {
+  const d = Math.hypot(x - eye.x, y - eye.y);
+  return ramp(d, 170, 50) * ramp(Math.abs(z - eye.z), 60, 20);
+}
+
+export function createPeaks(
+  eye: { x: number; y: number; z: number },
+  yawDeg: number,
+  u: LightUniforms,
+  /** the cloud deck's box (coast x0, x1, y0, y1): the far plain starts where it ends */
+  box?: readonly number[],
+): WorldPart {
+  const d = peakGeometry(eye, yawDeg, box);
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(d.position, 3));
   geometry.setAttribute('layer', new BufferAttribute(d.layer, 1));
   geometry.setAttribute('below', new BufferAttribute(d.below, 1));
   geometry.setIndex(new BufferAttribute(d.index, 1));
-  const material = new MeshBasicNodeMaterial({ side: DoubleSide });
+  // see-through from the start (one pipeline, built before the ranges first show; R38), faded by `presence`
+  const material = new MeshBasicNodeMaterial({ side: DoubleSide, transparent: true });
   material.name = 'peaks.material';
+  const presence = uniform(1);
   material.fog = false;
   const layer = attribute('layer', 'float');
   const below = attribute('below', 'float');
@@ -116,6 +186,7 @@ export function createPeaks(eye: { x: number; y: number }, yawDeg: number, u: Li
   const plain = vec3(0.12, 0.135, 0.19);
   const inDeck = smoothstep(240, 190, positionWorld.y);
   material.colorNode = mix(body.add(moon.mul(rim)), plain, inDeck);
+  material.opacityNode = presence;
   const mesh = new Mesh(geometry, material);
   mesh.name = 'peaks';
   mesh.frustumCulled = false;
@@ -124,7 +195,9 @@ export function createPeaks(eye: { x: number; y: number }, yawDeg: number, u: Li
   return {
     object: mesh,
     update(f) {
-      mesh.visible = f.state.a === MIDNIGHT || f.state.b === MIDNIGHT;
+      const [px, py, pz] = f.pose.position;
+      presence.value = peakPresence(eye, px, -pz, py);
+      mesh.visible = (f.state.a === MIDNIGHT || f.state.b === MIDNIGHT) && presence.value > 0.004;
     },
     setTier() {},
     dispose() {
