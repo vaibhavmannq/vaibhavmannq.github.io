@@ -32,6 +32,37 @@ body {
   overscroll-behavior: none;
 }
 
+/* The page's scrollbar sits over the world (s24): thin, a pale thumb on a dark see-through track, instead of the
+   system's grey bar. Thumb and track ~3:1 or better over every hour's sky (Modern Web Guidance,
+   customize-scrollbar-color-and-thickness). */
+html {
+  --scrollbar-thumb: rgb(255 228 196 / 0.75);
+  --scrollbar-track: rgb(8 10 18 / 0.55);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+@media (prefers-contrast: more) {
+  html {
+    --scrollbar-thumb: #fff;
+    --scrollbar-track: #000;
+  }
+}
+@supports not (scrollbar-color: auto) {
+  html {
+    scrollbar-width: auto;
+  }
+  html::-webkit-scrollbar {
+    width: 8px;
+  }
+  html::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
+  html::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+}
+
 /* Full-screen layers, sized to the large viewport so a phone's hiding toolbar never leaves a band (s02). */
 .poster,
 .world,
