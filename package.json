@@ -20,7 +20,8 @@
     "world:test": "python tools/world/run_tests.py",
     "world:blender": "python tools/world/blender_export.py",
     "aerials": "node tools/world/aerials.ts",
-    "compare": "node tools/world/compare.ts"
+    "compare": "node tools/world/compare.ts",
+    "journey": "vitest run --config tools/journey/vitest.config.ts --root ."
   },
   "dependencies": {
     "gsap": "3.15.0",

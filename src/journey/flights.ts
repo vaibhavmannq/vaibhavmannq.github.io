@@ -201,7 +201,9 @@ export function sampleFlight(points: readonly Vec3[], s: number): { pos: Vec3; t
       false,
       'centripetal',
     );
-    curve.arcLengthDivisions = 400;
+    // 4000, not 400 (world-to-100 Task 1, R208): with 400 the long flights' speed wobbled ±20 % tick to tick (the
+    // arc-length table was ~6 m coarse, the camera moves ~3 m a tick); jerk p95 on Blue hour -> Night 58 779 -> 3 460.
+    curve.arcLengthDivisions = 4000;
     curves.set(points, curve);
   }
   const u = Math.min(1, Math.max(0, s));

@@ -42,7 +42,7 @@ function stopAt(i: number): Stop {
 }
 
 /** A drift of a few centimetres so a resting camera never looks frozen. */
-function drift(timeS: number): Vec3 {
+export function drift(timeS: number): Vec3 {
   return [0.03 * Math.sin(0.21 * timeS), 0.03 * Math.sin(0.17 * timeS + 1), 0.02 * Math.sin(0.13 * timeS + 2)];
 }
 
