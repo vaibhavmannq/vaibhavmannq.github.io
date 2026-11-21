@@ -234,8 +234,8 @@
   },
   {
    "path": "base/colour.webp",
-   "bytes": 7228,
-   "sha256": "d9835083a255330ab37e0005e3ff5050723a2310baa4565b080d86b29ec63a38",
+   "bytes": 7166,
+   "sha256": "e61e2fc1dc88103e8258c8822f5056ea2ba58c3e8266fd3b95cf70650e8334c5",
    "stage": "B",
    "stops": "all"
   },
@@ -249,7 +249,7 @@
   {
    "path": "base/heights.bin",
    "bytes": 401802,
-   "sha256": "fcdb3697f3d89cde09a26e69e73b19b52c111e70d3087b6bf3af8ca11320b277",
+   "sha256": "88155348db1cd92adb73a2ac7dc656fa799d80e05cc3fb8f8874cf01cb772266",
    "stage": "B",
    "stops": "all"
   },

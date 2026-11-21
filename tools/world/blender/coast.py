@@ -382,6 +382,20 @@ def _ground_core(x, y):
     h = h + 0.25 * (fbm(x * 0.09, y * 0.09) - 0.5) * sm(0.5, 3, h)
     return h
 
+# Night's bowl of columns as the site draws it (src/world/bowl.ts BOWL, wallRadius, wallHeight), for the crater's ground
+def _bowl_bump(az, at, width):
+    return np.exp(-(((((az - at) + 180.0) % 360.0) - 180.0) / width) ** 2)
+
+def bowl_wall_radius(az):
+    a = np.radians(az)
+    w = np.sin(a * 3 + 1.3) * 0.6 + np.sin(a * 7 + 4.1) * 0.3 + np.sin(a * 13 + 0.7) * 0.1
+    ribs = 2.4 * (1 - np.abs(np.sin(a * 8 + 0.9))) ** 3 + 1.4 * (1 - np.abs(np.sin(a * 13 + 2.2))) ** 4
+    return 44.0 + 3.0 * w - ribs - 11.0 * _bowl_bump(az, 192.0, 9.0) + 4.0 * _bowl_bump(az, 0.0, 9.0)
+
+def bowl_wall_height(az):
+    a = np.radians(az)
+    return 36.0 - 22.0 * _bowl_bump(az, 285.0, 40.0) + np.sin(a * 5 + 2.2) * 1.6 + np.sin(a * 11 + 0.4) * 0.8
+
 def _ground_world(x, y):
     x = np.asarray(x, np.float64); y = np.asarray(y, np.float64)
     h = _ground_core(x, y)
@@ -410,6 +424,16 @@ def _ground_world(x, y):
     az_ = np.degrees(np.arctan2(x - lx, y - ly))
     wall = wall * (1.0 - 0.62 * np.exp(-((((az_ - 285.0) + 180.0) % 360.0 - 180.0) / 40.0) ** 2))
     hl = np.where(r < 58, bowl, 0.4 + wall)
+    # M8.5 #8 (s26; owner: "the crater looks out of place from above"): the ground rose 10 m behind the live bowl's back
+    # row, so from the ride in the columns stood as a can in a moat. Now it meets the back of the columns and rises to
+    # 1.5 m under their tops (bowl.ts wallRadius / wallHeight, ported below), then falls gently away outside.
+    r0 = np.hypot(x - lx, y - ly)
+    rb = bowl_wall_radius(az_) + 4.2                     # the back row's outer side (rows 0.75 m apart, a column's width)
+    crest = (bowl_wall_height(az_) - 1.5) * (1.0 - 0.18 * sm(rb + 4.0, rb + 34.0, r0)) + 1.5 * (fbm(x * 0.06 + 2, y * 0.06 + 7, 3) - 0.5)
+    # the rise starts just outside the back row (the live 8 m grid smears it a cell inward: s26 saw it cut the falls'
+    # foot), and further out behind the falls' alcove
+    r1 = rb + 1.0 + 7.0 * _bowl_bump(az_, 0.0, 14.0)
+    hl = np.where(r0 < r1, bowl, np.maximum(hl, 0.4 + (crest - 0.4) * sm(r1, r1 + 8.0, r0)))
     out_ = sm(92, 115, r)
     h = np.where(r < 115, hl * (1 - out_) + h * out_, h)
     # the plateau on top of the scanned cliff (fills its flat cut-off top with real ground). M8.5 #13: its plan is the

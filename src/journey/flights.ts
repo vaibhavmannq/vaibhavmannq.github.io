@@ -88,6 +88,19 @@ export const FLIGHT_OVERRIDES: Partial<Record<FlightKey, Vec3[]>> = {
   // Night → Midnight goes up the falls (plan M5 Task 1; design review §4 "V → VI"): the camera stands 4 m from the
   // bowl's south wall (src/world/bowl.ts), so a straight climb went through it. Low across the lagoon, rising beside
   // the falls' left edge, over the lip, then the long climb east toward the ridge.
+  // M8.5 #12 (owner: "like jumping down with nothing below, the shore comes up suddenly"): out of the cave the old path
+  // climbed to 40 m while the hill fell away to 17 m, then dropped 28 m in its last 66 m. Now it glides down the slope,
+  // 4-9 m over the ground the whole way (coast.py ground along x -60), the shore in view ahead.
+  'beforedawn>firstlight': [
+    [-60, -195, 37.0],
+    [-60, -175, 32.0],
+    [-60, -151, 26.0],
+    [-60, -127, 20.0],
+    [-60, -103, 14.5],
+    [-60, -79, 10.4],
+    [-60, -55, 7.4],
+    [-60, -34, 4.8],
+  ],
   'night>midnight': [
     [-318.5, -392.0, 2.5],
     [-325.5, -355.0, 9.0],
