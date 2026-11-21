@@ -6,8 +6,14 @@ import { type Segment, segmentAt, stopCentre, type Track } from './timeline';
  * with damping and a top speed, so no flick can cross a flight faster than the flight's own minimum time. Pure.
  */
 
-/** Shortest time a flight may take: 3 s for the short hops, 8-12 s for the four long flights. */
-export const flightMinSeconds = (distanceM: number): number => Math.min(12, Math.max(3, 2 + distanceM / 170));
+/**
+ * Each flight's own pace, a factor on its time (M8.5 #6, owner: Dusk -> Blue hour -> Night "a bit slow/long"): those two
+ * rides a quarter shorter, 16.6 -> 12.5 s and 18 -> 13.5 s. Keyed by the stop the flight leaves.
+ */
+export const FLIGHT_PACE: Readonly<Record<number, number>> = { 2: 0.75, 3: 0.75 };
+/** Shortest time a flight may take: 3 s for the short hops, 8-12 s for the four long flights, times its own pace. */
+export const flightMinSeconds = (distanceM: number, from?: number): number =>
+  Math.min(12, Math.max(3, 2 + distanceM / 170)) * (from === undefined ? 1 : (FLIGHT_PACE[from] ?? 1));
 /** Shortest time to cross a whole stop (nothing moves there but the text). */
 export const STOP_MIN_SECONDS = 0.6;
 /** A ride plays a flight this much slower than its top speed: 4.5 s for a hop, 12-18 s for the long flights. */
@@ -17,7 +23,7 @@ export const LEAD_SCREENS = 0.5;
 /** Damping: the share of the remaining gap closed per second is 1 - e^(-rate). About a quarter-second lag. */
 export const FOLLOW_RATE = 3.5;
 
-const minSeconds = (s: Segment): number => (s.kind === 'stop' ? STOP_MIN_SECONDS : flightMinSeconds(s.distance));
+const minSeconds = (s: Segment): number => (s.kind === 'stop' ? STOP_MIN_SECONDS : flightMinSeconds(s.distance, s.from));
 
 /** Top speed at `u`, screens per second. */
 export function topSpeed(track: Track, u: number): number {

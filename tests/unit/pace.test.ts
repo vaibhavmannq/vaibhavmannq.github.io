@@ -32,14 +32,14 @@ describe('the camera has a top speed (Amendment 1 §7)', () => {
     const f = seg(7);
     if (f.kind !== 'flight') throw new Error('segment 7 is a flight');
     const t = secondsToArrive(f.start, f.end);
-    expect(t).toBeGreaterThanOrEqual(flightMinSeconds(f.distance));
-    expect(t).toBeLessThan(flightMinSeconds(f.distance) + 2);
+    expect(t).toBeGreaterThanOrEqual(flightMinSeconds(f.distance, f.from));
+    expect(t).toBeLessThan(flightMinSeconds(f.distance, f.from) + 2);
   });
 
   it('flies backwards under the same limit', () => {
     const f = seg(7);
     if (f.kind !== 'flight') throw new Error('segment 7 is a flight');
-    expect(secondsToArrive(f.end, f.start)).toBeGreaterThanOrEqual(flightMinSeconds(f.distance));
+    expect(secondsToArrive(f.end, f.start)).toBeGreaterThanOrEqual(flightMinSeconds(f.distance, f.from));
   });
 
   it('follows a small scroll softly, without the limit getting in the way', () => {
@@ -73,10 +73,10 @@ describe('the ride (Amendment 1 §7)', () => {
     }
   });
 
-  it('plays a long flight at its designed length: 10-20 s', () => {
-    const ms = rideMs(track, stopCentre(track, 3), stopCentre(track, 4));
-    expect(ms).toBeGreaterThan(17000);
-    expect(ms).toBeLessThan(20000);
+  it('plays a long flight at its designed length: 12-15 s (Night -> Midnight)', () => {
+    const ms = rideMs(track, stopCentre(track, 4), stopCentre(track, 5));
+    expect(ms).toBeGreaterThan(12000);
+    expect(ms).toBeLessThan(15000);
     const short = rideMs(track, stopCentre(track, 0), stopCentre(track, 1));
     expect(short).toBeGreaterThan(4000);
     expect(short).toBeLessThan(7000);
@@ -85,7 +85,19 @@ describe('the ride (Amendment 1 §7)', () => {
   it('is never faster than the top speed, so the camera keeps up', () => {
     const f = seg(7);
     if (f.kind !== 'flight') throw new Error('segment 7 is a flight');
-    expect(rideMs(track, f.start, f.end)).toBeCloseTo(flightMinSeconds(f.distance) * RIDE_STRETCH * 1000, 3);
+    expect(rideMs(track, f.start, f.end)).toBeCloseTo(flightMinSeconds(f.distance, f.from) * RIDE_STRETCH * 1000, 3);
     expect(rideMs(track, f.end, f.start)).toBeCloseTo(rideMs(track, f.start, f.end), 6);
+  });
+
+  it('rides Dusk -> Blue hour and Blue hour -> Night a quarter faster (M8.5 #6, owner: "a bit slow")', () => {
+    const ride = (from: number) => rideMs(track, stopCentre(track, from), stopCentre(track, from + 1)) / 1000;
+    expect(ride(2)).toBeGreaterThan(11.5);
+    expect(ride(2)).toBeLessThan(13.5);
+    expect(ride(3)).toBeGreaterThan(12.5);
+    expect(ride(3)).toBeLessThan(14.5);
+    // the other long flights keep their pace: Night -> Midnight still the full 18 s cap
+    const f = track.segments.find((s) => s.kind === 'flight' && s.from === 4);
+    if (f?.kind !== 'flight') throw new Error('no flight 4');
+    expect(flightMinSeconds(f.distance, 4)).toBe(flightMinSeconds(f.distance));
   });
 });
