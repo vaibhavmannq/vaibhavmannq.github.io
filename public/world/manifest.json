@@ -307,8 +307,8 @@
   },
   {
    "path": "sky/midnight.jpg",
-   "bytes": 94431,
-   "sha256": "8408fa7964fa9f2ca63d2dfc971104cf79e3cc08519418452ae1f74f068f19e3",
+   "bytes": 78988,
+   "sha256": "c0ac28fcf812e24f1351099a62bf0f95eb238aca2b1eaf26c37614ea07966fb0",
    "stage": "B",
    "stops": [
     "midnight"
@@ -316,8 +316,8 @@
   },
   {
    "path": "sky/night.jpg",
-   "bytes": 56928,
-   "sha256": "e0d15904cf8296a739e1570ed7faa6d386d0a9814db998bbebf0b28d74194ac3",
+   "bytes": 50889,
+   "sha256": "3c8c343acaf1e644bdc96d5c5819d9a06bb6b5300129c4d0260cc4ec2bfb5165",
    "stage": "B",
    "stops": [
     "night"
