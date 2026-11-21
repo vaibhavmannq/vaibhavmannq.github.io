@@ -81,6 +81,7 @@ import { createRidge, ridgeHeight, scatterRidge } from '../world/ridge';
 import { PLANT_STRIDE, scatterCove } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSky, type Sky } from '../world/sky';
+import { skyMode } from '../world/skyClouds';
 import { createSkylight, openRoof, roofAbove, SKYLIGHT } from '../world/skylight';
 import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
@@ -623,7 +624,7 @@ export async function boot(): Promise<App> {
   });
   // With no GPU nothing shows the skies, so jumps never wait for them (review I5).
   if (pipeline) jumps.ready = (i) => skies.ready(i);
-  const sky = createSky(light, skies, blank);
+  const sky = createSky(light, skies, blank, skyMode(location.search));
   // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
   // First light's mist (plan M3 Task 3) is height fog in the same colour, folded into the one fog: no draw, and the
   // mirror pass shows it because it renders this scene. Zero at every hour but First light and Sunrise.
