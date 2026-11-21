@@ -313,3 +313,10 @@ testing c024828 on his laptop: "the foam looks weird and odd … the original wa
 waves/splash in Blue hour", "can you see how the water is divided … I believe you don't think how it would affect the
 world". The next attempt at #1 starts from the water before M8.5 (sea.ts and plankton.ts as at 226e1f8), and any change to
 the whole sea is judged at all nine stops and along every flight before he sees it. Ledger R164.
+
+**D48 · 2026-11-21 · (owner, start of s24) Waves later, quick wins first, the card fixed now.** Asked before any world
+work: (1) the original water is back (e95ad59); waves are tried again only after the rest of Round 1, behind a switch
+(`?sea=new` against the original) so he can flip between them, and only after every stop and flight is checked (D47);
+(2) Round 1 goes quick wins first (#7, #6, #11, #16), then #17 sharpness, #3b, #2, then the rest, sent to him in batches
+of 3–5; (3) the two project-card faults Chrome's Modern Web Guidance showed (the journey scrolled behind an open card; a
+click on its padding closed it) are fixed in the first batch. Ledger R165–R171.
