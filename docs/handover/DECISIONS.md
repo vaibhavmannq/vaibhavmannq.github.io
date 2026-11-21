@@ -334,4 +334,5 @@ only), and never while the visitor reads. Down steps need two slow seconds in a 
 pushed. #9 (Night's falls): "you decide after creating both": build the continuous fall with a splash at a shoulder and
 the clean plunge behind a switch, judge them, keep one. #13 (the shore): "I don't want stills in my website": no
 painted or photographed backdrop; a scanned cliff face is allowed because it is 3D geometry lit by the world (a
-photogrammetry mesh), not a picture. Ledger R185.
+photogrammetry mesh), not a picture. He also wrote "I don't like the sky": every hour's sky is a still photo on a sphere (the cause of #3a,
+"clouds feel like a background image"); whether #3a moves earlier is asked (s25). Ledger R185.

@@ -30,7 +30,8 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
 
   it('places plants around all five cove stops, within the budget', () => {
     expect(n).toBeGreaterThan(8000);
-    expect(n).toBeLessThanOrEqual(60000);
+    // 60 000 until M8.5; Sunset's poppies (#4) add ~2 300, their GPU cost measured at Sunset low (ledger R186)
+    expect(n).toBeLessThanOrEqual(64000);
     for (const id of COVE_STOPS) {
       const stop = STOPS.find((s) => s.id === id);
       if (!stop) throw new Error(id);
@@ -85,7 +86,7 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
     }
     expect(flowers.length).toBeGreaterThan(500);
     const kinds = new Set(flowers.map((f) => f.kind));
-    expect(kinds.size).toBe(3);
+    expect(kinds.size).toBe(4); // thrift pink, yellow, white, and Sunset's poppies (M8.5 #4)
     let same = 0;
     const sample = flowers.slice(0, 600);
     for (const f of sample) {
@@ -112,5 +113,38 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
     expect(swayAmplitude(3)).toBeGreaterThan(0.2);
     expect(swayAmplitude(3)).toBeLessThan(0.4);
     expect(swayAmplitude(2)).toBeGreaterThan(swayAmplitude(1));
+  });
+});
+
+// M8.5 #4 (owner, round 1: "fill the empty meadow with red flowers, also where look-around goes"; his fireweed and
+// meadow photos): drifts of tall red poppies across Sunset's meadow, out to both sides of the turn
+describe("Sunset's poppies (M8.5 #4)", () => {
+  const sunset = STOPS.find((s) => s.id === 'sunset');
+  if (!sunset) throw new Error('sunset');
+  const owner = COVE_STOPS.indexOf('sunset');
+  const reds = Array.from({ length: n }, (_, i) => i)
+    .filter((i) => at(i).kind === PLANT.red)
+    .map((i) => {
+      const p = at(i);
+      const d = Math.hypot(p.x - sunset.cam[0], p.y - sunset.cam[1]);
+      const b = (Math.atan2(p.x - sunset.cam[0], p.y - sunset.cam[1]) * 180) / Math.PI - sunset.landscape.yaw;
+      return { ...p, d, b: ((b + 540) % 360) - 180, owner: plants.data[i * PLANT_STRIDE + 6] };
+    });
+  it('fills the meadow in drifts, only for Sunset, within the budget', () => {
+    expect(reds.length).toBeGreaterThan(2000);
+    expect(reds.length).toBeLessThan(7000);
+    for (const p of reds) expect(p.owner).toBe(owner);
+  });
+  it('reaches the middle distance and both sides of the turn', () => {
+    expect(reds.filter((p) => p.d > 40 && p.d < 110).length).toBeGreaterThan(400);
+    expect(reds.filter((p) => p.b < -45).length).toBeGreaterThan(150);
+    expect(reds.filter((p) => p.b > 45).length).toBeGreaterThan(150);
+  });
+  it('stands taller than the thrift, and taller further out so far drifts still read', () => {
+    const near = reds.filter((p) => p.d < 40);
+    const far = reds.filter((p) => p.d > 70);
+    const mean = (a: { scale: number }[]) => a.reduce((s, p) => s + p.scale, 0) / Math.max(1, a.length);
+    expect(mean(near)).toBeGreaterThan(0.4);
+    expect(mean(far)).toBeGreaterThan(mean(near));
   });
 });

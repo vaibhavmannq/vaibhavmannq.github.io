@@ -296,28 +296,33 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const tall = mix(vec3(0.035, 0.04, 0.015), vec3(0.3, 0.28, 0.09), bend);
   const short = mix(vec3(0.03, 0.05, 0.016), vec3(0.14, 0.2, 0.055), bend);
   const stalk = mix(vec3(0.03, 0.05, 0.02), vec3(0.08, 0.14, 0.04), bend);
+  // poppies (M8.5 #4, owner: "fill the empty meadow with red flowers"): kind 6, a true red, not the thrift's pink
+  const isRed = step(5.5, kind);
   const head = mix(
-    mix(vec3(0.8, 0.2, 0.42), vec3(0.95, 0.68, 0.08), step(2.5, kind)),
-    vec3(0.85, 0.85, 0.78),
-    step(3.5, kind),
+    mix(mix(vec3(0.8, 0.2, 0.42), vec3(0.95, 0.68, 0.08), step(2.5, kind)), vec3(0.85, 0.85, 0.78), step(3.5, kind)),
+    vec3(0.9, 0.07, 0.035),
+    isRed,
   );
   const flower = mix(stalk, head.mul(part), step(0.3, part));
   const grass = mix(tall, short, step(0.5, kind));
   // heather (plan M6 Task 2; research/m6-midnight-references.md): dark woody stems, the flowering upper half mauve;
   // the moon's light and the grade turn it grey-violet
   const heather = mix(vec3(0.022, 0.02, 0.018), vec3(0.3, 0.15, 0.3), smoothstep(0.35, 0.85, bend));
-  const albedo = mix(mix(grass, flower, step(1.5, kind)), heather, step(4.5, kind)).mul(vary);
+  const albedo = mix(mix(grass, flower, step(1.5, kind)), heather, step(4.5, kind).mul(float(1).sub(isRed))).mul(vary);
   // light through the blades when the sun is behind them (reference book §8: bright yellow-green edges backlit,
   // duller front-lit); the tips glow most, a flower head a little
   const toSun = saturate(dot(normalize(positionWorld.sub(cameraPosition)), light.keyDir));
   const through = pow(toSun, 3.0)
     .mul(bend)
     .mul(mix(float(1), float(0.4), part));
+  // a poppy's petals are thin and glow red against a low sun (M8.5 #4; owner's meadow photo: rim-lit, not dull)
+  const petals = isRed.mul(step(0.3, part)).mul(pow(toSun, 2.0));
   const glow = light.keyColor
     .mul(light.keyStrength)
     .mul(vec3(0.55, 0.62, 0.16))
     .mul(through)
-    .mul(0.25);
+    .mul(0.25)
+    .add(light.keyColor.mul(light.keyStrength).mul(vec3(0.9, 0.12, 0.04)).mul(petals).mul(0.35));
   // per vertex: the blades are thin, so the eye cannot tell, and the pixels do only the fog. Under the moon the eye
   // sees little colour (reference book §1, the Purkinje shift; plan M6 Task 2): in the moon's hours the colours grey
   // toward a cool blue, keeping a third of their own (heather stays grey-violet, grass grey-green).
@@ -345,7 +350,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const shapes = [
     [tallTuft(), (k: number) => k === PLANT.tall],
     [shortTuft(), (k: number) => k === PLANT.short],
-    [flowerClump(), (k: number) => k >= PLANT.pink && k <= PLANT.white],
+    [flowerClump(), (k: number) => (k >= PLANT.pink && k <= PLANT.white) || k === PLANT.red],
     [heatherMound(), (k: number) => k === PLANT.heather],
   ] as const;
   const meshes = PLANT_STOPS.flatMap((id, owner) =>

@@ -14,7 +14,7 @@ export const COVE_STOPS = ['golden', 'sunset', 'dusk', 'firstlight', 'sunrise'] 
 export type CoveStop = (typeof COVE_STOPS)[number];
 
 /** Plant kinds; the three flowers come last (thrift pink, yellow, white: reference book §8, coast.py plant_mats). */
-export const PLANT = { tall: 0, short: 1, pink: 2, yellow: 3, white: 4, heather: 5 } as const;
+export const PLANT = { tall: 0, short: 1, pink: 2, yellow: 3, white: 4, heather: 5, red: 6 } as const;
 /**
  * Floats per plant: x, y, z (coast, z = foot), yaw, height (m), kind, and the cove stop it was placed for (its index in
  * COVE_STOPS): each stop draws only its own plants (meadow.ts), so their cost does not add up across the cove.
@@ -35,6 +35,11 @@ interface Rules {
   dland: number;
   /** flower drifts over the field in view, `from`–`to` metres out; a patch noise over `patch` keeps a point */
   field?: { candidates: number; from: number; to: number; patch: number };
+  /**
+   * Drifts of red poppies (M8.5 #4): candidates thrown `from`–`to` m out, `spread` radians either side of the gaze; kept
+   * where a ~20 m patch noise is over `patch`, thinning toward a drift's edge.
+   */
+  poppies?: { candidates: number; from: number; to: number; spread: number; patch: number };
 }
 
 const RULES: Record<CoveStop, Rules> = {
@@ -64,6 +69,9 @@ const RULES: Record<CoveStop, Rules> = {
     zmin: 0.8,
     dland: 7,
     field: { candidates: 13000, from: 8, to: 32, patch: 0.3 },
+    // owner, round 1: "fill the empty meadow with red flowers, also where look-around goes"
+    // from 22 m: nearer, the field's drifts already hold flowers (and the cove stays inside its 60 000 plants)
+    poppies: { candidates: 22000, from: 22, to: 115, spread: 1.4, patch: 0.43 },
   },
   // III looks down from the headland (owner cove-and-stacks: "from above, with grass in front"): grass clumps at the
   // lens sides and more flowers near the eye, the near layer the shot lacked (plan M8 Task 7, s22)
@@ -252,6 +260,26 @@ export function scatterCove(surface: HeightAt): Plants {
       const band = coastFbm(x * 0.025 + 9, y * 0.025 + 41, 3);
       const kind = band < 0.42 ? PLANT.pink : band < 0.58 ? PLANT.yellow : PLANT.white;
       put(x, y, 0.28 * (0.9 + 0.5 * r()) * (1 + Math.min(1, d / 80)), kind, r() * 2 * Math.PI);
+    }
+
+    // drifts of red poppies across the meadow and out to both sides of the turn (M8.5 #4; the owner's fireweed and
+    // meadow photos: tall, see-through stems, in patches, not a carpet); last, so every plant above keeps its place
+    const P = R.poppies;
+    for (let i = 0; P && i < P.candidates; i++) {
+      const d = P.from + (P.to - P.from) * r() ** 1.2;
+      const a = yaw + (r() * 2 - 1) * P.spread;
+      const x = cx + d * Math.sin(a);
+      const y = cy + d * Math.cos(a);
+      const keep = r();
+      const tall = r();
+      const turn = r() * 2 * Math.PI;
+      const z = surface(x, y);
+      if (!ok(x, y, z, slopeAt(x, y))) continue;
+      const patch = coastFbm(x * 0.045 + 53, y * 0.045 + 29, 3);
+      if (keep > sm(P.patch, P.patch + 0.12, patch)) continue;
+      // taller than the thrift (a poppy stands 0.4–0.7 m), and larger further out: a 5 cm head is one pixel at 80 m
+      // (s25 shots), so the clump grows to ~3.5× by 100 m and a far drift reads as red specks; its stalks stay sub-pixel
+      put(x, y, 0.45 * (0.85 + 0.4 * tall) * (1 + 2.5 * Math.min(1, Math.max(0, d - 25) / 75)), PLANT.red, turn);
     }
   });
 
