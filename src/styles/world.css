@@ -283,9 +283,10 @@ html.is-scene-ready .poster {
   transition: opacity 400ms ease;
 }
 
+/* Below the Sound button (s23: it sat on top of it, and the owner tests with ?hud). */
 .hud {
   position: fixed;
-  top: 0.5rem;
+  top: calc(max(1.5rem, env(safe-area-inset-top)) + 2.75rem);
   right: 0.5rem;
   z-index: 10;
   padding: 0.5rem 0.6rem;
