@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-20, end of session s22 (M8 look passes; see `docs/handover/sessions/2026-11-20-s22-m8-look-passes.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-21, session s23 (M8.5 started; see `docs/handover/sessions/2026-11-21-s23-m8.5-start.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -260,7 +260,11 @@ no borrowed set pieces (no towers, piano, etc.).
 - **Owner, end of s22 (D46): M8 closed below 85 %; M8.5 next, before the text.** M8.5 is driven by the owner's own
   hands-on testing (likes, dislikes, reviews), rounds until nothing he minds; the M8 carry list is its starting backlog.
   Plan: `docs/superpowers/plans/2026-11-20-m8.5-owner-hands-on.md`.
-- **Next (s23): M8.5 Task 0** (a build the owner can open on his devices), then wait for his Round 1 feedback.
+- **s23 (2026-11-21): M8.5 Task 0 done** (log `sessions/2026-11-21-s23-m8.5-start.md`, ledger
+  `ledgers/2026-11-21-m8.5-owner-hands-on.md`). The owner tests at `http://localhost:4181` (laptop Chrome; phone Brave
+  over USB + `adb reverse`); his guide: `docs/handover/m8.5-how-to-test.md`; starter `.superpowers/m85/start-test-build.cmd`.
+  The `?hud` panel moved below the Sound button (R160).
+- **Next: the owner's Round 1 feedback** → triage in the M8.5 ledger, then fixes in the order a visitor meets things.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
