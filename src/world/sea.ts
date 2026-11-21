@@ -4,6 +4,7 @@ import {
   dot,
   exp,
   float,
+  fract,
   fwidth,
   max,
   mix,
@@ -33,6 +34,7 @@ import {
   type Node,
   PlaneGeometry,
   RedFormat,
+  RGBAFormat,
   Vector2,
 } from 'three/webgpu';
 import type { TierSettings } from '../quality/tiers';
@@ -53,12 +55,107 @@ const WAVES: [number, number, number, number][] = [
   [0.75, 0.66, 0.0025, 6.3],
 ];
 
+/**
+ * The swell (M8.5 #1; owner, round 1: "waves rustling but no waves can be seen"). Reference book §2: a sea calm to the
+ * wind can still carry a long swell from far away, rolling under a mirror surface. Crest height near the breaking line
+ * per place (STOP_IDS order), metres. Night's lagoon stays still: its mirror holds the aurora.
+ */
+export const SWELL_M = [0.35, 0.45, 0.25, 0.25, 0, 0.4, 0.3, 0.15, 0.3] as const;
+/** The swell's period, seconds (a long swell: 7–10 s). */
+export const SWELL_PERIOD = 8;
+const OMEGA = (2 * Math.PI) / SWELL_PERIOD;
+/**
+ * Phase per √(metre of depth): in shallow water a crest travels at √(g·d), so over a beach of slope m the travel time
+ * to the shore grows as 2√d / (m√g). Taken at m = 1:20; the crests then bend to follow the depth contours by themselves.
+ */
+const SWELL_K = (2 * OMEGA) / (0.05 * Math.sqrt(9.8));
+
+/** Pure: the swell's height in metres at a frame, blended between two places as the light is. */
+export function swellAt(a: number, b: number, w: number): number {
+  const sa = SWELL_M[a] ?? 0;
+  const sb = SWELL_M[b] ?? sa;
+  return sa + (sb - sa) * Math.min(1, Math.max(0, w));
+}
+
+/** Pure: how far the wash is through its cycle at the shore, 0 when a crest arrives there (the shader's phase at d = 0). */
+export function swashCycle(clockS: number): number {
+  const x = (Math.PI / 2 + OMEGA * clockS) / (2 * Math.PI);
+  return x - Math.floor(x);
+}
+
+const smooth01 = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * Pure: the sea's level over the wash, metres. The water runs up quickly as a crest arrives and slides back slowly,
+ * dipping a little below the mean before the next one (reference book §3: the swash and the backwash). On a 1:20
+ * beach a 0.35 m swell runs ~2 m up the sand.
+ */
+export function swashLevel(clockS: number, swellM: number): number {
+  const c = swashCycle(clockS);
+  return swellM * (0.32 * smooth01(0, 0.18, c) * (1 - smooth01(0.18, 0.9, c)) - 0.05);
+}
+
 /** The heights as a half-float texture, for the shore foam (the depth under the water). */
 export function heightTexture(q: Uint16Array, m: GridMeta): DataTexture {
   const data = new Uint16Array(q.length);
   const k = (m.hi - m.lo) / 65535;
   for (let i = 0; i < q.length; i++) data[i] = DataUtils.toHalfFloat(m.lo + (q[i] as number) * k);
   const t = new DataTexture(data, m.nx, m.ny, RedFormat, HalfFloatType);
+  t.minFilter = LinearFilter;
+  t.magFilter = LinearFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
+/**
+ * The swell's depth field (M8.5 #1): the depth smoothed over ~3 grid cells, with its slope, per cell (R: depth in
+ * metres, G: ∂d/∂x, B: ∂d/∂z, three.js axes). Made once here so the shader reads one texel. The slope comes
+ * interpolated, so the mirror's tilt has no crease along the 8 m cells (a first try took finite differences of the
+ * bilinear heights in the shader: every cell edge showed as a straight fold in the reflections).
+ */
+export function swellTexture(q: Uint16Array, m: GridMeta): DataTexture {
+  const { nx, ny } = m;
+  const k = (m.hi - m.lo) / 65535;
+  let a = new Float32Array(nx * ny);
+  for (let i = 0; i < a.length; i++) a[i] = -(m.lo + (q[i] as number) * k);
+  // two passes of a 1-4-6-4-1 filter along each axis
+  const w = [1 / 16, 4 / 16, 6 / 16, 4 / 16, 1 / 16];
+  for (let pass = 0; pass < 2; pass++) {
+    for (const [di, dj] of [
+      [1, 0],
+      [0, 1],
+    ] as const) {
+      const b = new Float32Array(a.length);
+      for (let j = 0; j < ny; j++)
+        for (let i = 0; i < nx; i++) {
+          let sum = 0;
+          for (let t = -2; t <= 2; t++) {
+            const ii = Math.min(nx - 1, Math.max(0, i + t * di));
+            const jj = Math.min(ny - 1, Math.max(0, j + t * dj));
+            sum += (w[t + 2] as number) * (a[jj * nx + ii] as number);
+          }
+          b[j * nx + i] = sum;
+        }
+      a = b;
+    }
+  }
+  const data = new Uint16Array(nx * ny * 4);
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      const at = (ii: number, jj: number) =>
+        a[Math.min(ny - 1, Math.max(0, jj)) * nx + Math.min(nx - 1, Math.max(0, ii))] as number;
+      const o = (j * nx + i) * 4;
+      const ddx = (at(i + 1, j) - at(i - 1, j)) / (2 * m.step);
+      const ddy = (at(i, j + 1) - at(i, j - 1)) / (2 * m.step); // along the coast's y, which is three's −z
+      data[o] = DataUtils.toHalfFloat(at(i, j));
+      data[o + 1] = DataUtils.toHalfFloat(ddx);
+      data[o + 2] = DataUtils.toHalfFloat(-ddy);
+      data[o + 3] = DataUtils.toHalfFloat(1);
+    }
+  const t = new DataTexture(data, nx, ny, RGBAFormat, HalfFloatType);
   t.minFilter = LinearFilter;
   t.magFilter = LinearFilter;
   t.needsUpdate = true;
@@ -87,6 +184,7 @@ export interface Mirror {
 
 export function createSea(
   heights: DataTexture,
+  swellField: DataTexture,
   meta: GridMeta,
   u: LightUniforms,
   tier: TierSettings,
@@ -114,6 +212,11 @@ export function createSea(
   const glitterPow = uniform(glitterPower(0.55));
   /** how far the glitter's facets have drifted along the wind, metres (three.js x, z; light.ts glitterCarry) */
   const carried = uniform(new Vector2(0, 0));
+  /** the swell's clock (s), its crest height (m) and the sea's level over the wash (m): swellAt, swashLevel */
+  const seaClock = uniform(0);
+  const swell = uniform(0);
+  const level = uniform(0);
+  let clock = 0;
 
   const p = vec2(positionWorld.x, positionWorld.z);
   const pixel = fwidth(p).length();
@@ -145,6 +248,33 @@ export function createSea(
     .mul(1.6);
   gx = gx.add(rd.x.div(rl).mul(ringSlope));
   gz = gz.add(rd.y.div(rl).mul(ringSlope));
+  // Depth from the heights (y = 0 is the mean sea; the wash lifts the water by `level`).
+  const x1 = meta.x0 + (meta.nx - 1) * meta.step;
+  const y1 = meta.y0 + (meta.ny - 1) * meta.step;
+  const hu = vec2(
+    positionWorld.x.sub(meta.x0).div(x1 - meta.x0),
+    positionWorld.z
+      .negate()
+      .sub(meta.y0)
+      .div(y1 - meta.y0),
+  );
+  const inside = step(0, hu.x).mul(step(hu.x, 1)).mul(step(0, hu.y)).mul(step(hu.y, 1));
+  const meanDepth = mix(float(-30), texture(heights, hu).r, inside).negate();
+  const depth = meanDepth.add(level);
+  // The swell (SWELL_K): crests whose phase grows with √depth, so they slow, close up and turn to the shore as the
+  // water shoals; they grow (Green's law, d^-1/4) until they break. Its slope tilts the mirror as long rolling bands.
+  // The smoothed depth and its slope (swellTexture), one texel.
+  const field = texture(swellField, hu);
+  const dSw = mix(float(30), field.r, inside).max(0.03);
+  const rootD = dSw.sqrt();
+  const phi = rootD.mul(SWELL_K).sub(seaClock.mul(OMEGA));
+  const shoal = dSw.div(2).pow(-0.25).min(1.6);
+  const swellZone = smoothstep(14.0, 5.0, dSw)
+    .mul(smoothstep(0.05, 0.5, dSw))
+    .mul(inside);
+  const slopeK = swell.mul(0.5).mul(shoal).mul(swellZone).mul(cos(phi)).mul(SWELL_K).div(rootD.mul(2));
+  gx = gx.add(slopeK.mul(field.g));
+  gz = gz.add(slopeK.mul(field.b));
   const toCam = cameraPosition.sub(positionWorld);
   const dist = toCam.length();
   const flatten = smoothstep(450.0, 25.0, dist);
@@ -188,18 +318,7 @@ export function createSea(
   const mirrored = reflection.uvNode ? mirrorCubic(reflection, reflection.uvNode as Node<'vec2'>) : reflection.rgb;
   let col = mix(body, mirrored, fresnel).add(glint);
 
-  // Shore: depth from the heights, foam at the edge, a sheet in the swash, transparent shallows (slice).
-  const x1 = meta.x0 + (meta.nx - 1) * meta.step;
-  const y1 = meta.y0 + (meta.ny - 1) * meta.step;
-  const hu = vec2(
-    positionWorld.x.sub(meta.x0).div(x1 - meta.x0),
-    positionWorld.z
-      .negate()
-      .sub(meta.y0)
-      .div(y1 - meta.y0),
-  );
-  const inside = step(0, hu.x).mul(step(hu.x, 1)).mul(step(0, hu.y)).mul(step(hu.y, 1));
-  const depth = mix(float(-30), texture(heights, hu).r, inside).negate();
+  // Shore: foam at the edge, a sheet in the swash, the swell's surf, transparent shallows (slice).
   const lace = smoothstep(
     0.05,
     0.5,
@@ -211,7 +330,17 @@ export function createSea(
   const sheet = smoothstep(1.0, 0.15, depth)
     .mul(smoothstep(0, 0.12, depth))
     .mul(0.45);
-  const foam = max(edge.mul(foamEdge), sheet.mul(foamSheet))
+  // Surf: each crest breaks where the water is about 1.4 × its height deep and runs in as a foam bore, a hard front
+  // and a trail behind it, until it reaches the wash.
+  const behind = fract(phi.sub(Math.PI / 2).div(2 * Math.PI));
+  const bore = max(exp(behind.mul(-7.0)), smoothstep(0.96, 1.0, behind));
+  const breakD = swell.mul(1.4).max(0.05);
+  const surf = bore
+    .mul(smoothstep(breakD.mul(1.8), breakD, dSw))
+    .mul(smoothstep(0.01, 0.08, depth))
+    .mul(step(0.01, swell))
+    .mul(0.9);
+  const foam = max(max(edge.mul(foamEdge), sheet.mul(foamSheet)), surf)
     .mul(lace)
     .mul(smoothstep(160.0, 40.0, dist));
   col = mix(col, u.ambSky.mul(1.8).add(u.keyColor.mul(0.45)), foam.clamp(0, 1));
@@ -242,6 +371,11 @@ export function createSea(
       const fl = foamLevel(f.hour.world.beaufort);
       foamEdge.value = fl.edge;
       foamSheet.value = fl.sheet;
+      clock += f.dtS;
+      seaClock.value = clock;
+      swell.value = swellAt(f.state.a, f.state.b, f.state.hourWeight);
+      level.value = swashLevel(clock, swell.value);
+      group.position.y = level.value;
       const [cx, cz] = glitterCarry([carried.value.x, carried.value.y], f.hour.world, f.dtS);
       carried.value.set(cx, cz);
       // The plane follows the camera so it always reaches the horizon.
