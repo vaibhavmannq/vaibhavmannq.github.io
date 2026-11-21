@@ -315,9 +315,12 @@ no borrowed set pieces (no towers, piano, etc.).
   - GPU ceiling at low (provisional): ~3–5 ms headroom; budget per set ≤ 3 ms, 0.4 M tris, 150 draws, 128 MB.
   - Far layer + streamed sets + passages; Before dawn's cave is the first streamed set (arch, stacks, cliffs, grove are
     far layer).
-  - **The lantern room** before the first view (`src/loading/`, look a, my 72 %); test browsers skip it unless `?room=`.
+  - **The lantern room** before the first view (`src/loading/`, look a, my 72 %); first visit per device only
+    (localStorage); `?room=a` forces it; test browsers skip it unless `?room=`.
+  - Phone (R215): the cave is built a slice per frame (no freeze arriving at Midnight); the room framed for portrait.
   - Owner page: https://claude.ai/artifact/WenenQWiXj2vn3eS3BCKMD
-- **Next (s29):** plug the phone in (Phase 0's phone checks), then Phase 1's detailed plan (C1, C2, C5) and start it.
+- **Next (s29):** a real finger tap on the phone's lantern (USB kept dropping), then Phase 1's detailed plan (C1, C2,
+  C5) and start it.
   The owner's test of #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and the reflections still stands.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
