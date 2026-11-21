@@ -35,6 +35,7 @@ import { mountSoundToggle } from '../sound/toggle';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
 import { BOWL, createBowl, fallsLayout, rimTrees } from '../world/bowl';
+import { cragPrisms, createCrags } from '../world/crags';
 import { capInstances } from '../world/caps';
 import { caveLure, createCave, decodeCave } from '../world/cave';
 import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
@@ -253,6 +254,14 @@ async function loadBase(
   plants.set(cove.data);
   plants.set(ridgePlants, cove.data.length);
   parts.push(['meadow', createMeadow({ data: plants, count: plants.length / PLANT_STRIDE }, light)]);
+  // Crags on the bare faces a look-around reveals (M8.5 #2): basalt columns on the ground as drawn (D32), made here.
+  const cragSites = STOPS.filter((s) => COVE_SEEN_FROM.has(s.id)).map((s) => ({
+    id: s.id,
+    x: s.cam[0],
+    y: s.cam[1],
+    yaw: s.landscape.yaw,
+  }));
+  parts.push(['crags', createCrags(rock, cragPrisms(drawn, cragSites), COVE_SEEN_FROM, STOP_IDS)]);
   // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
   parts.push(['life', createLife(light, createSurfaceSampler(heights, meta.heights), reducedMotion)]);
   if (dressingMeta && dressingBuf) {
