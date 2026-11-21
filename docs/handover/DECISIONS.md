@@ -328,3 +328,10 @@ tier is picked: he chose a test behind the poster; built, it failed (the rest of
 poster lifts: readings flipped run to run, a false ultra on this laptop, 1–3.8 s more poster), so he chose the second
 option: the governor steps **up only while the camera moves**, at any point in the visit (was: on arriving, first 20 s
 only), and never while the visitor reads. Down steps need two slow seconds in a row. Ledger R172–R176.
+
+**D50 · 2026-11-21 · (owner, s25) Batch 2 accepted; #9 by my judgement; no stills, scanned 3D rock allowed.** Batch 2
+("both good"): #3b (the light turns through the whole ride) and #2 (Golden's columns, Dusk's shrubs) accepted; `world`
+pushed. #9 (Night's falls): "you decide after creating both": build the continuous fall with a splash at a shoulder and
+the clean plunge behind a switch, judge them, keep one. #13 (the shore): "I don't want stills in my website": no
+painted or photographed backdrop; a scanned cliff face is allowed because it is 3D geometry lit by the world (a
+photogrammetry mesh), not a picture. Ledger R185.
