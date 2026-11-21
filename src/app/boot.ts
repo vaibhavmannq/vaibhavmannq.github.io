@@ -26,7 +26,7 @@ import { createRail } from '../overlay/rail';
 import { createRide } from '../overlay/ride';
 import { createStage } from '../overlay/stage';
 import { DEFAULT_GOVERNOR, Governor } from '../quality/governor';
-import { bootTier, TIERS, type Tier } from '../quality/tiers';
+import { bootTier, TIERS, type Tier, type TierSettings } from '../quality/tiers';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
@@ -106,6 +106,8 @@ export interface App {
   cameraU(nowMs: number): number;
   tier: Tier;
   setTier(t: Tier): void;
+  /** Temporary (M8.5 #17, s24): settings laid over the tier's, to find the GPU's limit. `{}` restores the tier. */
+  setQuality(q: Partial<TierSettings>): void;
   /** Parts by name, for the benchmarks' on/off switch. */
   readonly parts: Map<string, WorldPart>;
   /** Parts held hidden by the benchmark (`__parts`). */
@@ -531,11 +533,19 @@ export async function boot(): Promise<App> {
   // Loading hitches in the first seconds say nothing about the device (s04: the owner's phone fell to low in its first
   // second and stayed there), so the governor's first 3 s are not judged.
   const governor = new Governor(tier, { ...DEFAULT_GOVERNOR, warmupMs: 3000 });
+  // M8.5 #17 (s24, temporary): `?scale=`, `?reflect=`, `?bloom=0|1` lay over the tier's settings (and `__quality`).
+  const urlQ = new URLSearchParams(location.search);
+  let quality: Partial<TierSettings> = {
+    ...(urlQ.has('scale') ? { scale: Number(urlQ.get('scale')) } : {}),
+    ...(urlQ.has('reflect') ? { reflect: Number(urlQ.get('reflect')) } : {}),
+    ...(urlQ.has('bloom') ? { bloom: urlQ.get('bloom') === '1' } : {}),
+  };
+  const settings = (t: Tier): TierSettings => ({ ...TIERS[t], ...quality });
   const applyTier = (t: Tier) => {
     tier = t;
     app.tier = t;
-    pipeline?.setTier(TIERS[t], caps.devicePixelRatio);
-    for (const part of parts) part.setTier(TIERS[t]);
+    pipeline?.setTier(settings(t), caps.devicePixelRatio);
+    for (const part of parts) part.setTier(settings(t));
   };
   const app: App = {
     track,
@@ -552,6 +562,10 @@ export async function boot(): Promise<App> {
       applyTier(t);
       governor.reset(t, performance.now());
     },
+    setQuality(q) {
+      quality = q;
+      applyTier(tier);
+    },
     parts: named,
     partsOff: new Set(),
     joined: new Map(),
@@ -560,7 +574,7 @@ export async function boot(): Promise<App> {
       named.set(name, part);
       app.joined.set(name, performance.now());
       scene.add(part.object);
-      part.setTier(TIERS[tier]);
+      part.setTier(settings(tier));
     },
     onFrame: [],
     stills: params.stills,

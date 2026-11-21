@@ -36,6 +36,8 @@ declare global {
     __joined(): Record<string, number>;
     /** Resolves once stage B (the world base and every part in it) is in the scene. */
     __stageB(): Promise<void>;
+    /** Temporary (M8.5 #17): settings over the tier's (scale, reflect, bloom, grass, leaves); {} restores. */
+    __quality(q: Partial<import('../quality/tiers').TierSettings>): void;
     /** Hold the named parts hidden until called again (plan M2 Task 7's on/off switch). */
     __parts(off: string[]): void;
     /** Rest at a stop (or at track position `u`) for `seconds` at a tier: frame times, and the GPU's own ms per frame when `?gpu` is on. */
@@ -98,6 +100,7 @@ const pct = (xs: number[], q: number): number => {
 export function installBench(app: App): void {
   window.__joined = () => Object.fromEntries([...app.joined].map(([k, v]) => [k, Math.round(v)]));
   window.__stageB = () => app.stageB;
+  window.__quality = (q) => app.setQuality(q);
 
   window.__parts = (off) => {
     app.partsOff = new Set(off);
