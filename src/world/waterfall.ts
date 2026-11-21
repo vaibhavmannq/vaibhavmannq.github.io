@@ -23,7 +23,7 @@ import {
 } from 'three/webgpu';
 import { windVector } from '../journey/hours';
 import { mulberry32 } from '../shared/random';
-import type { FallsLayout } from './bowl';
+import { FALL_ROWS, type FallsLayout } from './bowl';
 import type { LightUniforms } from './light';
 import { fbm2, remap } from './noise';
 import type { WorldPart } from './part';
@@ -31,11 +31,14 @@ import type { WorldPart } from './part';
 type F = Node<'float'>;
 type V3 = Node<'vec3'>;
 
-/** coast.py's sheet: 40 quads down the fall, 10 across. */
-export const SHEET_ROWS = 40;
+/** coast.py's sheet: 40 quads down each strand (bowl.ts FALL_ROWS), 10 across. */
+export const SHEET_ROWS = FALL_ROWS;
 export const SHEET_COLS = 10;
 export const FOAM_SEGMENTS = 32;
 export const SPRAY_COUNT = 46; // SPRAY_SPLIT's sum (s22: 36 in the pool's mist, was 18)
+/** The skirt of spray at the foot (M8.5 #9): quads round the landing, and up. */
+export const SKIRT_SEGMENTS = 24;
+export const SKIRT_RINGS = 4;
 /**
  * How strongly the moon and the sky light the water. s09 look: the sheet measured (192, 204, 209) against the render's
  * (169, 180, 194), and lamp-white; the reference book (§3) says a fall at night is as bright as its light, so the gains
@@ -48,33 +51,30 @@ const WATER: [number, number, number] = [0.68, 0.76, 0.76];
 const GLASS: [number, number, number] = [0.36, 0.44, 0.45];
 const G = 9.8;
 
-/** Spray sprites: most in the pool's mist, the rest where the upper tier lands on the ledge. */
+/** Spray sprites: most in the pool's mist, the rest at the strike (shoulder), low over the pool (plunge) or where the
+ * upper tier lands on the ledge (old). */
 export const SPRAY_SPLIT = [36, 10] as const;
 
 /**
- * The falls as one mesh (three.js axes). `info` = (kind, a, b, c): kind 0 is a ribbon of the sheet (uv: across, and
- * 1 at the lip to 0 at the foot; a = its drop in metres, b = its half-width there, c = its seed, 3 and up for the
- * lower tier), 1 the foam on the pool (uv: position in pool radii), 2 a spray sprite (a = mist index + a random share;
- * all four corners at the sprite's centre, b and c the corner: the shader spreads them toward the camera).
+ * The falls as one mesh (three.js axes). `info` = (kind, a, b, c): kind 0 is a strand of the sheet (uv: across, and
+ * how white the water is; a = the seconds it has fallen, b = its half-width there, c = its seed), 1 the foam on the
+ * pool (uv: position in pool radii), 2 a spray sprite (a = mist index + a random share; all four corners at the
+ * sprite's centre, b and c the corner: the shader spreads them toward the camera), 3 the skirt (uv: round, up).
  */
 export function fallsGeometry(f: FallsLayout): BufferGeometry {
   const pos: number[] = [];
   const uvs: number[] = [];
   const info: number[] = [];
   const index: number[] = [];
-  // each ribbon: thrown forward off its lip (square-root profile), then a straight drop, widening on the way down
-  for (const rb of f.ribbons) {
+  // each strand: rows laid out by bowl.ts fallsLayout (the throw, the strike, the widening are in the rows)
+  for (const st of f.strands) {
     const first = pos.length / 3;
-    for (let i = 0; i <= SHEET_ROWS; i++) {
-      const tt = i / SHEET_ROWS;
-      const y = rb.yLip + (rb.yFoot - rb.yLip) * Math.sqrt(tt);
-      const z = rb.zTop + (rb.zFoot - rb.zTop) * tt + 0.05;
-      const w = rb.w0 + (rb.w1 - rb.w0) * tt;
+    for (const row of st.rows) {
       for (let j = 0; j <= SHEET_COLS; j++) {
         const u = j / SHEET_COLS;
-        pos.push(rb.x - w + 2 * w * u, z, -y);
-        uvs.push(u, 1 - tt);
-        info.push(0, rb.zTop - rb.zFoot, w, rb.seed);
+        pos.push(row.x - row.w + 2 * row.w * u, row.z + 0.05, -row.y);
+        uvs.push(u, row.white);
+        info.push(0, row.fall, row.w, st.seed);
       }
     }
     for (let i = 0; i < SHEET_ROWS; i++)
@@ -126,6 +126,28 @@ export function fallsGeometry(f: FallsLayout): BufferGeometry {
       index.push(first, first + 1, first + 2, first, first + 2, first + 3);
     }
   });
+  // the skirt: a curtain of spray round the landing, opening toward the lagoon, wider as it rises
+  const sk = f.skirt;
+  if (sk) {
+    const first = pos.length / 3;
+    for (let r = 0; r <= SKIRT_RINGS; r++) {
+      const v = r / SKIRT_RINGS;
+      const rad = sk.r0 + (sk.r1 - sk.r0) * v;
+      for (let k = 0; k <= SKIRT_SEGMENTS; k++) {
+        const u = k / SKIRT_SEGMENTS;
+        const a = -Math.PI / 2 + (u - 0.5) * 3.5; // ±100° about the lagoon's side (south)
+        pos.push(sk.x + Math.cos(a) * rad, v * sk.h, -(sk.y + Math.sin(a) * rad * 0.75));
+        uvs.push(u, v);
+        info.push(3, 0, 0, 0);
+      }
+    }
+    for (let r = 0; r < SKIRT_RINGS; r++)
+      for (let k = 0; k < SKIRT_SEGMENTS; k++) {
+        const a = first + r * (SKIRT_SEGMENTS + 1) + k;
+        const b = a + SKIRT_SEGMENTS + 1;
+        index.push(a, b, a + 1, a + 1, b, b + 1);
+      }
+  }
   const g = new BufferGeometry();
   g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
   g.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
@@ -148,13 +170,14 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
   // a spray sprite's own random share; its mist (0 the pool, 1 the ledge) sizes it
   const seed = info.y.fract();
   const mistScale = float(1).sub(info.y.floor().mul(0.5));
-  const isSpray = step(1.5, kind);
-  const isFoam = step(0.5, kind).mul(float(1).sub(isSpray));
+  const isSkirt = step(2.5, kind);
+  const isSpray = step(1.5, kind).mul(float(1).sub(isSkirt));
+  const isFoam = step(0.5, kind).mul(float(1).sub(step(1.5, kind)));
   const isSheet = float(1).sub(step(0.5, kind));
 
   // spray: each sprite rises and fades on its own clock, and faces the camera
   const life = clock.mul(seed.mul(0.05).add(0.1)).add(seed.mul(7.3)).fract();
-  const size = seed.mul(4).add(4).mul(mistScale);
+  const size = seed.mul(4).add(6).mul(mistScale); // M8.5 #9: the pool's mist 6-10 m (Abiqua's skirt is wide)
   const toCam = cameraPosition.sub(positionLocal);
   const right = normalize(vec3(toCam.z, 0, toCam.x.negate()));
   // mist lies flat and spreads as it rises (reference book §3: it rises from the foot and drifts), 0.4 m/s
@@ -169,25 +192,22 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
   material.positionNode = positionLocal.add(spread.add(drifted).mul(isSpray));
 
   const across = uv().x;
-  const down = float(1).sub(uv().y);
-  // each ribbon's drop, its width in metres and its seed (plan M5 Task 2: two tiers of ribbons)
-  const drop = info.y;
+  // each strand's width in metres and its seed
   const metres = across.mul(info.z.mul(2)).add(info.w.mul(3.7));
-  const lowerTier = step(2.5, info.w);
-  // the sheet: streaks that move at the speed of falling water (time fallen = sqrt(2 d / g)): they accelerate
-  const fallen = down
-    .mul(drop.mul(2 / G))
-    .sqrt()
-    .sub(clock);
+  // the sheet: streaks that move at the speed of falling water: the rows carry the seconds fallen (sqrt(2 d / g) in free
+  // fall, restarted slow below a strike), so the pattern accelerates down and slows where the water lands on rock
+  const fallen = info.y.sub(clock);
   const coarse = fbm2(vec2(metres.mul(0.75), fallen.mul(1.1)), 3, 0.55);
   const fine = fbm2(vec2(metres.mul(2.0).add(9), fallen.mul(2.6)), 2, 0.5);
   const streaks = remap(coarse.mul(0.65).add(fine.mul(0.35)), 0.36, 0.6, 0.3, 0.95);
   const streams = remap(fbm2(vec2(metres.mul(0.3).add(4.2), clock.mul(0.03)), 1), 0.38, 0.6, 0.75, 1);
-  const sides = remap(across, 0, 0.08).mul(remap(across, 1, 0.92));
-  // The lip is glassy: one smooth sheet that breaks white over the first few metres (reference book §3). In "time
-  // fallen" the pattern is crowded near the lip (water there is slow), which s09 saw as flickering specks.
-  // the lower tier arrives already white from the ledge
-  const broken = remap(down, 0.02, 0.28).max(lowerTier.mul(0.75));
+  // ragged edges (s26 look: straight ones read as a curtain): the coarse streaks eat into each side a little (a fifth
+  // made the ropes braid apart with dark gaps)
+  const edge = coarse.mul(0.09);
+  const sides = across.sub(edge).div(0.1).clamp(0, 1).mul(edge.oneMinus().sub(across).div(0.1).clamp(0, 1));
+  // The lip is glassy: one smooth sheet that breaks white over the first few metres (reference book §3); the rows say
+  // how white (bowl.ts fallsLayout)
+  const broken = uv().y;
   // Surges: thicker water follows thinner down the fall, a few seconds apart, travelling at the water's own speed.
   const surge = remap(fbm2(vec2(across.mul(1.3), fallen.mul(0.32)), 2), 0.3, 0.7, 0.86, 1.1);
   const sheet = streaks.mul(broken).add(float(0.7).mul(broken.oneMinus())).mul(streams).mul(sides).mul(surge);
@@ -206,7 +226,15 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
   const puff = remap(q.length(), 1, 0)
     .pow(1.5)
     .mul(sin(life.mul(Math.PI)))
-    .mul(0.12);
+    .mul(0.13);
+
+  // the skirt: spray rising slowly from the foot (force 0: ~0.4 m/s), densest low and in the middle
+  const sv = uv().y;
+  const lift = fbm2(vec2(uv().x.mul(5), sv.mul(1.6).sub(clock.mul(0.05))), 3, 0.6);
+  const skirt = remap(lift, 0.38, 0.72)
+    .mul(sv.oneMinus().pow(1.6))
+    .mul(sin(uv().x.mul(Math.PI)))
+    .mul(0.34);
 
   const light: V3 = (u.ambSky as unknown as V3)
     .mul(SKY_GAIN)
@@ -214,7 +242,11 @@ export function createWaterfall(f: FallsLayout, u: LightUniforms): WorldPart {
   // the sheet goes from clear at the lip to white below; foam and spray are white water
   const white = isSheet.mul(broken).add(float(1).sub(isSheet));
   material.colorNode = mix(vec3(...GLASS), vec3(...WATER), white).mul(light);
-  material.opacityNode = (sheet.mul(isSheet) as F).add(foam.mul(isFoam)).add(puff.mul(isSpray)).clamp(0, 1);
+  material.opacityNode = (sheet.mul(isSheet) as F)
+    .add(foam.mul(isFoam))
+    .add(puff.mul(isSpray))
+    .add(skirt.mul(isSkirt))
+    .clamp(0, 1);
 
   const geometry = fallsGeometry(f);
   const mesh = new Mesh(geometry, material);

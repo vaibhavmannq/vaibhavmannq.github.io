@@ -49,6 +49,23 @@ export const FALLS_AZ = BOWL.alcove.az;
 export const ALCOVE_HALF = 6.5;
 export const LEDGE = [15.4, 16.0, 16.5] as const;
 
+/**
+ * M8.5 #9 (owner, D50: "you decide after creating both"; research/m85-night-falls-and-walls.md): which falls Night
+ * shows. `plunge`: one body of water from the rim into the lagoon, the alcove's front rows broken to stumps at the
+ * water. `shoulder`: the same body, its right third striking a shoulder of broken columns at 40-45 % of the drop and
+ * spilling on wider. `old`: M5's two tiers. `?falls=` picks one for A/B; the default is the one kept.
+ */
+export type FallsKind = 'plunge' | 'shoulder' | 'old';
+export const FALLS_DEFAULT: FallsKind = 'plunge'; // s26 pick: the shoulder's strike read as a broken piece
+export function fallsKind(): FallsKind {
+  const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('falls');
+  return q === 'plunge' || q === 'shoulder' || q === 'old' ? q : FALLS_DEFAULT;
+}
+/** The shoulder: the alcove's three front rows under the fall's right third (azimuths), broken at these heights. */
+export const SHOULDER = { az: [2.2, 7.5] as const, tops: [15.8, 16.4, 17.0] as const };
+/** In the new falls the alcove's front rows are stumps at the water elsewhere, so the sheet falls clear. */
+const STUMP = [0.6, 2.2] as const;
+
 export interface Prism {
   /** the axis's foot (coast axes) */
   x: number;
@@ -111,7 +128,10 @@ export function wallLean(az: number): number {
 }
 
 /** Pure: every prism of the bowl, seeded. */
-export function bowlPrisms(clear: readonly { x: number; y: number; r: number }[] = []): Prism[] {
+export function bowlPrisms(
+  clear: readonly { x: number; y: number; r: number }[] = [],
+  kind: FallsKind = fallsKind(),
+): Prism[] {
   const r = mulberry32(BOWL.seed);
   const out: Prism[] = [];
   const [s0, s1] = BOWL.size;
@@ -130,8 +150,17 @@ export function bowlPrisms(clear: readonly { x: number; y: number; r: number }[]
       const runR = mulberry32(BOWL.seed * 1000 + row * 97 + run)();
       const [lo, hi] = ROW_SHARE[row] ?? [0.97, 1];
       const share = lo + (hi - lo) * (0.8 * runR + 0.2 * r());
-      const ledge = row < LEDGE.length && Math.abs(wrap(az - FALLS_AZ)) < ALCOVE_HALF;
-      const top = ledge ? (LEDGE[row] as number) + (r() - 0.5) * 0.2 : Math.min(rim, rim * share);
+      const inAlcove = Math.abs(wrap(az - FALLS_AZ)) < ALCOVE_HALF;
+      const ledge = row < LEDGE.length && inAlcove;
+      // (one draw of r() in every branch, so every other prism of the bowl stays where it was)
+      let top = ledge ? (LEDGE[row] as number) + (r() - 0.5) * 0.2 : Math.min(rim, rim * share);
+      if (ledge && kind !== 'old') {
+        const a = wrap(az - FALLS_AZ);
+        const struck = kind === 'shoulder' && a >= SHOULDER.az[0] && a <= SHOULDER.az[1];
+        top = struck
+          ? (SHOULDER.tops[row] as number) + (top - (LEDGE[row] as number))
+          : STUMP[0] + (STUMP[1] - STUMP[0]) * (top - (LEDGE[row] as number) + 0.1) * 5;
+      } else if (inAlcove && row === LEDGE.length && kind !== 'old') top = rim; // the lip: the fall leaves this row's top
       const lean = rad(wallLean(az) + (r() - 0.5) * 1.2);
       const out_ = [Math.sin(rad(az)), Math.cos(rad(az))];
       const x = BOWL.x + out_[0] * rr;
@@ -206,7 +235,7 @@ export function bowlPrisms(clear: readonly { x: number; y: number; r: number }[]
   return out;
 }
 
-/** One ribbon of falling water (coast axes): its lip, its foot, and its half-width at each. */
+/** One ribbon of falling water (coast axes): its lip, its foot, and its half-width at each (M5's two tiers). */
 export interface Ribbon {
   x: number;
   yLip: number;
@@ -218,20 +247,47 @@ export interface Ribbon {
   seed: number;
 }
 
-export interface FallsLayout {
-  ribbons: Ribbon[];
-  /** where the lower tier lands: the boiling foam's disc */
-  pool: { x: number; y: number; r: number };
-  /** mist sources: the ledge and the pool (centre, half-width across, depth, height) */
-  mists: { x: number; y: number; z: number; w: number; d: number }[];
+/** A row across a strand of water (coast axes): its centre, half-width, the seconds its water has fallen (the
+ * shader's streaks move with it) and how white it is (0 glassy at the lip, 1 broken). */
+export interface FallRow {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  fall: number;
+  white: number;
 }
 
-/**
- * Pure: the falls in two tiers from the bowl's alcove (plan M5 Task 2; research/m5-night-references.md "The falls";
- * owner `waterfall` 2, 4, 8, 10): the upper tier narrow, from the rim onto the ledge; the lower spreading from the ledge
- * into the lagoon; each tier split into ribbons of different widths, wet rock between. Never one even sheet.
- */
-export function fallsLayout(): FallsLayout {
+/** One strip of the falls, lip (or strike) to foot. `after`: the strand whose strike it falls on from. */
+export interface Strand {
+  rows: FallRow[];
+  seed: number;
+  after?: number;
+}
+
+export interface FallsLayout {
+  kind: FallsKind;
+  strands: Strand[];
+  /** where the water lands: the boiling foam's disc */
+  pool: { x: number; y: number; r: number };
+  /** mist sources: the pool, and the strike (shoulder) or the ledge (old) (centre, half-width across, depth, height) */
+  mists: { x: number; y: number; z: number; w: number; d: number }[];
+  /** the white skirt of spray at the foot (Abiqua: ~3 x the fall's foot across, ~25 % of the drop high) */
+  skirt: { x: number; y: number; r0: number; r1: number; h: number } | null;
+  /** the shoulder strike, where there is one */
+  strike: { x: number; y: number; z: number } | null;
+}
+
+export const FALL_ROWS = 40;
+const G = 9.8;
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const smooth = (v: number) => {
+  const t = clamp01(v);
+  return t * t * (3 - 2 * t);
+};
+
+/** M5's two tiers as rows (kept for `?falls=old`). */
+function oldRibbons(): { ribbons: Ribbon[]; pool: FallsLayout['pool']; mists: FallsLayout['mists'] } {
   const R = wallRadius(FALLS_AZ);
   const step = BOWL.spacing * 0.87;
   const col = (BOWL.size[0] + BOWL.size[1]) / 2;
@@ -239,7 +295,6 @@ export function fallsLayout(): FallsLayout {
   const x = BOWL.x;
   const rim = wallHeight(FALLS_AZ) - 0.1;
   const ledge = LEDGE[LEDGE.length - 1] as number;
-  // the upper tier runs down the face of the first row behind the ledge, the lower from the ledge's front edge
   const upperFace = R + step * LEDGE.length - col - 0.3;
   const lowerFace = R - col - 0.3;
   const upper = (dx: number, w0: number, w1: number, seed: number): Ribbon => ({
@@ -276,6 +331,115 @@ export function fallsLayout(): FallsLayout {
       { x: x - 0.5, y: y(lowerFace - 2.2), z: 0.6, w: 11, d: 7 },
       { x: x - 0.5, y: y(lowerFace + 0.8), z: ledge + 0.3, w: 3, d: 1.2 },
     ],
+  };
+}
+
+/**
+ * The ropes of the new falls (M8.5 #9; Abiqua, owner `waterfall` 5): lip centre, foot centre (x), half-width at lip
+ * and foot, seed, and whether it strikes the shoulder. Four ropes of uneven width that touch above and part a little
+ * below, and one thin stray strand on the right. Widened to the east: the ride to Midnight passes the left edge.
+ */
+const ROPES: readonly (readonly [number, number, number, number, number, boolean])[] = [
+  [-322.2, -322.6, 1.0, 1.5, 1, false],
+  [-319.9, -320.0, 1.3, 1.8, 2, false],
+  [-317.7, -317.5, 1.0, 1.4, 3, false],
+  [-315.8, -315.3, 0.8, 1.2, 4, true],
+  [-313.6, -312.9, 0.22, 0.4, 5, true],
+];
+/** The lip's forward speed (m/s): the sheet clears the alcove's stumps and lands ~2.6 m out. */
+const THROW = 0.95;
+
+/**
+ * Pure: the falls (research/m85-night-falls-and-walls.md §3). `plunge` and `shoulder` are one body of water from the rim
+ * to the lagoon; in `shoulder` the right third strikes the broken columns at ~16 m, bursts white, kicks out and falls
+ * on wider with its speed restarted. `old` is M5's two tiers.
+ */
+export function fallsLayout(kind: FallsKind = fallsKind()): FallsLayout {
+  if (kind === 'old') {
+    const o = oldRibbons();
+    const strands = o.ribbons.map((rb) => {
+      const rows: FallRow[] = [];
+      const drop = rb.zTop - rb.zFoot;
+      for (let i = 0; i <= FALL_ROWS; i++) {
+        const tt = i / FALL_ROWS;
+        rows.push({
+          x: rb.x,
+          y: rb.yLip + (rb.yFoot - rb.yLip) * Math.sqrt(tt),
+          z: rb.zTop + (rb.zFoot - rb.zTop) * tt,
+          w: rb.w0 + (rb.w1 - rb.w0) * tt,
+          fall: Math.sqrt((2 * tt * drop) / G),
+          white: Math.max(clamp01((tt - 0.02) / 0.26), rb.seed >= 3 ? 0.75 : 0),
+        });
+      }
+      return { rows, seed: rb.seed };
+    });
+    return { kind, strands, pool: o.pool, mists: o.mists, skirt: null, strike: null };
+  }
+  const R = wallRadius(FALLS_AZ);
+  const step = BOWL.spacing * 0.87;
+  const col = (BOWL.size[0] + BOWL.size[1]) / 2;
+  const yLip = BOWL.y + R + step * LEDGE.length - col - 0.3;
+  const rim = wallHeight(FALLS_AZ) - 0.1;
+  const free = (x0: number, x1: number, w0: number, w1: number, z: number): FallRow => {
+    const d = rim - z;
+    const t = Math.sqrt((2 * d) / G);
+    const f = d / rim;
+    // s26 look: straight ropes made a rectangle curtain; each sways and necks a little down the drop (its own phase)
+    const sway = 0.15 * Math.sin(d * 0.31 + x0 * 1.7) * Math.min(1, d / 4);
+    const neck = 1.08 + 0.07 * Math.sin(d * 0.47 + x0 * 2.3) * Math.min(1, d / 4);
+    return {
+      x: x0 + (x1 - x0) * f + sway,
+      y: yLip - THROW * t,
+      z,
+      w: (w0 + (w1 - w0) * f) * neck,
+      fall: t,
+      white: clamp01((d - 0.5) / 4),
+    };
+  };
+  const strands: Strand[] = [];
+  let strike: FallsLayout['strike'] = null;
+  for (const [x0, x1, w0, w1, seed, struck] of ROPES) {
+    const zS = kind === 'shoulder' && struck ? (SHOULDER.tops[1] as number) + (seed === 5 ? -0.4 : 0.2) : 0;
+    const upper: FallRow[] = [];
+    for (let i = 0; i <= FALL_ROWS; i++) upper.push(free(x0, x1, w0, w1, rim + (zS - rim) * (i / FALL_ROWS)));
+    strands.push({ rows: upper, seed });
+    if (zS <= 0) continue;
+    // the strike: it lands, turns white and spreads, and spills on wider than it arrived (owner `waterfall` 4, 8)
+    const at = upper[upper.length - 1] as FallRow;
+    const tr = 0.45 * Math.sqrt((2 * (rim - zS)) / G);
+    const vr = G * tr;
+    const lower: FallRow[] = [];
+    for (let i = 0; i <= FALL_ROWS; i++) {
+      const z = zS + 0.3 - (zS + 0.3) * (i / FALL_ROWS);
+      const ds = Math.max(0, zS - z);
+      const tt = (-vr + Math.sqrt(vr * vr + 2 * G * ds)) / G;
+      const plain = free(x0, x1, w0, w1, z);
+      lower.push({
+        x: plain.x + 0.5 * smooth(ds / 4),
+        y: at.y - 1.1 * smooth(ds / 2.5) - 0.4 * tt,
+        z,
+        w: plain.w * (1 + 0.35 * smooth(ds / 3)),
+        fall: tr + tt,
+        white: 1,
+      });
+    }
+    strands.push({ rows: lower, seed: seed + 10, after: strands.length - 1 });
+    if (seed === 4) strike = { x: at.x, y: at.y, z: zS };
+  }
+  const yFoot = yLip - THROW * Math.sqrt((2 * rim) / G);
+  const px = (ROPES[0][1] + ROPES[3][1]) / 2;
+  return {
+    kind,
+    strands,
+    pool: { x: px, y: yFoot - 1.0, r: 8 },
+    mists: [
+      { x: px, y: yFoot - 0.6, z: 0.6, w: 14, d: 8 },
+      strike
+        ? { x: strike.x + 0.6, y: strike.y - 0.8, z: strike.z - 0.6, w: 2.5, d: 1.4 }
+        : { x: px, y: yFoot - 0.2, z: 2.4, w: 9, d: 2.5 },
+    ],
+    skirt: { x: px, y: yFoot, r0: 5.5, r1: 14, h: 8.5 },
+    strike,
   };
 }
 
