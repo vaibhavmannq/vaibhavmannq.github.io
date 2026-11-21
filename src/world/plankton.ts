@@ -11,7 +11,6 @@ import {
   select,
   sin,
   smoothstep,
-  sqrt,
   step,
   time,
   uniform,
@@ -23,7 +22,6 @@ import {
 import {
   AdditiveBlending,
   Float32BufferAttribute,
-  Group,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   Mesh,
@@ -32,10 +30,8 @@ import {
   Vector4,
 } from 'three/webgpu';
 import { mulberry32 } from '../shared/random';
-import type { LightUniforms } from './light';
 import { EYE_ONLY_LAYER } from './meadow';
 import type { WorldPart } from './part';
-import { MAIN_WAVE, SEA_CLOCK, SEA_STATE } from './sea';
 import { createStirs, STIR_N, type Stirs } from './stir';
 
 type F = Node<'float'>;
@@ -89,15 +85,10 @@ export const STIR_SPARKS = 40;
 const TILE = 40;
 
 /**
- * Pure: the sea's main wave (sea.ts MAIN_WAVE, round 1b), whose crests set when the waterline flares and splashes:
- * direction (three.js x, z), wavenumber (rad/m) and angular speed (rad/s), on the sea's own clock (SEA_CLOCK).
+ * Pure: the long ripple the sea draws first (sea.ts WAVES[0]), whose crests set when the waterline flares: direction
+ * (three.js x, z), wavenumber (rad/m) and angular speed (rad/s), so the flares arrive with the ripples you see.
  */
-export const LONG_RIPPLE = {
-  dx: Math.cos((MAIN_WAVE.deg * Math.PI) / 180),
-  dz: Math.sin((MAIN_WAVE.deg * Math.PI) / 180),
-  k: (2 * Math.PI) / MAIN_WAVE.len,
-  w: Math.sqrt((9.8 * 2 * Math.PI) / MAIN_WAVE.len),
-};
+export const LONG_RIPPLE = { dx: 0.9, dz: 0.42, k: 0.6, w: Math.sqrt(9.8 * 0.6) * 0.6 };
 
 /**
  * Sea sparkle (plan M4 Task 1; reference book §6; owner `plankton` 1–6, videos 1–3; research/m4-blue-hour-references.md):
@@ -112,7 +103,7 @@ export const LONG_RIPPLE = {
  * the ones that are dark this frame to nothing. Under reduced motion nothing flashes on its own: only the water the
  * visitor stirs lights, without the flicker.
  */
-export function createPlankton(feet: Float32Array, reduced = false, light?: LightUniforms): WorldPart {
+export function createPlankton(feet: Float32Array, reduced = false): WorldPart {
   const nFeet = Math.min(FEET_MAX, feet.length / 2);
   const n = nFeet + FLATS + STIR_N * STIR_SPARKS;
   const r = mulberry32(475);
@@ -185,22 +176,21 @@ export function createPlankton(feet: Float32Array, reduced = false, light?: Ligh
   const at = select(isFeet, sp.xy, select(isFlats, flatsAt, stirAt)) as Node<'vec2'>;
   const dist = vec3(at.x, 0, at.y).sub(cameraPosition).length();
 
-  // when: the waterline flares as each crest of the sea's main wave hits it (sea.ts: θ = k·D·x − ω·t, crest at θ = π/2;
-  // 65 % of crests light a spark), a little brighter the higher the sea (owner round 1b: "when splashing against the
-  // walls in Blue hour, show plankton")
+  // when: the waterline flares a beat after each crest of the long ripple passes it (65 % of crests light a spark)
   const { dx, dz, k, w } = LONG_RIPPLE;
-  const cyc = float(Math.PI / 2)
-    .sub(at.x.mul(dx * k).add(at.y.mul(dz * k)))
-    .add(SEA_CLOCK.mul(w))
+  const cyc = at.x
+    .mul(dx * k)
+    .add(at.y.mul(dz * k))
+    .add(time.mul(w))
     .div(2 * Math.PI);
-  const hit = fract(cyc).mul((2 * Math.PI) / w);
-  const since = hit.sub(h3.mul(0.15));
+  const since = fract(cyc)
+    .mul((2 * Math.PI) / w)
+    .sub(h3.mul(0.4));
   const fires = step(0.35, fract(sin(floor(cyc).add(seed.mul(7.13))).mul(43758.5453)));
   const feetB = step(0, since)
     .mul(exp(since.div(-0.45)))
     .mul(fires)
     .mul(h4.mul(0.5).add(0.5))
-    .mul(SEA_STATE.mul(4.0).add(0.7))
     .mul(smoothstep(450, 220, dist));
   // a rare spark on the flats, each on its own 6–20 s clock, gone in a quarter second
   const period = h3.mul(14).add(6);
@@ -243,46 +233,11 @@ export function createPlankton(feet: Float32Array, reduced = false, light?: Ligh
   mesh.layers.set(EYE_ONLY_LAYER);
   mesh.visible = false;
 
-  // Spray (round 1b): where the rock meets the water, each crest of the main wave throws up a puff of white water that
-  // rises, hangs and falls back within a second, higher the higher the sea, on the same crests as the flares (and the
-  // same 65 %). Same instances, waterline points only; soft sprites lit like the surf's foam.
-  const hop = hit.sub(h3.mul(0.05));
-  const rise = float(0.45).add(h5.mul(0.25));
-  const up = hop.div(rise);
-  const tall = SEA_STATE.div(0.12).mul(h4.mul(2.0).add(1.2)).min(4.0);
-  const lift = tall.mul(up.mul(float(2).sub(up))).max(0);
-  const life = step(0, hop)
-    .mul(smoothstep(rise.mul(2.2), rise.mul(0.6), hop))
-    .mul(fires);
-  const sprayA = life
-    .mul(isFeet.select(float(1), float(0)))
-    .mul(smoothstep(0.015, 0.05, SEA_STATE))
-    .mul(smoothstep(320, 120, dist)) as F;
-  const sm = new SpriteNodeMaterial({ transparent: true, depthWrite: false });
-  sm.name = 'spray.material';
-  sm.positionNode = vec3(at.x, lift.mul(0.55).add(0.1), at.y);
-  sm.scaleNode = vec2(
-    float(0.6)
-      .add(sqrt(hop.max(0)).mul(1.6))
-      .mul(h2.mul(0.7).add(0.6))
-      .mul(step(0.003, sprayA)),
-  );
-  const foamLight = light ? light.ambSky.mul(2.6).add(light.keyColor.mul(0.7)) : vec3(0.85, 0.85, 0.95);
-  sm.colorNode = foamLight;
-  sm.opacityNode = core.mul(sprayA).mul(0.75);
-  const spray = new Mesh(g, sm);
-  spray.frustumCulled = false;
-  spray.renderOrder = 2;
-  spray.layers.set(EYE_ONLY_LAYER);
-  const both = new Group();
-  both.add(mesh, spray);
-
   return {
-    object: both,
+    object: mesh,
     update(f) {
       strength.value = f.hour.plankton;
       mesh.visible = f.hour.plankton > 0.001;
-      spray.visible = SEA_STATE.value > 0.015;
       if (!mesh.visible) return;
       nowS.value = f.timeS;
       const fov = ((f.pose.fov ?? 50) * Math.PI) / 180;
@@ -300,7 +255,6 @@ export function createPlankton(feet: Float32Array, reduced = false, light?: Ligh
     dispose() {
       g.dispose();
       m.dispose();
-      sm.dispose();
     },
   };
 }
