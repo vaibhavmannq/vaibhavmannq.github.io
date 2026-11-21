@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-21, session s24 (see `docs/handover/sessions/2026-11-21-s24-m8.5-round1-batch1-gpu.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-21, session s25 (see `docs/handover/sessions/2026-11-21-s25-m8.5-round1-batch2.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -276,8 +276,14 @@ no borrowed set pieces (no towers, piano, etc.).
     time (D49). Phone: ultra all night, 59–60 fps.
   - #17d (the upscaler) is a WIP commit, off, never seen running. Check scripts this session: `.superpowers/m85/`
     (`world-sheet.mjs`, `gpu-sweep.mjs`, `phone-night-cdp.mjs`, `flight-ab.mjs`, `card-check.mjs`).
-- **Next (s25): finish #17d** (wire `?up=1`/`?sharp=` in boot, sea `reflect × scale` when upscaling, measure, judge,
-  show), **then Round 1 from #3b** in the s24 log's order. D47 for every whole-world change (`world-sheet.mjs`).
+- **s25 (2026-11-21): M8.5 Round 1 batch 2** (log `sessions/2026-11-21-s25-m8.5-round1-batch2.md`; ledger R178–R184; not pushed).
+  - #17d the upscaler behind `?up=1`: works, barely visible, costs 1–2 ms at low; my call: keep it off.
+  - #3b the light turns through the whole flight; no false sun, moon or aurora while one light hands over to another.
+  - #2: columns on Golden's right bank, shrubs on Dusk's slopes (`src/world/crags.ts`, per stop); Sunrise's left is #13.
+  - Owner: stacks' scrub caps removed. Research for #9 and #13 in `docs/handover/research/m85-*.md`; the owner's photos
+    and the yardstick in `research/m85-owner-photos-s25.md`. Batch-end checks: `world-sheet.mjs`, `netcheck.mjs`, `census.mjs`.
+- **Next (s26):** batch-2 verdicts and the two owner questions (s25 log, Open), then Round 1 from #4/#5, #13, #9, #10, #8,
+  #12, #14, #3a, waves (D47 rules; batches of 3–5).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
