@@ -336,3 +336,9 @@ the clean plunge behind a switch, judge them, keep one. #13 (the shore): "I don'
 painted or photographed backdrop; a scanned cliff face is allowed because it is 3D geometry lit by the world (a
 photogrammetry mesh), not a picture. He also wrote "I don't like the sky": every hour's sky is a still photo on a sphere (the cause of #3a,
 "clouds feel like a background image"); whether #3a moves earlier is asked (s25). Ledger R185.
+
+**D51 · 2026-11-21 · (owner, s26) The bar is Apple-level care, judged by people.** "I want Apple level dedication and
+perfection on this site … they understand human psychology, this website isn't for bots and scrapers but for humans
+to experience." Every piece is judged by how it reads to a person in motion, not by a passing test; tests guard what
+must not break. Also s26 (my call, owner to confirm by flipping `?falls=`): Night's falls are the single plunge, not the
+shoulder (ledger R195). Ledger R196.

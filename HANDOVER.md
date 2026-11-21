@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-21, session s25 (see `docs/handover/sessions/2026-11-21-s25-m8.5-round1-batch2.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-21, session s26 (see `docs/handover/sessions/2026-11-21-s26-m8.5-shore-and-falls.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -285,10 +285,15 @@ no borrowed set pieces (no towers, piano, etc.).
   - Batch 2 accepted and pushed (D50). #4 Sunset's poppies and #5 Dusk's silhouetted stacks and flowers built (batch 3).
   - Batch 3 after the owner's test: Sunset's poppies in dense drifts, Dusk's flowers cut back (R188); phone 59.5–59.8 fps
     at every cove stop on ultra (R189). All pushed (a1bab1a). #13 Task 0 done: `tools/world/shore_map.py` (R190).
-- **Next (s26): #13 Tasks 1–5** per `research/m85-shore-outline.md` (coast.py outlines with Python tests first; Blender
-  export; bake chain; D47 sheet; `shore_map.py --before .superpowers/m85/shore/before.npz`). Then #9 (build both falls,
-  pick one: D50), #10, #8,
-  #12, #14, #3a, waves (D47 rules; batches of 3–5).
+- **s26 (2026-11-21): #13 the shore done, #9's falls built** (log `sessions/2026-11-21-s26-m8.5-shore-and-falls.md`;
+  ledger R191–R196; D51; not pushed).
+  - The cove is no longer four boxes: outlines in coast.py (`right_face_shift`, `left_face_shift` + `LEFT_TIP`,
+    `terrace_sd`, the terrace's rolling top), cameras and spots protected (`PROTECT`), 55 cliff columns along the faces
+    (`face_rocks`, `rocks_along`), tests `tools/world/test_shore.py`. Sunrise 82, First light 81, Dusk 82, Golden 80 %.
+  - Night's falls: `?falls=plunge|shoulder|old`; my pick and the default is the plunge (74 %). Owner to confirm.
+  - Owner page: https://claude.ai/artifact/8mTk9y589yNC4GTeZF2yj2 . Owner's bar (D51): Apple-level care, for humans.
+- **Next (s27):** #9's walls (research `m85-night-falls-and-walls.md` Tasks 0, 2, 3), then #10, #8, #12, #14, #3a,
+  waves (D47 rules; batches of 3–5). Remove `?falls=` when the owner confirms the plunge.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
