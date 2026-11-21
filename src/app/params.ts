@@ -22,6 +22,10 @@ export interface Params {
   auroraActive: boolean;
   /** `?gpu`: track the GPU's time per frame (benchmarks only). */
   gpu: boolean;
+  /** `?up=1`: below full size, draw the scene smaller and upscale it with a sharpen (M8.5 #17d; trial). */
+  up: boolean;
+  /** `?sharp=0..1`: the upscaler's sharpen strength (default 0.5). */
+  sharp: number;
 }
 
 export function readParams(search: string): Params {
@@ -33,7 +37,11 @@ export function readParams(search: string): Params {
     nogl: q.has('nogl'),
     auroraActive: q.get('aurora') === 'active',
     gpu: q.has('gpu'),
+    up: q.get('up') === '1',
+    sharp: 0.5,
   };
+  const sharp = Number.parseFloat(q.get('sharp') ?? '');
+  if (Number.isFinite(sharp)) params.sharp = Math.min(1, Math.max(0, sharp));
   const tier = TIER_NAMES.indexOf(q.get('tier') as (typeof TIER_NAMES)[number]);
   if (tier >= 0) params.tier = tier as Tier;
   const p = Number.parseFloat(q.get('p') ?? '');

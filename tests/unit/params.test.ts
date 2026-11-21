@@ -10,6 +10,8 @@ describe('URL flags (spec §17)', () => {
       nogl: false,
       auroraActive: false,
       gpu: false,
+      up: false,
+      sharp: 0.5,
     });
   });
 
@@ -41,5 +43,13 @@ describe('URL flags (spec §17)', () => {
       webgl: true,
       nogl: true,
     });
+  });
+
+  // M8.5 #17d: the upscaler is a trial switch, off unless asked; its sharpen stays in 0..1
+  it('reads the upscaler switch and its sharpen', () => {
+    expect(readParams('').up).toBe(false);
+    expect(readParams('').sharp).toBe(0.5);
+    expect(readParams('?up=1&sharp=0.8')).toMatchObject({ up: true, sharp: 0.8 });
+    expect(readParams('?up=0&sharp=3')).toMatchObject({ up: false, sharp: 1 });
   });
 });

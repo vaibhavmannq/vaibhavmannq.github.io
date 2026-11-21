@@ -508,7 +508,7 @@ export async function boot(): Promise<App> {
   let pipeline: Pipeline | null = null;
   if (!params.nogl) {
     try {
-      pipeline = await createPipeline(host, params.webgl, params.gpu);
+      pipeline = await createPipeline(host, params.webgl, params.gpu, { up: params.up, sharp: params.sharp });
     } catch (error) {
       console.warn('No GPU path; showing the stills.', error);
     }
@@ -540,7 +540,12 @@ export async function boot(): Promise<App> {
     ...(urlQ.has('reflect') ? { reflect: Number(urlQ.get('reflect')) } : {}),
     ...(urlQ.has('bloom') ? { bloom: urlQ.get('bloom') === '1' } : {}),
   };
-  const settings = (t: Tier): TierSettings => ({ ...TIERS[t], ...quality });
+  // Upscaling (?up=1, M8.5 #17d) keeps the canvas at full size; the sea's mirror sizes from the canvas, so its share
+  // shrinks by the tier's scale to keep the mirror's pixels (and cost) where they were.
+  const settings = (t: Tier): TierSettings => {
+    const s = { ...TIERS[t], ...quality };
+    return params.up && s.scale < 1 ? { ...s, reflect: s.reflect * s.scale } : s;
+  };
   const applyTier = (t: Tier) => {
     tier = t;
     app.tier = t;

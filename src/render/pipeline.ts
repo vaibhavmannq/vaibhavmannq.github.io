@@ -57,7 +57,6 @@ export interface Pipeline {
   setMirror(mirror: Mirror | null): void;
 }
 
-/** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
 /**
  * The upscaler (M8.5 #17, s24). Below full size the canvas used to shrink with the tier and the browser stretched it:
  * every edge and the text-sharp detail blurred together. Now the canvas stays full size, only the scene pass draws
@@ -70,6 +69,7 @@ export interface Upscale {
   sharp: number;
 }
 
+/** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
 export async function createPipeline(
   host: HTMLElement,
   forceWebGL: boolean,
@@ -158,7 +158,8 @@ export async function createPipeline(
       // The glow is fed light capped at BLOOM_CAP (plan M8 Task 7, s22): the sun's road on the water reaches tens of
       // units, and uncapped its bloom spread a white haze over Golden's near sand and lantern and a hot patch at Blue
       // hour's arch (the renders show a compact sun and its reflection). Lanterns, falls and fireflies sit under it.
-      const capped = vec4((color as unknown as Node<'vec4'>).rgb.min(BLOOM_CAP), 1) as unknown as typeof color;
+      // fed from the unsharpened pass: the bloom blurs anyway, and the sharpen's five taps per bloom texel cost for nothing
+      const capped = vec4((raw as unknown as Node<'vec4'>).rgb.min(BLOOM_CAP), 1) as unknown as typeof color;
       bloomNode = bloom(capped, 0.22, 0.45, 1.6);
       applyScale();
       glow = grade(color.add(bloomNode) as Node<'vec4'>);
