@@ -3,12 +3,15 @@ import {
   acesFilmicToneMapping,
   dot,
   float,
+  max,
+  min,
   pass,
   saturation,
   screenSize,
   screenUV,
   smoothstep,
   sRGBTransferOETF,
+  uniform,
   vec2,
   vec3,
   vec4,
@@ -55,7 +58,24 @@ export interface Pipeline {
 }
 
 /** Throws if neither WebGPU nor WebGL2 is available; boot shows the stills instead. */
-export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpuTimer = false): Promise<Pipeline> {
+/**
+ * The upscaler (M8.5 #17, s24). Below full size the canvas used to shrink with the tier and the browser stretched it:
+ * every edge and the text-sharp detail blurred together. Now the canvas stays full size, only the scene pass draws
+ * smaller, and the last pass upscales it with a contrast-adaptive sharpen (after AMD's CAS: five taps, a weight from the
+ * local contrast, so flat sky stays smooth and edges get their crispness back). `up` and `sharp` are the switches.
+ */
+export interface Upscale {
+  up: boolean;
+  /** 0 (none) .. 1 (strongest). */
+  sharp: number;
+}
+
+export async function createPipeline(
+  host: HTMLElement,
+  forceWebGL: boolean,
+  gpuTimer = false,
+  upscale: Upscale = { up: false, sharp: 0.5 },
+): Promise<Pipeline> {
   const renderer = new WebGPURenderer({
     antialias: false,
     forceWebGL,
@@ -80,6 +100,13 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
   let view: { scene: Scene; camera: Camera } | null = null;
   let scenePass: ReturnType<typeof pass> | null = null;
   let mirror: Mirror | null = null;
+  // the scene pass's share of the canvas (1 when not upscaling), and the bloom kept at its old cost
+  const sceneScale = uniform(1);
+  let bloomNode: ReturnType<typeof bloom> | null = null;
+  const applyScale = () => {
+    scenePass?.setResolutionScale(sceneScale.value);
+    bloomNode?.setResolutionScale(0.5 * sceneScale.value);
+  };
   const select = () => {
     const next = bloomOn ? glow : plain;
     if (!next) return;
@@ -93,7 +120,24 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
     setScene(scene, camera, light) {
       view = { scene, camera };
       scenePass = pass(scene, camera);
-      const color = scenePass.getTextureNode('output');
+      const raw = scenePass.getTextureNode('output');
+      applyScale();
+      // the contrast-adaptive sharpen, in the scene's own texels; the weight comes from brightness so colours keep
+      const texel = vec2(1).div(screenSize.mul(sceneScale));
+      const tap = (x: number, y: number) => raw.sample(screenUV.add(vec2(x, y).mul(texel))).rgb as Node<'vec3'>;
+      const c = raw.sample(screenUV).rgb as Node<'vec3'>;
+      const [n, w, e, so] = [tap(0, -1), tap(-1, 0), tap(1, 0), tap(0, 1)];
+      const luma = (v: Node<'vec3'>) => {
+        const l = dot(v, vec3(0.2126, 0.7152, 0.0722));
+        return l.div(l.add(1)); // compressed, as CAS expects 0..1
+      };
+      const [lc, ln, lw, le, ls] = [luma(c), luma(n), luma(w), luma(e), luma(so)];
+      const mn = min(lc, min(min(ln, lw), min(le, ls)));
+      const mx = max(lc, max(max(ln, lw), max(le, ls)));
+      const amp = min(mn, float(1).sub(mx)).div(mx.add(1e-4)).clamp(0, 1).sqrt();
+      const wgt = amp.mul(float(-1).div(float(8).sub(float(3).mul(upscale.sharp))));
+      const sharpened = max(c.add(n.add(w).add(e).add(so).mul(wgt)).div(wgt.mul(4).add(1)), vec3(0));
+      const color = (upscale.up ? vec4(sharpened, 1) : raw) as unknown as typeof raw;
       // The renders' vivid grade (grade.py, as in the slice): ACES, saturation 1.32, a warm tint, a soft vignette.
       const grade = (c: Node<'vec4'>): Node<'vec4'> => {
         let g = acesFilmicToneMapping(c.rgb, light.exposure) as Node<'vec3'>;
@@ -115,11 +159,17 @@ export async function createPipeline(host: HTMLElement, forceWebGL: boolean, gpu
       // units, and uncapped its bloom spread a white haze over Golden's near sand and lantern and a hot patch at Blue
       // hour's arch (the renders show a compact sun and its reflection). Lanterns, falls and fireflies sit under it.
       const capped = vec4((color as unknown as Node<'vec4'>).rgb.min(BLOOM_CAP), 1) as unknown as typeof color;
-      glow = grade(color.add(bloom(capped, 0.22, 0.45, 1.6)) as Node<'vec4'>);
+      bloomNode = bloom(capped, 0.22, 0.45, 1.6);
+      applyScale();
+      glow = grade(color.add(bloomNode) as Node<'vec4'>);
       select();
     },
     setTier(t, devicePixelRatio) {
-      renderer.setPixelRatio(devicePixelRatio * t.scale);
+      // upscaling below full size: the canvas at full size, the scene pass at the tier's share of it
+      const up = upscale.up && t.scale < 1;
+      renderer.setPixelRatio(devicePixelRatio * (up ? 1 : t.scale));
+      sceneScale.value = up ? t.scale : 1;
+      applyScale();
       if (t.bloom !== bloomOn) {
         bloomOn = t.bloom;
         select();
