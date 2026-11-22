@@ -39,7 +39,7 @@ import { createSound } from '../sound/engine';
 import { mountSoundToggle } from '../sound/toggle';
 import { createArch, createRockMaterial, decodeArch, type RimKey } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
-import { loadBakedMaps } from '../world/baked';
+import { loadBakedMaps, nearTapsFor } from '../world/baked';
 import { BOWL, bowlPrisms, createBowl, fallsLayout, ledgePlants, rimTrees } from '../world/bowl';
 import { capInstances } from '../world/caps';
 import { caveLightSliced, caveLure, createCave, decodeCave, fungiLightSliced } from '../world/cave';
@@ -1295,6 +1295,7 @@ export async function boot(): Promise<App> {
     const ambA = ambients[state.a] ?? ambients[0];
     const ambB = ambients[state.b] ?? ambients[0];
     if (ambA && ambB) light.apply(lightValues(hour, ambA, ambB, state.skyWeight), camera.position);
+    light.baked.uniforms.nearTaps.value = nearTapsFor(app.tier);
     // Sea sparkle answers the pointer and a wading visitor's feet (plan M4 Task 1): stir where they meet the water.
     if (hour.plankton > 0.01) {
       // one stroke at a time: the feet while wading, else the pointer (both share the ring's last point)

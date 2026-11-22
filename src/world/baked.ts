@@ -9,6 +9,7 @@ import {
   Vector2,
 } from 'three/webgpu';
 import { toThree, type Vec3 } from '../journey/types';
+import type { Tier } from '../quality/tiers';
 import { slotTexture } from './slotTexture';
 
 /**
@@ -60,8 +61,13 @@ export const SHADOW_DEPTH: Readonly<Record<string, number>> = {
 };
 /** The fine map hands over to the coarse one over this many metres inside its edge. */
 const FINE_EDGE = 32;
-/** Within this many metres of the eye a shadow reads four texels and blends them; past it, one (s30: -0.x ms). */
-const NEAR_TAPS = 200;
+/**
+ * Within this many metres of the eye a shadow reads four texels and blends them; past it, one (a 4 m texel is under a
+ * pixel there). On low, none: one texel everywhere (`nearTapsFor`; low draws at a reduced size, where the blend hardly
+ * shows, and low is where this laptop has the least room, s30).
+ */
+export const NEAR_TAPS = 200;
+export const nearTapsFor = (tier: Tier): number => (tier === 0 ? 0 : NEAR_TAPS);
 
 const sstep = (e0: number, e1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -223,6 +229,8 @@ export function createBakedLight() {
     coarseStep: uniform(4),
     lo: uniform(0),
     hStep: uniform(0.1),
+    /** metres within which a shadow reads four texels (nearTapsFor: 0 on low); a uniform, so a tier change builds nothing */
+    nearTaps: uniform(NEAR_TAPS),
   };
   let keys: Vec3[] = [];
   let windows: [number, number][] = [];
@@ -315,7 +323,7 @@ export function createBakedLight() {
     Fn(([p]: [Node<'vec3'>]) => {
       const xy = vec2(p.x, p.z.negate());
       const z = p.y as F;
-      const far = oneTexel ? null : (cameraPosition.sub(p).length().greaterThan(NEAR_TAPS) as unknown as F);
+      const far = oneTexel ? null : (cameraPosition.sub(p).length().greaterThan(u.nearTaps) as unknown as F);
       const s = float(1).toVar();
       If(u.weight.greaterThan(0.001), () => {
         const read = (layer: Node<'int'>) => (tex: typeof coarseTex, o: V2, st: F, size: V2) =>

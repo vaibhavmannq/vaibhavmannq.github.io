@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bakedAt, decodeTexel, keyShines, shadowBlend } from '../../src/world/baked';
+import { bakedAt, decodeTexel, keyShines, NEAR_TAPS, nearTapsFor, shadowBlend } from '../../src/world/baked';
 
 const dir = (elDeg: number, azDeg: number): [number, number, number] => {
   const e = (elDeg * Math.PI) / 180;
@@ -46,6 +46,13 @@ describe('shadowBlend', () => {
       expect(Math.abs(now.weight - prev.weight)).toBeLessThan(0.2);
       prev = now;
     }
+  });
+});
+
+describe('nearTapsFor', () => {
+  it('low reads one texel everywhere; mid and up blend four near the eye', () => {
+    expect(nearTapsFor(0)).toBe(0); // low
+    for (const t of [1, 2, 3] as const) expect(nearTapsFor(t)).toBe(NEAR_TAPS);
   });
 });
 
