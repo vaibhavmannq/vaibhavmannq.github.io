@@ -338,7 +338,7 @@ async function loadBase(
   const rock = createRockMaterial(
     lagoon,
     light.aurora as unknown as Parameters<typeof createRockMaterial>[1],
-    light.baked.ao,
+    undefined, // no baked sky share on rock either (R225)
     light as unknown as RimKey,
   );
   const parts: [string, WorldPart][] = [

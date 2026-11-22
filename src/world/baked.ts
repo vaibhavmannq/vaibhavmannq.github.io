@@ -337,7 +337,26 @@ export function createBakedLight() {
       return s;
     });
   const shadowAt = makeShadowAt(false);
-  const plantShadowAt = makeShadowAt(true);
+  /**
+   * Plants (per vertex, every blade): one read of the coarse 4 m map in the nearest hour's layer, shadow and sky's share
+   * from the same texel, no branches (s30, phone at ultra: the full lookup on every grass vertex cost ~3 fps on the
+   * Sunset → Dusk ride and tipped the governor to mid; grass hides 4 m steps).
+   */
+  const plantAt = (p: Node<'vec3'>): Node<'vec2'> => {
+    const xy = vec2(p.x, p.z.negate());
+    const f = xy.sub(u.coarse0).div(u.coarseStep);
+    const at = f.floor().clamp(vec2(0), u.coarseN.sub(1)).add(0.5).div(u.coarseN);
+    const c = coarseTex.sample(at).depth(u.layerA);
+    const h = c.r
+      .mul(255 * 256)
+      .add(c.g.mul(255))
+      .mul(u.hStep)
+      .add(u.lo);
+    const w = c.b.mul(25.5);
+    const lit = smoothstep(h.sub(w), h.add(w), p.y);
+    const out = inside(xy, u.coarse0, u.coarseN.mul(u.coarseStep), 8);
+    return vec2(mix(float(1), lit, u.weight.mul(out)), mix(float(1), c.a, out)) as Node<'vec2'>;
+  };
   /** The sky's share at a point: the same in every hour's map, so the nearest map's layer alone. */
   const aoAt = Fn(([p]: [Node<'vec3'>]) => {
     const xy = vec2(p.x, p.z.negate());
@@ -352,7 +371,7 @@ export function createBakedLight() {
     /** the sky's share at the shaded point (1 = open sky) */
     ao: aoAt(off) as F,
     /** (shadow, ao) at any point: for parts that light themselves per vertex (meadow, grove), whose normals are bent */
-    at: (p: Node<'vec3'>) => vec2(plantShadowAt(p), aoAt(p)) as Node<'vec2'>,
+    at: plantAt,
     uniforms: u,
     get ready() {
       return keys.length > 0;

@@ -341,8 +341,11 @@ no borrowed set pieces (no towers, piano, etc.).
   - Phone setup that works: serve `vite preview --host 127.0.0.1 --port 4181`, run adb reverse and forward right
     before each run, wake the screen (`adb shell input keyevent KEYCODE_WAKEUP`); Brave must be in front; the scripts
     drive the open `localhost:4181` tab.
-  - After a Blender re-export or a coast.py edit: `python tools/world/export_hours.py`, `bake_base.py`,
-    `node tools/world/bake_flights.ts`, `bake_dressing.py`, `node tools/world/manifest.ts`, then `npm run world:report`.
+  - After a Blender re-export or a coast.py edit: `python tools/world/export_hours.py`, `bake_base.py` (it re-bakes the
+    cove patch too; `--patches` alone for just the patch), `node tools/world/bake_flights.ts`, `bake_dressing.py`,
+    **`python tools/world/bake_light.py` (8–11 min: the baked shadows are made from the ground, patch, rocks and trees, so
+    any change to them needs it, or shadows fall in the wrong places)**, `node tools/world/manifest.ts`, then
+    `npm run world:report`.
   - Measuring tools: `.superpowers/m25/*.mjs`, `.superpowers/m3/tools/`, `.superpowers/m4/tools/`, `.superpowers/m5/`,
     `.superpowers/m6/` (`first-ride.mjs`, `shot.mjs`, `strip.mjs`), `.superpowers/m7/tools/` (`flight-strip.mjs`,
     `cavebin.mjs`).

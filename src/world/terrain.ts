@@ -359,8 +359,8 @@ export function createTerrain(
   // a crescent behind the turf lights no glow through it (Midnight's hills glowed daylight green, plan M6 Task 4)
   material.emissiveNode = sheen.add(backlit.mul(float(1).sub(moonlit)));
   material.roughnessNode = mix(float(0.92), float(0.3), wet);
-  // the sky's share each point sees (baked, Task 11): gullies, the feet of cliffs and the bowl's floor take less of it
-  if (light) material.aoNode = light.baked.ao;
+  // No baked sky share on the ground (s30, R225): it barely read in any of the 90 views and cost the phone a tier's worth of
+  // reads on every ground pixel at every hour. The plants keep theirs (one read gives both).
   material.metalnessNode = float(0);
   if (cut) {
     // The cave's own shell and floor stand here; the 8 m ground grid cannot hold its cut floor (the M0/M1 "pit").
