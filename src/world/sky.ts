@@ -104,22 +104,44 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
     return normalize(mix(d, normalize(hit.sub(eye)), smoothstep(0.015, 0.12, d.y)));
   };
 
-  const colorAt = (dir: V3, row?: number): V3 => {
-    if (mode === 'drift' && row === undefined) {
+  /**
+   * The sky seen along `dir`. `drifting`: only for the dome itself (s31: the ground's wet sheen, the cave and the vines
+   * read the sky too, every pixel; with the drift's six reads there, the whole night got 0.3–1.7 ms slower at low). The
+   * water's mirror redraws the dome, so its reflections drift anyway.
+   */
+  // one photo except while the two skies blend (s31, 11d: the second photo's three reads on every sky pixel cost the
+  // phone ~2 fps on the ride into the cave); a uniform branch with explicit levels, built inside an Fn (TSL's If needs one)
+  const driftSky = Fn(([d]: [V3]) => {
+    const here = equirectUV(d);
+    const moved = (tex: typeof texA, eye: V3): V3 => {
+      const at = equirectUV(onCeiling(d, eye));
+      const ratio = decode(tex.sample(here).level(float(LOW_MIP)).rgb).div(
+        decode(tex.sample(at).level(float(LOW_MIP)).rgb).max(1e-4),
+      );
+      return decode(tex.sample(at).level(float(0)).rgb).mul(ratio.clamp(0.25, 4));
+    };
+    const out = vec3(0).toVar();
+    If(u.skyWeight.lessThan(0.001), () => {
+      out.assign(moved(texA, eyeA));
+    })
+      .ElseIf(u.skyWeight.greaterThan(0.999), () => {
+        out.assign(moved(texB, eyeB));
+      })
+      .Else(() => {
+        out.assign(mix(moved(texA, eyeA), moved(texB, eyeB), u.skyWeight));
+      });
+    return out;
+  });
+
+  const colorAt = (dir: V3, row?: number, drifting = false): V3 => {
+    if (drifting && mode === 'drift' && row === undefined) {
       // Phase 2 Task 12: only the photo's detail (its clouds) moves with the ceiling; its broad light (the gradient and
       // the sun's glow, the blurred copy at mip LOW_MIP) stays where it is, as the real sky's would
-      const here = equirectUV(dir);
-      const moved = (tex: typeof texA, eye: V3): V3 => {
-        const at = equirectUV(onCeiling(dir, eye));
-        const ratio = decode(tex.sample(here).level(float(LOW_MIP)).rgb).div(
-          decode(tex.sample(at).level(float(LOW_MIP)).rgb).max(1e-4),
-        );
-        return decode(tex.sample(at).level(float(0)).rgb).mul(ratio.clamp(0.25, 4));
-      };
-      return mix(moved(texA, eyeA), moved(texB, eyeB), u.skyWeight).mul(u.skyGain).mul(u.skyTint);
+      return (driftSky(dir) as unknown as V3).mul(u.skyGain).mul(u.skyTint);
     }
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
-    return mix(decode(texA.sample(st).rgb), decode(texB.sample(st).rgb), u.skyWeight)
+    // level 0 always: with the drift's mipmaps an auto level would blur along the equirect seam (u wraps)
+    return mix(decode(texA.sample(st).level(float(0)).rgb), decode(texB.sample(st).level(float(0)).rgb), u.skyWeight)
       .mul(u.skyGain)
       .mul(u.skyTint);
   };
@@ -129,7 +151,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
   // hour (M0 look note). The soft colours are painted into each photo's bottom rows when it is decoded (skyHorizon.ts).
   const horizonAt = (d: V3): V3 => colorAt(normalize(vec3(d.x, 0, d.z)), HORIZON_V);
   const dir = normalize(positionWorld.sub(cameraPosition));
-  let col = mix(colorAt(dir), horizonAt(dir), smoothstep(0.0, -0.025, dir.y));
+  let col = mix(colorAt(dir, undefined, true), horizonAt(dir), smoothstep(0.0, -0.025, dir.y));
 
   // The sun's disc, only while the key light is the sun (at night the key is the moon, drawn below), and not while the
   // key swings from one light to another (M8.5 #3b: a false sun crossed Blue hour → Night's sky, mirrored as a blob).

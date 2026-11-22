@@ -403,6 +403,12 @@ export function createBakedLight() {
   return {
     /** the key light's share at the shaded point (1 = lit) */
     shadow: shadowAt(off) as F,
+    /**
+     * The key's share from one coarse texel of the nearest hour (the plants' read): for soft extras that repeat the
+     * shadow on top of the light itself, the rock's rim and the turf's backlit glow (s31, 11d: their full four-texel
+     * lookups, with the sky's drift, cost the phone its tier on the ride into the cave).
+     */
+    shadowCheap: plantAt(off).x as F,
     /** the sky's share at the shaded point (1 = open sky) */
     ao: aoAt(off) as F,
     /** (shadow, ao) at any point: for parts that light themselves per vertex (meadow, grove), whose normals are bent */

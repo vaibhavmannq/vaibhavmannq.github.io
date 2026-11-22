@@ -353,7 +353,7 @@ export function createTerrain(
         .mul(smoothstep(0.82, 0.95, normalWorld.y))
         .mul(smoothstep(2.0, 5.0, z))
         .mul(texture(colour, uv()).g.mul(2.2).clamp(0, 1))
-        .mul(light.baked.shadow) // no glow through turf the sun does not reach (Task 11)
+        .mul(light.baked.shadowCheap) // no glow through turf the sun does not reach (Task 11; one coarse texel, 11d)
         .mul(0.5)
     : vec3(0);
   // a crescent behind the turf lights no glow through it (Midnight's hills glowed daylight green, plan M6 Task 4)

@@ -91,7 +91,7 @@ export interface RimKey {
   keyColor: Node<'vec3'>;
   keyStrength: Node<'float'>;
   moonStrength: Node<'float'>;
-  baked: { shadow: Node<'float'> };
+  baked: { shadowCheap: Node<'float'> };
 }
 /** How bright the rim is against the albedo it lights (by eye at Golden and Sunrise, s30). */
 const RIM_GAIN = 1.6;
@@ -252,7 +252,7 @@ export function createRockMaterial(
     glow = glow.add(
       key.keyColor
         .mul(key.keyStrength)
-        .mul(behind.mul(edge).mul(grazing).mul(key.baked.shadow).mul(moonDim))
+        .mul(behind.mul(edge).mul(grazing).mul(key.baked.shadowCheap).mul(moonDim))
         .mul(base)
         .mul(RIM_GAIN),
     ) as V3;
