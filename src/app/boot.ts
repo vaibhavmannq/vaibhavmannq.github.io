@@ -30,6 +30,7 @@ import { createRide } from '../overlay/ride';
 import { createStage } from '../overlay/stage';
 import { DEFAULT_GOVERNOR, Governor } from '../quality/governor';
 import { bootTier, TIERS, type Tier, type TierSettings } from '../quality/tiers';
+import { aaFor, aaModesFor, cutBetween } from '../render/aa';
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
@@ -673,9 +674,12 @@ export async function boot(): Promise<App> {
   // the cove's plants draw for the eye but not in the water's mirror (meadow.ts, sea.ts)
   camera.layers.enable(EYE_ONLY_LAYER);
   let pipeline: Pipeline | null = null;
+  // edge smoothing for the visit (Task 8): fixed once chosen, since a change of mode re-keys every shader (R38)
+  const aaModes = aaModesFor(params.webgl ? 'webgl2' : 'webgpu', params.aa);
+  const aaAt = (t: Tier) => aaFor(t, pipeline?.backend ?? 'webgpu', params.aa);
   if (!params.nogl) {
     try {
-      pipeline = await createPipeline(host, params.webgl, params.gpu, { up: params.up, sharp: params.sharp });
+      pipeline = await createPipeline(host, params.webgl, params.gpu, { up: params.up, sharp: params.sharp }, aaModes);
     } catch (error) {
       console.warn('No GPU path; showing the stills.', error);
     }
@@ -796,6 +800,9 @@ export async function boot(): Promise<App> {
   });
   const named = new Map<string, WorldPart>();
   let tier: Tier = params.tier ?? bootTier(caps);
+  /** set when the tier changes; the next frame throws away the temporal history */
+  let tierChanged = false;
+  let lastPose: Pose | null = null;
   // Loading hitches in the first seconds say nothing about the device (s04: the owner's phone fell to low in its first
   // second and stayed there), so the governor's first 3 s are not judged.
   const governor = new Governor(tier, { ...DEFAULT_GOVERNOR, warmupMs: 3000 });
@@ -810,11 +817,13 @@ export async function boot(): Promise<App> {
   // shrinks by the tier's scale to keep the mirror's pixels (and cost) where they were.
   const settings = (t: Tier): TierSettings => {
     const s = { ...TIERS[t], ...quality };
-    return params.up && s.scale < 1 ? { ...s, reflect: s.reflect * s.scale } : s;
+    return (params.up || aaAt(t) === 'taau') && s.scale < 1 ? { ...s, reflect: s.reflect * s.scale } : s;
   };
   const applyTier = (t: Tier) => {
+    if (t !== tier) tierChanged = true;
     tier = t;
     app.tier = t;
+    pipeline?.setAa(aaAt(t));
     pipeline?.setTier(settings(t), caps.devicePixelRatio);
     for (const part of parts) part.setTier(settings(t));
   };
@@ -1195,6 +1204,10 @@ export async function boot(): Promise<App> {
       ];
     }
     aimCamera(camera, pose);
+    // a cut (a jump, a snap, a new drawing size) throws away the temporal history (Task 8, Review Focus 1, 2)
+    if (lastPose && cutBetween(lastPose, pose, tierChanged)) pipeline?.resetHistory();
+    tierChanged = false;
+    lastPose = { ...pose, position: [...pose.position] };
     if (lantern.object.visible) {
       const [lx, ly] = toScreen(lantern.centre);
       const px = ((pointer[0] + 1) / 2) * window.innerWidth;

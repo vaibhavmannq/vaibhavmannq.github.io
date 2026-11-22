@@ -12,7 +12,13 @@ describe('URL flags (spec §17)', () => {
       gpu: false,
       up: false,
       sharp: 0.5,
+      aa: null,
     });
+  });
+
+  it('reads the edge smoothing by name, and ignores an unknown one', () => {
+    expect(readParams('?aa=taau').aa).toBe('taau');
+    expect(readParams('?aa=msaa').aa).toBeNull();
   });
 
   it('reads the tier by name', () => {

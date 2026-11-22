@@ -1,6 +1,7 @@
 import { stopIndex } from '../journey/stops';
 import type { StopId } from '../journey/types';
 import { TIER_NAMES, type Tier } from '../quality/tiers';
+import { type AaMode, isAaMode } from '../render/aa';
 
 /** Flags read from the URL (spec §17). */
 export interface Params {
@@ -26,6 +27,8 @@ export interface Params {
   up: boolean;
   /** `?sharp=0..1`: the upscaler's sharpen strength (default 0.5). */
   sharp: number;
+  /** `?aa=off|fxaa|smaa|taau`: edge smoothing (plan world-to-100 Task 8); null = the default (render/aa.ts). */
+  aa: AaMode | null;
 }
 
 export function readParams(search: string): Params {
@@ -39,6 +42,7 @@ export function readParams(search: string): Params {
     gpu: q.has('gpu'),
     up: q.get('up') === '1',
     sharp: 0.5,
+    aa: isAaMode(q.get('aa')) ? (q.get('aa') as AaMode) : null,
   };
   const sharp = Number.parseFloat(q.get('sharp') ?? '');
   if (Number.isFinite(sharp)) params.sharp = Math.min(1, Math.max(0, sharp));

@@ -1,11 +1,17 @@
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
+import { smaa } from 'three/addons/tsl/display/SMAANode.js';
+import { taau } from 'three/addons/tsl/display/TAAUNode.js';
 import {
   acesFilmicToneMapping,
   dot,
+  Fn,
   float,
+  getViewPosition,
   max,
   min,
   pass,
+  rtt,
   saturation,
   screenSize,
   screenUV,
@@ -18,6 +24,7 @@ import {
 } from 'three/tsl';
 import {
   type Camera,
+  Matrix4,
   type Node,
   NoToneMapping,
   type Object3D,
@@ -27,6 +34,7 @@ import {
 } from 'three/webgpu';
 import type { LightUniforms } from '../world/light';
 import type { Mirror } from '../world/sea';
+import type { AaMode } from './aa';
 
 /** The brightest a pixel may feed the bloom, scene-linear (s22: Golden's and Blue hour's glare). */
 export const BLOOM_CAP = 3;
@@ -55,6 +63,13 @@ export interface Pipeline {
   compile(object: Object3D, opts?: { mirror?: boolean }): Promise<void>;
   /** The sea's mirror: from now on `compile` also builds each part for it (R38, plan M6). */
   setMirror(mirror: Mirror | null): void;
+  /** Throws away the temporal history (a cut: aa.ts `cutBetween`); a no-op unless the mode is `taau`. */
+  resetHistory(): void;
+  /**
+   * The edge smoothing from now on (one of the modes given at creation). Only the last passes change, never the
+   * world's shaders (TAAU's motion comes from the camera), so it follows the tier; call before `setTier`.
+   */
+  setAa(mode: AaMode): void;
 }
 
 /**
@@ -75,6 +90,7 @@ export async function createPipeline(
   forceWebGL: boolean,
   gpuTimer = false,
   upscale: Upscale = { up: false, sharp: 0.5 },
+  aaModes: readonly AaMode[] = ['off'],
 ): Promise<Pipeline> {
   const renderer = new WebGPURenderer({
     antialias: false,
@@ -94,8 +110,9 @@ export async function createPipeline(
   const pipeline = new RenderPipeline(renderer);
   pipeline.outputColorTransform = false;
 
-  let plain: Node<'vec4'> | null = null;
-  let glow: Node<'vec4'> | null = null;
+  /** the graded output per edge-smoothing mode, without and with bloom */
+  const outputs = new Map<AaMode, { plain: Node<'vec4'>; glow: Node<'vec4'> }>();
+  let aaNow: AaMode = aaModes[0] ?? 'off';
   let bloomOn = false;
   let view: { scene: Scene; camera: Camera } | null = null;
   let scenePass: ReturnType<typeof pass> | null = null;
@@ -103,12 +120,26 @@ export async function createPipeline(
   // the scene pass's share of the canvas (1 when not upscaling), and the bloom kept at its old cost
   const sceneScale = uniform(1);
   let bloomNode: ReturnType<typeof bloom> | null = null;
+  let taauNode: ReturnType<typeof taau> | null = null;
+  let velocityTex: ReturnType<typeof rtt> | null = null;
+  /** this frame's and last frame's camera, unjittered (the camera-motion velocity, `setScene`) */
+  const motion = {
+    vp: uniform(new Matrix4()),
+    prevVp: uniform(new Matrix4()),
+    projInv: uniform(new Matrix4()),
+    camWorld: uniform(new Matrix4()),
+    fresh: true,
+  };
+  /** TAAU gathers at the scene's size and resolves at the canvas's: like the upscaler, the canvas stays full size */
+  const fullCanvas = () => upscale.up || aaNow === 'taau';
   const applyScale = () => {
     scenePass?.setResolutionScale(sceneScale.value);
+    velocityTex?.setResolutionScale(sceneScale.value);
     bloomNode?.setResolutionScale(0.5 * sceneScale.value);
   };
   const select = () => {
-    const next = bloomOn ? glow : plain;
+    const o = outputs.get(aaNow);
+    const next = o ? (bloomOn ? o.glow : o.plain) : null;
     if (!next) return;
     pipeline.outputNode = next;
     pipeline.needsUpdate = true;
@@ -137,7 +168,24 @@ export async function createPipeline(
       const amp = min(mn, float(1).sub(mx)).div(mx.add(1e-4)).clamp(0, 1).sqrt();
       const wgt = amp.mul(float(-1).div(float(8).sub(float(3).mul(upscale.sharp))));
       const sharpened = max(c.add(n.add(w).add(e).add(so).mul(wgt)).div(wgt.mul(4).add(1)), vec3(0));
-      const color = (upscale.up ? vec4(sharpened, 1) : raw) as unknown as typeof raw;
+      if (aaModes.includes('taau') && scenePass) {
+        // The motion TAAU reprojects with, from the camera alone (s29 Task 8): each pixel's depth placed back in the
+        // world, seen by last frame's camera. A velocity output on every material re-keys every shader build (R38) and
+        // broke the additive ones (their pipelines failed); the world is static but for water, grass and sprites, which
+        // TAAU's colour clamp keeps from smearing.
+        const depth = scenePass.getTextureNode('depth');
+        const moved = Fn(() => {
+          const d = depth.sample(screenUV).r;
+          const world = motion.camWorld.mul(vec4(getViewPosition(screenUV, d, motion.projInv), 1));
+          const now = motion.vp.mul(world);
+          const before = motion.prevVp.mul(world);
+          return vec4(now.xy.div(now.w).sub(before.xy.div(before.w)), 0, 1);
+        })();
+        velocityTex = rtt(moved, null, null, { resolutionScale: sceneScale.value });
+        taauNode = taau(raw, depth, velocityTex, camera);
+      }
+      const direct = (upscale.up ? vec4(sharpened, 1) : raw) as unknown as typeof raw;
+      const temporal = (taauNode ? taauNode.getTextureNode() : direct) as unknown as typeof raw;
       // The renders' vivid grade (grade.py, as in the slice): ACES, saturation 1.32, a warm tint, a soft vignette.
       const grade = (c: Node<'vec4'>): Node<'vec4'> => {
         let g = acesFilmicToneMapping(c.rgb, light.exposure) as Node<'vec3'>;
@@ -154,20 +202,29 @@ export async function createPipeline(
         g = g.add(floor.mul(float(1).sub(smoothstep(0, lum(floor).mul(4), lum(g)))));
         return vec4(sRGBTransferOETF(g) as Node<'vec3'>, 1);
       };
-      plain = grade(color as unknown as Node<'vec4'>);
+      // FXAA and SMAA read the graded (display) colours, as they are designed to
+      const smooth = (mode: AaMode, c: Node<'vec4'>): Node<'vec4'> =>
+        (mode === 'fxaa' ? fxaa(c) : mode === 'smaa' ? smaa(c) : c) as unknown as Node<'vec4'>;
       // The glow is fed light capped at BLOOM_CAP (plan M8 Task 7, s22): the sun's road on the water reaches tens of
       // units, and uncapped its bloom spread a white haze over Golden's near sand and lantern and a hot patch at Blue
       // hour's arch (the renders show a compact sun and its reflection). Lanterns, falls and fireflies sit under it.
       // fed from the unsharpened pass: the bloom blurs anyway, and the sharpen's five taps per bloom texel cost for nothing
-      const capped = vec4((raw as unknown as Node<'vec4'>).rgb.min(BLOOM_CAP), 1) as unknown as typeof color;
+      const capped = vec4((raw as unknown as Node<'vec4'>).rgb.min(BLOOM_CAP), 1) as unknown as typeof raw;
       bloomNode = bloom(capped, 0.22, 0.45, 1.6);
       applyScale();
-      glow = grade(color.add(bloomNode) as Node<'vec4'>);
+      outputs.clear();
+      for (const mode of aaModes) {
+        const color = mode === 'taau' ? temporal : direct;
+        outputs.set(mode, {
+          plain: smooth(mode, grade(color as unknown as Node<'vec4'>)),
+          glow: smooth(mode, grade(color.add(bloomNode) as Node<'vec4'>)),
+        });
+      }
       select();
     },
     setTier(t, devicePixelRatio) {
       // upscaling below full size: the canvas at full size, the scene pass at the tier's share of it
-      const up = upscale.up && t.scale < 1;
+      const up = fullCanvas() && t.scale < 1;
       renderer.setPixelRatio(devicePixelRatio * (up ? 1 : t.scale));
       sceneScale.value = up ? t.scale : 1;
       applyScale();
@@ -180,10 +237,33 @@ export async function createPipeline(
       renderer.setSize(width, height);
     },
     render() {
+      if (aaNow === 'taau' && view) {
+        const cam = view.camera;
+        cam.updateMatrixWorld();
+        motion.prevVp.value.copy(motion.vp.value);
+        motion.vp.value.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+        if (motion.fresh) motion.prevVp.value.copy(motion.vp.value);
+        motion.fresh = false;
+        motion.projInv.value.copy(cam.projectionMatrixInverse);
+        motion.camWorld.value.copy(cam.matrixWorld);
+      }
       pipeline.render();
     },
     setMirror(m) {
       mirror = m;
+    },
+    setAa(mode) {
+      if (mode === aaNow || !aaModes.includes(mode)) return;
+      aaNow = mode;
+      motion.fresh = true;
+      select();
+    },
+    resetHistory() {
+      motion.fresh = true;
+      // r186 has no public reset: a history target of another size makes the next frame re-seed it from this frame
+      (
+        taauNode as unknown as { _historyRenderTarget?: { setSize(w: number, h: number): void } } | null
+      )?._historyRenderTarget?.setSize(1, 1);
     },
     async compile(object, opts) {
       const target = scenePass?.renderTarget;
@@ -234,13 +314,17 @@ export async function createPipeline(
     async warmUp() {
       if (!view) return;
       await renderer.compileAsync(view.scene, view.camera);
-      const wanted = bloomOn;
-      for (const b of [false, true]) {
-        bloomOn = b;
-        select();
-        pipeline.render();
-      }
-      bloomOn = wanted;
+      // every output this visit may switch to (the tiers' edge smoothing, bloom on and off) drawn once, hidden
+      const [wantedBloom, wantedAa] = [bloomOn, aaNow];
+      for (const mode of aaModes)
+        for (const b of [false, true]) {
+          aaNow = mode;
+          bloomOn = b;
+          select();
+          pipeline.render();
+        }
+      bloomOn = wantedBloom;
+      aaNow = wantedAa;
       select();
     },
   };
