@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-22, session s29 (see `docs/handover/sessions/2026-11-22-s29-w100-phase1-start.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-22, session s30 (see `docs/handover/sessions/2026-11-22-s30-w100-light-and-land.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -326,8 +326,14 @@ no borrowed set pieces (no towers, piano, etc.).
   edge smoothing per tier (FXAA low/mid/ultra, TAAU high; ultra kept on the phone); the ground by slope and height
   (`?ground=off` A/B). Owner asked "garbage in, garbage out, Witcher level?": yes, AA is the floor; light is next.
   Task 11's bake now covers rides too (one map per hour, blended).
-- **Next (s30):** Task 11 (baked light) first, my recommendation, then 11b, 10 (2 m land), 11c; a cool-phone night (7a).
-  The owner's test of #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and the reflections still stands.
+- **s30 (2026-11-22): Task 11 baked light, 11b, Task 10 finer land; 11c's laptop half** (log
+  `sessions/2026-11-22-s30-w100-light-and-land.md`; ledger R221–R224; not pushed). Baked shadows and sky occlusion per
+  lit hour, blended in rides (`?baked=off`, 3.2 MB); rim on rock; a 4 m patch of the formula's ground over the cove
+  (`?patch=off`); the live shadow on high carried to Phase 3. Cost at low +0.4–2.0 ms (R224). Phone: a wasted shadow
+  read found and gated; the governor comparison is not settled (heat). **Phase 1: 6 of 8 closed, every one with a carry
+  list (R224's table).**
+- **Next:** the owner's phone session (7a and 11c's phone part, cool phone, old 4182 vs new 4181 alternating; scripts
+  `.superpowers/w100/phone-night.mjs`, `phone-hold.mjs`), then the owner page and Phase 1 closed; then Phase 2.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
