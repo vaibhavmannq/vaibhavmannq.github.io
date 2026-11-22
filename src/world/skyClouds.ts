@@ -11,13 +11,18 @@ import { mulberry32 } from '../shared/random';
  * - `layer`: a cloud layer in the world, 1.8 km up, made here from a tiling noise and lit from the photo's own colours
  *   (so it takes each hour's palette), the sun's side brighter, a silver edge toward the sun; real parallax.
  * - `volume`: the same layer with depth, marched in five steps through 500 m, each step shadowed toward the sun.
- * `photo` (default until the owner picks) is the sky as it was.
+ * `photo` is the sky as it was (the default until s31).
  */
 export type SkyMode = 'photo' | 'drift' | 'layer' | 'volume';
 
+/**
+ * The site's sky from `?sky=`: `drift` unless another is named (s31, Phase 2 Task 12, my call under the owner's "choose
+ * recommended": the clouds move with depth in rides and drift at rest, the glow and gradient stay put; ≈ +0.1 ms at low;
+ * all nine places and every ride checked). `?sky=photo` is the sky before.
+ */
 export function skyMode(search: string): SkyMode {
   const q = new URLSearchParams(search).get('sky');
-  return q === 'drift' || q === 'layer' || q === 'volume' ? q : 'photo';
+  return q === 'photo' || q === 'layer' || q === 'volume' ? q : 'drift';
 }
 
 /** How much of the sky the cloud layer covers at each stop (0..1): thin at Night and Midnight, where the aurora rules. */

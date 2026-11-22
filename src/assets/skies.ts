@@ -1,6 +1,7 @@
 import {
   DataTexture,
   LinearFilter,
+  LinearMipmapLinearFilter,
   NoColorSpace,
   RepeatWrapping,
   RGBAFormat,
@@ -9,6 +10,7 @@ import {
 } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
+import { skyMode } from '../world/skyClouds';
 import type { Manifest, SkyAmbient } from './manifest';
 import type { SkyDecodeReply } from './skyDecode.worker';
 import { paintHorizon } from './skyHorizon';
@@ -56,12 +58,17 @@ export interface SkyStore {
   ready(index: number): Promise<void>;
 }
 
-/** Sky photos are 8-bit HDR-encoded data, not colours: no colour space, no mipmaps, wrapped around the horizon. */
+/**
+ * Sky photos are 8-bit HDR-encoded data, not colours: no colour space, wrapped around the horizon. Mipmaps only where the
+ * sky reads its own blurred copy (`?sky=drift`, Phase 2 Task 12: the glow and the gradient stay put while the clouds move);
+ * the photo itself is always read at level 0 (the seam where equirect u wraps would otherwise pick a blurred level).
+ */
 export function prepareSky(t: Texture): Texture {
+  const mips = typeof location !== 'undefined' && skyMode(location.search) !== 'photo';
   t.colorSpace = NoColorSpace;
   t.wrapS = RepeatWrapping;
-  t.generateMipmaps = false;
-  t.minFilter = LinearFilter;
+  t.generateMipmaps = mips;
+  t.minFilter = mips ? LinearMipmapLinearFilter : LinearFilter;
   t.magFilter = LinearFilter;
   return t;
 }

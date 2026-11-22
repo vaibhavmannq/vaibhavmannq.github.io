@@ -38,6 +38,8 @@ import type { SkyStore } from '../assets/skies';
 import { windVector } from '../journey/hours';
 import { SHOTS } from '../journey/shots';
 import { STOP_IDS } from '../journey/types';
+import { type LightUniforms, MIN_MOON_RADIUS } from './light';
+import type { WorldPart } from './part';
 import {
   CLOUD_COVER,
   cloudNoiseTexture,
@@ -48,8 +50,6 @@ import {
   photoDrift,
   type SkyMode,
 } from './skyClouds';
-import { type LightUniforms, MIN_MOON_RADIUS } from './light';
-import type { WorldPart } from './part';
 import { slotTexture } from './slotTexture';
 
 type V3 = Node<'vec3'>;
@@ -64,6 +64,9 @@ const decode = (e: V3): V3 => {
 
 /** A hash of a 3D cell: a repeatable random number per cell. */
 const hash3 = (c: V3): F => fract(sin(dot(c, vec3(127.1, 311.7, 74.7))).mul(43758.5453));
+
+/** The blurred copy the drifting sky keeps its broad light from: 2048 → 64 texels across (≈ 6° each). */
+const LOW_MIP = 5;
 
 /** Where the painted horizon rows are read: inside the bottom HORIZON_ROWS (6) rows of a 1024-row photo. */
 const HORIZON_V = 2.5 / 1024;
@@ -103,9 +106,17 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
 
   const colorAt = (dir: V3, row?: number): V3 => {
     if (mode === 'drift' && row === undefined) {
-      const a = decode(texA.sample(equirectUV(onCeiling(dir, eyeA))).rgb);
-      const b = decode(texB.sample(equirectUV(onCeiling(dir, eyeB))).rgb);
-      return mix(a, b, u.skyWeight).mul(u.skyGain).mul(u.skyTint);
+      // Phase 2 Task 12: only the photo's detail (its clouds) moves with the ceiling; its broad light (the gradient and
+      // the sun's glow, the blurred copy at mip LOW_MIP) stays where it is, as the real sky's would
+      const here = equirectUV(dir);
+      const moved = (tex: typeof texA, eye: V3): V3 => {
+        const at = equirectUV(onCeiling(dir, eye));
+        const ratio = decode(tex.sample(here).level(float(LOW_MIP)).rgb).div(
+          decode(tex.sample(at).level(float(LOW_MIP)).rgb).max(1e-4),
+        );
+        return decode(tex.sample(at).level(float(0)).rgb).mul(ratio.clamp(0.25, 4));
+      };
+      return mix(moved(texA, eyeA), moved(texB, eyeB), u.skyWeight).mul(u.skyGain).mul(u.skyTint);
     }
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
     return mix(decode(texA.sample(st).rgb), decode(texB.sample(st).rgb), u.skyWeight)
@@ -202,7 +213,9 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
       return smoothstep(need, need.add(0.3), shape);
     };
     const flat = (h: number): V2 => {
-      const t = float(LAYER_BASE + h).sub(cameraPosition.y).div(dir.y.max(0.012));
+      const t = float(LAYER_BASE + h)
+        .sub(cameraPosition.y)
+        .div(dir.y.max(0.012));
       return vec2(cameraPosition.x, cameraPosition.z).add(vec2(dir.x, dir.z).mul(t));
     };
     // far away the layer thins into the photo's own haze; below ~1.5 degrees nothing
@@ -233,7 +246,11 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
         const p = flat(LAYER_DEPTH * h);
         const d = density(p, float(h));
         const toward = density(p.add(sunXZ.mul(160)), float(Math.min(1, h + 0.25)));
-        const light = toward.mul(-1.6).exp().mul(0.75).add(h * 0.25);
+        const light = toward
+          .mul(-1.6)
+          .exp()
+          .mul(0.75)
+          .add(h * 0.25);
         const a = d.mul(0.55);
         const stepCol = mix(shadowCol, litCol, light).add(litCol.mul(forward).mul(float(1).sub(d)).mul(0.8));
         acc = acc.add(stepCol.mul(a).mul(trans));
