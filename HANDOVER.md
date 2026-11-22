@@ -336,6 +336,9 @@ no borrowed set pieces (no towers, piano, etc.).
   the phone now reaches ultra but sits a tier below the old build from VI (carried). Laptop low +0.0–1.3 ms.
 - **Next:** Phase 2 (sky, water, exposure), detailed at its start; first, with the phone plugged in, profile rides
   IV→IX and win back the tier; then the light maps per hour (opening hour first, −2.6 MB on a first visit).
+  **Owner, end of s30:** loves the renders' true blacks and the Sunset render (its tree, "leaves defined"). Phase 2's
+  exposure task: a `?blacks=` A/B (`SHADOW_FLOOR` today / half / zero; the floor is why nothing goes black), checked
+  everywhere (D47). Phase 3's Sunset: a rich tree for high/ultra against the render; revisit old vs new framing (D38).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
