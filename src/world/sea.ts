@@ -36,6 +36,7 @@ import {
   Vector2,
 } from 'three/webgpu';
 import type { TierSettings } from '../quality/tiers';
+import { BOWL } from './bowl';
 import type { GridMeta } from './heights';
 import { fishRing, RING_SPEED } from './life';
 import { glitterCarry, glitterPower, type LightUniforms } from './light';
@@ -52,6 +53,37 @@ const WAVES: [number, number, number, number][] = [
   [0.2, 0.98, 0.003, 4.1],
   [0.75, 0.66, 0.0025, 6.3],
 ];
+
+/**
+ * The swell (plan world-to-100 Phase 2 Task 13, C7 "still water"; reference book §3: "swell arrives in sets"), behind
+ * `?sea=swell` while the original water stays the default (D48). Long waves from a far storm, arriving from the open sea
+ * to the north-north-west (where the night's winds come from, 330–355°), in sets: two close wavelengths beat into groups,
+ * a third crosses at an angle. They only tilt the surface (no level change anywhere: R164, the "divided water" came from
+ * lifting the whole sea), fade out over the shallows (depth 1.5 → 10 m) and where a wave is under a pixel. Each row:
+ * [turn from the swell's heading, degrees; wavelength, m; slope amplitude a·k].
+ */
+export const SWELL: readonly [number, number, number][] = [
+  [0, 96, 0.026],
+  [4, 84, 0.022],
+  [22, 61, 0.012],
+];
+/** Night's lagoon, metres from the bowl's centre: no swell inside (boot's `lagoon` r 62, and its walls). */
+const LAGOON_R = 90;
+/** How far the swell's tilt moves the mirror's image (screen share per unit slope, near the eye). */
+const SWELL_MIRROR = 0.34;
+/** Where the swell travels, three.js x and z: from 340° (north-north-west) toward the coast. */
+const SWELL_FROM_DEG = 340;
+export type SeaMode = 'original' | 'swell';
+export const seaMode = (search: string): SeaMode =>
+  new URLSearchParams(search).get('sea') === 'swell' ? 'swell' : 'original';
+
+/** Pure: a swell component's heading (three.js x, z) and wavenumber; deep water, ω = √(g·k). */
+export function swellWave(turnDeg: number, lengthM: number): { dx: number; dz: number; k: number; omega: number } {
+  const az = ((SWELL_FROM_DEG + turnDeg) * Math.PI) / 180;
+  const k = (2 * Math.PI) / lengthM;
+  // travelling away from where it comes from: north component −cos(az), east −sin(az); three.js z is −north
+  return { dx: -Math.sin(az), dz: Math.cos(az), k, omega: Math.sqrt(9.8 * k) };
+}
 
 /** The heights as a half-float texture, for the shore foam (the depth under the water). */
 export function heightTexture(q: Uint16Array, m: GridMeta): DataTexture {
@@ -90,6 +122,7 @@ export function createSea(
   meta: GridMeta,
   u: LightUniforms,
   tier: TierSettings,
+  mode: SeaMode = 'original',
 ): WorldPart & { mirror: Mirror | null } {
   const reflection = reflector({ resolutionScale: tier.reflect });
   reflection.target.rotateX(-Math.PI / 2);
@@ -145,10 +178,43 @@ export function createSea(
     .mul(1.6);
   gx = gx.add(rd.x.div(rl).mul(ringSlope));
   gz = gz.add(rd.y.div(rl).mul(ringSlope));
+  // The depth under the water, from the heights (the shore's foam below; the swell fades over the shallows).
+  const x1 = meta.x0 + (meta.nx - 1) * meta.step;
+  const y1 = meta.y0 + (meta.ny - 1) * meta.step;
+  const hu = vec2(
+    positionWorld.x.sub(meta.x0).div(x1 - meta.x0),
+    positionWorld.z
+      .negate()
+      .sub(meta.y0)
+      .div(y1 - meta.y0),
+  );
+  const inside = step(0, hu.x).mul(step(hu.x, 1)).mul(step(0, hu.y)).mul(step(hu.y, 1));
+  const depth = mix(float(-30), texture(heights, hu).r, inside).negate();
   const toCam = cameraPosition.sub(positionWorld);
   const dist = toCam.length();
   const flatten = smoothstep(450.0, 25.0, dist);
-  const n = normalize(vec3(gx.negate().mul(flatten), 1, gz.negate().mul(flatten)));
+  let sx: Node<'float'> = float(0);
+  let sz: Node<'float'> = float(0);
+  if (mode === 'swell') {
+    // none in Night's lagoon: fresh water inside the crater, out of the sea's reach (coast axes: y north = −z)
+    const fromLagoon = vec2(p.x.sub(BOWL.x), p.y.add(BOWL.y)).length();
+    const deep = smoothstep(1.5, 10.0, depth).mul(smoothstep(LAGOON_R, LAGOON_R + 40, fromLagoon));
+    for (const [turn, length, slope] of SWELL) {
+      const w = swellWave(turn, length);
+      const c = cos(
+        p.x
+          .mul(w.dx * w.k)
+          .add(p.y.mul(w.dz * w.k))
+          .sub(time.mul(w.omega)),
+      )
+        .mul(slope)
+        .mul(deep)
+        .mul(smoothstep(1.2, 0.35, pixel.mul(w.k)));
+      sx = sx.add(c.mul(w.dx));
+      sz = sz.add(c.mul(w.dz));
+    }
+  }
+  const n = normalize(vec3(gx.negate().mul(flatten).sub(sx), 1, gz.negate().mul(flatten).sub(sz)));
   const v = normalize(toCam);
   const fresnel = float(0.02).add(
     float(0.98).mul(
@@ -158,6 +224,10 @@ export function createSea(
     ),
   );
   if (reflection.uvNode) reflection.uvNode = reflection.uvNode.add(n.xz.mul(0.12).div(dist.mul(0.08).add(1)));
+  // the swell bends the mirror in slow broad bands, far out too (a reflection 300 m off sways a few pixels): its own
+  // offset, fading far more gently than the ripples'
+  if (mode === 'swell' && reflection.uvNode)
+    reflection.uvNode = reflection.uvNode.add(vec2(sx, sz).mul(SWELL_MIRROR).div(dist.mul(0.004).add(1)));
   const body = (u.ambSky as unknown as Node<'vec3'>).mul(vec3(0.05, 0.07, 0.08));
   // The sun's or moon's road as glitter (plan M2.5 Task 5; reference book §3: thousands of separate glints from wave
   // facets; a calmer sea gives a narrower road). Each facet gets its own small random slope and glints only when it
@@ -190,18 +260,7 @@ export function createSea(
   const mirrored = reflection.uvNode ? mirrorCubic(reflection, reflection.uvNode as Node<'vec2'>) : reflection.rgb;
   let col = mix(body, mirrored, fresnel).add(glint);
 
-  // Shore: depth from the heights, foam at the edge, a sheet in the swash, transparent shallows (slice).
-  const x1 = meta.x0 + (meta.nx - 1) * meta.step;
-  const y1 = meta.y0 + (meta.ny - 1) * meta.step;
-  const hu = vec2(
-    positionWorld.x.sub(meta.x0).div(x1 - meta.x0),
-    positionWorld.z
-      .negate()
-      .sub(meta.y0)
-      .div(y1 - meta.y0),
-  );
-  const inside = step(0, hu.x).mul(step(hu.x, 1)).mul(step(0, hu.y)).mul(step(hu.y, 1));
-  const depth = mix(float(-30), texture(heights, hu).r, inside).negate();
+  // Shore: foam at the edge, a sheet in the swash, transparent shallows (slice); the depth is read above.
   const lace = smoothstep(
     0.05,
     0.5,

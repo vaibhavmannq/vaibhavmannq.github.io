@@ -94,7 +94,7 @@ import { createPlankton, planktonStirs, waterline } from '../world/plankton';
 import { createProjectLanterns } from '../world/projectLanterns';
 import { createRidge, ridgeHeight, scatterRidge } from '../world/ridge';
 import { PLANT_STRIDE, scatterCoveSteps } from '../world/scatter';
-import { createSea, heightTexture } from '../world/sea';
+import { createSea, heightTexture, seaMode } from '../world/sea';
 import { createSetStreamer, type SetStreamer } from '../world/setStreamer';
 import { SET_PARTS, wantedSets } from '../world/sets';
 import { createSky, type Sky } from '../world/sky';
@@ -353,7 +353,7 @@ async function loadBase(
     patchParts,
   );
   const heightMap = heightTexture(heights, meta.heights);
-  const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
+  const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier], seaMode(location.search));
   app.pipeline?.setMirror(sea.mirror);
   // One material for every rock part (D13); the lagoon's fresh water wears no barnacle line (plan M5 Task 1).
   const rock = createRockMaterial(
