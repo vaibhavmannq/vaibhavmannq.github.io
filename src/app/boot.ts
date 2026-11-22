@@ -37,8 +37,9 @@ import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
 import { runSliced } from '../shared/slice';
 import { createSound } from '../sound/engine';
 import { mountSoundToggle } from '../sound/toggle';
-import { createArch, createRockMaterial, decodeArch } from '../world/arch';
+import { createArch, createRockMaterial, decodeArch, type RimKey } from '../world/arch';
 import { type AuroraData, createAurora } from '../world/aurora';
+import { loadBakedMaps } from '../world/baked';
 import { BOWL, bowlPrisms, createBowl, fallsLayout, ledgePlants, rimTrees } from '../world/bowl';
 import { capInstances } from '../world/caps';
 import { caveLightSliced, caveLure, createCave, decodeCave, fungiLightSliced } from '../world/cave';
@@ -257,6 +258,12 @@ async function loadBase(
     Promise.all([cliffsMeta ? fetchBinary(cliffsMeta.file) : null, groveMeta ? fetchBinary(groveMeta.file) : null]);
   const coveEarly = COVE_SEEN_FROM.has(opening()) ? coveFiles() : null;
   coveEarly?.catch(() => undefined); // its failure is handled where it is awaited
+  // The baked light (Task 11): shadows and the sky's share; `?baked=off` leaves every place unshadowed (an A/B). A
+  // failed download leaves it off too: the light is as before, never broken.
+  const bakedMaps =
+    new URLSearchParams(location.search).get('baked') === 'off'
+      ? Promise.resolve(null)
+      : loadBakedMaps('/world/', yieldTask).catch(() => null);
   const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, groundTex] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
@@ -304,7 +311,12 @@ async function loadBase(
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   app.pipeline?.setMirror(sea.mirror);
   // One material for every rock part (D13); the lagoon's fresh water wears no barnacle line (plan M5 Task 1).
-  const rock = createRockMaterial(lagoon, light.aurora as unknown as Parameters<typeof createRockMaterial>[1]);
+  const rock = createRockMaterial(
+    lagoon,
+    light.aurora as unknown as Parameters<typeof createRockMaterial>[1],
+    light.baked.ao,
+    light as unknown as RimKey,
+  );
   const parts: [string, WorldPart][] = [
     ['terrain', terrain],
     ['sea', sea],
@@ -480,6 +492,13 @@ async function loadBase(
       return parts;
     });
   app.setsRegistered();
+  const maps = await bakedMaps;
+  if (maps) {
+    light.baked.setMaps(maps.meta, maps.coarse, maps.fine);
+    app.pipeline?.renderer.initTexture(maps.coarse);
+    await yieldTask();
+    app.pipeline?.renderer.initTexture(maps.fine);
+  }
   const byName = new Map(parts);
   // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
   // soon as its own shader is ready, never waiting for one that is slower but not needed here (plan M2.5 Task 8).

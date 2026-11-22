@@ -1,0 +1,77 @@
+{
+ "lo": -30.0,
+ "coarse": {
+  "x0": -2000.0,
+  "y0": -2400.0,
+  "step": 4.0,
+  "nx": 800,
+  "ny": 1000
+ },
+ "fine": {
+  "step": 1.0,
+  "n": 1024
+ },
+ "hours": [
+  "golden",
+  "sunset",
+  "night",
+  "midnight",
+  "sunrise"
+ ],
+ "keys": {
+  "golden": [
+   -0.543564,
+   0.837016,
+   0.062791
+  ],
+  "sunset": [
+   -0.64269,
+   0.765928,
+   0.017452
+  ],
+  "night": [
+   0.595982,
+   -0.710264,
+   0.374607
+  ],
+  "midnight": [
+   -0.982887,
+   0.138136,
+   0.121869
+  ],
+  "sunrise": [
+   0.74329,
+   0.623694,
+   0.241922
+  ]
+ },
+ "windows": {
+  "golden": [
+   -615,
+   -238
+  ],
+  "sunset": [
+   -649,
+   -215
+  ],
+  "night": [
+   -926,
+   -645
+  ],
+  "midnight": [
+   -211,
+   -1488
+  ],
+  "sunrise": [
+   -614,
+   -282
+  ]
+ },
+ "files": {
+  "keyCoarse": "light/key-coarse.webp",
+  "keyFine": "light/key-fine.webp",
+  "aoCoarse": "light/ao-coarse.webp",
+  "aoFine": "light/ao-fine.webp"
+ },
+ "hStep": 0.1
+}

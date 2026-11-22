@@ -1,14 +1,19 @@
 import {
   atan,
   attribute,
+  cameraPosition,
+  dot,
   Fn,
   float,
   fwidth,
   If,
   mix,
   mx_noise_float,
+  normalize,
   normalWorld,
   positionWorld,
+  pow,
+  saturate,
   smoothstep,
   varying,
   vec2,
@@ -80,6 +85,16 @@ const BASALT: [number, number, number] = [0.2, 0.19, 0.205];
 const AURORA_GREEN: [number, number, number] = [0.003, 0.016, 0.01];
 const LICHEN: [number, number, number] = [0.26, 0.2, 0.08];
 const MOSS: [number, number, number] = [0.09, 0.15, 0.03];
+/** The key light's parts the rock's rim reads (light.ts LightUniforms). */
+export interface RimKey {
+  keyDir: Node<'vec3'>;
+  keyColor: Node<'vec3'>;
+  keyStrength: Node<'float'>;
+  moonStrength: Node<'float'>;
+  baked: { shadow: Node<'float'> };
+}
+/** How bright the rim is against the albedo it lights (by eye at Golden and Sunrise, s30). */
+const RIM_GAIN = 1.6;
 /** The darkest a vertex gets from its baked sky share: rock in the deepest corner still shows (spec §9.6). */
 const SHADE_FLOOR = 0.25;
 /**
@@ -142,7 +157,14 @@ const columnCell = Fn(([p]: [V2]) => {
  * sharp at any mesh size: one cell search across the horizontal plane gives each column its shade, each of its faces
  * a shade of its own, a narrow joint, and drums cut across (owner cliffs-and-columns 1).
  */
-export function createRockMaterial(fresh?: FreshWater, aurora?: Node<'float'>): MeshStandardNodeMaterial {
+export function createRockMaterial(
+  fresh?: FreshWater,
+  aurora?: Node<'float'>,
+  /** the sky's share from the baked light (Task 11) */
+  ao?: Node<'float'>,
+  /** the key light, for the rim a low sun draws round a rock seen against it (Task 11b) */
+  key?: RimKey,
+): MeshStandardNodeMaterial {
   const vs = <T extends Node>(n: T): T => varying(n) as unknown as T;
   const wxy = vec2(positionWorld.x, positionWorld.z.negate());
   const z = positionWorld.y;
@@ -203,19 +225,39 @@ export function createRockMaterial(fresh?: FreshWater, aurora?: Node<'float'>): 
     .mul(float(1).sub(joint.mul(JOINT_DARK)))
     .mul(float(1).sub(drum.mul(DRUM_DARK)));
   const material = new MeshStandardNodeMaterial();
+  if (ao) material.aoNode = ao;
   // tide bands at the waterline (rock.ts, ruling R2: the arch and the stacks too); moss is never banded
   material.colorNode = base.mul(mix(float(1), light, wall)).mul(tideBands(z, up, dry.mul(seaWetNode(wxy, fresh))));
   // Under an aurora the rock takes its green (plan M5 Task 3; book §5 "it lights the land"; owner aurora 1, 6): mostly
   // the moss and the wet rock low down and in the spray, in proportion to the sky the face sees; none in hours
   // without an aurora (the uniform is 0 there).
+  let glow: V3 = vec3(0);
   if (aurora) {
     const wetLow = smoothstep(6, 0, z).mul(dry);
     const catchGreen = moss.mul(0.7).add(wetLow.mul(0.35)).add(0.12);
-    material.emissiveNode = vec3(...AURORA_GREEN)
+    glow = vec3(...AURORA_GREEN)
       .mul(aurora)
       .mul(catchGreen)
-      .mul(attribute('light', 'float'));
+      .mul(attribute('light', 'float')) as V3;
   }
+  // The rim (plan world-to-100 Task 11b, C5): a rock seen against a low sun shows a thin bright edge where its faces
+  // turn side-on to the eye and the light grazes them (reference book §8 backlight; the Golden and Sunrise renders'
+  // headlands). Only where the baked light says the sun reaches; a moon's rim is faint (its hours stay grey).
+  if (key) {
+    const toPoint = normalize(positionWorld.sub(cameraPosition));
+    const behind = pow(saturate(dot(toPoint, key.keyDir)), 2.0);
+    const edge = pow(float(1).sub(dot(normalWorld, toPoint.negate()).abs()), 3.0);
+    const grazing = smoothstep(-0.2, 0.25, dot(normalWorld, key.keyDir));
+    const moonDim = float(1).sub(smoothstep(0.0, 4.0, key.moonStrength).mul(0.8));
+    glow = glow.add(
+      key.keyColor
+        .mul(key.keyStrength)
+        .mul(behind.mul(edge).mul(grazing).mul(key.baked.shadow).mul(moonDim))
+        .mul(base)
+        .mul(RIM_GAIN),
+    ) as V3;
+  }
+  if (aurora || key) material.emissiveNode = glow;
   material.roughnessNode = float(0.9);
   material.metalnessNode = float(0);
   return material;

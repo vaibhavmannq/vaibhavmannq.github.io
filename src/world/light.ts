@@ -4,6 +4,7 @@ import type { SkyAmbient } from '../assets/manifest';
 import { sunDir, windVector } from '../journey/hours';
 import { type HourPreset, type RGB, toThree, type Vec3, type WorldState } from '../journey/types';
 import { lerp } from '../shared/math';
+import { createBakedLight } from './baked';
 
 /**
  * Factors from Blender's units to this renderer's, taken from the slice's hand-tuned Golden and Sunset numbers
@@ -188,6 +189,12 @@ export function createLightUniforms() {
     road: uniform(1),
   };
   const key = new DirectionalLight(0xffffff, 2);
+  // The key's light at a point is its colour × the baked shadow there (plan world-to-100 Task 11): one hook, so every
+  // standard material (ground, rock, the arch, stacks, cliffs, the bowl) is shadowed alike. three's light node reads
+  // `colorNode` when it is made, in place of its colour × intensity uniform, so `apply` sets keyLight instead.
+  const baked = createBakedLight();
+  const keyLight = uniform(new Color(1, 1, 1));
+  (key as unknown as { colorNode: unknown }).colorNode = keyLight.mul(baked.shadow);
   /** Bounce light from the lit sea and sky opposite the key, so shadowed faces keep their shape (slice). */
   const fill = new DirectionalLight(0xffffff, 0.5);
   const hemi = new HemisphereLight(0x8070a0, 0x201810, HEMI_INTENSITY);
@@ -196,6 +203,7 @@ export function createLightUniforms() {
   return {
     ...u,
     lights,
+    baked,
     /** Adds the lights to the scene. The fog is boot's: distance fades into the sky's own horizon colour (D17). */
     install(scene: Scene) {
       scene.add(...lights);
@@ -226,6 +234,8 @@ export function createLightUniforms() {
 
       key.color.setRGB(...v.keyColor);
       key.intensity = v.keyStrength;
+      keyLight.value.setRGB(...v.keyColor).multiplyScalar(v.keyStrength);
+      baked.update(v.keyDir);
       key.position.copy(cameraPosition).addScaledVector(u.keyDir.value, 500);
       key.target.position.copy(cameraPosition);
       fill.color.setRGB(...v.ambSky);

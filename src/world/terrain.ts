@@ -265,7 +265,7 @@ export function createTerrain(
   sky: Sky,
   cut?: { x: number; y: number; rx: number; ry: number },
   fresh?: FreshWater,
-  light?: Pick<LightUniforms, 'keyDir' | 'keyColor' | 'keyStrength' | 'moonStrength'>,
+  light?: Pick<LightUniforms, 'keyDir' | 'keyColor' | 'keyStrength' | 'moonStrength' | 'baked'>,
   /** the base grid already built (in slices, `baseGeometrySteps`); otherwise it is built here at once */
   baseGeo?: BufferGeometry,
   /** the ground's close-up detail (prep_ground.py: R rock, G grass, B sand); none: the colour map alone */
@@ -331,11 +331,14 @@ export function createTerrain(
         .mul(smoothstep(0.82, 0.95, normalWorld.y))
         .mul(smoothstep(2.0, 5.0, z))
         .mul(texture(colour, uv()).g.mul(2.2).clamp(0, 1))
+        .mul(light.baked.shadow) // no glow through turf the sun does not reach (Task 11)
         .mul(0.5)
     : vec3(0);
   // a crescent behind the turf lights no glow through it (Midnight's hills glowed daylight green, plan M6 Task 4)
   material.emissiveNode = sheen.add(backlit.mul(float(1).sub(moonlit)));
   material.roughnessNode = mix(float(0.92), float(0.3), wet);
+  // the sky's share each point sees (baked, Task 11): gullies, the feet of cliffs and the bowl's floor take less of it
+  if (light) material.aoNode = light.baked.ao;
   material.metalnessNode = float(0);
   if (cut) {
     // The cave's own shell and floor stand here; the 8 m ground grid cannot hold its cut floor (the M0/M1 "pit").

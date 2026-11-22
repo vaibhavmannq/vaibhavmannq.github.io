@@ -283,12 +283,17 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   // light.ts) worked out once, instead of per pixel (s13: at mid the per-pixel Lambert cost 2.6–4 ms where the new
   // cameras look into the meadow, against ~0.2 ms at low).
   const fillUp = saturate(normalize(vec3(light.keyDir.x.negate(), 0.6, light.keyDir.z.negate())).y);
-  const irradiance = light.keyColor
+  // The light in three parts, each worked out per vertex: what the key gives, what the sky gives, and the fill. The
+  // baked light (Task 11) scales the first two (the parts mix linearly, so the grey-out below can apply to each).
+  const keyIrr = light.keyColor
     .mul(light.keyStrength)
     .mul(saturate(light.keyDir.y))
-    .add(light.ambSky.mul(light.keyStrength.mul(FILL_SHARE).add(0.3)).mul(fillUp))
-    .add(light.ambSky.mul(light.skyFill.mul(HEMI_INTENSITY)))
     .mul(1 / Math.PI);
+  const fillIrr = light.ambSky
+    .mul(light.keyStrength.mul(FILL_SHARE).add(0.3))
+    .mul(fillUp)
+    .mul(1 / Math.PI);
+  const skyIrr = light.ambSky.mul(light.skyFill.mul(HEMI_INTENSITY)).mul(1 / Math.PI);
 
   // colours (linear): tall coastal grass dry gold-green; the short meadow greener; flower heads by kind (reference
   // book §8: thrift pink; coast.py plant_mats yellow and white); every plant a little different
@@ -322,7 +327,13 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
     .mul(vec3(0.55, 0.62, 0.16))
     .mul(through)
     .mul(0.25)
-    .add(light.keyColor.mul(light.keyStrength).mul(vec3(0.9, 0.12, 0.04)).mul(petals).mul(0.35));
+    .add(
+      light.keyColor
+        .mul(light.keyStrength)
+        .mul(vec3(0.9, 0.12, 0.04))
+        .mul(petals)
+        .mul(0.35),
+    );
   // per vertex: the blades are thin, so the eye cannot tell, and the pixels do only the fog. Under the moon the eye
   // sees little colour (reference book §1, the Purkinje shift; plan M6 Task 2): in the moon's hours the colours grey
   // toward a cool blue, keeping a third of their own (heather stays grey-violet, grass grey-green).
@@ -342,7 +353,11 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
     .mul(smoothstep(-0.03, 0.03, light.keyDir.y))
     .mul(float(1).sub(moonlit));
   // a crescent behind the blades sends little light through them (the glow is sized for a low sun)
-  const seen = albedo.mul(irradiance.add(side)).add(glow.mul(float(1).sub(moonlit.mul(0.85))));
+  const byKey = albedo.mul(keyIrr.add(side)).add(glow.mul(float(1).sub(moonlit.mul(0.85))));
+  // the baked key share and sky share at the plant, a little above the blade's own point; all of it per vertex, one
+  // varying (three varyings cost ~1 ms at Sunset on low, s30)
+  const baked = light.baked.at(positionWorld.add(vec3(0, 0.3, 0)));
+  const seen = byKey.mul(baked.x).add(albedo.mul(skyIrr).mul(baked.y)).add(albedo.mul(fillIrr));
   const grey = dot(seen, vec3(0.2126, 0.7152, 0.0722));
   material.colorNode = varying(mix(seen, vec3(grey).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)));
 

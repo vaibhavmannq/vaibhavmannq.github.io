@@ -352,12 +352,17 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
 
   // light per vertex (as meadow.ts): the key on the (bent) normal, the fill opposite it, the sky and ground bounce
   const fillDir = normalize(vec3(light.keyDir.x.negate(), 0.6, light.keyDir.z.negate()));
-  const hemi = mix(light.ambGround, light.ambSky, N.y.mul(0.5).add(0.5)).mul(light.skyFill.mul(HEMI_INTENSITY));
-  const irradiance = light.keyColor
+  // The light in three parts per vertex (key, sky, fill); the baked light (Task 11) scales the first two, as meadow.ts.
+  const hemi = mix(light.ambGround, light.ambSky, N.y.mul(0.5).add(0.5))
+    .mul(light.skyFill.mul(HEMI_INTENSITY))
+    .mul(1 / Math.PI);
+  const keyIrr = light.keyColor
     .mul(light.keyStrength)
     .mul(saturate(dot(N, light.keyDir)))
-    .add(light.ambSky.mul(light.keyStrength.mul(FILL_SHARE).add(0.3)).mul(saturate(dot(N, fillDir))))
-    .add(hemi)
+    .mul(1 / Math.PI);
+  const fillIrr = light.ambSky
+    .mul(light.keyStrength.mul(FILL_SHARE).add(0.3))
+    .mul(saturate(dot(N, fillDir)))
     .mul(1 / Math.PI);
   const shade = mix(float(1), mix(float(0.45), float(1), depth), leaf); // inner leaves sit in the crown's own shade
   const leafCol = mix(vec3(...LEAF), vec3(...SHRUB), saturate(uv().x.sub(0.5).mul(1000)));
@@ -374,10 +379,13 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
   // Under the moon (plan M6 Task 3): a crescent sends little light through the crown, and the eye sees little colour
   // (reference book §1, Purkinje): the leaves grey toward a cool blue, keeping half their own.
   const moonlit = smoothstep(0.0, 4.0, light.moonStrength);
-  const seen = albedo
-    .mul(irradiance)
+  const byKey = albedo
+    .mul(keyIrr)
     .mul(shade)
     .add(glow.mul(float(1).sub(moonlit.mul(0.9))));
+  // the baked key share and sky share at the leaf (a crown in a cliff's shadow takes no sun); per vertex, one varying
+  const atLeaf = light.baked.at(positionWorld.add(vec3(0, 0.5, 0)));
+  const seen = byKey.mul(atLeaf.x).add(albedo.mul(hemi).mul(shade).mul(atLeaf.y)).add(albedo.mul(fillIrr).mul(shade));
   const lit = varying(
     mix(seen, vec3(dot(seen, vec3(0.2126, 0.7152, 0.0722))).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)),
   );
