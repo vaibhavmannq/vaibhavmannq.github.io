@@ -1,4 +1,4 @@
-# Session s30 · 2026-11-22 · Phase 1: baked light, the cove's finer land; phone half done
+# Session s30 · 2026-11-22 · Phase 1 closed: baked light, the cove's finer land, the phone
 
 Opus 5.5, main account, inline, main checkout on `world`. Plan `docs/superpowers/plans/2026-11-21-world-to-100.md`
 (Phase 1); ledger `docs/handover/ledgers/2026-11-21-world-to-100.md` (R221–R224). Commits 4e68e0f … (not pushed).
@@ -24,6 +24,11 @@ Opus 5.5, main account, inline, main checkout on `world`. Plan `docs/superpowers
    report. Carry list per task in the ledger (R224's table).
 6. On the way: `manifest.ts` had no rule for `light/` (the report failed); the base budget is 5 MB under D53; on low the
    shadow reads one texel (6644b32).
+7. **The phone, second time (R225, 5656c86):** cool phone, old vs new alternating. The new build lost a whole tier (mid
+   from II). Probes found the plants' per-vertex lookup was most of it: plants now read one coarse texel, and the
+   ground and rock have no baked AO (it barely read). Now: ultra by III, then high, mid from VI, where the old build
+   holds high — about one tier in the night's second half, carried. Laptop at low now +0.0–1.3 ms.
+8. **Phase 1 closed** with its carry list (ledger R224's table + R225).
 
 ## Owner's notes this session
 - "Why so long?" (1 h 32 m on Task 11): answered with where the time went (three 11-min bakes, a breakage I caused,
@@ -44,14 +49,12 @@ Opus 5.5, main account, inline, main checkout on `world`. Plan `docs/superpowers
 - `app.tier` is a number (0–3): the type check caught a tier test written against names.
 
 ## Open
-- Phone (owner's session): 7a (mid forced + natural, old vs new alternating, cool phone) and 11c's phone part; then the
-  owner page and Phase 1's close.
+- The phone's tier in the night's second half (mid from VI, old holds high): profile IV→IX on the phone first in Phase 2.
 - Light maps per hour, the opening hour's first (−2.6 MB before a first view).
 - From before: the owner's test of #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and the reflections; mid at
   Dusk/Sunrise on this laptop; the headland pack at every start; `horizon.spec.ts`; Firefox smoke timing.
 
 ## Next
-The owner's phone session: plug in, run `.superpowers/w100/phone-night.mjs` (REST, PORT, Q, RIDES env) on 4181 (new) and
-4182 (old, `../wt-head` at 1fed1a1, built) alternating — mid forced, then natural tiers — and
-`.superpowers/w100/phone-hold.mjs` at ultra; then 11c: owner page with every place's % and the carry list, Phase 1 closed.
-After that, Phase 2 (sky, water, exposure) written in detail at its start.
+Phase 2 (sky, water, exposure), written in detail at its start; its first step, with the phone plugged in: profile the
+rides IV→IX on the phone (`.superpowers/w100/phone-night.mjs` with RIDES, PORT, Q; old build in `../wt-head` at 1fed1a1)
+and win back the tier; then the light maps per hour (opening hour first).
