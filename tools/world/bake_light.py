@@ -14,13 +14,16 @@ Occluders: the live ground (the 8 m grid as the browser triangulates it, D32: no
 higher along the rims and would shadow sunlit slopes), the horizon ring beyond it, and the headland's arch and stacks
 and the cove's cliff columns, as height fields (max height per 2 m cell; the arch's opening is filled: a known limit).
 
-Writes public/world/light/:
-  key-coarse.webp  RGB (lossless WebP), the hours stacked top to bottom (800 x 1000 each): R, G = (h_s - LO) / 0.1 as 16 bits,
-                   B = the penumbra's half-width in 0.1 m
-  key-fine.webp    the same, 1024 x 1024 per hour, each over its own window
-  ao-coarse.webp   grey: the sky's share each 4 m texel sees (horizon occlusion, 8 directions, out to 64 m)
-  ao-fine.webp     grey, per hour's window, stacked
-  light.json       the grids, the windows and each hour's key direction
+Writes public/world/light/ (one pair of files per hour, so a first visit fetches only its opening hour's; Phase 2 Task 11e):
+  key-coarse-<hour>.webp  RGB (lossless WebP), 800 x 1000: R, G = (h_s - LO) / 0.1 as 16 bits, B = the penumbra's
+                          half-width in 0.1 m
+  key-fine-<hour>.webp    the same, 1024 x 1024, over that hour's own window
+  ao-coarse.webp          grey: the sky's share each 4 m texel sees (horizon occlusion, 8 directions, out to 64 m); the
+                          plants read it. The fine AO is no longer written: nothing reads it since R225.
+  light.json              the grids, the windows, each hour's key direction and files
+
+`python tools/world/bake_light.py --split` turns s30's stacked files (key-coarse.webp, key-fine.webp) into these without
+baking again.
 """
 import json, math, os, sys
 from multiprocessing import Pool
@@ -407,20 +410,51 @@ def main():
     ao_f = [f[1] for f in done[1 + len(hours):]]
     # images are north-up like colour.webp: row 0 is the grid's last row (largest y)
     flip = lambda a: a[::-1]
-    save = lambda arr, name: Image.fromarray(arr).save(os.path.join(OUT, name), lossless=True, quality=100, method=6)
-    save(np.concatenate([flip(k) for k in key_c]), "key-coarse.webp")
-    save(np.concatenate([flip(k) for k in key_f]), "key-fine.webp")
-    save(flip(np.round(np.clip(ao_c, 0, 1) * 255).astype(np.uint8)), "ao-coarse.webp")
-    save(np.concatenate([flip(np.round(np.clip(a, 0, 1) * 255).astype(np.uint8)) for a in ao_f]), "ao-fine.webp")
-    out = dict(lo=LO, hStep=H_STEP, coarse=coarse, fine=dict(step=FINE_STEP, n=FINE_N), hours=hours,
-               keys={h: [round(c, 6) for c in dirs[h]] for h in hours},
-               windows={h: [windows[h]["x0"], windows[h]["y0"]] for h in hours},
-               files=dict(keyCoarse="light/key-coarse.webp", keyFine="light/key-fine.webp",
-                          aoCoarse="light/ao-coarse.webp", aoFine="light/ao-fine.webp"))
-    json.dump(out, open(os.path.join(OUT, "light.json"), "w", encoding="utf-8"), indent=1)
-    for f in os.listdir(OUT):
-        print(f, os.path.getsize(os.path.join(OUT, f)) // 1024, "KB")
+    write_maps([flip(k) for k in key_c], [flip(k) for k in key_f],
+               flip(np.round(np.clip(ao_c, 0, 1) * 255).astype(np.uint8)), hours,
+               dict(lo=LO, hStep=H_STEP, coarse=coarse, fine=dict(step=FINE_STEP, n=FINE_N), hours=hours,
+                    keys={h: [round(c, 6) for c in dirs[h]] for h in hours},
+                    windows={h: [windows[h]["x0"], windows[h]["y0"]] for h in hours}))
 
+
+def split_layers(img, n):
+    """Pure: a stacked image (layers top to bottom) as its n layers."""
+    h = img.shape[0] // n
+    assert h * n == img.shape[0], "the image does not split into equal layers"
+    return [img[i * h:(i + 1) * h] for i in range(n)]
+
+
+def hour_files(hours):
+    """Pure: light.json's file names, one key pair per hour and the shared coarse AO."""
+    return dict(aoCoarse="light/ao-coarse.webp",
+                hours={h: dict(keyCoarse=f"light/key-coarse-{h}.webp", keyFine=f"light/key-fine-{h}.webp") for h in hours})
+
+
+def write_maps(key_c, key_f, ao_c, hours, meta, out=OUT):
+    """Writes each hour's key maps (north-up arrays), the coarse AO and light.json; removes s30's stacked files."""
+    save = lambda arr, name: Image.fromarray(arr).save(os.path.join(out, name), lossless=True, quality=100, method=6)
+    for h, kc, kf in zip(hours, key_c, key_f):
+        save(kc, f"key-coarse-{h}.webp")
+        save(kf, f"key-fine-{h}.webp")
+    save(ao_c, "ao-coarse.webp")
+    for old in ("key-coarse.webp", "key-fine.webp", "ao-fine.webp"):
+        if os.path.exists(os.path.join(out, old)):
+            os.remove(os.path.join(out, old))
+    meta = dict(meta, files=hour_files(hours))
+    json.dump(meta, open(os.path.join(out, "light.json"), "w", encoding="utf-8"), indent=1)
+    for f in sorted(os.listdir(out)):
+        print(f, os.path.getsize(os.path.join(out, f)) // 1024, "KB")
+
+
+def split_existing(out=OUT):
+    """s30's stacked files to one pair per hour, the same bytes (no bake)."""
+    meta = json.load(open(os.path.join(out, "light.json"), encoding="utf-8"))
+    hours = meta["hours"]
+    kc = split_layers(np.asarray(Image.open(os.path.join(out, "key-coarse.webp")).convert("RGB")), len(hours))
+    kf = split_layers(np.asarray(Image.open(os.path.join(out, "key-fine.webp")).convert("RGB")), len(hours))
+    ao = np.asarray(Image.open(os.path.join(out, "ao-coarse.webp")).convert("L"))
+    meta.pop("files", None)
+    write_maps(kc, kf, ao, hours, meta, out)
 
 if __name__ == "__main__":
-    main()
+    split_existing() if "--split" in sys.argv else main()

@@ -44,6 +44,29 @@ export function shadowFloor(hour: HourPreset): RGB {
 }
 
 /**
+ * How far the grade lifts the darkest pixels (Phase 2 Task 14; owner, end of s30: the renders' "true blacks"): `today`
+ * the hour's floor as since M2.5, `half` half of it, `zero` none (the renders go to black), `deep` none and the sky's fill
+ * and the bounce light halved (s31: with the floor gone, Golden, Blue hour, Before dawn and Sunrise still had almost no
+ * near-black pixels; the fill lights every shaded side). `?blacks=` for the owner's A/B.
+ */
+export type Blacks = 'today' | 'half' | 'zero' | 'deep';
+const BLACKS_SHARE: Readonly<Record<Blacks, number>> = { today: 1, half: 0.5, zero: 0, deep: 0 };
+/** How much of the sky's fill and the bounce light each mode keeps. */
+export const FILL_SHARE_BY_BLACKS: Readonly<Record<Blacks, number>> = { today: 1, half: 1, zero: 1, deep: 0.5 };
+/**
+ * The site's mode from `?blacks=`: `deep` unless another is named (s31, my call under the owner's "choose recommended":
+ * judged at all nine places and on every ride at high, D47; `?blacks=today` is the look before).
+ */
+export const blacksMode = (v: string | null): Blacks =>
+  v === 'today' || v === 'half' || v === 'zero' ? v : 'deep';
+/** The floor the grade lifts to under that mode, linear light (a uniform's value: switching builds no shader). */
+export function floorFor(hour: HourPreset, mode: Blacks): RGB {
+  const k = BLACKS_SHARE[mode];
+  const f = shadowFloor(hour);
+  return [f[0] * k, f[1] * k, f[2] * k];
+}
+
+/**
  * The moon's styled angular diameter (plan M2.5 Task 5: the real 0.52° is lost on a phone; owner night-sky-and-moon
  * 4, 5, 8: a small sharp disc with a soft halo).
  */
@@ -119,6 +142,8 @@ export interface LightValues {
   shadowFloor: RGB;
   /** × HEMI_INTENSITY (hours.ts SKY_FILL) */
   skyFill: number;
+  /** × the bounce light's strength (1 but under `?blacks=deep`) */
+  fillGain: number;
   /** 0..1: the sea's sun or moon road (HourPreset.road) */
   road: number;
 }
@@ -129,7 +154,13 @@ const scale3 = (a: RGB, k: number): RGB => [a[0] * k, a[1] * k, a[2] * k];
 const add3 = (a: RGB, b: RGB, k: number): RGB => (k === 0 ? a : [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k]);
 
 /** Pure: an hour (already blended) and the two skies' ambient light, mixed by how far b's sky has faded in. */
-export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient, skyWeight: number): LightValues {
+export function lightValues(
+  hour: HourPreset,
+  ambA: SkyAmbient,
+  ambB: SkyAmbient,
+  skyWeight: number,
+  blacks: Blacks = 'today',
+): LightValues {
   const moon = hour.moon;
   const moonDir: Vec3 = moon ? toThree(sunDir(moon.el, moon.az)) : [0, 1, 0];
   const moonLit = (1 - Math.cos(2 * Math.PI * hour.world.moonPhase)) / 2;
@@ -154,8 +185,9 @@ export function lightValues(hour: HourPreset, ambA: SkyAmbient, ambB: SkyAmbient
     moonLit,
     aurora: hour.aurora,
     cloud: hour.cloud,
-    shadowFloor: shadowFloor(hour),
-    skyFill: hour.skyFill,
+    shadowFloor: floorFor(hour, blacks),
+    skyFill: hour.skyFill * FILL_SHARE_BY_BLACKS[blacks],
+    fillGain: FILL_SHARE_BY_BLACKS[blacks],
     road: hour.road,
   };
 }
@@ -239,7 +271,7 @@ export function createLightUniforms() {
       key.position.copy(cameraPosition).addScaledVector(u.keyDir.value, 500);
       key.target.position.copy(cameraPosition);
       fill.color.setRGB(...v.ambSky);
-      fill.intensity = v.keyStrength * FILL_SHARE + 0.3;
+      fill.intensity = (v.keyStrength * FILL_SHARE + 0.3) * v.fillGain;
       hemi.intensity = HEMI_INTENSITY * v.skyFill;
       fill.position.set(-u.keyDir.value.x, 0.6, -u.keyDir.value.z).multiplyScalar(500).add(cameraPosition);
       fill.target.position.copy(cameraPosition);

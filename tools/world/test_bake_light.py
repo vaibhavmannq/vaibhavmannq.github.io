@@ -59,3 +59,16 @@ m = meta["heights"]
 X = m["x0"] + np.array([3, 17]) * m["step"]; Y = m["y0"] + np.array([5, 40]) * m["step"]
 assert np.allclose(bl.grid_height(H, m, X, Y), H[[5, 40], [3, 17]])
 print("bake_light: all checks passed")
+
+
+def test_split_files_rejoin_to_the_stacked_image():
+    img = np.arange(5 * 4 * 3 * 3, dtype=np.uint8).reshape(5 * 4, 3, 3)
+    parts = bl.split_layers(img, 5)
+    assert len(parts) == 5 and all(p.shape == (4, 3, 3) for p in parts)
+    assert np.array_equal(np.concatenate(parts), img)
+
+
+def test_hour_files_name_one_pair_per_hour():
+    f = bl.hour_files(["golden", "night"])
+    assert f["hours"]["night"] == dict(keyCoarse="light/key-coarse-night.webp", keyFine="light/key-fine-night.webp")
+    assert f["aoCoarse"] == "light/ao-coarse.webp"

@@ -32,7 +32,23 @@ export interface LightMapMeta {
   keys: Record<string, Vec3>;
   /** each hour's fine window: its south-west corner, coast metres */
   windows: Record<string, [number, number]>;
-  files: { keyCoarse: string; keyFine: string; aoCoarse: string; aoFine: string };
+  /** one pair of key maps per hour, fetched one hour at a time (Phase 2 Task 11e), and the shared coarse sky share */
+  files: { aoCoarse: string; hours: Record<string, { keyCoarse: string; keyFine: string }> };
+}
+
+/**
+ * Pure: the order to fetch the hours' maps in (Task 11e): the opening stop's own hour if it has one, then the lit hours
+ * ahead along the journey, then those behind (a visitor mostly rides forward; a keyless stop needs the next lit one).
+ */
+export function lightOrder(opening: string, stops: readonly string[], hours: readonly string[]): string[] {
+  const at = Math.max(0, stops.indexOf(opening));
+  const ahead = stops.slice(at).filter((s) => hours.includes(s));
+  const behind = stops
+    .slice(0, at)
+    .reverse()
+    .filter((s) => hours.includes(s));
+  const rest = hours.filter((h) => !ahead.includes(h) && !behind.includes(h));
+  return [...ahead, ...behind, ...rest];
 }
 
 const DEG = Math.PI / 180;
@@ -84,9 +100,18 @@ const angle = (a: Vec3, b: Vec3) => {
  * b; `weight` how much of the blended shadow shows (1 within 5° of a map's key, 0 beyond 10°: a light far from every
  * baked one, as when the moon hands over to another moon, shows no baked shadow rather than a wrong one).
  */
-export function shadowBlend(keyNow: Vec3, keys: readonly Vec3[]): { a: number; b: number; t: number; weight: number } {
-  if (keys.length === 0) return { a: 0, b: 0, t: 0, weight: 0 };
-  const order = keys.map((k, i) => ({ i, ang: angle(keyNow, k) })).sort((p, q) => p.ang - q.ang);
+export function shadowBlend(
+  keyNow: Vec3,
+  keys: readonly Vec3[],
+  /** which maps have arrived (Task 11e); one not yet here weighs nothing: no shadow rather than a wrong one */
+  present?: readonly boolean[],
+): { a: number; b: number; t: number; weight: number } {
+  const order = keys
+    .map((k, i) => ({ i, ang: angle(keyNow, k) }))
+    // the shader reads layer b only mid-blend, so the second map must have arrived too
+    .filter((o) => present?.[o.i] ?? true)
+    .sort((p, q) => p.ang - q.ang);
+  if (order.length === 0) return { a: 0, b: 0, t: 0, weight: 0 };
   const first = order[0] as { i: number; ang: number };
   const second = order[1] ?? first;
   const reach = (ang: number) => sstep(BLEND_REACH, BLEND_FULL, ang);
@@ -180,31 +205,40 @@ function setUp(t: DataArrayTexture): DataArrayTexture {
   return t;
 }
 
-/** Packs decoded RGBA images (hours stacked top to bottom, north up) into one layered texture, rows south to north. */
-export function packLayers(
-  key: { data: Uint8ClampedArray; width: number; height: number },
-  ao: { data: Uint8ClampedArray; width: number; height: number },
-  layers: number,
-  aoLayers: number,
-): DataArrayTexture {
-  const w = key.width;
-  const h = key.height / layers;
+type Img = { data: Uint8ClampedArray; width: number; height: number };
+
+/**
+ * A layered texture with every layer lit everywhere (h = lo, a 0.3 m penumbra) until its hour's map arrives (Task 11e);
+ * the alpha holds the sky's share (north-up image → rows south to north), the same in every layer, or 1 without one.
+ */
+export function emptyLayers(w: number, h: number, layers: number, ao: Img | null): DataArrayTexture {
   const out = new Uint8Array(w * h * layers * 4);
-  for (let l = 0; l < layers; l++) {
-    const al = Math.min(l, aoLayers - 1);
+  new Uint32Array(out.buffer).fill(0xff030000); // bytes 0, 0, 3, 255 (little-endian, as every browser here)
+  if (ao)
     for (let j = 0; j < h; j++) {
-      const src = ((l + 1) * h - 1 - j) * w * 4; // north-up image row → grid row j
-      const asrc = ((al + 1) * h - 1 - j) * w * 4;
-      const dst = (l * h + j) * w * 4;
-      for (let i = 0; i < w; i++) {
-        out[dst + i * 4] = key.data[src + i * 4] as number;
-        out[dst + i * 4 + 1] = key.data[src + i * 4 + 1] as number;
-        out[dst + i * 4 + 2] = key.data[src + i * 4 + 2] as number;
-        out[dst + i * 4 + 3] = ao.data[asrc + i * 4] as number;
-      }
+      const asrc = (h - 1 - j) * w * 4;
+      for (let i = 0; i < w; i++) out[(j * w + i) * 4 + 3] = ao.data[asrc + i * 4] as number;
+    }
+  const layerBytes = w * h * 4;
+  for (let l = 1; l < layers; l++) out.copyWithin(l * layerBytes, 0, layerBytes);
+  return setUp(new DataArrayTexture(out, w, h, layers));
+}
+
+/** Writes one hour's key map (a north-up image) into its layer's RGB and marks that layer alone for upload. */
+export function fillLayer(tex: DataArrayTexture, key: Img, layer: number): void {
+  const { width: w, height: h } = tex.image as { width: number; height: number };
+  const out = (tex.image as { data: Uint8Array }).data;
+  for (let j = 0; j < h; j++) {
+    const src = (h - 1 - j) * w * 4; // north-up image row → grid row j
+    const dst = (layer * h + j) * w * 4;
+    for (let i = 0; i < w; i++) {
+      out[dst + i * 4] = key.data[src + i * 4] as number;
+      out[dst + i * 4 + 1] = key.data[src + i * 4 + 1] as number;
+      out[dst + i * 4 + 2] = key.data[src + i * 4 + 2] as number;
     }
   }
-  return setUp(new DataArrayTexture(out, w, h, layers));
+  tex.addLayerUpdate(layer);
+  tex.needsUpdate = true;
 }
 
 /**
@@ -235,6 +269,7 @@ export function createBakedLight() {
   let keys: Vec3[] = [];
   let windows: [number, number][] = [];
   let depths: number[] = [];
+  let present: boolean[] = [];
 
   /**
    * The key's share at height z from four texels around xy in one layer, each decoded and tested, then blended
@@ -382,6 +417,7 @@ export function createBakedLight() {
       keys = meta.hours.map((h) => toThree(meta.keys[h] as Vec3));
       windows = meta.hours.map((h) => meta.windows[h] as [number, number]);
       depths = meta.hours.map((h) => SHADOW_DEPTH[h] ?? 1);
+      present = meta.hours.map(() => false);
       u.fineN.value = meta.fine.n;
       u.fineStep.value = meta.fine.step;
       u.coarse0.value.set(meta.coarse.x0, meta.coarse.y0);
@@ -390,10 +426,14 @@ export function createBakedLight() {
       u.lo.value = meta.lo;
       u.hStep.value = meta.hStep;
     },
+    /** Layer i's maps have reached the GPU: from now on it may be read (Task 11e). */
+    markPresent(i: number) {
+      present[i] = true;
+    },
     /** Picks the maps for the key light now (three.js axes). */
     update(keyDir: Vec3, keyStrength = 1) {
       if (keys.length === 0) return;
-      const b = shadowBlend(keyDir, keys);
+      const b = shadowBlend(keyDir, keys, present);
       u.layerA.value = b.a;
       u.layerB.value = b.b;
       u.t.value = b.t;
@@ -419,19 +459,48 @@ async function pixels(url: string): Promise<{ data: Uint8ClampedArray; width: nu
   return { data: ctx.getImageData(0, 0, canvas.width, canvas.height).data, width: canvas.width, height: canvas.height };
 }
 
-/** Fetches and packs the baked maps (public/world/light/), yielding between the steps (the lantern room draws, R216). */
+export interface BakedMaps {
+  meta: LightMapMeta;
+  coarse: DataArrayTexture;
+  fine: DataArrayTexture;
+  /** the hours in fetch order (lightOrder) */
+  order: string[];
+  /** Fetches one hour's pair and writes it into its layer; resolves with the layer's index (to `markPresent` once uploaded). */
+  loadHour(hour: string): Promise<number>;
+}
+
+/**
+ * The baked maps (public/world/light/), one hour at a time (Task 11e): the layered textures are made empty with the sky's
+ * share, then each hour's pair joins its layer as it arrives. Yields between the steps (the lantern room draws, R216).
+ */
 export async function loadBakedMaps(
   base: string,
   yieldTask: () => Promise<void>,
-): Promise<{ meta: LightMapMeta; coarse: DataArrayTexture; fine: DataArrayTexture }> {
+  opening: string,
+  stops: readonly string[],
+): Promise<BakedMaps> {
   const meta = (await (await fetch(`${base}light/light.json`)).json()) as LightMapMeta;
-  const [kc, kf, ac, af] = await Promise.all(
-    [meta.files.keyCoarse, meta.files.keyFine, meta.files.aoCoarse, meta.files.aoFine].map((f) => pixels(base + f)),
-  );
+  const ao = await pixels(base + meta.files.aoCoarse);
   await yieldTask();
   const n = meta.hours.length;
-  const coarse = packLayers(kc as never, ac as never, n, 1);
+  const coarse = emptyLayers(meta.coarse.nx, meta.coarse.ny, n, ao);
   await yieldTask();
-  const fine = packLayers(kf as never, af as never, n, n);
-  return { meta, coarse, fine };
+  const fine = emptyLayers(meta.fine.n, meta.fine.n, n, null);
+  return {
+    meta,
+    coarse,
+    fine,
+    order: lightOrder(opening, stops, meta.hours),
+    async loadHour(hour) {
+      const f = meta.files.hours[hour];
+      const l = meta.hours.indexOf(hour);
+      if (!f || l < 0) throw new Error(`no light map for ${hour}`);
+      const [kc, kf] = await Promise.all([pixels(base + f.keyCoarse), pixels(base + f.keyFine)]);
+      await yieldTask();
+      fillLayer(coarse, kc, l);
+      await yieldTask();
+      fillLayer(fine, kf, l);
+      return l;
+    },
+  };
 }

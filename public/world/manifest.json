@@ -295,30 +295,79 @@
    "stops": "all"
   },
   {
-   "path": "light/ao-fine.webp",
-   "bytes": 513444,
-   "sha256": "c06239b67c46949b9b9454bd9f99b583d82349b1cc0b8cb31d48d7bc1a69c3f8",
+   "path": "light/key-coarse-golden.webp",
+   "bytes": 376630,
+   "sha256": "0137838ad0f315dbe9d428d0a92801ecedeec3d67ebd6080380fa7fc8b85534e",
    "stage": "B",
    "stops": "all"
   },
   {
-   "path": "light/key-coarse.webp",
-   "bytes": 1762548,
-   "sha256": "3e58e327b535869d2348c0722f75c15aac4b4cd4899faec48a1d016e9b55b2db",
+   "path": "light/key-coarse-midnight.webp",
+   "bytes": 313240,
+   "sha256": "110e018badd75bd766152f7124bd8ea6b658c171710ca857cda2f18bf4596fb1",
    "stage": "B",
    "stops": "all"
   },
   {
-   "path": "light/key-fine.webp",
-   "bytes": 832786,
-   "sha256": "fb19fed206f8445d8ac90abe95cb293c576b05eacb75bd4bcfef3d95815c84bb",
+   "path": "light/key-coarse-night.webp",
+   "bytes": 303118,
+   "sha256": "d5d8159e0e5c6945673450b111ed448203160e4fefe45c0de2ce291c1669f994",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-coarse-sunrise.webp",
+   "bytes": 358260,
+   "sha256": "56c5622d76f76240e13158e40df4fa61b6936743ae86ac72c539b4b8bc8eead5",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-coarse-sunset.webp",
+   "bytes": 358660,
+   "sha256": "894f9f13fc83e5e221865a1c8f32f679bba268938885ec372ae49a725d5b0135",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-fine-golden.webp",
+   "bytes": 108924,
+   "sha256": "8ace64db9228792edfed711eddba660ed680b8634c72b6cc996af9bf6671fc0c",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-fine-midnight.webp",
+   "bytes": 252164,
+   "sha256": "0e62625bca822102d372d1e4dc5e3f285c8e24f687b0005c7fd9204cdc37b11d",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-fine-night.webp",
+   "bytes": 151778,
+   "sha256": "29df21d6eb42ce124342d3b137056a9ffe4c1287bf67b6afd280468970f9581a",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-fine-sunrise.webp",
+   "bytes": 122080,
+   "sha256": "4dc89c2b23f7c93fbf0ef9940bd771d6ad47f357c44a5532ccc9dbe8e035a9e3",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-fine-sunset.webp",
+   "bytes": 155600,
+   "sha256": "c9d6ecb88be4563d47434e665296f0bf26fefbfa2c68f4749689de12832b6fa9",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/light.json",
-   "bytes": 984,
-   "sha256": "8682d8fd343a3889ac0a953c5c1b35c1dcfffca76bc901a0105bf9c692fcaf17",
+   "bytes": 1486,
+   "sha256": "b16888832f1577d9f8d2d8d648252f0b79e4912f39017a78a143ff61467726be",
    "stage": "B",
    "stops": "all"
   },

@@ -5,8 +5,10 @@ import { blendHours, HOURS } from '../../src/journey/hours';
 import type { HourPreset } from '../../src/journey/types';
 import {
   auroraDim,
+  blacksMode,
   createLightUniforms,
   FOG_SCALE,
+  floorFor,
   glitterCarry,
   glitterPower,
   lightValues,
@@ -179,5 +181,38 @@ describe('glitter drift (plan M2.5 Task 5)', () => {
 describe('the moon disc with no moon (final review M12)', () => {
   it('is a number, not NaN, at the moon itself when its size is 0', () => {
     expect(Number.isFinite(moonCover(1, 0))).toBe(true);
+  });
+});
+
+describe('true blacks: ?blacks= (Phase 2 Task 14, owner s30)', () => {
+  it('zero gives no lift', () => {
+    for (const h of Object.values(HOURS)) expect(floorFor(h, 'zero'), h.id).toEqual([0, 0, 0]);
+  });
+  it('half is half of today in linear light', () => {
+    for (const h of Object.values(HOURS)) {
+      const today = shadowFloor(h);
+      floorFor(h, 'half').forEach((c, i) => {
+        expect(c).toBeCloseTo((today[i] as number) / 2, 9);
+      });
+    }
+  });
+  it('today is the floor as it was; the site defaults to deep', () => {
+    expect(floorFor(HOURS.night, 'today')).toEqual(shadowFloor(HOURS.night));
+    expect(blacksMode('nonsense')).toBe('deep');
+    expect(blacksMode(null)).toBe('deep');
+    expect(blacksMode('today')).toBe('today');
+    expect(blacksMode('zero')).toBe('zero');
+    expect(blacksMode('deep')).toBe('deep');
+  });
+  it('deep: no floor, half the sky fill and bounce; the others keep the fill', () => {
+    const today = lightValues(HOURS.dusk, ambA, ambB, 0);
+    const deep = lightValues(HOURS.dusk, ambA, ambB, 0, 'deep');
+    expect(deep.shadowFloor).toEqual([0, 0, 0]);
+    expect(deep.skyFill).toBeCloseTo(today.skyFill / 2, 9);
+    expect(deep.fillGain).toBe(0.5);
+    expect(lightValues(HOURS.dusk, ambA, ambB, 0, 'zero').skyFill).toBe(today.skyFill);
+  });
+  it('lightValues carries the chosen floor', () => {
+    expect(lightValues(HOURS.night, ambA, ambB, 0, 'zero').shadowFloor).toEqual([0, 0, 0]);
   });
 });

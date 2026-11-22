@@ -29,6 +29,7 @@ import { createRail } from '../overlay/rail';
 import { createRide } from '../overlay/ride';
 import { createStage } from '../overlay/stage';
 import { DEFAULT_GOVERNOR, Governor } from '../quality/governor';
+import { ARRIVE_FROM, boostSettings, RestBoost } from '../quality/restBoost';
 import { bootTier, TIERS, type Tier, type TierSettings } from '../quality/tiers';
 import { aaFor, aaModesFor, cutBetween } from '../render/aa';
 import { createPipeline, type Pipeline } from '../render/pipeline';
@@ -71,7 +72,7 @@ import {
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLife } from '../world/life';
-import { createLightUniforms, type LightUniforms, lightValues } from '../world/light';
+import { blacksMode, createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, EYE_ONLY_LAYER, PLANT_STOPS } from '../world/meadow';
 import { createMist } from '../world/mist';
 import { createNightLife, nightLure, nightWeight } from '../world/nightlife';
@@ -173,6 +174,17 @@ yieldChannel.port1.onmessage = () => yieldWaiting.shift()?.();
  * room did not draw between slices (frozen 0.7-0.9 s through the sliced scatter); a posted message does not, and has
  * no setTimeout clamp.
  */
+/** Resolves once `el` carries class `name` (at once if it already does). */
+const whenClass = (el: Element, name: string): Promise<void> =>
+  new Promise((resolve) => {
+    if (el.classList.contains(name)) return resolve();
+    const watch = new MutationObserver(() => {
+      if (!el.classList.contains(name)) return;
+      watch.disconnect();
+      resolve();
+    });
+    watch.observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
 const yieldTask = () =>
   new Promise<void>((resolve) => {
     yieldWaiting.push(resolve);
@@ -279,7 +291,16 @@ async function loadBase(
   const bakedMaps =
     new URLSearchParams(location.search).get('baked') === 'off'
       ? Promise.resolve(null)
-      : loadBakedMaps('/world/', yieldTask).catch(() => null);
+      : (async () => {
+          // the opening hour's pair before the first view, the other hours after it (Task 11e: −2.6 MB on a first visit)
+          const m = await loadBakedMaps('/world/', yieldTask, opening(), STOP_IDS);
+          const first = m.order[0];
+          const layer = first ? await m.loadHour(first) : -1;
+          // the first upload must carry every layer (the empty ones are lit everywhere), not only the one just filled
+          m.coarse.clearLayerUpdates();
+          m.fine.clearLayerUpdates();
+          return { ...m, layer };
+        })().catch(() => null);
   const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, groundTex] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
@@ -522,6 +543,19 @@ async function loadBase(
     app.pipeline?.renderer.initTexture(maps.coarse);
     await yieldTask();
     app.pipeline?.renderer.initTexture(maps.fine);
+    if (maps.layer >= 0) light.baked.markPresent(maps.layer);
+    // the other hours once the first view is up, in journey order; each layer goes up alone (a texture write, no new
+    // shader: R38) and is read from the frame it lands. A failed one stays unshadowed, as `?baked=off`.
+    void (async () => {
+      await whenClass(document.documentElement, 'is-scene-ready');
+      for (const hour of maps.order.slice(1)) {
+        try {
+          light.baked.markPresent(await maps.loadHour(hour));
+        } catch {
+          // that hour keeps no baked shadow
+        }
+      }
+    })();
   }
   const byName = new Map(parts);
   // All compiles start at once, nearest parts first (the driver builds pipelines in parallel); each part joins as
@@ -648,6 +682,10 @@ async function loadBase(
 export async function boot(): Promise<App> {
   const caps = detectCapabilities();
   const params = readParams(location.search);
+  // `?blacks=today|half|zero|deep` (Phase 2 Task 14): how far the grade lifts the darkest pixels; deep by default
+  const blacks = blacksMode(new URLSearchParams(location.search).get('blacks'));
+  // `?rest=boost` (Task 14b): more quality while resting at a stop, rides at the governor's tier; off by default
+  const restBoost = new RestBoost(new URLSearchParams(location.search).get('rest') === 'boost');
   const track = buildTrack(STOPS);
   const trackEl = document.getElementById('track');
   if (trackEl) trackEl.style.height = `${(track.total + 1) * 100}lvh`;
@@ -1294,7 +1332,7 @@ export async function boot(): Promise<App> {
     );
     const ambA = ambients[state.a] ?? ambients[0];
     const ambB = ambients[state.b] ?? ambients[0];
-    if (ambA && ambB) light.apply(lightValues(hour, ambA, ambB, state.skyWeight), camera.position);
+    if (ambA && ambB) light.apply(lightValues(hour, ambA, ambB, state.skyWeight, blacks), camera.position);
     light.baked.uniforms.nearTaps.value = nearTapsFor(app.tier);
     // Sea sparkle answers the pointer and a wading visitor's feet (plan M4 Task 1): stir where they meet the water.
     if (hour.plankton > 0.01) {
@@ -1424,6 +1462,8 @@ export async function boot(): Promise<App> {
     updateSets(start);
 
     const benchHeld = new Set<string>();
+    let boostPrevT = 0.5;
+    let boostPrevKind: FrameState['kind'] = 'stop';
     const loop = createLoop((nowMs, dtS) => {
       const f = frame(nowMs, dtS);
       updateSets(f.state);
@@ -1447,10 +1487,33 @@ export async function boot(): Promise<App> {
         benchHeld.delete(name);
       }
       for (const name of app.partsOff) benchHeld.add(name);
+      // the rest boost (Task 14b, `?rest=boost`): settled at a stop, the picture draws a step larger; decided before this
+      // frame draws, so a ride's first frame is already back at the governor's tier
+      // a ride's direction from two ride frames in a row (a departure's first frame follows a stop's t = 0.5)
+      const fwd = f.state.t >= boostPrevT;
+      const inRide = f.state.kind === 'flight' && boostPrevKind === 'flight';
+      boostPrevT = f.state.t;
+      boostPrevKind = f.state.kind;
+      const arriving = inRide && (fwd ? f.state.t >= ARRIVE_FROM : f.state.t <= 1 - ARRIVE_FROM);
+      const boostTo = restBoost.frame({
+        resting: f.state.resting && f.state.kind === 'stop',
+        arriving,
+        stop: arriving && !fwd ? f.state.a : f.state.kind === 'flight' ? f.state.b : f.state.a,
+        tier,
+        frameMs: dtS * 1000,
+        targetMs: loop.pacer.targetIntervalMs,
+        nowMs,
+      });
+      if (boostTo !== null) {
+        const s = boostSettings(settings(tier), tier, boostTo);
+        pipeline?.setTier(s, caps.devicePixelRatio);
+        for (const part of parts) part.setTier(s);
+        loop.pacer.rearm();
+      }
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
       // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).
-      if (!loop.pacer.resumed && app.override === null && params.tier === undefined) {
+      if (!loop.pacer.resumed && app.override === null && params.tier === undefined && restBoost.countsForGovernor()) {
         const change = governor.sample(dtS * 1000, nowMs, f.state.resting, !f.state.resting);
         if (change !== null) {
           applyTier(change);

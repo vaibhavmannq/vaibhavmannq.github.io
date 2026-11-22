@@ -69,9 +69,28 @@
   ]
  },
  "files": {
-  "keyCoarse": "light/key-coarse.webp",
-  "keyFine": "light/key-fine.webp",
   "aoCoarse": "light/ao-coarse.webp",
-  "aoFine": "light/ao-fine.webp"
+  "hours": {
+   "golden": {
+    "keyCoarse": "light/key-coarse-golden.webp",
+    "keyFine": "light/key-fine-golden.webp"
+   },
+   "sunset": {
+    "keyCoarse": "light/key-coarse-sunset.webp",
+    "keyFine": "light/key-fine-sunset.webp"
+   },
+   "night": {
+    "keyCoarse": "light/key-coarse-night.webp",
+    "keyFine": "light/key-fine-night.webp"
+   },
+   "midnight": {
+    "keyCoarse": "light/key-coarse-midnight.webp",
+    "keyFine": "light/key-fine-midnight.webp"
+   },
+   "sunrise": {
+    "keyCoarse": "light/key-coarse-sunrise.webp",
+    "keyFine": "light/key-fine-sunrise.webp"
+   }
+  }
  }
 }

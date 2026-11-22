@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { bakedAt, decodeTexel, keyShines, NEAR_TAPS, nearTapsFor, shadowBlend } from '../../src/world/baked';
+import {
+  bakedAt,
+  decodeTexel,
+  keyShines,
+  lightOrder,
+  NEAR_TAPS,
+  nearTapsFor,
+  shadowBlend,
+} from '../../src/world/baked';
 
 const dir = (elDeg: number, azDeg: number): [number, number, number] => {
   const e = (elDeg * Math.PI) / 180;
@@ -88,5 +96,44 @@ describe('the baked texel', () => {
     expect(bakedAt(map, 1, 1, 10).shadow).toBeCloseTo(0.5, 5);
     expect(bakedAt(map, 1, 1, 10).ao).toBeCloseTo(0.8, 5);
     expect(bakedAt(map, 5, 1, 0)).toEqual({ shadow: 1, ao: 1 });
+  });
+});
+
+describe('light maps per hour (Task 11e)', () => {
+  const STOPS = ['golden', 'sunset', 'dusk', 'bluehour', 'night', 'midnight', 'beforedawn', 'firstlight', 'sunrise'];
+  const HOURS = ['golden', 'sunset', 'night', 'midnight', 'sunrise'];
+  const keys = [dir(3.6, -33), dir(1, -40), dir(22, 140), dir(7, -82), dir(14, 50)];
+  const golden = dir(3.6, -33);
+  it('the opening hour’s map is fetched first', () => {
+    expect(lightOrder('golden', STOPS, HOURS)).toEqual(['golden', 'sunset', 'night', 'midnight', 'sunrise']);
+    expect(lightOrder('night', STOPS, HOURS)).toEqual(['night', 'midnight', 'sunrise', 'sunset', 'golden']);
+    // a keyless stop: the next lit hour ahead first
+    expect(lightOrder('firstlight', STOPS, HOURS)[0]).toBe('sunrise');
+    expect(lightOrder('dusk', STOPS, HOURS)[0]).toBe('night');
+  });
+  it('an unknown opening still lists every hour once', () => {
+    expect([...lightOrder('nowhere', STOPS, HOURS)].sort()).toEqual([...HOURS].sort());
+  });
+  it('a missing layer weighs nothing', () => {
+    // at Golden's own key with only Sunset's map here: Sunset is 5° off, so it weighs part, and Golden's is never read
+    const only = shadowBlend(golden, keys, [false, true, false, false, false]);
+    expect(only.a).toBe(1);
+    expect(only.b).toBe(1);
+    // nothing here yet: no shadow at all
+    expect(
+      shadowBlend(
+        golden,
+        keys,
+        keys.map(() => false),
+      ).weight,
+    ).toBe(0);
+    // all here: as without the flags
+    expect(
+      shadowBlend(
+        golden,
+        keys,
+        keys.map(() => true),
+      ),
+    ).toEqual(shadowBlend(golden, keys));
   });
 });

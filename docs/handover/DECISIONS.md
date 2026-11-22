@@ -362,3 +362,16 @@ more stones and props near the camera, finer far versions — on top of a comple
 places, framing, light and colour; low is judged on its own and must look whole. This amends spec §13.1 ("tiers change
 cost only, never content") for density and near detail only. Each place's set gets a low version (R210's budget) and a
 rich version (sized to the phone's ceiling at high), both judged.
+
+**D55 · 2026-11-22 · (owner, start of s31) Phase 2's order, the phone from the start, a rest boost.** Phase 2 written in
+detail first, then: (1) with the phone plugged in, profile rides IV→IX against the old build and win back the lost tier;
+(2) light maps per hour, opening hour first; (3) exposure with a `?blacks=` A/B (today / half / zero), checked at all nine
+places and every ride; (4) `?rest=boost`: more quality while resting, 60 fps kept in rides, behind a switch for him to feel
+on the phone. Mid-session: "we perfect it on laptop and do it on phone at last" (the phone unplugged; phone checks batched
+at the end); "heat happens if we stay longer than 10–15 mins, nobody is going to do that realistically" (no heat soak for
+the boost); then "work all night … choose recommended if you have a decision to make".
+
+**D56 · 2026-11-22 · (owner, s31) Judge by what looks good; rules can be bent.** On the darker blacks overriding his older
+rule (owner-references §17, "no darker than about #10123a"; M2.5's `SHADOW_FLOOR`): "judge what's looks good - rules can be
+bent". The newer wish (s30: the renders' true blacks) wins where it looks better; `?blacks=today` keeps the old look for
+his A/B. Ledger R228.
