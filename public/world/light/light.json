@@ -1,5 +1,6 @@
 {
  "lo": -30.0,
+ "hStep": 0.1,
  "coarse": {
   "x0": -2000.0,
   "y0": -2400.0,
@@ -72,6 +73,5 @@
   "keyFine": "light/key-fine.webp",
   "aoCoarse": "light/ao-coarse.webp",
   "aoFine": "light/ao-fine.webp"
- },
- "hStep": 0.1
+ }
 }

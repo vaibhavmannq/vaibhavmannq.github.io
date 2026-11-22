@@ -70,6 +70,12 @@ export interface GroveMeta {
   protos: { kind: string; woodVerts: number; woodTris: number; cards: number }[];
 }
 
+/** A height patch finer than the 8 m base (Task 10): a GridMeta with its id and file (z = lo + q · (hi − lo) / 65535). */
+export interface PatchMeta extends GridMeta {
+  id: string;
+  file: string;
+}
+
 export interface Manifest {
   version: 1;
   base: {
@@ -82,6 +88,8 @@ export interface Manifest {
     stacks?: StacksMeta;
     cliffs?: CliffsMeta;
     grove?: GroveMeta;
+    /** finer ground near places (plan world-to-100 Task 10): bake_base.py --patches */
+    patches?: PatchMeta[];
   };
   skies: Partial<Record<StopId, SkyAmbient & { file: string }>>;
   files: FileEntry[];
@@ -95,7 +103,11 @@ export interface Budgets {
 }
 
 /** Spec §14: the first view's world files stay under 1.2 MB (1.6 MB with code); each stop adds at most 3 MB. */
-export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 1.0e6 };
+/**
+ * D30: 5 MB per place. The base was 1 MB until D53 relaxed the limits (≈ 10 MB before the first place): it is 5 MB now,
+ * so the base and the opening place's pack together stay inside that (s30: the baked light's 3.1 MB joined the base).
+ */
+export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 5e6 };
 
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 

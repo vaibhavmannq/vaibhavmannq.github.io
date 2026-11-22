@@ -32,6 +32,8 @@ function stopsOf(path: string): StopId[] | 'all' {
     ?.replace(/-portrait$/, '') as StopId;
   if ((path.startsWith('sky/') || path.startsWith('stills/')) && STOP_IDS.includes(id)) return [id];
   if (path.startsWith('base/')) return 'all';
+  // the baked light (world-to-100 Task 11): every hour's maps in one set of files, loaded with the base
+  if (path.startsWith('light/')) return 'all';
   // the headland's place pack (ruling R15): counted against the stops that see the arch, not the world base
   if (path.startsWith(HEADLAND_PACK)) return STOP_IDS.filter((s) => ARCH_SEEN_FROM.has(s));
   // the cove's place pack (M3 Task 2): the cove's five stops
@@ -70,6 +72,7 @@ const manifest: Manifest = {
     stacks: base.stacks,
     cliffs: base.cliffs,
     grove: base.grove,
+    patches: base.patches,
   },
   skies,
   files,

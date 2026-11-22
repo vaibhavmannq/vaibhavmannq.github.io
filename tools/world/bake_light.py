@@ -244,6 +244,26 @@ class Occluder:
         return h
 
 
+def live_ground(meta, H):
+    """The ground as the browser draws it: the 8 m grid, with the finer patches (Task 10) laid over it inside them."""
+    m = meta["heights"]
+    patches = []
+    for p in meta.get("patches", []):
+        pq = np.fromfile(os.path.join(ROOT, "public", "world", p["file"]), dtype="<u2").reshape(p["ny"], p["nx"])
+        patches.append((p, p["lo"] + pq.astype(np.float64) * (p["hi"] - p["lo"]) / 65535))
+
+    def at(X, Y):
+        X = np.asarray(X, np.float64); Y = np.asarray(Y, np.float64)
+        z = grid_height(H, m, X, Y)
+        for p, ph in patches:
+            inside = ((X >= p["x0"]) & (X <= p["x0"] + (p["nx"] - 1) * p["step"])
+                      & (Y >= p["y0"]) & (Y <= p["y0"] + (p["ny"] - 1) * p["step"]))
+            if inside.any():
+                z = np.where(inside, grid_height(ph, p, X, Y), z)
+        return z
+    return at
+
+
 def build_occluder(meta, H, R):
     m = meta["heights"]
     g = dict(x0=m["x0"], y0=m["y0"], step=OCC_STEP,
@@ -251,11 +271,11 @@ def build_occluder(meta, H, R):
     xs = g["x0"] + np.arange(g["nx"]) * OCC_STEP
     ys = g["y0"] + np.arange(g["ny"]) * OCC_STEP
     X, Y = np.meshgrid(xs, ys)
-    z = grid_height(H, m, X, Y)
+    live = live_ground(meta, H)
+    z = live(X, Y)
     for k in ("arch", "stacks", "cliffs"):
         if k in meta:
             rasterize_max(z, g, read_rock(meta[k]))
-    live = lambda X, Y: grid_height(H, m, X, Y)
     if "grove" in meta:
         rasterize_max(z, g, read_grove(meta["grove"], live))
     if "dressing" in meta:

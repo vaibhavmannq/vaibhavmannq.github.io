@@ -95,6 +95,16 @@ export function shadowBlend(keyNow: Vec3, keys: readonly Vec3[]): { a: number; b
   };
 }
 
+/**
+ * Pure: how much a key of this strength (light.ts keyStrength) needs its shadow: none for a key that is off (a sun below
+ * the horizon), so the shader skips the reads (s30: First light's sun lies 5° from Golden's and read its maps for
+ * nothing; on the phone the ride on to Sunrise fell to 52 fps).
+ */
+export function keyShines(keyStrength: number): number {
+  const t = Math.min(1, Math.max(0, (keyStrength - 0.02) / 0.18));
+  return t * t * (3 - 2 * t);
+}
+
 /** Pure: a texel's shadow height and penumbra from its bytes (bake_light.py encode_key). */
 export function decodeTexel(r: number, g: number, b: number, lo: number, hStep: number): { h: number; w: number } {
   return { h: lo + (r * 256 + g) * hStep, w: b / 10 };
@@ -354,13 +364,13 @@ export function createBakedLight() {
       u.hStep.value = meta.hStep;
     },
     /** Picks the maps for the key light now (three.js axes). */
-    update(keyDir: Vec3) {
+    update(keyDir: Vec3, keyStrength = 1) {
       if (keys.length === 0) return;
       const b = shadowBlend(keyDir, keys);
       u.layerA.value = b.a;
       u.layerB.value = b.b;
       u.t.value = b.t;
-      u.weight.value = b.weight * ((depths[b.a] ?? 1) * (1 - b.t) + (depths[b.b] ?? 1) * b.t);
+      u.weight.value = b.weight * ((depths[b.a] ?? 1) * (1 - b.t) + (depths[b.b] ?? 1) * b.t) * keyShines(keyStrength);
       const wa = windows[b.a] as [number, number];
       const wb = windows[b.b] as [number, number];
       u.fineA.value.set(wa[0], wa[1]);

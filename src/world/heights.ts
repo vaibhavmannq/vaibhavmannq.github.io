@@ -95,3 +95,49 @@ export function createDrawnHeightSampler(q: Uint16Array, meta: GridMeta): Height
     return u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
   };
 }
+
+/** A loaded patch of finer ground (plan world-to-100 Task 10; the cove's is 4 m): its heights and grid. */
+export interface Patch {
+  q: Uint16Array;
+  meta: GridMeta;
+}
+
+/**
+ * The ground with the patches laid over it: inside a patch, the patch's own heights (sampled the same way the base
+ * is: `make` is createSurfaceSampler, createHeightSampler or createDrawnHeightSampler), outside, the base. With no
+ * patch (a failed fetch, `?patch=off`) the base alone, whole.
+ */
+export function withPatch(
+  base: HeightAt,
+  patches: readonly Patch[],
+  make: (q: Uint16Array, meta: GridMeta) => HeightAt = createSurfaceSampler,
+): HeightAt {
+  if (patches.length === 0) return base;
+  const inner = patches.map((p) => ({ box: patchBox(p.meta), at: make(p.q, p.meta) }));
+  return (x, y) => {
+    for (const p of inner) if (x >= p.box.x0 && x <= p.box.x1 && y >= p.box.y0 && y <= p.box.y1) return p.at(x, y);
+    return base(x, y);
+  };
+}
+
+/** A patch's extent, coast metres. */
+export function patchBox(m: GridMeta): { x0: number; y0: number; x1: number; y1: number } {
+  return { x0: m.x0, y0: m.y0, x1: m.x0 + (m.nx - 1) * m.step, y1: m.y0 + (m.ny - 1) * m.step };
+}
+
+/**
+ * The rectangle of the 8 m base left out under a patch (terrain.ts baseGeometrySteps `holes`: the cells whose middle
+ * lies inside): the patch's extent, a hair inside it. The patch's border is the base exactly (bake_base.py) and lies on
+ * the 8 m lines, so the two meshes meet edge to edge. Null with no patch: the base is whole.
+ */
+export const PATCH_CUT_INSET = 0.25;
+export function patchCut(m: GridMeta | null): { x0: number; y0: number; x1: number; y1: number } | null {
+  if (!m) return null;
+  const b = patchBox(m);
+  return {
+    x0: b.x0 + PATCH_CUT_INSET,
+    y0: b.y0 + PATCH_CUT_INSET,
+    x1: b.x1 - PATCH_CUT_INSET,
+    y1: b.y1 - PATCH_CUT_INSET,
+  };
+}

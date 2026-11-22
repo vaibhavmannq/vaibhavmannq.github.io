@@ -235,7 +235,7 @@ export function createLightUniforms() {
       key.color.setRGB(...v.keyColor);
       key.intensity = v.keyStrength;
       keyLight.value.setRGB(...v.keyColor).multiplyScalar(v.keyStrength);
-      baked.update(v.keyDir);
+      baked.update(v.keyDir, v.keyStrength);
       key.position.copy(cameraPosition).addScaledVector(u.keyDir.value, 500);
       key.target.position.copy(cameraPosition);
       fill.color.setRGB(...v.ambSky);

@@ -96,7 +96,20 @@
      "cards": 600
     }
    ]
-  }
+  },
+  "patches": [
+   {
+    "id": "cove",
+    "file": "stops/cove/patch.bin",
+    "x0": -304,
+    "y0": -176,
+    "step": 4,
+    "nx": 161,
+    "ny": 135,
+    "lo": -22,
+    "hi": 66
+   }
+  ]
  },
  "skies": {
   "golden": {
@@ -247,6 +260,20 @@
    "stops": "all"
   },
   {
+   "path": "base/ground-macro.jpg",
+   "bytes": 14629,
+   "sha256": "02b045362ab0e3e91c2d107926b9a76d8b8bb29f237d1663bd3485baaefe3eb1",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "base/ground.jpg",
+   "bytes": 561213,
+   "sha256": "6d6d71b3c56865ef605f06cf8a1ed4c2afea146d368f6dde08c3a7491f46e008",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
    "path": "base/heights.bin",
    "bytes": 401802,
    "sha256": "88155348db1cd92adb73a2ac7dc656fa799d80e05cc3fb8f8874cf01cb772266",
@@ -257,6 +284,41 @@
    "path": "base/ring.bin",
    "bytes": 69120,
    "sha256": "1596a883aec9d4f49c04e07fa5ce86b3cf1dc0fe51453ae5cc1ad403e489685e",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/ao-coarse.webp",
+   "bytes": 167670,
+   "sha256": "d742ee20acba534a53175d44c89b0b281d441d34f06135e970421db3bfe368c6",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/ao-fine.webp",
+   "bytes": 513444,
+   "sha256": "c06239b67c46949b9b9454bd9f99b583d82349b1cc0b8cb31d48d7bc1a69c3f8",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-coarse.webp",
+   "bytes": 1762548,
+   "sha256": "3e58e327b535869d2348c0722f75c15aac4b4cd4899faec48a1d016e9b55b2db",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/key-fine.webp",
+   "bytes": 832786,
+   "sha256": "fb19fed206f8445d8ac90abe95cb293c576b05eacb75bd4bcfef3d95815c84bb",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "light/light.json",
+   "bytes": 984,
+   "sha256": "8682d8fd343a3889ac0a953c5c1b35c1dcfffca76bc901a0105bf9c692fcaf17",
    "stage": "B",
    "stops": "all"
   },
@@ -529,6 +591,19 @@
    "path": "stops/cove/grove.bin",
    "bytes": 183840,
    "sha256": "deb9d4b7d216ac2bdf54bc8634958a187edefe115aa87bd2e755935c63fd9d43",
+   "stage": "B",
+   "stops": [
+    "golden",
+    "sunset",
+    "dusk",
+    "firstlight",
+    "sunrise"
+   ]
+  },
+  {
+   "path": "stops/cove/patch.bin",
+   "bytes": 43470,
+   "sha256": "1c2b1f8cdb1c0020607ef619a508113a2fca09ad2390048ef189296623c7c9ed",
    "stage": "B",
    "stops": [
     "golden",

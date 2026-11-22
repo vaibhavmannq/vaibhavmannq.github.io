@@ -57,7 +57,20 @@ export function baseGeometry(q: Uint16Array, m: GridMeta): BufferGeometry {
  * the lantern room ~0.15 s). The normals are three's own sum (each face's (c − b) × (a − b) added to its corners, kept
  * in float32, then normalised), worked out here a few rows at a time: the same numbers to the bit.
  */
-export function* baseGeometrySteps(q: Uint16Array, m: GridMeta): Generator<void, BufferGeometry> {
+export function* baseGeometrySteps(
+  q: Uint16Array,
+  m: GridMeta,
+  /** a patch of finer ground (Task 10): its UVs map onto the base's colour map */
+  patchOf?: GridMeta,
+  /**
+   * The base's cells to leave out (Task 10): under each patch, whose edges lie on the 8 m lines. Left out of the mesh, not
+   * cut per pixel (s30: on the phone the base drawn under the patch and thrown away pixel by pixel cost ~3 fps in rides).
+   */
+  holes: readonly { x0: number; y0: number; x1: number; y1: number }[] = [],
+): Generator<void, BufferGeometry> {
+  const frame = patchOf ?? m;
+  const uSpan = (frame.nx - 1) * frame.step;
+  const vSpan = (frame.ny - 1) * frame.step;
   const pos = new Float32Array(m.nx * m.ny * 3);
   const uvs = new Float32Array(m.nx * m.ny * 2);
   for (let j = 0; j < m.ny; j++) {
@@ -67,14 +80,20 @@ export function* baseGeometrySteps(q: Uint16Array, m: GridMeta): Generator<void,
       pos[k * 3] = m.x0 + i * m.step;
       pos[k * 3 + 1] = dequant(q[k] as number, m.lo, m.hi);
       pos[k * 3 + 2] = -(m.y0 + j * m.step);
-      uvs[k * 2] = i / (m.nx - 1);
-      uvs[k * 2 + 1] = j / (m.ny - 1);
+      uvs[k * 2] = patchOf ? (m.x0 + i * m.step - frame.x0) / uSpan : i / (m.nx - 1);
+      uvs[k * 2 + 1] = patchOf ? (m.y0 + j * m.step - frame.y0) / vSpan : j / (m.ny - 1);
     }
   }
   const index = new Uint32Array((m.nx - 1) * (m.ny - 1) * 6);
   let n = 0;
+  const inHole = (i: number, j: number) => {
+    const cx = m.x0 + (i + 0.5) * m.step;
+    const cy = m.y0 + (j + 0.5) * m.step;
+    return holes.some((h) => cx > h.x0 && cx < h.x1 && cy > h.y0 && cy < h.y1);
+  };
   for (let j = 0; j < m.ny - 1; j++)
     for (let i = 0; i < m.nx - 1; i++) {
+      if (holes.length && inHole(i, j)) continue;
       const a = j * m.nx + i;
       const b = a + 1;
       const c = a + m.nx;
@@ -83,17 +102,18 @@ export function* baseGeometrySteps(q: Uint16Array, m: GridMeta): Generator<void,
       n += 6;
     }
   yield;
+  const used = index.subarray(0, n);
   const nrm = new Float32Array(pos.length);
   const addTo = (v: number, x: number, y: number, z: number) => {
     nrm[v * 3] = (nrm[v * 3] as number) + x;
     nrm[v * 3 + 1] = (nrm[v * 3 + 1] as number) + y;
     nrm[v * 3 + 2] = (nrm[v * 3 + 2] as number) + z;
   };
-  for (let f = 0; f < index.length; f += 3) {
+  for (let f = 0; f < used.length; f += 3) {
     if (f % 30000 === 0) yield;
-    const va = index[f] as number;
-    const vb = index[f + 1] as number;
-    const vc = index[f + 2] as number;
+    const va = used[f] as number;
+    const vb = used[f + 1] as number;
+    const vc = used[f + 2] as number;
     const bx = pos[vb * 3] as number;
     const by = pos[vb * 3 + 1] as number;
     const bz = pos[vb * 3 + 2] as number;
@@ -123,7 +143,7 @@ export function* baseGeometrySteps(q: Uint16Array, m: GridMeta): Generator<void,
   const g = new BufferGeometry();
   g.setAttribute('position', new BufferAttribute(pos, 3));
   g.setAttribute('uv', new BufferAttribute(uvs, 2));
-  g.setIndex(new BufferAttribute(index, 1));
+  g.setIndex(new BufferAttribute(n === index.length ? index : index.slice(0, n), 1));
   g.setAttribute('normal', new BufferAttribute(nrm, 3));
   return g;
 }
@@ -270,6 +290,8 @@ export function createTerrain(
   baseGeo?: BufferGeometry,
   /** the ground's close-up detail (prep_ground.py: R rock, G grass, B sand); none: the colour map alone */
   groundTex?: { detail: Texture; macro: Texture },
+  /** finer ground near places (Task 10): each patch's mesh (baseGeometrySteps with its patch); the base has holes under them */
+  patches: readonly BufferGeometry[] = [],
 ): WorldPart & { material: MeshStandardNodeMaterial } {
   colour.colorSpace = SRGBColorSpace;
   const material = new MeshStandardNodeMaterial();
@@ -352,7 +374,9 @@ export function createTerrain(
   const far = new Mesh(ringGeometry(ring, meta.ring, meta.heights), material);
   base.frustumCulled = false;
   far.frustumCulled = false;
-  group.add(base, far);
+  const fine = patches.map((g) => new Mesh(g, material));
+  group.add(base, far, ...fine);
+  const all = [base, far, ...fine];
   return {
     object: group,
     material,
@@ -360,12 +384,11 @@ export function createTerrain(
       // R203 (s27): resting at Night, the lagoon's mirror sees the bowl's walls, never the ground behind them (shots with
       // and without match); leaving the ground out there saves ~1 ms at low. Everywhere else the water mirrors the land.
       const restingAtNight = f.state.kind === 'stop' && f.state.a === NIGHT;
-      for (const m of [base, far]) m.layers.set(restingAtNight ? EYE_ONLY_LAYER : 0);
+      for (const m of all) m.layers.set(restingAtNight ? EYE_ONLY_LAYER : 0);
     },
     setTier() {},
     dispose() {
-      base.geometry.dispose();
-      far.geometry.dispose();
+      for (const m of all) m.geometry.dispose();
       material.dispose();
     },
   };

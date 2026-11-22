@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bakedAt, decodeTexel, shadowBlend } from '../../src/world/baked';
+import { bakedAt, decodeTexel, keyShines, shadowBlend } from '../../src/world/baked';
 
 const dir = (elDeg: number, azDeg: number): [number, number, number] => {
   const e = (elDeg * Math.PI) / 180;
@@ -46,6 +46,16 @@ describe('shadowBlend', () => {
       expect(Math.abs(now.weight - prev.weight)).toBeLessThan(0.2);
       prev = now;
     }
+  });
+});
+
+describe('keyShines', () => {
+  it('a key that is off reads no shadow; a lit one reads all of it', () => {
+    expect(keyShines(0)).toBe(0); // First light: the sun below the horizon
+    expect(keyShines(0.42)).toBe(1); // Night's moon (0.7 × KEY_SCALE)
+    expect(keyShines(2.1)).toBe(1); // Golden's sun
+    expect(keyShines(0.1)).toBeGreaterThan(0);
+    expect(keyShines(0.1)).toBeLessThan(1);
   });
 });
 

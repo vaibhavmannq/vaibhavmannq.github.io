@@ -60,7 +60,14 @@ import {
   SUNSET_FRAME,
   scrubInstances,
 } from '../world/grove';
-import { createDrawnHeightSampler, createHeightSampler, createSurfaceSampler } from '../world/heights';
+import {
+  createDrawnHeightSampler,
+  createHeightSampler,
+  createSurfaceSampler,
+  type Patch,
+  patchCut,
+  withPatch,
+} from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
 import { createLife } from '../world/life';
@@ -260,6 +267,15 @@ async function loadBase(
   coveEarly?.catch(() => undefined); // its failure is handled where it is awaited
   // The baked light (Task 11): shadows and the sky's share; `?baked=off` leaves every place unshadowed (an A/B). A
   // failed download leaves it off too: the light is as before, never broken.
+  // finer ground near places (Task 10; a 4 m patch over the cove): small (43 kB), with the base, since every plant and rock is placed from the
+  // heights as it loads. `?patch=off` and a failed fetch leave the 8 m ground whole.
+  const patchMetas = app.manifest.base.patches ?? [];
+  const patchesLoaded: Promise<Patch[]> =
+    new URLSearchParams(location.search).get('patch') === 'off'
+      ? Promise.resolve([])
+      : Promise.all(patchMetas.map(async (p) => ({ q: new Uint16Array(await fetchBinary(p.file)), meta: p }))).catch(
+          () => [],
+        );
   const bakedMaps =
     new URLSearchParams(location.search).get('baked') === 'off'
       ? Promise.resolve(null)
@@ -284,7 +300,10 @@ async function loadBase(
   const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
   const heights = new Uint16Array(heightsBuf);
-  const heightAt = createHeightSampler(heights, meta.heights);
+  const patches = await patchesLoaded;
+  // every placement reads the ground with the patches laid over it, sampled as the base is
+  const heightAt = withPatch(createHeightSampler(heights, meta.heights), patches, createHeightSampler);
+  const surfaceWith = () => withPatch(createSurfaceSampler(heights, meta.heights), patches, createSurfaceSampler);
   app.nearM = STOPS.map((s) =>
     nearDistance(s.cam, s.landscape.yaw, s.landscape.pitch, fovFor(s.landscape.lens, 16 / 9), heightAt),
   );
@@ -294,7 +313,11 @@ async function loadBase(
   // s18: the bowl's own middle (plan M5 Task 1); its walls stand 34-48 m out, the crater's 8 m slopes up to 70 m.
   const lagoon = { x: BOWL.x, y: BOWL.y, r: 62 };
   // the base grid in slices (s29 Task 7b: its normals alone froze the lantern room ~0.15 s)
-  const baseGeo = await runSliced(baseGeometrySteps(heights, meta.heights), SLICE_MS, yieldTask);
+  const holes = patches.map((p) => patchCut(p.meta)).filter((c) => c !== null);
+  const baseGeo = await runSliced(baseGeometrySteps(heights, meta.heights, undefined, holes), SLICE_MS, yieldTask);
+  const patchParts = [];
+  for (const p of patches)
+    patchParts.push(await runSliced(baseGeometrySteps(p.q, p.meta, meta.heights), SLICE_MS, yieldTask));
   const terrain = createTerrain(
     heights,
     new Uint16Array(ringBuf),
@@ -306,6 +329,7 @@ async function loadBase(
     light,
     baseGeo,
     groundTex,
+    patchParts,
   );
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
@@ -337,12 +361,12 @@ async function loadBase(
   // Deep midnight's ridge top (plan M6 Task 2): a designed ground around the eye, in the terrain's material, and its
   // heather and grass as the meadow's sixth stop
   await yieldTask(); // the lantern room may draw between build steps (R216)
-  const surface = createSurfaceSampler(heights, meta.heights);
+  const surface = surfaceWith();
   const mid = SHOTS.midnight;
   const ridgeSite = { x: mid.cam[0], y: mid.cam[1], ground: surface(mid.cam[0], mid.cam[1]), yaw: mid.look[0] };
   // the ridge stands on the base ground as drawn (flat triangles), never under it (plan M8 Task 7: on the steep west drop
   // the drawn base stood over the smooth height and showed through as a pale bare slab)
-  const drawn = createDrawnHeightSampler(heights, meta.heights);
+  const drawn = withPatch(createDrawnHeightSampler(heights, meta.heights), patches, createDrawnHeightSampler);
   const underRidge = (x: number, y: number) => Math.max(surface(x, y), drawn(x, y));
   const ridgeGround = ridgeHeight(underRidge, ridgeSite);
   parts.push(['ridge', createRidge(underRidge, ridgeSite, meta.heights, terrain.material)]);
@@ -373,7 +397,7 @@ async function loadBase(
   }
   await yieldTask(); // the lantern room may draw between build steps (R216)
   // The life layer (plan M3 Task 6): gulls, bats, the flock, petals and dew in one sprite draw; First light's fish ring.
-  parts.push(['life', createLife(light, createSurfaceSampler(heights, meta.heights), reducedMotion)]);
+  parts.push(['life', createLife(light, surfaceWith(), reducedMotion)]);
   if (dressingMeta && dressingBuf) {
     const instances = decodeDressing(new Uint16Array(dressingBuf), dressingMeta, meta.heights);
     parts.push(['dressing', createDressing(instances, heightAt)]);
@@ -513,7 +537,7 @@ async function loadBase(
   const capsAt = new Promise<Float32Array>((resolve) => {
     capsFound = resolve;
   });
-  const surfaceAt = createSurfaceSampler(heights, meta.heights);
+  const surfaceAt = surfaceWith();
   const coveReady = (async () => {
     try {
       const [cliffsBuf, groveBuf] = await (coveEarly ?? coveFiles());

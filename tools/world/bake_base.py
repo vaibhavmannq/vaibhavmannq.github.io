@@ -84,5 +84,70 @@ def main():
     print("heights", heights, "ring lo/hi", rlo, rhi)
 
 
+# ---------------------------------------------------------------------------------------------------- patches (Task 10)
+# Finer land near places (plan world-to-100 Task 10, C2): the 8 m grid draws nothing under ~16 m, so it smears every
+# cliff face into a ramp (up to 19 m off the formula on the cove's faces). A patch is coast.py's own formula on a 4 m
+# grid, blended into the live 8 m ground over its outer EDGE metres (its border is the 8 m ground exactly, so no seam),
+# and held to the 8 m ground at the cameras and walk spots (HOLD_R: cameras keep their eye height above the ground they
+# were set on) and around the cave (built against the 8 m ground). One patch serves the cove's five places.
+PATCHES = {"cove": dict(x0=-304.0, y0=-176.0, x1=336.0, y1=360.0)}   # multiples of 8 from the base's corner
+# 4 m, not the plan's 2 m (s30, R221): at 2 m the patch cost 1.0-2.2 ms at low on this laptop (172 k triangles, eye and
+# mirror, most under a pixel); at 4 m 0.2-0.9 ms, and the cove's rims still read as steps (features down to ~8 m).
+PATCH_STEP = 4.0
+EDGE = 16.0
+HOLD_R = (6.0, 15.0)
+CAVE_HOLD_R = (30.0, 55.0)
+
+
+def tri_height(H, m, X, Y):
+    """The live 8 m ground at (X, Y): each cell split a-b-c / b-d-c as terrain.ts builds it."""
+    fx = (X - m["x0"]) / m["step"]; fy = (Y - m["y0"]) / m["step"]
+    i = np.clip(np.floor(fx).astype(int), 0, m["nx"] - 2); j = np.clip(np.floor(fy).astype(int), 0, m["ny"] - 2)
+    u = np.clip(fx - i, 0, 1); v = np.clip(fy - j, 0, 1)
+    a = H[j, i]; b = H[j, i + 1]; c = H[j + 1, i]; d = H[j + 1, i + 1]
+    return np.where(u + v <= 1, a + (b - a) * u + (c - a) * v, d + (c - d) * (1 - u) + (b - d) * (1 - v))
+
+
+def patch_heights(c, H, m, box):
+    xs = np.arange(box["x0"], box["x1"] + 1e-6, PATCH_STEP); ys = np.arange(box["y0"], box["y1"] + 1e-6, PATCH_STEP)
+    X, Y = np.meshgrid(xs, ys)
+    fine = np.asarray(c.ground(X, Y), np.float64)
+    live = tri_height(H, m, X, Y)
+    edge = np.minimum.reduce([X - box["x0"], box["x1"] - X, Y - box["y0"], box["y1"] - Y])
+    w = sm(0.0, EDGE, edge)
+    hold = np.zeros_like(X)
+    for px, py in c.PROTECT:
+        hold = np.maximum(hold, sm(HOLD_R[1], HOLD_R[0], np.hypot(X - px, Y - py)))
+    hold = np.maximum(hold, sm(CAVE_HOLD_R[1], CAVE_HOLD_R[0], np.hypot(X - c.CAVE[0], Y - c.CAVE[1])))
+    return xs, ys, live + (fine - live) * w * (1 - hold)
+
+
+def bake_patches():
+    c = coastlib.load()
+    meta_path = os.path.join(OUT, "base.json")
+    meta = json.load(open(meta_path, encoding="utf-8"))
+    m = meta["heights"]
+    q8 = np.fromfile(os.path.join(OUT, "heights.bin"), dtype="<u2").reshape(m["ny"], m["nx"])
+    H = m["lo"] + q8.astype(np.float64) * (m["hi"] - m["lo"]) / 65535
+    out = []
+    for name, box in PATCHES.items():
+        xs, ys, h = patch_heights(c, H, m, box)
+        q, lo, hi = quantise(h)
+        rel = f"stops/{name}/patch.bin"
+        path = os.path.normpath(os.path.join(OUT, "..", rel))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        q.tofile(path)
+        out.append(dict(id=name, file=rel, x0=box["x0"], y0=box["y0"], step=PATCH_STEP, nx=len(xs), ny=len(ys), lo=lo, hi=hi))
+        print(f"{name}: {len(xs)} x {len(ys)}, {os.path.getsize(path) / 1e3:.0f} kB, z {lo}..{hi}")
+    meta["patches"] = out
+    with open(meta_path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(meta, f, indent=1)
+        f.write("\n")
+
+
 if __name__ == "__main__":
-    main()
+    if "--patches" in sys.argv:
+        bake_patches()
+    else:
+        main()
+        bake_patches()
