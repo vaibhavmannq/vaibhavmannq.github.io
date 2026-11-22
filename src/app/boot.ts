@@ -257,12 +257,22 @@ async function loadBase(
     Promise.all([cliffsMeta ? fetchBinary(cliffsMeta.file) : null, groveMeta ? fetchBinary(groveMeta.file) : null]);
   const coveEarly = COVE_SEEN_FROM.has(opening()) ? coveFiles() : null;
   coveEarly?.catch(() => undefined); // its failure is handled where it is awaited
-  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData] = await Promise.all([
+  const [heightsBuf, ringBuf, colour, dressingBuf, auroraData, groundTex] = await Promise.all([
     fetchBinary('base/heights.bin'),
     fetchBinary('base/ring.bin'),
     new TextureLoader().loadAsync('/world/base/colour.webp'),
     dressingMeta ? fetchBinary(dressingMeta.file) : null,
     auroraMeta ? fetchJson<AuroraData>(auroraMeta.file) : null,
+    // the ground's close-up detail (Task 9): a failed download leaves the colour map alone, as before
+    new URLSearchParams(location.search).get('ground') === 'off'
+      ? undefined // `?ground=off`: the colour map alone, as before Task 9 (an A/B for the owner)
+      : Promise.all([
+          new TextureLoader().loadAsync('/world/base/ground.jpg'),
+          new TextureLoader().loadAsync('/world/base/ground-macro.jpg'),
+        ]).then(
+          ([detail, macro]) => ({ detail, macro }),
+          () => undefined,
+        ),
   ]);
   const caveShot = SHOTS.beforedawn.cave;
   const meta = app.manifest.base;
@@ -278,7 +288,18 @@ async function loadBase(
   const lagoon = { x: BOWL.x, y: BOWL.y, r: 62 };
   // the base grid in slices (s29 Task 7b: its normals alone froze the lantern room ~0.15 s)
   const baseGeo = await runSliced(baseGeometrySteps(heights, meta.heights), SLICE_MS, yieldTask);
-  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon, light, baseGeo);
+  const terrain = createTerrain(
+    heights,
+    new Uint16Array(ringBuf),
+    colour,
+    meta,
+    sky,
+    cut,
+    lagoon,
+    light,
+    baseGeo,
+    groundTex,
+  );
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   app.pipeline?.setMirror(sea.mirror);

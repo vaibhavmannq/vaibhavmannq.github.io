@@ -22,8 +22,11 @@
     "searsia_burchellii"
   ],
   "textures": [
+    "aerial_grass_rock",
+    "brown_mud_02",
     "coast_sand_03",
     "damp_beach_sand",
+    "dark_rock",
     "seaside_rock"
   ],
   "sound": [

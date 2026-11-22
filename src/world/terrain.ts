@@ -26,12 +26,15 @@ import {
   Group,
   Mesh,
   MeshStandardNodeMaterial,
+  NoColorSpace,
   type Node,
+  RepeatWrapping,
   SRGBColorSpace,
   type Texture,
 } from 'three/webgpu';
 import { STOP_IDS } from '../journey/types';
 import { runAll } from '../shared/slice';
+import { groundWeightsNode } from './ground';
 import type { GridMeta, RingMeta } from './heights';
 import type { LightUniforms } from './light';
 import { EYE_ONLY_LAYER } from './meadow';
@@ -125,6 +128,75 @@ export function* baseGeometrySteps(q: Uint16Array, m: GridMeta): Generator<void,
   return g;
 }
 
+/** Metres per repeat of the ground's detail: seen from above (grass, sand, soil), and on a face (rock, sideways). */
+const DETAIL_TILE = 3.2;
+const ROCK_TILE = 5.5;
+/** The detail is whole up to NEAR metres from the eye and gone by FAR: past it the colour map is the ground, as before. */
+const DETAIL_NEAR = 45;
+const DETAIL_FAR = 140;
+/** How far the detail swings brightness (×(1 ± 2·STRENGTH·(d − 0.5)); one standard deviation is ±0.16 · 2 · STRENGTH). */
+const DETAIL_STRENGTH = 0.9;
+/** A light tint per ground, over the colour map's own paint: rock greyer, sand paler and warmer, soil browner. */
+const TINT = { rock: [0.86, 0.87, 0.92], grass: [1, 1, 1], sand: [1.06, 1.02, 0.93], soil: [1.02, 0.9, 0.78] } as const;
+
+/**
+ * The ground's close-up detail (plan world-to-100 Task 9, C2): which ground a point is (ground.ts, by slope and height),
+ * that ground's brightness detail (prep_ground.py) and tint, faded out with distance. Rock on a face reads its detail
+ * sideways (projected along the face's main horizontal direction), so a cliff shows strata, not stretched streaks.
+ */
+function groundDetail(tex: Texture, macroTex: Texture, wxy: Node<'vec2'>, z: Node<'float'>): Node<'vec3'> {
+  for (const t of [macroTex]) {
+    t.wrapS = RepeatWrapping;
+    t.wrapT = RepeatWrapping;
+    t.colorSpace = NoColorSpace;
+  }
+  tex.wrapS = RepeatWrapping;
+  tex.wrapT = RepeatWrapping;
+  tex.colorSpace = NoColorSpace;
+  tex.anisotropy = 8;
+  const n = normalWorld;
+  const [rock, grass, sand, soil] = groundWeightsNode(n.y as Node<'float'>, z, float(0) as Node<'float'>);
+  const top = texture(tex, wxy.div(DETAIL_TILE)).rgb;
+  // the face's main horizontal direction picks the projection: along x (three.js), the face shows y-z; else x-z
+  const across = mix(wxy.x, wxy.y, step(n.z.abs(), n.x.abs()));
+  const side = texture(tex, vec2(across, z.mul(1.6)).div(ROCK_TILE)).r;
+  const rockD = mix(top.r, side, smoothstep(0.85, 0.6, n.y));
+  const soilD = top.g.add(top.b).mul(0.5);
+  const d = rockD.mul(rock).add(top.g.mul(grass)).add(top.b.mul(sand)).add(soilD.mul(soil));
+  const fade = smoothstep(DETAIL_FAR, DETAIL_NEAR, cameraPosition.sub(positionWorld).length());
+  const t = (c: readonly number[]) => vec3(c[0] ?? 1, c[1] ?? 1, c[2] ?? 1);
+  const tint = t(TINT.rock)
+    .mul(rock)
+    .add(t(TINT.grass).mul(grass))
+    .add(t(TINT.sand).mul(sand))
+    .add(t(TINT.soil).mul(soil));
+  const bright = d
+    .sub(0.5)
+    .mul(2 * DETAIL_STRENGTH)
+    .add(1);
+  const near = mix(vec3(1), tint.mul(bright), fade);
+  // The macro layer (s29): from the stops most land is 50-400 m away, where the close-up detail averages to flat (the
+  // meadows read as one smooth olive sheet). Patches of tone from a low-frequency pattern (prep_ground.py
+  // ground-macro.jpg: R dry/lush grass, G light/dark, B a second scale), holding out to MACRO_FAR.
+  const m = texture(macroTex, wxy.div(MACRO_TILE)).rgb;
+  const m2 = texture(macroTex, vec2(wxy.y, wxy.x.negate()).div(MACRO_TILE * 0.37)).b;
+  const dry = smoothstep(0.3, 0.7, m.r);
+  const grassHue = mix(vec3(1), mix(vec3(0.9, 1.04, 0.93), vec3(1.1, 1.0, 0.78), dry), grass);
+  const shade = m.g
+    .add(m2)
+    .sub(1)
+    .mul(2 * MACRO_STRENGTH)
+    .add(1);
+  const macroFade = smoothstep(MACRO_FAR, MACRO_FAR * 0.4, cameraPosition.sub(positionWorld).length());
+  const macro = mix(vec3(1), grassHue.mul(shade), macroFade);
+  return near.mul(macro) as Node<'vec3'>;
+}
+
+/** The macro layer: metres per repeat, how far it holds, and its swing (see groundDetail). */
+const MACRO_TILE = 64;
+const MACRO_FAR = 600;
+const MACRO_STRENGTH = 0.45;
+
 /** Flip triangle winding if the normals point down (the slice's check). */
 function faceUp(g: BufferGeometry): void {
   const normals = g.getAttribute('normal');
@@ -196,6 +268,8 @@ export function createTerrain(
   light?: Pick<LightUniforms, 'keyDir' | 'keyColor' | 'keyStrength' | 'moonStrength'>,
   /** the base grid already built (in slices, `baseGeometrySteps`); otherwise it is built here at once */
   baseGeo?: BufferGeometry,
+  /** the ground's close-up detail (prep_ground.py: R rock, G grass, B sand); none: the colour map alone */
+  groundTex?: { detail: Texture; macro: Texture },
 ): WorldPart & { material: MeshStandardNodeMaterial } {
   colour.colorSpace = SRGBColorSpace;
   const material = new MeshStandardNodeMaterial();
@@ -228,7 +302,8 @@ export function createTerrain(
   const ground = texture(colour, uv())
     .rgb.mul(variation)
     .mul(ribs)
-    .mul(tideBands(z, normalWorld.y, seaWetNode(wxy, fresh)));
+    .mul(tideBands(z, normalWorld.y, seaWetNode(wxy, fresh)))
+    .mul(groundTex ? groundDetail(groundTex.detail, groundTex.macro, wxy, z) : vec3(1));
   // Under the moon the eye sees little colour (reference book §1, the Purkinje shift; plan M6 Task 4): in the moon's
   // hours the turf greys toward a cool blue, keeping a third of its own green (Midnight's hills read as daylight turf).
   const moonlit = light ? smoothstep(0.0, 4.0, light.moonStrength) : float(0);
