@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-21, session s28 (see `docs/handover/sessions/2026-11-21-s28-w100-phase0.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-22, session s29 (see `docs/handover/sessions/2026-11-22-s29-w100-phase1-start.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -321,7 +321,12 @@ no borrowed set pieces (no towers, piano, etc.).
   - Owner page: https://claude.ai/artifact/WenenQWiXj2vn3eS3BCKMD
   - The room on the phone (R216): a real tap works; the room still freezes ~0.7 s while the world loads (halved).
 - **Owner, end of s28 (D54): higher tiers may add detail** (denser sets on high/ultra over a complete low).
-- **Next (s29):** Phase 1's detailed plan, its first task the room's smoothness (R216), then C1, C2, C5.
+- **s29 (2026-11-22): Phase 1 written and started** (log `sessions/2026-11-22-s29-w100-phase1-start.md`; ledger
+  R217–R220; not pushed). Room smoothness part 1 (laptop worst 217 ms, phone 0.5 s: below its bar, part 2 carried);
+  edge smoothing per tier (FXAA low/mid/ultra, TAAU high; ultra kept on the phone); the ground by slope and height
+  (`?ground=off` A/B). Owner asked "garbage in, garbage out, Witcher level?": yes, AA is the floor; light is next.
+  Task 11's bake now covers rides too (one map per hour, blended).
+- **Next (s30):** Task 11 (baked light) first, my recommendation, then 11b, 10 (2 m land), 11c; a cool-phone night (7a).
   The owner's test of #8, #9's walls, #10, #12, #14 (+ `?sunrise=sun`) and the reflections still stands.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
