@@ -33,6 +33,7 @@ import { bootTier, TIERS, type Tier, type TierSettings } from '../quality/tiers'
 import { createPipeline, type Pipeline } from '../render/pipeline';
 import { createScroll, type ScrollController } from '../scroll/scroll';
 import { createTouchSnap, easeInOutSine } from '../scroll/touchSnap';
+import { runSliced } from '../shared/slice';
 import { createSound } from '../sound/engine';
 import { mountSoundToggle } from '../sound/toggle';
 import { createArch, createRockMaterial, decodeArch } from '../world/arch';
@@ -48,6 +49,7 @@ import { COVE_SEEN_FROM } from '../world/cove';
 import { cragPrisms, createCrags, edgeScrub } from '../world/crags';
 import { createDressing, decodeDressing } from '../world/dressing';
 import {
+  bakeGroveSteps,
   createCaps,
   createGrove,
   createGroveProps,
@@ -81,7 +83,7 @@ import { createPebbles } from '../world/pebbles';
 import { createPlankton, planktonStirs, waterline } from '../world/plankton';
 import { createProjectLanterns } from '../world/projectLanterns';
 import { createRidge, ridgeHeight, scatterRidge } from '../world/ridge';
-import { PLANT_STRIDE, scatterCove } from '../world/scatter';
+import { PLANT_STRIDE, scatterCoveSteps } from '../world/scatter';
 import { createSea, heightTexture } from '../world/sea';
 import { createSetStreamer, type SetStreamer } from '../world/setStreamer';
 import { SET_PARTS, wantedSets } from '../world/sets';
@@ -91,7 +93,7 @@ import { createSkylight, openRoof, roofAbove, SKYLIGHT } from '../world/skylight
 import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
 import { STIR_SPACING, stir, waterHit } from '../world/stir';
-import { createTerrain } from '../world/terrain';
+import { baseGeometrySteps, createTerrain } from '../world/terrain';
 import { createVines, vineLeaves } from '../world/vines';
 import { createWaterfall } from '../world/waterfall';
 import { installBench } from './bench';
@@ -154,10 +156,21 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
  * Lets the browser run a due frame (the lantern room) without waiting for one: a frame wait serialised the GPU's shader
  * builds and doubled the load (R216: terrain joined at 12.8 s, not 5.9).
  */
-const yieldTask = () => {
-  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
-  return s?.yield ? s.yield() : new Promise<void>((resolve) => setTimeout(resolve, 0));
-};
+const yieldChannel = new MessageChannel();
+const yieldWaiting: (() => void)[] = [];
+yieldChannel.port1.onmessage = () => yieldWaiting.shift()?.();
+/**
+ * A plain task, not `scheduler.yield()` (s29 Task 7b): a scheduler.yield continuation runs ahead of a due frame, so the
+ * room did not draw between slices (frozen 0.7-0.9 s through the sliced scatter); a posted message does not, and has
+ * no setTimeout clamp.
+ */
+const yieldTask = () =>
+  new Promise<void>((resolve) => {
+    yieldWaiting.push(resolve);
+    yieldChannel.port2.postMessage(0);
+  });
+/** A build sliced for the lantern room (shared/slice.ts) runs this long before the browser may draw (s29 Task 7b). */
+const SLICE_MS = 8;
 /** The lantern room never holds a first visit longer than this (spec §4.1: 5–15 s). */
 const ROOM_CAP_MS = 15000;
 const showProgress = (share: number) => {
@@ -262,7 +275,9 @@ async function loadBase(
   // and the camera; 120 m reaches the bowl's walls.
   // s18: the bowl's own middle (plan M5 Task 1); its walls stand 34-48 m out, the crater's 8 m slopes up to 70 m.
   const lagoon = { x: BOWL.x, y: BOWL.y, r: 62 };
-  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon, light);
+  // the base grid in slices (s29 Task 7b: its normals alone froze the lantern room ~0.15 s)
+  const baseGeo = await runSliced(baseGeometrySteps(heights, meta.heights), SLICE_MS, yieldTask);
+  const terrain = createTerrain(heights, new Uint16Array(ringBuf), colour, meta, sky, cut, lagoon, light, baseGeo);
   const heightMap = heightTexture(heights, meta.heights);
   const sea = createSea(heightMap, meta.heights, light, TIERS[app.tier]);
   app.pipeline?.setMirror(sea.mirror);
@@ -302,7 +317,8 @@ async function loadBase(
   const deckBox = mid.cloudsea ? [mid.cloudsea.box[0], mid.cloudsea.box[1], mid.cloudsea.box[2], -100] : undefined;
   parts.push(['peaks', createPeaks({ x: ridgeSite.x, y: ridgeSite.y, z: mid.eyeZ }, ridgeSite.yaw, light, deckBox)]);
   await yieldTask(); // the lantern room may draw between build steps (R216)
-  const cove = scatterCove(surface);
+  // in slices: one block, it froze the lantern room ~0.3 s (s29 Task 7b)
+  const cove = await runSliced(scatterCoveSteps(surface), SLICE_MS, yieldTask);
   const ridgePlants = scatterRidge(ridgeGround, ridgeSite, PLANT_STOPS.indexOf('midnight'));
   const plants = new Float32Array(cove.data.length + ridgePlants.length);
   plants.set(cove.data);
@@ -462,10 +478,13 @@ async function loadBase(
       const [cliffsBuf, groveBuf] = await (coveEarly ?? coveFiles());
       // Golden's pebbles (s16): made here, drawn with the rock material, so they join with the cove pack
       const joins: Promise<void>[] = [compileThenAdd(app, createPebbles(surfaceAt, rock), 'pebbles')];
+      await yieldTask();
       if (cliffsMeta && cliffsBuf)
         joins.push(compileThenAdd(app, createCliffs(decodeCliffs(cliffsBuf, cliffsMeta), cliffsMeta, rock), 'cliffs'));
       if (groveMeta && groveBuf) {
-        const grove = createGrove(decodeGrove(groveBuf, groveMeta), surfaceAt, light);
+        const groveData = decodeGrove(groveBuf, groveMeta);
+        const groveBaked = await runSliced(bakeGroveSteps(groveData, surfaceAt), SLICE_MS, yieldTask);
+        const grove = createGrove(groveData, surfaceAt, light, groveBaked);
         joins.push(compileThenAdd(app, grove, 'grove'));
         // Deep midnight's lone tree on the ridge's knoll (plan M6 Task 3)
         joins.push(compileThenAdd(app, createLoneTree(grove, ridgeGround), 'lonetree'));
@@ -473,10 +492,12 @@ async function loadBase(
         const sunsetEye = [SHOTS.sunset.cam[0], SHOTS.sunset.cam[1]] as const;
         const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], SUNSET_FRAME, surfaceAt);
         joins.push(compileThenAdd(app, createGroveProps(grove, frame, surfaceAt, 'sunset', 'scrub'), 'scrub'));
+        await yieldTask(); // each grove prop bakes its own plants (20-60 ms): the lantern room draws between (s29)
         // shrubs clinging to the drops below Dusk's and Sunrise's eye (M8.5 #2 part 2), on the ground as drawn
         for (const site of cragSites.filter((s) => s.id === 'dusk' || s.id === 'sunrise')) {
           const name = `edge-${site.id}`;
           joins.push(compileThenAdd(app, createGroveProps(grove, edgeScrub(drawn, site), drawn, site.id, name), name));
+          await yieldTask();
         }
         // trees along Night's rim (plan M8 Task 7), each standing on the rim's top
         // and shrubs on the colonnade's ledge (M8.5 #9), in the same draw; out of the lagoon's mirror (R203, s27: its
@@ -487,6 +508,7 @@ async function loadBase(
         for (let i = 0; i < rim.length; i += 10) rimZ.set(`${rim[i + 1]},${rim[i + 2]}`, rim[i + 3] as number);
         const onRim = (x: number, y: number) => rimZ.get(`${x},${y}`) ?? 0;
         joins.push(compileThenAdd(app, createGroveProps(grove, rim, onRim, 'night', 'rimtrees', false), 'rimtrees'));
+        await yieldTask();
         // the stacks' and the arch's scrub caps share the grove's shrub and material (plan M4 Task 3)
         joins.push(
           capsAt.then((caps) => (caps.length ? compileThenAdd(app, createCaps(grove, caps), 'caps') : undefined)),
@@ -686,6 +708,7 @@ export async function boot(): Promise<App> {
     new ResizeObserver(() => r.resize(host.clientWidth, host.clientHeight)).observe(host);
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const held = new URLSearchParams(location.search).has('roomhold');
+    const glowLayer = document.getElementById('room-glow');
     const t0 = performance.now();
     let lastMs = t0;
     let glow = 0;
@@ -729,9 +752,18 @@ export async function boot(): Promise<App> {
       }
       r.update((nowMs - t0) / 1000, glow, lift, dark);
       r.render();
+      if (glowLayer) {
+        const g = r.lanternOnScreen(host.clientWidth, host.clientHeight);
+        const scale = (g.r * 2.6) / 50;
+        glowLayer.style.transform = `translate3d(${(g.x - 50).toFixed(1)}px, ${(g.y - 50).toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
+      }
       if (dark >= 1 && roomOn) finish();
     };
-    pipeline.renderer.setAnimationLoop(roomStep);
+    // the room's shaders built before its first frame, off the frame (s29 Task 7b)
+    const startRoom = () => {
+      if (roomOn && !worldLooping) pipeline.renderer.setAnimationLoop(roomStep);
+    };
+    r.compile().then(startRoom, startRoom);
     const lightUp = (event: Event) => {
       if (!roomOn) return;
       if (event instanceof KeyboardEvent && !lightsLantern(event.key)) return;

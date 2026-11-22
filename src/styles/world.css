@@ -473,6 +473,67 @@ html.is-room-lit .room-hint {
   transition-delay: 0ms;
 }
 
+/* The flame's breath as a layer over the canvas (s29 Task 7b): only transform and opacity move, so the compositor keeps
+   it breathing while the world's build holds the main thread (the canvas itself waits for the next frame). boot.ts
+   places it on the paper each room frame; it is shown once lit and leaves with the room. */
+.room-glow {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  mix-blend-mode: screen;
+  will-change: transform;
+  transition: opacity 400ms ease;
+}
+
+.room-glow > div {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 176 96 / 0.24) 0%, rgb(255 140 64 / 0.1) 38%, rgb(255 120 50 / 0) 70%);
+  animation:
+    room-breath 2.9s ease-in-out infinite alternate,
+    room-shiver 0.37s steps(2) infinite;
+}
+
+@keyframes room-breath {
+  from {
+    transform: scale(0.94);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes room-shiver {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+html.is-room-lit .room-glow {
+  visibility: visible;
+  opacity: 1;
+}
+
+html.is-room-out .room-glow {
+  opacity: 0;
+  transition-duration: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-glow > div {
+    animation: none;
+  }
+}
+
 html.is-room .world {
   opacity: 1;
   transition: none;

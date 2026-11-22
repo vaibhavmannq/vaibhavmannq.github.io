@@ -15,6 +15,7 @@ import {
   PointLight,
   Scene,
   SphereGeometry,
+  Vector3,
   type WebGPURenderer,
 } from 'three/webgpu';
 import { paperLit, paperShape } from '../world/lantern';
@@ -32,6 +33,10 @@ export interface LanternRoom {
   /** glow 0..1 (unlit: a faint fill as the world loads; lit: the flame), lift 0..1 (the float-out), dark 0..1 (the fade). */
   update(timeS: number, glow: number, lift: number, dark: number): void;
   render(): void;
+  /** Builds the room's shaders off the frame (s29: built at its first draw, they stalled the GPU ~1 s beside the world's). */
+  compile(): Promise<void>;
+  /** Where the paper is on a `width`×`height` screen (CSS px), for the glow layer over the canvas (s29 Task 7b). */
+  lanternOnScreen(width: number, height: number): { x: number; y: number; r: number };
   resize(width: number, height: number): void;
   dispose(): void;
 }
@@ -45,27 +50,50 @@ const VIEWS: Record<RoomLook, { eye: [number, number, number]; at: [number, numb
   c: { eye: [0.1, 1.25, 1.05], at: [0.05, 0.08, -0.05], fov: 34 },
 };
 
+/**
+ * The view for a screen of this aspect: the landscape framing, and on an upright phone the same width of table kept
+ * (a wider vertical angle, capped) with the lantern brought to the middle (s28: on the phone it filled the screen and
+ * was cut off at the left).
+ */
+function frameRoomCamera(camera: PerspectiveCamera, look: RoomLook, a: number): void {
+  const view = VIEWS[look];
+  const portrait = Math.min(1, Math.max(0, (1.2 - a) / 0.75));
+  const halfWide = Math.atan(Math.tan(((view.fov / 2) * Math.PI) / 180) * (16 / 9));
+  const wide = (2 * Math.atan((Math.tan(halfWide) * 0.8) / Math.max(0.3, a)) * 180) / Math.PI;
+  camera.aspect = a;
+  camera.fov = a >= 1.2 ? view.fov : Math.min(72, Math.max(view.fov, wide));
+  camera.position.set(view.eye[0] * (1 - 0.8 * portrait), view.eye[1], view.eye[2]);
+  camera.lookAt(view.at[0] * (1 - portrait), view.at[1], view.at[2]);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+}
+
+/** The float-out's easing (0..1). */
+const liftEase = (lift: number) => lift * lift * (3 - 2 * lift);
+
+/** Pure: the paper's centre and half-height on a `width`×`height` screen (CSS px), `lift` into the float-out. */
+export function lanternScreenAt(look: RoomLook, width: number, height: number, lift: number) {
+  const camera = new PerspectiveCamera(VIEWS[look].fov, 1, 0.02, 20);
+  frameRoomCamera(camera, look, width / Math.max(1, height));
+  const k = liftEase(lift);
+  const cy = k * 1.4 + BASE_H + PAPER.h / 2;
+  const toScreen = (y: number) => {
+    const v = new Vector3(0, y, -k * 0.5).project(camera);
+    return { x: ((v.x + 1) / 2) * width, y: ((1 - v.y) / 2) * height };
+  };
+  const c = toScreen(cy);
+  const top = toScreen(cy + PAPER.h / 2);
+  return { x: c.x, y: c.y, r: Math.hypot(top.x - c.x, top.y - c.y) };
+}
+
 export function createLanternRoom(renderer: WebGPURenderer, look: RoomLook, aspect: number): LanternRoom {
   const scene = new Scene();
   scene.background = new Color(look === 'b' ? 0x040508 : 0x0a0c14);
   const view = VIEWS[look];
   const camera = new PerspectiveCamera(view.fov, aspect, 0.02, 20);
-  /**
-   * The view for a screen of this aspect: the landscape framing, and on an upright phone the same width of table kept
-   * (a wider vertical angle, capped) with the lantern brought to the middle (s28: on the phone it filled the screen and
-   * was cut off at the left).
-   */
-  const frame = (a: number) => {
-    const portrait = Math.min(1, Math.max(0, (1.2 - a) / 0.75));
-    const halfWide = Math.atan(Math.tan(((view.fov / 2) * Math.PI) / 180) * (16 / 9));
-    const wide = (2 * Math.atan((Math.tan(halfWide) * 0.8) / Math.max(0.3, a)) * 180) / Math.PI;
-    camera.aspect = a;
-    camera.fov = a >= 1.2 ? view.fov : Math.min(72, Math.max(view.fov, wide));
-    camera.position.set(view.eye[0] * (1 - 0.8 * portrait), view.eye[1], view.eye[2]);
-    camera.lookAt(view.at[0] * (1 - portrait), view.at[1], view.at[2]);
-    camera.updateProjectionMatrix();
-  };
+  const frame = (a: number) => frameRoomCamera(camera, look, a);
   frame(aspect);
+  let liftNow = 0;
 
   const glowU = uniform(0);
   const disposables: { dispose(): void }[] = [];
@@ -174,13 +202,20 @@ export function createLanternRoom(renderer: WebGPURenderer, look: RoomLook, aspe
       glowU.value = Math.min(1.2, glow * breath);
       flame.intensity = 1.6 * glow * glow * breath;
       // the float-out: up and a little toward the window, turning slowly; eased so it leaves, not jumps
-      const k = lift * lift * (3 - 2 * lift);
+      liftNow = lift;
+      const k = liftEase(lift);
       lantern.position.set(0, k * 1.4, -k * 0.5);
       lantern.rotation.y = 0.35 + k * 0.8;
       darkU.value = dark;
     },
     render() {
       renderer.render(scene, camera);
+    },
+    lanternOnScreen(width, height) {
+      return lanternScreenAt(look, width, height, liftNow);
+    },
+    async compile() {
+      await renderer.compileAsync(scene, camera);
     },
     resize(width, height) {
       frame(width / Math.max(1, height));

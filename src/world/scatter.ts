@@ -1,6 +1,7 @@
 import { STOPS } from '../journey/stops';
 import type { StopId } from '../journey/types';
 import { mulberry32 } from '../shared/random';
+import { runAll } from '../shared/slice';
 import type { HeightAt } from './heights';
 
 /**
@@ -164,6 +165,14 @@ export interface Plants {
 
 /** Every plant around the five cove cameras. Pure and seeded: the same on every visit. */
 export function scatterCove(surface: HeightAt): Plants {
+  return runAll(scatterCoveSteps(surface));
+}
+
+/** `scatterCove` as steps (shared/slice.ts): the page runs it in slices so the lantern room keeps drawing (s29). */
+export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
+  let tick = 0;
+  /** a pause point every 64 candidates (≈ 0.1–0.3 ms of work on this laptop) */
+  const due = () => (++tick & 63) === 0;
   const out: number[] = [];
   const slopeAt = (x: number, y: number, e = 0.5) =>
     Math.hypot(surface(x + e, y) - surface(x - e, y), surface(x, y + e) - surface(x, y - e)) / (2 * e);
@@ -178,9 +187,9 @@ export function scatterCove(surface: HeightAt): Plants {
     out.push(x, y, z, yaw, h, kind, owner);
   };
 
-  COVE_STOPS.forEach((id, si) => {
+  for (const [si, id] of COVE_STOPS.entries()) {
     const stop = STOPS.find((s) => s.id === id);
-    if (!stop) return;
+    if (!stop) continue;
     const R = RULES[id];
     owner = si;
     const r = mulberry32(1300 + si * 97);
@@ -191,6 +200,7 @@ export function scatterCove(surface: HeightAt): Plants {
 
     const points: { x: number; y: number; forced: boolean; slope: number }[] = [];
     for (let i = 0; i < R.candidates; i++) {
+      if (due()) yield;
       const dist = 2 + REACH * r() ** 2.2;
       const a = yaw + (r() * 2 - 1) * 1.4;
       const x = cx + dist * Math.sin(a);
@@ -219,6 +229,7 @@ export function scatterCove(surface: HeightAt): Plants {
     }
 
     for (const p of points) {
+      if (due()) yield;
       const zone = coastFbm(p.x * 0.05 + 1, p.y * 0.05 + 2, 4);
       const fl = coastFbm(p.x * 0.3 + 5, p.y * 0.3 + 3, 3);
       const bare = coastFbm(p.x * 0.16 + 7, p.y * 0.16 + 7, 3);
@@ -262,6 +273,7 @@ export function scatterCove(surface: HeightAt): Plants {
     // kind per band of ~40 m, heads a little larger further out so a drift still reads as colour at 30 m
     const F = R.field;
     for (let i = 0; F && i < F.candidates; i++) {
+      if (due()) yield;
       const d = F.from + (F.to - F.from) * r() ** 1.4;
       const a = yaw + (r() * 2 - 1) * 0.75;
       const x = cx + d * Math.sin(a);
@@ -278,6 +290,7 @@ export function scatterCove(surface: HeightAt): Plants {
     // meadow photos: tall, see-through stems, in patches, not a carpet); last, so every plant above keeps its place
     const P = R.poppies;
     for (let i = 0; P && i < P.candidates; i++) {
+      if (due()) yield;
       const d = P.from + (P.to - P.from) * r() ** 1.2;
       const a = yaw + (r() * 2 - 1) * P.spread;
       const x = cx + d * Math.sin(a);
@@ -293,7 +306,7 @@ export function scatterCove(surface: HeightAt): Plants {
       // (s25 shots), so the clump grows to ~3.5× by 100 m and a far drift reads as red specks; its stalks stay sub-pixel
       put(x, y, 0.45 * (0.85 + 0.4 * tall) * (1 + 2.5 * Math.min(1, Math.max(0, d - 25) / 75)), PLANT.red, turn);
     }
-  });
+  }
 
   // one seeded shuffle, so the first share of each kind is spread over the whole cove (tiers draw a prefix)
   const count = out.length / PLANT_STRIDE;

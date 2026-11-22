@@ -33,6 +33,7 @@ import type { FrameState } from '../journey/timeline';
 import { STOP_IDS, type StopId } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
 import { mulberry32 } from '../shared/random';
+import { runAll } from '../shared/slice';
 import { coveInPlay } from './cliffs';
 import type { HeightAt } from './heights';
 import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
@@ -166,6 +167,11 @@ export interface GroveGeometry {
 
 /** Pure: every plant of the grove placed on the live ground, in one geometry (one draw). */
 export function bakeGrove(grove: Grove, groundAt: HeightAt): GroveGeometry {
+  return runAll(bakeGroveSteps(grove, groundAt));
+}
+
+/** `bakeGrove` as steps (shared/slice.ts), a pause point after each plant: the page runs it in slices (s29). */
+export function* bakeGroveSteps(grove: Grove, groundAt: HeightAt): Generator<void, GroveGeometry> {
   const n = grove.instances.length / 10;
   let nv = 0;
   const kept: number[] = [];
@@ -192,6 +198,7 @@ export function bakeGrove(grove: Grove, groundAt: HeightAt): GroveGeometry {
     normal.set([nn[0] / l, nn[2] / l, -nn[1] / l], v * 3);
   };
   for (const i of kept) {
+    yield;
     const kind = grove.instances[i * 10] ?? 0;
     const p = grove.protos[kind] as GroveProto;
     const inst = grove.instances.slice(i * 10, i * 10 + 10);
@@ -320,8 +327,9 @@ export interface GrovePart extends WorldPart {
   setWind(w: { windAz: number; beaufort: number }): void;
 }
 
-export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUniforms): GrovePart {
-  const g = bakeGrove(grove, groundAt);
+/** `baked`: the bake already made (in slices, `bakeGroveSteps`); otherwise it is made here at once. */
+export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUniforms, baked?: GroveGeometry): GrovePart {
+  const g = baked ?? bakeGrove(grove, groundAt);
   const geometry = groveGeometry(g);
 
   const amp = uniform(0.02);
