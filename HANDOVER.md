@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-22, session s30 (see `docs/handover/sessions/2026-11-22-s30-w100-light-and-land.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-23, session s31 (see `docs/handover/sessions/2026-11-22-s31-w100-phase2.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -334,11 +334,23 @@ no borrowed set pieces (no towers, piano, etc.).
   list (R224's table).**
 - **s30, later: the phone and Phase 1 closed** (R225): the plants' light read made cheap and the ground's AO dropped;
   the phone now reaches ultra but sits a tier below the old build from VI (carried). Laptop low +0.0–1.3 ms.
-- **Next:** Phase 2 (sky, water, exposure), detailed at its start; first, with the phone plugged in, profile rides
-  IV→IX and win back the tier; then the light maps per hour (opening hour first, −2.6 MB on a first visit).
-  **Owner, end of s30:** loves the renders' true blacks and the Sunset render (its tree, "leaves defined"). Phase 2's
-  exposure task: a `?blacks=` A/B (`SHADOW_FLOOR` today / half / zero; the floor is why nothing goes black), checked
-  everywhere (D47). Phase 3's Sunset: a rich tree for high/ultra against the render; revisit old vs new framing (D38).
+- **s31 (2026-11-22/23): Phase 2 on the laptop** (log `sessions/2026-11-22-s31-w100-phase2.md`; ledger R226–R232;
+  D55, D56; commits 37b750f … e10ed24, not pushed; owner page https://claude.ai/artifact/3z7UmoN2huKFvy92cDtxHW). The owner unplugged the phone early ("we perfect it on laptop and do it on
+  phone at last") and left for the night ("choose recommended"; "judge what's looks good - rules can be bent").
+  - 11d: the phone's lost tier is **one ride, VI → VII (Midnight → Before dawn)**: the drifting sky + Phase 1's light
+    extras added up (R232); both cut (laptop: the session's work +0.0–0.5 ms at low). The phone check of the fix is owed.
+  - 11e: light maps per hour, the opening hour's before the first view (−2.5 MB before it; first view ≈ 1.5–1.8 s sooner).
+  - 14: `?blacks=today|half|zero|deep`, **deep by default** (D56; Night's walls, Blue hour's silhouettes, the cave lifted
+    by their own causes → Phase 3).
+  - 14b: `?rest=boost` (off by default; the laptop at low cannot afford it; one strike per tier).
+  - 12: **`?sky=drift` by default**: the photo's clouds move with depth, the glow stays (≈ +0.1 ms); `?sky=photo` before.
+    The volumetric cloud layer is not built (carried).
+  - 13: a swell behind `?sea=swell` (tilt only; off by default, D48); mirrors unchanged (a finer mirror showed nothing).
+- **Next: the phone round (Phase 2's owed part, ≈ 1–1.5 h, phone plugged in from the start):** (1) 11d's fix measured on VI → VII
+  at high (`.superpowers/w100/s31/probes.sh` with START=midnight, `x=0|old`);
+  (2) the owner feels `?rest=boost`, `?blacks=today` vs deep, `?sky=photo` vs drift, `?sea=swell` on his phone; (3) one
+  natural-tier night old vs new. Then Phase 3 (each place a complete set), Sunset first per the owner's s30 note (a rich
+  tree for high/ultra against the render; old vs new framing, D38).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
