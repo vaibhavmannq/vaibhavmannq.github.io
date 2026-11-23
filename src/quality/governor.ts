@@ -30,6 +30,11 @@ export interface GovernorOptions {
   warmupMs: number;
 }
 
+/** How long a tier that proved too slow stays shut before its one second chance, ms (past the heavy ride itself). */
+export const REOPEN_MS = 8000;
+/** Fast windows (about seconds) a tier must have held before a drop to earn its second chance. */
+export const REOPEN_EARNED = 8;
+
 export const DEFAULT_GOVERNOR: GovernorOptions = {
   windowMs: 1000,
   // A healthy device renders exactly on its target interval, so the down ratio sits above it (frames are only
@@ -72,6 +77,17 @@ export class Governor {
    * as the scene blinking each time they settle on a page (owner, 2026-09-25; journey-flow review M10).
    */
   private ceiling: Tier;
+  /**
+   * One second chance (s31, R233): a tier that proved too slow may open once more, REOPEN_MS later, through the normal
+   * step-up (three fast windows, only while the camera moves, D49: never at rest, so no blink). A heavy ride used to cost
+   * the rest of the night its tier (the phone fell to mid on Midnight → Before dawn and stayed there). A second slow
+   * verdict at that tier shuts it for the visit.
+   */
+  private reopenTier: Tier | null = null;
+  private reopenAt = Number.POSITIVE_INFINITY;
+  private readonly droppedFrom = new Set<Tier>();
+  /** Fast windows closed at the current tier: a tier earns its second chance only after proving itself (REOPEN_EARNED). */
+  private fastHere = 0;
   /** When the journey started, for the settle window. Set from the first sample. */
   private startedAt: number | null = null;
   /** The interval between rendered frames on a healthy device (app/refresh.ts). */
@@ -97,6 +113,10 @@ export class Governor {
     this.tier = tier;
     // the tier test behind the poster (D49) sets the ceiling: it only steps down from there
     this.ceiling = Math.max(tier, ceiling) as Tier;
+    this.reopenTier = null;
+    this.reopenAt = Number.POSITIVE_INFINITY;
+    this.droppedFrom.clear();
+    this.fastHere = 0;
     this.samples = [];
     this.windowStart = null;
     this.fastWindows = 0;
@@ -188,6 +208,7 @@ export class Governor {
       return null;
     }
     this.slowWindows = 0;
+    if (slowFrames < this.options.upRatio * this.targetMs) this.fastHere += 1;
     if (slowFrames < this.options.upRatio * this.targetMs) {
       // A fast window at rest neither vouches for a higher tier nor breaks a run of fast moving ones.
       if (!mostlyMoving) return null;
@@ -208,16 +229,38 @@ export class Governor {
 
   /** Ups are for settling on the right tier early, not for changing the picture while someone reads. */
   private mayStepUp(nowMs: number): boolean {
-    return this.tier < this.ceiling && nowMs - (this.startedAt ?? nowMs) < this.options.settleMs;
+    return this.tier < this.capAt(nowMs) && nowMs - (this.startedAt ?? nowMs) < this.options.settleMs;
+  }
+
+  /** The highest tier allowed now: the ceiling, or the tier given its second chance once REOPEN_MS have passed. */
+  private capAt(nowMs: number): Tier {
+    return this.reopenTier !== null && nowMs >= this.reopenAt
+      ? (Math.max(this.ceiling, this.reopenTier) as Tier)
+      : this.ceiling;
   }
 
   private changeTo(target: number, nowMs: number): Tier | null {
     const wanted = clampTier(target);
-    const next = wanted > this.tier ? (Math.min(wanted, this.ceiling) as Tier) : wanted;
+    const next = wanted > this.tier ? (Math.min(wanted, this.capAt(nowMs)) as Tier) : wanted;
     if (next === this.tier) return null;
-    // Stepping down means this tier could not hold the frame rate: shut the door on it for this visit.
-    if (next < this.tier) this.ceiling = next;
+    if (next < this.tier) {
+      // Stepping down means this tier could not hold the frame rate: shut the door on it, once for a while, then for good
+      const from = this.tier;
+      this.ceiling = next;
+      if (this.droppedFrom.has(from)) {
+        if (this.reopenTier === from) this.reopenTier = null;
+      } else {
+        this.droppedFrom.add(from);
+        // only a tier that held for a while (a heavy ride, not a device that never could): else shut for good
+        this.reopenTier = this.fastHere >= REOPEN_EARNED ? from : null;
+        this.reopenAt = nowMs + REOPEN_MS;
+      }
+    } else if (this.reopenTier !== null && next >= this.reopenTier) {
+      this.ceiling = Math.max(this.ceiling, next) as Tier;
+      this.reopenTier = null;
+    }
     this.tier = next;
+    this.fastHere = 0;
     this.lastChange = nowMs;
     return next;
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GOVERNOR, Governor, percentile } from '../../src/quality/governor';
+import { DEFAULT_GOVERNOR, Governor, percentile, REOPEN_EARNED, REOPEN_MS } from '../../src/quality/governor';
 import { MAX_TIER, type Tier } from '../../src/quality/tiers';
 
 /** Feed ~1 s of frames (62 samples at 60 Hz). Returns the tier change reported during that window, if any. */
@@ -43,15 +43,45 @@ describe('Governor', () => {
   // The owner, 2026-09-25: the scene blinked a few seconds after coming to rest on every page. A tier
   // change is visible, and scrolling frames are slower than standing-still ones, so the governor stepped
   // down at each stop and back up during each quiet spell, forever.
-  it('never returns to a tier that has already proved too slow', () => {
-    const governor = new Governor(2, ONE_SLOW);
+  it('never returns to a tier that has proved too slow twice (s31: one second chance)', () => {
+    const governor = new Governor(3, ONE_SLOW);
     let t = 0;
-
+    // ultra held for a while (a ride or two), then one heavy ride
+    for (let i = 0; i < REOPEN_EARNED; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
+    expect(governor.current).toBe(3);
     ({ endMs: t } = runWindow(governor, 40, t));
-    expect(governor.current).toBe(1);
-
-    // However fast it gets from here, tier 2 is shut for this visit.
+    expect(governor.current).toBe(2);
+    // shut at first: fast windows soon after the drop (inside REOPEN_MS) climb nothing
+    for (let i = 0; i < 2; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
+    expect(governor.current).toBe(2);
+    // its second chance, later, on fast moving frames
+    t += REOPEN_MS;
+    for (let i = 0; i < 4; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
+    expect(governor.current).toBe(3);
+    // slow again: shut for the visit, however fast and however long after
+    ({ endMs: t } = runWindow(governor, 40, t + 2100));
+    expect(governor.current).toBe(2);
+    t += 3 * REOPEN_MS;
     for (let i = 0; i < 8; i++) ({ endMs: t } = runWindow(governor, 16, t + 2100));
+    expect(governor.current).toBe(2);
+  });
+
+  it('gives the second chance only while the camera moves (D49: never at rest, no blink)', () => {
+    const governor = new Governor(3, ONE_SLOW);
+    let t = 0;
+    for (let i = 0; i < REOPEN_EARNED; i++) t = runWindow(governor, 16, t + 2100).endMs;
+    t = runWindow(governor, 40, t).endMs;
+    t += REOPEN_MS;
+    for (let i = 0; i < 6; i++) t = runWindow(governor, 16, t + 2100, true, false).endMs;
+    expect(governor.current).toBe(2);
+  });
+
+  it('gives no second chance to a tier that never held (a device that cannot)', () => {
+    const governor = new Governor(2, ONE_SLOW);
+    let t = runWindow(governor, 40, 0).endMs;
+    expect(governor.current).toBe(1);
+    t += 3 * REOPEN_MS;
+    for (let i = 0; i < 8; i++) t = runWindow(governor, 16, t + 2100).endMs;
     expect(governor.current).toBe(1);
   });
 
@@ -118,7 +148,7 @@ describe('Governor', () => {
     let t = 0;
     for (let i = 0; i < 3; i++) t = runWindow(governor, 16.7, t).endMs;
     expect(governor.current).toBe(3);
-    // Night too heavy for ultra: one slow window steps back to high, and fast windows never climb again
+    // Night too heavy for ultra: one slow window steps back to high, and fast windows do not climb again soon after
     t = runWindow(governor, 30, t + 2100).endMs;
     expect(governor.current).toBe(2);
     for (let i = 0; i < 4; i++) t = runWindow(governor, 16.7, t + 2100).endMs;

@@ -338,8 +338,9 @@ no borrowed set pieces (no towers, piano, etc.).
   D55, D56; commits 37b750f … e10ed24, not pushed; owner page https://claude.ai/artifact/3z7UmoN2huKFvy92cDtxHW). The owner unplugged the phone early ("we perfect it on laptop and do it on
   phone at last") and left for the night ("choose recommended"; "judge what's looks good - rules can be bent").
   - 11d: the phone's lost tier is **one ride, VI → VII (Midnight → Before dawn)**: the drifting sky + Phase 1's light
-    extras added up (R232). Cut on the laptop (the session's work +0.0–0.5 ms at low), **not on the phone: still 54–55 vs
-    old 59 fps at high on that ride**; next tries in R232. Phone setting to undo: `stay_on_while_plugged_in` back to 0.
+    extras added up (R232); the sky's part cut (laptop: the session's work +0.0–0.5 ms at low); the light's part has no
+    cheap cut (carried to Phase 3), so **the governor gives a tier that held one second chance** (R233): the phone now
+    climbs back to high on VI → VII and holds it to IX, as the old build. **Phase 2 closed: 7 of 7, with carries.**
   - 11e: light maps per hour, the opening hour's before the first view (−2.5 MB before it; first view ≈ 1.5–1.8 s sooner).
   - 14: `?blacks=today|half|zero|deep`, **deep by default** (D56; Night's walls, Blue hour's silhouettes, the cave lifted
     by their own causes → Phase 3).
@@ -347,11 +348,9 @@ no borrowed set pieces (no towers, piano, etc.).
   - 12: **`?sky=drift` by default**: the photo's clouds move with depth, the glow stays (≈ +0.1 ms); `?sky=photo` before.
     The volumetric cloud layer is not built (carried).
   - 13: a swell behind `?sea=swell` (tilt only; off by default, D48); mirrors unchanged (a finer mirror showed nothing).
-- **Next: the phone round (Phase 2's owed part, ≈ 1–1.5 h, phone plugged in from the start):** (1) 11d's fix measured on VI → VII
-  at high (`.superpowers/w100/s31/probes.sh` with START=midnight, `x=0|old`);
-  (2) the owner feels `?rest=boost`, `?blacks=today` vs deep, `?sky=photo` vs drift, `?sea=swell` on his phone; (3) one
-  natural-tier night old vs new. Then Phase 3 (each place a complete set), Sunset first per the owner's s30 note (a rich
-  tree for high/ultra against the render; old vs new framing, D38).
+- **Next:** the owner's feel test of `?blacks=today`, `?sky=photo`, `?sea=swell`, `?rest=boost` on his phone; then
+  Phase 3 (each place a complete set), Sunset first per the owner's s30 note (a rich tree for high/ultra against the
+  render; old vs new framing, D38). Phase 3 also takes Phase 1's light cost at high on VI → VII (R233).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
