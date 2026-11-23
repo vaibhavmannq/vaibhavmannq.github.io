@@ -390,3 +390,9 @@ drifting and changing shape); `?sky=photo` stays as the one A/B; the other tries
 session: "clouds must be dense and must move/feel alive"; The Witcher 3 and 4 as references (s32: their method, normal-
 lit cloud layers, may be used; their art may not, the founding no-game-assets rule). The clouds keep improving inside
 Phase 3, place by place. Ledger R235-R238.
+
+**D59 · 2026-11-23 · (owner, s33) Blacks: a middle ground; helpers only read and prepare.** "going all black in turn
+made every colour we worked so hard on vanish - can we find a middle ground": `?blacks=mid` (85 % of the sky's fill,
+35 % of the floor) is the default; `deep` and `today` stay for his A/B (R245). On agents: "i meant for reading and
+preparing or for researching": helper agents do research and prep notes only; building and measuring stay with the main
+session (one test browser on this laptop). Also: judging shots at 1920 × 1080.

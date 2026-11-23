@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-23, session s32 (see `docs/handover/sessions/2026-11-23-s32-the-skys-own-clouds.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-23, session s33 (see `docs/handover/sessions/2026-11-23-s33-phase3-sunset.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -358,9 +358,13 @@ no borrowed set pieces (no towers, piano, etc.).
   Phone: the band version within 1 fps of the old sky on every ride at high. Laptop low: +0.3-2.3 ms vs the photo sky.
 - **Owner, end of s32 (D58):** "cards it is, i don't want no images anymore - just keep on improving the cloud as you
   move to improve each scene"; "clouds must be dense and must move/feel alive".
-- **Next (s33): Phase 3, Sunset first** (each place a complete set, each ride a shot list; the clouds improved with each
-  place). First the owed phone checks of the final `cards` build (s32 log). Phase 3 also takes Phase 1's light cost at
-  high on VI → VII (R233) and the clouds' cost (R238).
+- **s33 (2026-11-23): Phase 3 begun, II · Sunset (Task 16)** (log `sessions/2026-11-23-s33-phase3-sunset.md`; ledger
+  R239–R247; not pushed). Clouds cropped (phone +1.7 fps), a sun with a glow and a gold sky toward it, the meadow's
+  flowers by kind, the framing tree placed so its trunk reads, tussocks and a gust on the hill; blacks `mid` by default
+  (owner). The lost phone tier on II → III is heat, not the clouds (old build the same). Sunset 72 → ~78 %. Helpers
+  did read-only prep (owner's rule). Test tool fixed: Chrome now really closes (R243).
+- **Next (s34):** the phone on the final Sunset build (cool phone), the owner's test of Sunset, then its carry list or
+  Golden. Phase 3: 0 of 17 closed, Sunset ~75 % through.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
