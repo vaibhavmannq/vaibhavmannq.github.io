@@ -4,6 +4,7 @@ import {
   cos,
   dot,
   float,
+  fract,
   mix,
   normalize,
   positionLocal,
@@ -40,6 +41,11 @@ import { COVE_STOPS, PLANT, PLANT_STRIDE, type Plants, swayAmplitude } from './s
 
 /** The share of a plant's surface that stands upright and takes a low sun from the side (s22). */
 export const BLADE_UP = 0.6;
+
+/** s33 16c, temporary: `?gg=` the backlit grass glow (0.25 before). */
+const GRASS_GLOW = Number(
+  (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('gg')) ?? '0.45',
+);
 
 /**
  * The cove's ground cover (plan M3 Task 1): tall tufts, a short meadow and three flowers, one instanced draw per
@@ -168,6 +174,156 @@ export function flowerClump(): Shape {
     }
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.35 + 0.2 * r(), 0.03, 0.35, 0);
+  return s;
+}
+
+/** A thin stalk (one triangle) from the ground at x, z to `top`. */
+function stalk(s: Shape, x: number, z: number, top: readonly [number, number, number]) {
+  s.pos.push(x - 0.012, 0, z, x + 0.012, 0, z, ...top);
+  s.bend.push(0, 0, 1);
+  s.part.push(0, 0, 0);
+}
+
+/**
+ * A ring of `n` petals round `c` (Task 16c, s33): each petal a triangle (`quad` false) or a spoon (two triangles)
+ * from an inner ring out to radius `r`, raised by `tilt` radians (0 flat as a daisy, ~1 a cup). `part` is the petal's
+ * brightness, a little darker at its base; an eye (`eye` > 0, its radius) sits in the middle as a low dome, `part` + 2.
+ */
+function petals(
+  s: Shape,
+  r: () => number,
+  c: readonly [number, number, number],
+  n: number,
+  rad: number,
+  tilt: number,
+  quad: boolean,
+  eye: number,
+  face = 0,
+) {
+  const from = s.pos.length;
+  petalRing(s, r, c, n, rad, tilt, quad, eye);
+  if (face === 0) return;
+  // a head turns its face toward the light, each its own way (s33: flat daisies were edge-on to a 0.5 m eye)
+  const ax = r() * Math.PI * 2;
+  const ux = Math.cos(ax);
+  const uz = Math.sin(ax);
+  const cs = Math.cos(face);
+  const sn = Math.sin(face);
+  for (let i = from; i < s.pos.length; i += 3) {
+    const x = (s.pos[i] as number) - c[0];
+    const y = (s.pos[i + 1] as number) - c[1];
+    const z = (s.pos[i + 2] as number) - c[2];
+    // Rodrigues about the horizontal axis (ux, 0, uz)
+    const d = x * ux + z * uz;
+    const cx = -uz * y; // (u × p).x = uy*pz - uz*py = -uz*y
+    const cy = uz * x - ux * z;
+    const cz = ux * y;
+    s.pos[i] = c[0] + x * cs + cx * sn + ux * d * (1 - cs);
+    s.pos[i + 1] = c[1] + y * cs + cy * sn;
+    s.pos[i + 2] = c[2] + z * cs + cz * sn + uz * d * (1 - cs);
+  }
+}
+
+function petalRing(
+  s: Shape,
+  r: () => number,
+  c: readonly [number, number, number],
+  n: number,
+  rad: number,
+  tilt: number,
+  quad: boolean,
+  eye: number,
+) {
+  const turn = r() * Math.PI * 2;
+  const inner = rad * 0.18;
+  const half = Math.PI / n;
+  const at = (a: number, d: number, up: number): [number, number, number] => [
+    c[0] + Math.cos(a) * d,
+    c[1] + up,
+    c[2] + Math.sin(a) * d,
+  ];
+  for (let k = 0; k < n; k++) {
+    const a = turn + (k * 2 * Math.PI) / n + (r() - 0.5) * 0.25;
+    const out = rad * (0.85 + 0.3 * r());
+    const lift = Math.sin(tilt) * out;
+    const reach = Math.cos(tilt) * out;
+    const w = quad ? half * 0.95 : half * 0.55;
+    const b0 = at(a - w, inner, 0);
+    const b1 = at(a + w, inner, 0);
+    if (quad) {
+      const t0 = at(a - w * 1.1, reach, lift);
+      const t1 = at(a + w * 1.1, reach, lift);
+      s.pos.push(...b0, ...b1, ...t1, ...b0, ...t1, ...t0);
+      s.bend.push(1, 1, 1, 1, 1, 1);
+      s.part.push(0.6, 0.6, 1.05, 0.6, 1.05, 1.05);
+    } else {
+      s.pos.push(...b0, ...b1, ...at(a, reach, lift));
+      s.bend.push(1, 1, 1);
+      s.part.push(0.75, 0.75, 1.05);
+    }
+  }
+  if (eye > 0) {
+    const ring = [0, 1, 2, 3, 4].map((k) => at(turn + (k * 2 * Math.PI) / 5, eye, 0.002));
+    for (let k = 0; k < 5; k++) {
+      s.pos.push(...(ring[k] as number[]), ...(ring[(k + 1) % 5] as number[]), c[0], c[1] + eye * 0.7, c[2]);
+      s.bend.push(1, 1, 1);
+      s.part.push(2.7, 2.7, 3.0);
+    }
+  }
+}
+
+/**
+ * Flower clumps by kind (Task 16c, s33; owner `meadow-and-flowers` 2, 3, 5; s25 photo 4): an ox-eye daisy is a flat
+ * ring of white rays round a yellow eye, a buttercup a small glossy cup, a poppy a wide cup of four petals with a dark
+ * eye on a tall nodding stalk; thrift stays a ball (flowerClump). Shapes differ at a few metres, where the meadow is
+ * seen from inside the flowers.
+ */
+export function daisyClump(): Shape {
+  const s: Shape = { pos: [], bend: [], part: [] };
+  const r = mulberry32(404);
+  for (let i = 0; i < 4; i++) {
+    const rr = 0.16 * Math.sqrt(r());
+    const a = r() * 2 * Math.PI;
+    const x = Math.cos(a) * rr;
+    const z = Math.sin(a) * rr;
+    const top = [x + (r() - 0.5) * 0.12, 0.85 + 0.4 * r(), z + (r() - 0.5) * 0.06] as const;
+    stalk(s, x, z, top);
+    petals(s, r, top, 10, 0.085 + 0.02 * r(), 0.12, false, 0.022, 0.5 + 0.45 * r());
+  }
+  for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.3 + 0.2 * r(), 0.03, 0.35, 0);
+  return s;
+}
+
+export function buttercupClump(): Shape {
+  const s: Shape = { pos: [], bend: [], part: [] };
+  const r = mulberry32(606);
+  for (let i = 0; i < 5; i++) {
+    const rr = 0.18 * Math.sqrt(r());
+    const a = r() * 2 * Math.PI;
+    const x = Math.cos(a) * rr;
+    const z = Math.sin(a) * rr;
+    const top = [x + (r() - 0.5) * 0.15, 0.8 + 0.45 * r(), z + (r() - 0.5) * 0.08] as const;
+    stalk(s, x, z, top);
+    petals(s, r, top, 5, 0.05 + 0.01 * r(), 0.85, true, 0, 0.3 + 0.4 * r());
+  }
+  for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.3 + 0.2 * r(), 0.035, 0.35, 0);
+  return s;
+}
+
+export function poppyClump(): Shape {
+  const s: Shape = { pos: [], bend: [], part: [] };
+  const r = mulberry32(707);
+  for (let i = 0; i < 3; i++) {
+    const rr = 0.12 * Math.sqrt(r());
+    const a = r() * 2 * Math.PI;
+    const x = Math.cos(a) * rr;
+    const z = Math.sin(a) * rr;
+    // a poppy's stalk is long and bends under its head
+    const top = [x + (r() - 0.5) * 0.2, 0.75 + 0.25 * r(), z + (r() - 0.5) * 0.1] as const;
+    stalk(s, x, z, top);
+    petals(s, r, top, 4, 0.1 + 0.025 * r(), 0.6, true, 0.018, 0.2 + 0.35 * r());
+  }
+  for (let i = 0; i < 2; i++) blade(s, r, (r() - 0.5) * 0.08, (r() - 0.5) * 0.08, 0.25 + 0.15 * r(), 0.04, 0.4, 0);
   return s;
 }
 
@@ -300,15 +456,24 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const vary = rnd.mul(0.35).add(0.82);
   const tall = mix(vec3(0.035, 0.04, 0.015), vec3(0.3, 0.28, 0.09), bend);
   const short = mix(vec3(0.03, 0.05, 0.016), vec3(0.14, 0.2, 0.055), bend);
-  const stalk = mix(vec3(0.03, 0.05, 0.02), vec3(0.08, 0.14, 0.04), bend);
+  const stem = mix(vec3(0.03, 0.05, 0.02), vec3(0.08, 0.14, 0.04), bend);
   // poppies (M8.5 #4, owner: "fill the empty meadow with red flowers"): kind 6, a true red, not the thrift's pink
   const isRed = step(5.5, kind);
   const head = mix(
-    mix(mix(vec3(0.8, 0.2, 0.42), vec3(0.95, 0.68, 0.08), step(2.5, kind)), vec3(0.85, 0.85, 0.78), step(3.5, kind)),
+    // s33 (16c): the thrift a softer rose (the render's pink, not magenta)
+    mix(mix(vec3(0.82, 0.3, 0.5), vec3(0.95, 0.68, 0.08), step(2.5, kind)), vec3(0.85, 0.85, 0.78), step(3.5, kind)),
     vec3(0.9, 0.07, 0.035),
     isRed,
   );
-  const flower = mix(stalk, head.mul(part), step(0.3, part));
+  // an eye (part > 2, Task 16c): a daisy's yellow, a poppy's near-black, otherwise the head's own colour
+  const isEye = step(1.9, part);
+  const bright = part.sub(isEye.mul(2));
+  const eyeCol = mix(head, mix(vec3(0.85, 0.55, 0.04), vec3(0.03, 0.015, 0.02), isRed), step(3.5, kind));
+  // each floret a little different (s33: thrift heads read as flat diamonds): a hash of the shape-space point
+  const floret = fract(sin(dot(positionLocal, vec3(127.1, 311.7, 74.7)).mul(43758.5)))
+    .mul(0.45)
+    .add(0.78);
+  const flower = mix(stem, mix(head, eyeCol, isEye).mul(bright).mul(floret), step(0.3, part));
   const grass = mix(tall, short, step(0.5, kind));
   // heather (plan M6 Task 2; research/m6-midnight-references.md): dark woody stems, the flowering upper half mauve;
   // the moon's light and the grade turn it grey-violet
@@ -319,19 +484,20 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const toSun = saturate(dot(normalize(positionWorld.sub(cameraPosition)), light.keyDir));
   const through = pow(toSun, 3.0)
     .mul(bend)
-    .mul(mix(float(1), float(0.4), part));
+    .mul(mix(float(1), float(0.4), bright.min(1)));
   // a poppy's petals are thin and glow red against a low sun (M8.5 #4; owner's meadow photo: rim-lit, not dull)
-  const petals = isRed.mul(step(0.3, part)).mul(pow(toSun, 2.0));
+  const petalGlow = isRed.mul(step(0.3, part)).mul(float(1).sub(isEye)).mul(pow(toSun, 2.0));
+  // s33 (16c; s25 photo 4, the Sunset render): backlit tips glow gold, not olive, and brighter
   const glow = light.keyColor
     .mul(light.keyStrength)
-    .mul(vec3(0.55, 0.62, 0.16))
+    .mul(vec3(0.8, 0.6, 0.18))
     .mul(through)
-    .mul(0.25)
+    .mul(GRASS_GLOW)
     .add(
       light.keyColor
         .mul(light.keyStrength)
         .mul(vec3(0.9, 0.12, 0.04))
-        .mul(petals)
+        .mul(petalGlow)
         .mul(0.35),
     );
   // per vertex: the blades are thin, so the eye cannot tell, and the pixels do only the fog. Under the moon the eye
@@ -365,7 +531,10 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const shapes = [
     [tallTuft(), (k: number) => k === PLANT.tall],
     [shortTuft(), (k: number) => k === PLANT.short],
-    [flowerClump(), (k: number) => (k >= PLANT.pink && k <= PLANT.white) || k === PLANT.red],
+    [flowerClump(), (k: number) => k === PLANT.pink],
+    [buttercupClump(), (k: number) => k === PLANT.yellow],
+    [daisyClump(), (k: number) => k === PLANT.white],
+    [poppyClump(), (k: number) => k === PLANT.red],
     [heatherMound(), (k: number) => k === PLANT.heather],
   ] as const;
   const meshes = PLANT_STOPS.flatMap((id, owner) =>
@@ -384,7 +553,9 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
       mesh.layers.set(EYE_ONLY_LAYER);
       mesh.userData.weight = 1;
       group.add(mesh);
-      return [{ mesh, g, n, shapeIndex, stopIndex: STOP_IDS.indexOf(id) }];
+      // drawn[] keeps its four slots: tall, short, flowers (every kind), heather
+      const slot = shapeIndex <= 1 ? shapeIndex : shapeIndex === shapes.length - 1 ? 3 : 2;
+      return [{ mesh, g, n, shapeIndex: slot, stopIndex: STOP_IDS.indexOf(id) }];
     }),
   );
   group.layers.set(EYE_ONLY_LAYER);

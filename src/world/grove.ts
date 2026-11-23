@@ -517,15 +517,20 @@ export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart 
   };
 }
 
+/** s33 16d, temporary: `?ft=` the framing tree's turn about its trunk, radians (0 before). */
+const FRAME_TURN = Number(
+  (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('ft')) ?? '0',
+);
+
 /**
  * Sunset's framing tree (plan M8 Task 3, D38: "the old sunset" with a tree framing the left; owner meadow 10): the
  * old tree's model 8 m out, 36° left of the gaze, so the canopy reaches over the frame's top-left corner and the
  * pointer's parallax has a near layer; the sea, the arch and the lone tree stay open.
  */
-export const SUNSET_FRAME: readonly ScrubSpot[] = [[-36, 8, 1.4, 0]];
+export const SUNSET_FRAME: readonly ScrubSpot[] = [[-36, 8, 1.4, 0, FRAME_TURN]];
 
 /** A shrub or tree placed from a stop's eye: degrees right of the gaze, metres out, scale, model (GROVE_KINDS index). */
-export type ScrubSpot = readonly [offsetDeg: number, metres: number, scale: number, model: number];
+export type ScrubSpot = readonly [offsetDeg: number, metres: number, scale: number, model: number, turn?: number];
 
 /** Pure: grove instances (10 floats each) for `spots` seen from `eye` (coast x, y) looking at `yawDeg`. */
 export function scrubInstances(
@@ -535,11 +540,11 @@ export function scrubInstances(
   groundAt: HeightAt,
 ): Float32Array {
   const out: number[] = [];
-  spots.forEach(([off, d, scale, model], i) => {
+  spots.forEach(([off, d, scale, model, turn], i) => {
     const a = ((yawDeg + off) * Math.PI) / 180;
     const x = eye[0] + d * Math.sin(a);
     const y = eye[1] + d * Math.cos(a);
-    out.push(model, x, y, groundAt(x, y), scale, scale, scale, 0, 0, i * 2.39996);
+    out.push(model, x, y, groundAt(x, y), scale, scale, scale, 0, 0, turn ?? i * 2.39996);
   });
   return Float32Array.from(out);
 }

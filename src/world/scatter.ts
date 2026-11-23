@@ -41,6 +41,8 @@ interface Rules {
    * where a ~20 m patch noise is over `patch`, thinning toward a drift's edge.
    */
   poppies?: { candidates: number; from: number; to: number; spread: number; patch: number };
+  /** flowers' height × this (s33: Sunset's eye is 0.5 m up; at 0.2–0.35 m its daisies stood hidden in the grass) */
+  flowerScale?: number;
 }
 
 const RULES: Record<CoveStop, Rules> = {
@@ -73,6 +75,7 @@ const RULES: Record<CoveStop, Rules> = {
     // owner, round 1: "fill the empty meadow with red flowers, also where look-around goes"
     // from 22 m: nearer, the field's drifts already hold flowers (and the cove stays inside its 60 000 plants)
     poppies: { candidates: 110000, from: 22, to: 115, spread: 1.4, patch: 0.5 },
+    flowerScale: 1.7,
   },
   // III looks down from the headland (owner cove-and-stacks: "from above, with grass in front"): grass clumps at the
   // lens sides and more flowers near the eye, the near layer the shot lacked (plan M8 Task 7, s22)
@@ -161,6 +164,17 @@ export interface Plants {
   /** PLANT_STRIDE floats per plant, in a random order (a lower tier draws the first share of each kind) */
   data: Float32Array;
   count: number;
+}
+
+/**
+ * A drift holds one kind, but not only it (Task 16c, s33; owner `meadow-and-flowers` 2, 3, 5 and the Sunset render: drifts
+ * of one colour speckled with others, never a flat patch): a quarter of its plants are another flower. `a`, `b` in 0..1.
+ */
+export function speckle(kind: number, a: number, b: number, red = true): number {
+  if (a >= 0.25) return kind;
+  // red only where the poppies grow (Sunset, M8.5 #4); Dusk's and Sunrise's flowers keep their colours (R188)
+  const others = [PLANT.pink, PLANT.white, PLANT.yellow, ...(red ? [PLANT.red] : [])].filter((k) => k !== kind);
+  return others[Math.min(others.length - 1, Math.floor(b * others.length))] as number;
 }
 
 /** Every plant around the five cove cameras. Pure and seeded: the same on every visit. */
@@ -264,8 +278,15 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
       const z = surface(x, y);
       if (coastFbm(x * 0.35 + 11, y * 0.35 + 4, 3) <= 0.52 || z <= 0.8 || slopeAt(x, y) >= TURF_SLOPE) continue;
       const mix = coastFbm(x * 0.6 + 3, y * 0.6, 3);
-      const kind = mix < 0.5 ? PLANT.pink : mix < 0.62 ? PLANT.white : PLANT.yellow;
-      put(x, y, 0.28 * (0.9 + 0.6 * r()), kind, r() * 2 * Math.PI);
+      // s33 (16c; the Sunset render: pink, white and yellow in about equal parts near the lens): less thrift
+      const main = mix < 0.46 ? PLANT.pink : mix < 0.55 ? PLANT.white : PLANT.yellow;
+      put(
+        x,
+        y,
+        0.28 * (0.9 + 0.6 * r()) * (R.flowerScale ?? 1),
+        speckle(main, hsh(x * 7.1, y * 7.1), hsh(x * 3.3 + 5, y * 3.3), id === 'sunset'),
+        r() * 2 * Math.PI,
+      );
       placed++;
     }
 
@@ -283,7 +304,13 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
       if (coastFbm(x * 0.07 + 31, y * 0.07 + 17, 3) <= F.patch) continue;
       const band = coastFbm(x * 0.025 + 9, y * 0.025 + 41, 3);
       const kind = band < 0.42 ? PLANT.pink : band < 0.58 ? PLANT.yellow : PLANT.white;
-      put(x, y, 0.28 * (0.9 + 0.5 * r()) * (1 + Math.min(1, d / 80)), kind, r() * 2 * Math.PI);
+      put(
+        x,
+        y,
+        0.28 * (0.9 + 0.5 * r()) * (1 + Math.min(1, d / 80)) * (R.flowerScale ?? 1),
+        speckle(kind, hsh(x * 7.1, y * 7.1), hsh(x * 3.3 + 5, y * 3.3), id === 'sunset'),
+        r() * 2 * Math.PI,
+      );
     }
 
     // drifts of red poppies across the meadow and out to both sides of the turn (M8.5 #4; the owner's fireweed and
@@ -304,6 +331,9 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
       if (keep > sm(P.patch, P.patch + 0.12, patch)) continue;
       // taller than the thrift (a poppy stands 0.4–0.7 m), and larger further out: a 5 cm head is one pixel at 80 m
       // (s25 shots), so the clump grows to ~3.5× by 100 m and a far drift reads as red specks; its stalks stay sub-pixel
+      // a poppy stands 0.4–0.7 m, larger further out: a 5 cm head is one pixel at 80 m (s25 shots), so the clump grows
+      // to ~3.5× by 100 m (owner, batch 3: dense drifts, "not specks"; s33 tried ×2.2 with other kinds mixed in: thinner,
+      // worse, dropped)
       put(x, y, 0.45 * (0.85 + 0.4 * tall) * (1 + 2.5 * Math.min(1, Math.max(0, d - 25) / 75)), PLANT.red, turn);
     }
   }

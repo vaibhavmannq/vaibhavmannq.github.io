@@ -102,7 +102,9 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
       }
       if (kind === f.kind) same++;
     }
-    expect(same / sample.length).toBeGreaterThan(0.7);
+    // s33 (16c): a quarter of each drift is speckled with other kinds (owner meadow 2, 3, 5; the Sunset render), so a
+    // flower's nearest neighbour is its own kind about 0.6 of the time (0.75 before); random kinds would give ~0.3
+    expect(same / sample.length).toBeGreaterThan(0.5);
   });
 
   // Review Focus 2 / reference book §2: force 0–1 only trembles the tips; force 3 bends the grass.
