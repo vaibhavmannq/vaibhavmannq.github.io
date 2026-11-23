@@ -19,29 +19,13 @@ import {
   smoothstep,
   step,
   time,
-  uniform,
   vec2,
   vec3,
 } from 'three/tsl';
-import {
-  BackSide,
-  type DataTexture,
-  Mesh,
-  MeshBasicNodeMaterial,
-  type Node,
-  SphereGeometry,
-  type Texture,
-  Vector2,
-  Vector3,
-} from 'three/webgpu';
+import { BackSide, Mesh, MeshBasicNodeMaterial, type Node, SphereGeometry, type Texture } from 'three/webgpu';
 import type { SkyStore } from '../assets/skies';
-import { windVector } from '../journey/hours';
-import { SHOTS } from '../journey/shots';
-import { STOP_IDS } from '../journey/types';
 import { type LightUniforms, MIN_MOON_RADIUS } from './light';
 import type { WorldPart } from './part';
-import { PHOTO_CEILING, photoDrift, type SkyMode, usesClearSky } from './skyClouds';
-import { createCloudLayer } from './skyLayer';
 import { slotTexture } from './slotTexture';
 
 type V3 = Node<'vec3'>;
@@ -56,9 +40,6 @@ const decode = (e: V3): V3 => {
 /** A hash of a 3D cell: a repeatable random number per cell. */
 const hash3 = (c: V3): F => fract(sin(dot(c, vec3(127.1, 311.7, 74.7))).mul(43758.5453));
 
-/** The blurred copy the drifting sky keeps its broad light from: 2048 → 64 texels across (≈ 6° each). */
-const LOW_MIP = 5;
-
 /** Where the painted horizon rows are read: inside the bottom HORIZON_ROWS (6) rows of a 1024-row photo. */
 const HORIZON_V = 2.5 / 1024;
 
@@ -69,73 +50,13 @@ export interface Sky extends WorldPart {
   horizonAt(dir: V3): V3;
 }
 
-/** A stop's eye in three.js axes (x east, y up, z = -north). */
-const eyeOf = (i: number): [number, number, number] => {
-  const s = SHOTS[STOP_IDS[i] ?? 'golden'];
-  return [s.cam[0], s.eyeZ, -s.cam[1]];
-};
-
-export function createSky(
-  u: LightUniforms,
-  skies: SkyStore,
-  first: Texture,
-  mode: SkyMode = 'photo',
-  cloudMap?: DataTexture,
-): Sky & { cloudsReady(): void } {
+export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sky {
   // each slot its own binding, so the shaders built at a stop (one texture in both) serve the flights (R121)
   const texA = slotTexture(first, 'sky-a');
   const texB = slotTexture(first, 'sky-b');
-  // M8.5 #3a: the eyes the two photos were made for and the drift of the photo's ceiling (`drift`)
-  const eyeA = uniform(new Vector3(...eyeOf(0)));
-  const eyeB = uniform(new Vector3(...eyeOf(0)));
-  const drift = uniform(new Vector2());
-  let carried = 0;
 
-  /** `drift`: the direction from the photo's own eye to where `d` meets the (drifted) ceiling; `d` itself low down. */
-  const onCeiling = (d: V3, eye: V3): V3 => {
-    const up = d.y.max(0.02);
-    const t = float(PHOTO_CEILING).sub(cameraPosition.y).div(up);
-    const hit = cameraPosition.add(d.mul(t)).add(vec3(drift.x, 0, drift.y));
-    return normalize(mix(d, normalize(hit.sub(eye)), smoothstep(0.015, 0.12, d.y)));
-  };
-
-  /**
-   * The sky seen along `dir`. `drifting`: only for the dome itself (s31: the ground's wet sheen, the cave and the vines
-   * read the sky too, every pixel; with the drift's six reads there, the whole night got 0.3–1.7 ms slower at low). The
-   * water's mirror redraws the dome, so its reflections drift anyway.
-   */
-  // one photo except while the two skies blend (s31, 11d: the second photo's three reads on every sky pixel cost the
-  // phone ~2 fps on the ride into the cave); a uniform branch with explicit levels, built inside an Fn (TSL's If needs one)
-  const driftSky = Fn(([d]: [V3]) => {
-    const here = equirectUV(d);
-    const moved = (tex: typeof texA, eye: V3): V3 => {
-      const at = equirectUV(onCeiling(d, eye));
-      const ratio = decode(tex.sample(here).level(float(LOW_MIP)).rgb).div(
-        decode(tex.sample(at).level(float(LOW_MIP)).rgb).max(1e-4),
-      );
-      return decode(tex.sample(at).level(float(0)).rgb).mul(ratio.clamp(0.25, 4));
-    };
-    const out = vec3(0).toVar();
-    If(u.skyWeight.lessThan(0.001), () => {
-      out.assign(moved(texA, eyeA));
-    })
-      .ElseIf(u.skyWeight.greaterThan(0.999), () => {
-        out.assign(moved(texB, eyeB));
-      })
-      .Else(() => {
-        out.assign(mix(moved(texA, eyeA), moved(texB, eyeB), u.skyWeight));
-      });
-    return out;
-  });
-
-  const colorAt = (dir: V3, row?: number, drifting = false): V3 => {
-    if (drifting && mode === 'drift' && row === undefined) {
-      // Phase 2 Task 12: only the photo's detail (its clouds) moves with the ceiling; its broad light (the gradient and
-      // the sun's glow, the blurred copy at mip LOW_MIP) stays where it is, as the real sky's would
-      return (driftSky(dir) as unknown as V3).mul(u.skyGain).mul(u.skyTint);
-    }
+  const colorAt = (dir: V3, row?: number): V3 => {
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
-    // level 0 always: with the drift's mipmaps an auto level would blur along the equirect seam (u wraps)
     return mix(decode(texA.sample(st).level(float(0)).rgb), decode(texB.sample(st).level(float(0)).rgb), u.skyWeight)
       .mul(u.skyGain)
       .mul(u.skyTint);
@@ -146,7 +67,7 @@ export function createSky(
   // hour (M0 look note). The soft colours are painted into each photo's bottom rows when it is decoded (skyHorizon.ts).
   const horizonAt = (d: V3): V3 => colorAt(normalize(vec3(d.x, 0, d.z)), HORIZON_V);
   const dir = normalize(positionWorld.sub(cameraPosition));
-  let col = mix(colorAt(dir, undefined, true), horizonAt(dir), smoothstep(0.0, -0.025, dir.y));
+  let col = mix(colorAt(dir), horizonAt(dir), smoothstep(0.0, -0.025, dir.y));
 
   // The sun's disc, only while the key light is the sun (at night the key is the moon, drawn below), and not while the
   // key swings from one light to another (M8.5 #3b: a false sun crossed Blue hour → Night's sky, mirrored as a blob).
@@ -216,16 +137,7 @@ export function createSky(
   });
   col = col.add(starField());
 
-  // Task 12 (s32): our own clouds over the clear sky (skyLayer.ts), over the sun, moon and stars too
-  const clouds = !cloudMap
-    ? null
-    : mode === 'band'
-      ? null // dense cards carry even the overcast hours; the photo keeps its own low deck (s32: the deck cost ~1 ms)
-      : mode === 'cards'
-        ? // the cards carry scattered cloud; only an overcast hour's deck is drawn behind them
-          createCloudLayer(u, cloudMap, 'deck', colorAt, (c) => Math.min(1, Math.max(0, (c - 0.55) * 3)))
-        : createCloudLayer(u, cloudMap, mode, colorAt);
-  if (clouds) col = clouds.over(colorAt(dir), col, dir);
+  // the clouds (Task 12, s32) are their own part (cloudCards.ts): cards in the world, drawn over this dome
 
   const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
   material.name = 'sky.material';
@@ -238,23 +150,11 @@ export function createSky(
     object: mesh,
     colorAt,
     horizonAt,
-    cloudsReady: () => clouds?.ready(),
     update(f) {
       skies.update(f.state);
       texA.value = skies.get(f.state.a);
       texB.value = skies.get(f.state.b);
       mesh.position.set(...f.pose.position);
-      clouds?.update(f.state.a, f.state.b, u.skyWeight.value, windVector(f.hour.world), f.dtS);
-      if (mode === 'drift') {
-        eyeA.value.set(...eyeOf(f.state.a));
-        eyeB.value.set(...eyeOf(f.state.b));
-        // aloft the wind is ~3x the ground's (coast x east, y north; three.js z is -north)
-        const [wx, wy] = windVector(f.hour.world).map((v) => v * 3) as [number, number];
-        const speed = Math.hypot(wx, wy);
-        carried += speed * f.dtS;
-        const k = speed > 1e-6 ? photoDrift(carried) / speed : 0;
-        drift.value.set(wx * k, -wy * k);
-      }
     },
     setTier() {},
     dispose() {

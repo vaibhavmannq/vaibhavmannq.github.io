@@ -31,7 +31,7 @@ function stopsOf(path: string): StopId[] | 'all' {
     ?.split('.')[0]
     ?.replace(/-portrait$/, '')
     // a sky's clear copy (Task 12) counts against its stop like the photo
-    .replace(/-(clear|band)$/, '') as StopId;
+    .replace(/-clear$/, '') as StopId;
   if ((path.startsWith('sky/') || path.startsWith('stills/')) && STOP_IDS.includes(id)) return [id];
   if (path.startsWith('base/')) return 'all';
   // the sky's own cloud map (Task 12b): one tiling texture for every hour

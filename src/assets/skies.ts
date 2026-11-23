@@ -1,7 +1,6 @@
 import {
   DataTexture,
   LinearFilter,
-  LinearMipmapLinearFilter,
   NoColorSpace,
   RepeatWrapping,
   RGBAFormat,
@@ -10,7 +9,7 @@ import {
 } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
-import { type SkyMode, skyMode, usesClearSky } from '../world/skyClouds';
+import type { SkyMode } from '../world/skyClouds';
 import type { Manifest, SkyAmbient } from './manifest';
 import type { SkyDecodeReply } from './skyDecode.worker';
 import { paintHorizon } from './skyHorizon';
@@ -58,25 +57,19 @@ export interface SkyStore {
   ready(index: number): Promise<void>;
 }
 
-/**
- * Sky photos are 8-bit HDR-encoded data, not colours: no colour space, wrapped around the horizon. Mipmaps only where the
- * sky reads its own blurred copy (`?sky=drift`, Phase 2 Task 12: the glow and the gradient stay put while the clouds move);
- * the photo itself is always read at level 0 (the seam where equirect u wraps would otherwise pick a blurred level).
- */
+/** Sky photos are 8-bit HDR-encoded data, not colours: no colour space, wrapped around the horizon, one level. */
 export function prepareSky(t: Texture): Texture {
-  const mips = typeof location !== 'undefined' && skyMode(location.search) === 'drift';
   t.colorSpace = NoColorSpace;
   t.wrapS = RepeatWrapping;
-  t.generateMipmaps = mips;
-  t.minFilter = mips ? LinearMipmapLinearFilter : LinearFilter;
+  t.generateMipmaps = false;
+  t.minFilter = LinearFilter;
   t.magFilter = LinearFilter;
   return t;
 }
 
-/** The file a sky mode draws: the clear-sky copy for the modes with our own clouds (Task 12), else the photo. */
-export function skyFileFor(entry: { file: string; clear?: string; band?: string }, mode: SkyMode): string {
-  if (mode === 'band') return entry.band ?? entry.file;
-  return usesClearSky(mode) && entry.clear ? entry.clear : entry.file;
+/** The file a sky mode draws: the clear-sky copy under our own clouds (Task 12), the photo for `?sky=photo`. */
+export function skyFileFor(entry: { file: string; clear?: string }, mode: SkyMode): string {
+  return mode === 'cards' && entry.clear ? entry.clear : entry.file;
 }
 
 export interface SkyStoreOptions {

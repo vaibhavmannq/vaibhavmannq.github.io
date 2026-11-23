@@ -11,8 +11,7 @@
    0.1176,
    0.1137
   ],
-  "clear": "sky/golden-clear.jpg",
-  "band": "sky/golden-band.jpg"
+  "clear": "sky/golden-clear.jpg"
  },
  "sunset": {
   "file": "sky/sunset.jpg",
@@ -26,8 +25,7 @@
    0.1327,
    0.1002
   ],
-  "clear": "sky/sunset-clear.jpg",
-  "band": "sky/sunset-band.jpg"
+  "clear": "sky/sunset-clear.jpg"
  },
  "dusk": {
   "file": "sky/dusk.jpg",
@@ -41,8 +39,7 @@
    0.0797,
    0.102
   ],
-  "clear": "sky/dusk-clear.jpg",
-  "band": "sky/dusk-band.jpg"
+  "clear": "sky/dusk-clear.jpg"
  },
  "bluehour": {
   "file": "sky/bluehour.jpg",
@@ -56,8 +53,7 @@
    0.0593,
    0.0669
   ],
-  "clear": "sky/bluehour-clear.jpg",
-  "band": "sky/bluehour-band.jpg"
+  "clear": "sky/bluehour-clear.jpg"
  },
  "night": {
   "file": "sky/night.jpg",
@@ -71,8 +67,7 @@
    0.0106,
    0.0208
   ],
-  "clear": "sky/night.jpg",
-  "band": "sky/night.jpg"
+  "clear": "sky/night.jpg"
  },
  "midnight": {
   "file": "sky/midnight.jpg",
@@ -86,8 +81,7 @@
    0.0714,
    0.1029
   ],
-  "clear": "sky/midnight.jpg",
-  "band": "sky/midnight.jpg"
+  "clear": "sky/midnight.jpg"
  },
  "beforedawn": {
   "file": "sky/beforedawn.jpg",
@@ -101,8 +95,7 @@
    0.0276,
    0.0451
   ],
-  "clear": "sky/beforedawn-clear.jpg",
-  "band": "sky/beforedawn-band.jpg"
+  "clear": "sky/beforedawn-clear.jpg"
  },
  "firstlight": {
   "file": "sky/firstlight.jpg",
@@ -116,8 +109,7 @@
    0.0844,
    0.1034
   ],
-  "clear": "sky/firstlight-clear.jpg",
-  "band": "sky/firstlight-band.jpg"
+  "clear": "sky/firstlight-clear.jpg"
  },
  "sunrise": {
   "file": "sky/sunrise.jpg",
@@ -131,7 +123,6 @@
    0.1626,
    0.1526
   ],
-  "clear": "sky/sunrise-clear.jpg",
-  "band": "sky/sunrise-band.jpg"
+  "clear": "sky/sunrise-clear.jpg"
  }
 }

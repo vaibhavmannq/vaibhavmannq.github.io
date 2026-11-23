@@ -27,6 +27,7 @@ import {
   NoColorSpace,
   type Node,
   PlaneGeometry,
+  RepeatWrapping,
   RGBAFormat,
   UnsignedByteType,
 } from 'three/webgpu';
@@ -53,6 +54,9 @@ export interface CardMeta {
 
 /** How many cards share the sky; each hour shows a share of them (its cover). */
 const COUNT = 640;
+/** Big cards on a far ring, the horizon's cloud banks. */
+const BANKS = 72;
+const TOTAL = COUNT + BANKS;
 /** Cards live in a square this wide around the eye and wrap as the wind carries them (m). */
 const BOX = 72_000;
 /** Drawn no further than this (the camera's far plane is 14 km), shrunk toward the eye to keep their size on screen. */
@@ -77,6 +81,47 @@ export function cardAtlasTexture(): DataTexture {
   return t;
 }
 
+/** The cloud map's size (tools/world/cloud_map.py); only its fine detail (G) is read now, to change the cards' edges. */
+export const CLOUD_MAP_N = 512;
+
+/**
+ * The cloud map's texture, empty until `fillCloudMap` puts the baked file's pixels in it: the shader is built once
+ * against this texture and never rebuilt when the pixels arrive (R121: no new pipeline on a moving frame).
+ */
+export function cloudMapTexture(): DataTexture {
+  const n = CLOUD_MAP_N;
+  const t = new DataTexture(new Uint8Array(n * n * 4), n, n, RGBAFormat, UnsignedByteType);
+  t.colorSpace = NoColorSpace;
+  t.wrapS = RepeatWrapping;
+  t.wrapT = RepeatWrapping;
+  t.magFilter = LinearFilter;
+  t.minFilter = LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  // seen edge-on toward the horizon: without it the GPU blurs the field to its mean (~0.5, under every hour's cover
+  // threshold) and the clouds vanish everywhere but overhead (s32)
+  t.anisotropy = 16;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Decode a PNG into a texture made empty at its size (main thread: ~5 ms for 512², ~30 ms for 2048 × 1024; once). */
+export async function fillCloudMap(t: DataTexture, url: string): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${response.status} ${url}`);
+  const bitmap = await createImageBitmap(await response.blob(), {
+    premultiplyAlpha: 'none',
+    colorSpaceConversion: 'none',
+  });
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('no 2d context');
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  (t.image.data as Uint8Array).set(px);
+  t.needsUpdate = true;
+}
+
 export interface CloudCards extends WorldPart {
   /** The atlas has its pixels: fade the cards in. */
   ready(meta: CardMeta): void;
@@ -94,7 +139,7 @@ export function createCloudCards(
   u: LightUniforms,
   atlas: DataTexture,
   colorAt: (dir: V3) => V3,
-  /** The sky's cloud map (skyLayer.ts): its fine detail (G) slowly eats each card's thin edges, so clouds change shape. */
+  /** The cloud map (cloud_map.py): its fine detail (G) slowly eats each card's thin edges, so clouds change shape. */
   noise: DataTexture,
   /** Lowest elevation a card is drawn at, radians: `band` keeps the photo's own clouds down there (and the far cards,
    * hundreds deep, would only stack on each other), so its cards start a little above them. */
@@ -124,8 +169,24 @@ export function createCloudCards(
       rank: Math.min(0.999, c.rank * 0.85 + rand() * 0.15),
       card: Math.floor(rand() * 1000),
       seed: rand(),
+      bank: null as null | { ang: number; r: number },
     };
   });
+  // banks along the horizon (s32: with the photo's clouds gone, Dusk's and First light's horizons were empty): big
+  // cards on a ring 35-60 km out, low, turning slowly with the wind aloft; real skies are densest down there
+  for (let i = 0; i < BANKS; i++)
+    base.push({
+      x: 0,
+      z: 0,
+      y: 1100 + rand() * 1200,
+      size: 4000 + rand() * 8000,
+      // most banks come out even at a light cover: the horizon is where cloud piles up in view
+      rank: rand() * 0.55,
+      card: Math.floor(rand() * 1000),
+      seed: rand(),
+      bank: { ang: rand() * Math.PI * 2, r: 35_000 + rand() * 25_000 },
+    });
+  let spin = 0;
   let meta: CardMeta | null = null;
   let shown = 0;
   let carryX = 0;
@@ -137,13 +198,13 @@ export function createCloudCards(
   geo.index = quad.index;
   geo.setAttribute('position', quad.getAttribute('position'));
   geo.setAttribute('uv', quad.getAttribute('uv'));
-  const iCenter = new InstancedBufferAttribute(new Float32Array(COUNT * 3), 3);
-  const iSize = new InstancedBufferAttribute(new Float32Array(COUNT * 2), 2);
+  const iCenter = new InstancedBufferAttribute(new Float32Array(TOTAL * 3), 3);
+  const iSize = new InstancedBufferAttribute(new Float32Array(TOTAL * 2), 2);
   // atlas x, y of the cloud's bottom-left (px), its width and height (px)
-  const iRect = new InstancedBufferAttribute(new Float32Array(COUNT * 4), 4);
+  const iRect = new InstancedBufferAttribute(new Float32Array(TOTAL * 4), 4);
   // mirror (±1), alpha, aerial fade (from the true distance: drawn ones are pulled in to DRAW_MAX)
-  const iInfo = new InstancedBufferAttribute(new Float32Array(COUNT * 3), 3);
-  const iSeed = new InstancedBufferAttribute(new Float32Array(COUNT), 1);
+  const iInfo = new InstancedBufferAttribute(new Float32Array(TOTAL * 3), 3);
+  const iSeed = new InstancedBufferAttribute(new Float32Array(TOTAL), 1);
   for (const a of [iCenter, iSize, iRect, iInfo, iSeed]) a.setUsage(35048); // DynamicDrawUsage
   geo.setAttribute('iCenter', iCenter);
   geo.setAttribute('iSize', iSize);
@@ -247,8 +308,8 @@ export function createCloudCards(
   mesh.frustumCulled = false;
   mesh.renderOrder = 0.5; // after the sky and the aurora (100 km up, behind any cloud), before nearer see-through things
 
-  const order: number[] = Array.from({ length: COUNT }, (_, i) => i);
-  const dist2 = new Float32Array(COUNT);
+  const order: number[] = Array.from({ length: TOTAL }, (_, i) => i);
+  const dist2 = new Float32Array(TOTAL);
 
   return {
     object: mesh,
@@ -276,23 +337,22 @@ export function createCloudCards(
       }
       carryX += vx * f.dtS;
       carryZ -= vy * f.dtS;
-      const _keyX = u.keyDir.value.x;
-      const _keyZ = u.keyDir.value.z;
-      const pos = new Float32Array(COUNT * 3);
-      const vis = new Float32Array(COUNT);
-      for (let i = 0; i < COUNT; i++) {
+      // the banks turn about the eye as the wind would carry them past at their distance
+      spin += (Math.hypot(vx, vy) / 45_000) * f.dtS;
+      const pos = new Float32Array(TOTAL * 3);
+      const vis = new Float32Array(TOTAL);
+      for (let i = 0; i < TOTAL; i++) {
         const b = base[i] as (typeof base)[number];
         const wrap = (v: number) => ((((v + BOX / 2) % BOX) + BOX) % BOX) - BOX / 2;
-        const x = cx + wrap(b.x + carryX - cx);
-        const z = cz + wrap(b.z + carryZ - cz);
+        const x = b.bank ? cx + Math.cos(b.bank.ang + spin) * b.bank.r : cx + wrap(b.x + carryX - cx);
+        const z = b.bank ? cz + Math.sin(b.bank.ang + spin) * b.bank.r : cz + wrap(b.z + carryZ - cz);
         const y = b.y;
         const dx = x - cx;
         const dz = z - cz;
         const flat = Math.hypot(dx, dz);
         const elev = Math.atan2(y - cy, flat);
         const fade =
-          smooth(2500, 4500, flat) *
-          smooth(BOX / 2, BOX / 2 - 5000, flat) *
+          (b.bank ? 1 : smooth(2500, 4500, flat) * smooth(BOX / 2, BOX / 2 - 5000, flat)) *
           smooth(0.75, 0.5, elev) *
           smooth(minElev, minElev + 0.03, elev) *
           smooth(b.rank - 0.08, b.rank, share);
@@ -316,7 +376,8 @@ export function createCloudCards(
         const k = d > DRAW_MAX ? DRAW_MAX / d : 1;
         iCenter.setXYZ(n, cx + (x - cx) * k, cy + (y - cy) * k, cz + (z - cz) * k);
         const worldW = b.size * grow * k;
-        iSize.setXY(n, worldW, (worldW * card.h) / Math.max(card.w, 1e-3));
+        // far banks are seen nearly edge-on: flattened to a quarter, as distance flattens real clouds
+        iSize.setXY(n, worldW, ((worldW * card.h) / Math.max(card.w, 1e-3)) * (b.bank ? 0.28 : 1));
         const col = card.cell % meta.cols;
         const row = Math.floor(card.cell / meta.cols);
         const pw = card.w * CELL;
@@ -324,7 +385,7 @@ export function createCloudCards(
         iRect.setXYZW(n, col * CELL + (CELL - pw) / 2, row * CELL + CELL - 2, pw, ph);
         // mirrored at random for variety: the normal from the height lights it from the true side either way
         iSeed.setX(n, b.seed);
-        iInfo.setXYZ(n, b.rank > 0.5 ? 1 : -1, vis[i] as number, (1 - Math.exp(-d / 30000)) * 0.6);
+        iInfo.setXYZ(n, b.rank > 0.5 ? 1 : -1, vis[i] as number, (b.bank ? 0.3 : 0.6) * (1 - Math.exp(-d / 30000)));
         n++;
       }
       geo.instanceCount = n;

@@ -91,7 +91,7 @@ export interface Manifest {
     /** finer ground near places (plan world-to-100 Task 10): bake_base.py --patches */
     patches?: PatchMeta[];
   };
-  skies: Partial<Record<StopId, SkyAmbient & { file: string; clear?: string; band?: string }>>;
+  skies: Partial<Record<StopId, SkyAmbient & { file: string; clear?: string }>>;
   files: FileEntry[];
 }
 

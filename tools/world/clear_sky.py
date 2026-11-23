@@ -24,8 +24,6 @@ SKY = os.path.join(ROOT, "public", "world", "sky")
 CONF = json.load(open(os.path.join(HERE, "clear_sky.json"), encoding="utf-8"))
 HOURS = ["golden", "sunset", "dusk", "bluehour", "night", "midnight", "beforedawn", "firstlight", "sunrise"]
 LUM = np.array([0.2126, 0.7152, 0.0722], np.float32)
-# `band`: the photo below BAND_LO degrees, the clear sky above BAND_HI
-BAND_LO, BAND_HI = 9.0, 24.0
 
 
 def decode(e):
@@ -145,28 +143,18 @@ def main():
         os.makedirs(sheet, exist_ok=True)
     meta_path = os.path.join(SKY, "sky.json")
     meta = json.load(open(meta_path, encoding="utf-8"))
+    for v in meta.values():
+        v.pop("band", None)  # s32: the band copies were dropped (D58)
     for name in HOURS:
         c = CONF[name]
         if c == "same":
             meta[name]["clear"] = meta[name]["file"]
-            meta[name]["band"] = meta[name]["file"]
             continue
         res, m = clear(name, c)
         out = np.clip(encode(res) * 255 + 0.5, 0, 255).astype(np.uint8)
         path = os.path.join(SKY, f"{name}-clear.jpg")
         cv2.imwrite(path, out[..., ::-1], [cv2.IMWRITE_JPEG_QUALITY, 90])
         meta[name]["clear"] = f"sky/{name}-clear.jpg"
-        # `band` (s32): the photo's own clouds kept low (20-50 km out they barely move in a ride, and they hold each
-        # hour's drama), the clear sky above, where the browser's moving clouds carry the depth
-        x = decode(cv2.imread(os.path.join(SKY, f"{name}.jpg"))[..., ::-1].astype(np.float32) / 255)
-        h = x.shape[0]
-        el = (0.5 - (np.arange(h) + 0.5) / h) * 180
-        t = np.clip((el - BAND_LO) / (BAND_HI - BAND_LO), 0, 1)
-        w = (t * t * (3 - 2 * t))[:, None, None]
-        band = x * (1 - w) + res * w
-        out_b = np.clip(encode(band) * 255 + 0.5, 0, 255).astype(np.uint8)
-        cv2.imwrite(os.path.join(SKY, f"{name}-band.jpg"), out_b[..., ::-1], [cv2.IMWRITE_JPEG_QUALITY, 90])
-        meta[name]["band"] = f"sky/{name}-band.jpg"
         if sheet:
             src = cv2.imread(os.path.join(SKY, f"{name}.jpg"))
             hh = src.shape[0] // 2 + 20
