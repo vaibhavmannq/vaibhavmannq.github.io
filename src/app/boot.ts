@@ -61,6 +61,7 @@ import {
   decodeGrove,
   SUNSET_CROWN,
   SUNSET_FRAME,
+  SUNSET_SCRUB,
   scrubInstances,
 } from '../world/grove';
 import {
@@ -595,7 +596,7 @@ async function loadBase(
         joins.push(compileThenAdd(app, createLoneTree(grove, ridgeGround), 'lonetree'));
         // Sunset's framing tree (plan M8 Task 3, D38)
         const sunsetEye = [SHOTS.sunset.cam[0], SHOTS.sunset.cam[1]] as const;
-        const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], SUNSET_FRAME, surfaceAt);
+        const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], [...SUNSET_FRAME, ...SUNSET_SCRUB], surfaceAt);
         // out of the sea's mirror (s33, Task 16d: its reflection is hidden by the clifftop from Sunset's eye; R203)
         const scrub = createGroveProps(grove, frame, surfaceAt, 'sunset', 'scrub', false, {
           model: 0,

@@ -554,6 +554,23 @@ const WOOD_RIM = q('rim', '1')[0] as number;
  * blob; now 30° left, 9 m out, turned 5.5 rad so its trunk and limbs read against the sky (the Sunset render).
  */
 export const SUNSET_FRAME: readonly ScrubSpot[] = [[FO[0], FO[1], FO[2], 0, FO[3]]];
+/**
+ * Wind-cut shrubs on Sunset's hill (Task 16e B, s33; prep-16e.md: on a wind-swept clifftop, gorse and heath grow as
+ * cushions wider than tall, 0.4–1.2 m, in groups of 2–5; the grove's searsia stands in). Three groups at the sides and
+ * two on the far crest, none within 15° of the gaze (the sun's road) or by the knoll's trees.
+ */
+export const SUNSET_SCRUB: readonly ScrubSpot[] = [
+  [-48, 26, 1.1, 3],
+  [-52, 29, 0.9, 3],
+  [-44, 31, 1.3, 3],
+  [38, 24, 1.0, 3],
+  [44, 27, 1.4, 3],
+  [52, 33, 1.1, 3],
+  [-24, 58, 1.5, 3],
+  [-27, 61, 1.2, 3],
+  [30, 47, 1.4, 3],
+];
+
 /** The framing tree's crown (Task 16d): leaves only from 2.6 m of the model up, 55 % of them, each 0.75 the size. */
 export const SUNSET_CROWN: CrownTrim = { minZ: FC[0], keep: FC[1], scale: FC[2] };
 
