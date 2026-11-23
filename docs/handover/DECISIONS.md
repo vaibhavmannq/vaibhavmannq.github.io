@@ -381,3 +381,12 @@ phone test of the four switches he kept `?sea=swell&rest=boost`: both are now th
 give the old). On the sky: "honestly i felt no difference with sky photo and new sky - the clouds must be different
 (next session work)": the drift (R230) does not answer #3a; the next session builds clouds of our own (D52's bigger
 job, the plan's C6), judged in motion against the photo sky. Deep blacks were not objected to (stay the default).
+
+**D58 · 2026-11-23 · (owner, s32) The sky's clouds are cloud cards of our own; no photo clouds.** After the options
+behind `?sky=` (R235-R237) and his phone test of `band`: "cards it is, i don't want no images anymore - just keep on
+improving the cloud as you move to improve each scene". The default sky is each hour's clear-sky copy under cloud
+cards (real cumulus shapes cut from CC0 daylight skies, standing in the world, lit by our sun and moon through normals,
+drifting and changing shape); `?sky=photo` stays as the one A/B; the other tries are removed. Also from him this
+session: "clouds must be dense and must move/feel alive"; The Witcher 3 and 4 as references (s32: their method, normal-
+lit cloud layers, may be used; their art may not, the founding no-game-assets rule). The clouds keep improving inside
+Phase 3, place by place. Ledger R235-R238.

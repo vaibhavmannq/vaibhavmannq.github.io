@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-23, session s31 (see `docs/handover/sessions/2026-11-22-s31-w100-phase2.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-23, session s32 (see `docs/handover/sessions/2026-11-23-s32-the-skys-own-clouds.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -350,10 +350,17 @@ no borrowed set pieces (no towers, piano, etc.).
   - 13: a swell behind `?sea=swell` (tilt only; off by default, D48); mirrors unchanged (a finer mirror showed nothing).
 - **Owner, end of s31 (D57):** kept the swell and the rest boost (now default); felt no difference between the photo
   sky and the drift: **the clouds must be different**.
-- **Next (s32): the sky's own clouds** (D52's bigger job, plan C6: clear-sky copies of the photos and a cloud layer of
-  our own, lit by the hour, cheap enough for the phone at high), judged in motion against `?sky=photo` on the phone,
-  all nine places and rides (D47). Then Phase 3 (each place a complete set), Sunset first (s30 note; D38). Phase 3 also
-  takes Phase 1's light cost at high on VI → VII (R233).
+- **s32 (2026-11-23): Task 12, the sky's own clouds** (log `sessions/2026-11-23-s32-the-skys-own-clouds.md`; ledger
+  R235-R238; D58; commits 4dc83cf..55b31d8, not pushed). Clear-sky copies of the photos (`tools/world/clear_sky.py`);
+  a noise cloud layer tried and dropped; **cloud cards** chosen by the owner: 31 real cumulus shapes cut from CC0
+  daylight skies (`tools/world/cloud_cards.py`), standing in the world (`src/world/cloudCards.ts`), normal-lit (The
+  Witcher 3's method), clustered, drifting, edges that change, banks on the horizon. `?sky=photo` is the one A/B.
+  Phone: the band version within 1 fps of the old sky on every ride at high. Laptop low: +0.3-2.3 ms vs the photo sky.
+- **Owner, end of s32 (D58):** "cards it is, i don't want no images anymore - just keep on improving the cloud as you
+  move to improve each scene"; "clouds must be dense and must move/feel alive".
+- **Next (s33): Phase 3, Sunset first** (each place a complete set, each ride a shot list; the clouds improved with each
+  place). First the owed phone checks of the final `cards` build (s32 log). Phase 3 also takes Phase 1's light cost at
+  high on VI → VII (R233) and the clouds' cost (R238).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
