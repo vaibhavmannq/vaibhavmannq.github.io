@@ -45,9 +45,6 @@ interface Rules {
   flowerScale?: number;
 }
 
-/** s33 16c, temporary: `?fs=` Sunset's flower height factor. */
-const FS = Number((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('fs')) ?? '1.7');
-
 const RULES: Record<CoveStop, Rules> = {
   golden: {
     candidates: 22000,
@@ -78,7 +75,7 @@ const RULES: Record<CoveStop, Rules> = {
     // owner, round 1: "fill the empty meadow with red flowers, also where look-around goes"
     // from 22 m: nearer, the field's drifts already hold flowers (and the cove stays inside its 60 000 plants)
     poppies: { candidates: 110000, from: 22, to: 115, spread: 1.4, patch: 0.5 },
-    flowerScale: FS,
+    flowerScale: 1.7,
   },
   // III looks down from the headland (owner cove-and-stacks: "from above, with grass in front"): grass clumps at the
   // lens sides and more flowers near the eye, the near layer the shot lacked (plan M8 Task 7, s22)

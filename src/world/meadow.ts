@@ -30,6 +30,7 @@ import {
   MeshBasicNodeMaterial,
   Vector2,
 } from 'three/webgpu';
+import { STOPS } from '../journey/stops';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
@@ -47,6 +48,11 @@ export const BLADE_UP = 0.6;
 /** s33 16e, temporary: `?gust=0` turns Sunset's gust off, `?gust=now` starts one at once (to watch it). */
 const GUST_Q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('gust');
 const GUST_ON = GUST_Q === '0' ? 0 : 1;
+
+/** Flowers this far from their stop's eye (m) are drawn as their far version (farOf; s33, the phone's 2 fps). */
+export const FAR_FROM = 22;
+/** Sunset's flowers' stalks × this, heads unchanged (s33: tried 1.7 with true-size heads; read as pink mushrooms; 1 keeps the approved look, scatter's flowerScale sizes them). */
+export const SUNSET_TALL = 1;
 
 /** s33 16c, temporary: `?gg=` the backlit grass glow (0.25 before). */
 const GRASS_GLOW = Number(
@@ -69,6 +75,8 @@ interface Shape {
   pos: number[];
   bend: number[];
   part: number[];
+  /** flower heads' centres and radii (x, y, z, r), for the far version (farOf) */
+  heads?: number[];
 }
 
 function blade(s: Shape, r: () => number, x: number, z: number, h: number, w: number, lean: number, segs: number) {
@@ -143,15 +151,15 @@ export function shortTuft(): Shape {
  * A clump of flowers (coast.py flower_mesh): thin stalks of different heights, each with a round head (thrift is a
  * ball of florets, reference book §8), and a few leaves at the foot.
  */
-export function flowerClump(): Shape {
-  const s: Shape = { pos: [], bend: [], part: [] };
+export function flowerClump(tall = 1): Shape {
+  const s: Shape = { pos: [], bend: [], part: [], heads: [] };
   const r = mulberry32(303);
   for (let i = 0; i < 4; i++) {
     const rr = 0.16 * Math.sqrt(r());
     const a = r() * 2 * Math.PI;
     const x = Math.cos(a) * rr;
     const z = Math.sin(a) * rr;
-    const h = 0.6 + 0.4 * r();
+    const h = (0.6 + 0.4 * r()) * tall;
     const lean = (r() - 0.5) * 0.15;
     const top: [number, number, number] = [x + lean, h, z + lean * 0.5];
     // the stalk: one thin triangle
@@ -162,6 +170,7 @@ export function flowerClump(): Shape {
     // above and a foot below, turned at random (s33: the low five-sided dome read as a pink diamond up close)
     const hr = 0.055 + 0.02 * r();
     const c = [top[0], top[1] + hr * 0.7, top[2]] as const;
+    s.heads?.push(c[0], c[1], c[2], hr);
     const turn = r() * Math.PI;
     const ring = (k: number, rad: number, dy: number) => [
       c[0] + Math.cos(turn + (k * 2 * Math.PI) / 5) * rad,
@@ -286,40 +295,44 @@ function petalRing(
  * eye on a tall nodding stalk; thrift stays a ball (flowerClump). Shapes differ at a few metres, where the meadow is
  * seen from inside the flowers.
  */
-export function daisyClump(): Shape {
-  const s: Shape = { pos: [], bend: [], part: [] };
+export function daisyClump(tall = 1): Shape {
+  const s: Shape = { pos: [], bend: [], part: [], heads: [] };
   const r = mulberry32(404);
   for (let i = 0; i < 4; i++) {
     const rr = 0.16 * Math.sqrt(r());
     const a = r() * 2 * Math.PI;
     const x = Math.cos(a) * rr;
     const z = Math.sin(a) * rr;
-    const top = [x + (r() - 0.5) * 0.12, 0.85 + 0.4 * r(), z + (r() - 0.5) * 0.06] as const;
+    const top = [x + (r() - 0.5) * 0.12, (0.85 + 0.4 * r()) * tall, z + (r() - 0.5) * 0.06] as const;
     stalk(s, x, z, top);
-    petals(s, r, top, 10, 0.085 + 0.02 * r(), 0.12, false, 0.022, 0.5 + 0.45 * r());
+    const rad = 0.085 + 0.02 * r();
+    s.heads?.push(top[0], top[1], top[2], rad);
+    petals(s, r, top, 10, rad, 0.12, false, 0.022, 0.5 + 0.45 * r());
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.3 + 0.2 * r(), 0.03, 0.35, 0);
   return s;
 }
 
-export function buttercupClump(): Shape {
-  const s: Shape = { pos: [], bend: [], part: [] };
+export function buttercupClump(tall = 1): Shape {
+  const s: Shape = { pos: [], bend: [], part: [], heads: [] };
   const r = mulberry32(606);
   for (let i = 0; i < 5; i++) {
     const rr = 0.18 * Math.sqrt(r());
     const a = r() * 2 * Math.PI;
     const x = Math.cos(a) * rr;
     const z = Math.sin(a) * rr;
-    const top = [x + (r() - 0.5) * 0.15, 0.8 + 0.45 * r(), z + (r() - 0.5) * 0.08] as const;
+    const top = [x + (r() - 0.5) * 0.15, (0.8 + 0.45 * r()) * tall, z + (r() - 0.5) * 0.08] as const;
     stalk(s, x, z, top);
-    petals(s, r, top, 5, 0.05 + 0.01 * r(), 0.85, true, 0, 0.3 + 0.4 * r());
+    const rad = 0.05 + 0.01 * r();
+    s.heads?.push(top[0], top[1], top[2], rad);
+    petals(s, r, top, 5, rad, 0.85, true, 0, 0.3 + 0.4 * r());
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.3 + 0.2 * r(), 0.035, 0.35, 0);
   return s;
 }
 
-export function poppyClump(): Shape {
-  const s: Shape = { pos: [], bend: [], part: [] };
+export function poppyClump(tall = 1): Shape {
+  const s: Shape = { pos: [], bend: [], part: [], heads: [] };
   const r = mulberry32(707);
   for (let i = 0; i < 3; i++) {
     const rr = 0.12 * Math.sqrt(r());
@@ -327,9 +340,11 @@ export function poppyClump(): Shape {
     const x = Math.cos(a) * rr;
     const z = Math.sin(a) * rr;
     // a poppy's stalk is long and bends under its head
-    const top = [x + (r() - 0.5) * 0.2, 0.75 + 0.25 * r(), z + (r() - 0.5) * 0.1] as const;
+    const top = [x + (r() - 0.5) * 0.2, (0.75 + 0.25 * r()) * tall, z + (r() - 0.5) * 0.1] as const;
     stalk(s, x, z, top);
-    petals(s, r, top, 4, 0.1 + 0.025 * r(), 0.6, true, 0.018, 0.2 + 0.35 * r());
+    const rad = 0.1 + 0.025 * r();
+    s.heads?.push(top[0], top[1], top[2], rad);
+    petals(s, r, top, 4, rad, 0.6, true, 0.018, 0.2 + 0.35 * r());
   }
   for (let i = 0; i < 2; i++) blade(s, r, (r() - 0.5) * 0.08, (r() - 0.5) * 0.08, 0.25 + 0.15 * r(), 0.04, 0.4, 0);
   return s;
@@ -385,6 +400,24 @@ export function tussockShape(): Shape {
 }
 
 /**
+ * A flower clump's far version (Task 16 phone pass, s33): only its heads, each two crossed triangles a little larger
+ * than the head (a head 20+ m away is a few pixels; its stalk is under one), no stalks or leaves. Sunset's flowers cost
+ * the phone ~2 fps on its rides; most of them stand past 22 m. ~6–8 triangles a clump instead of 44–67.
+ */
+export function farOf(near: Shape): Shape {
+  const s: Shape = { pos: [], bend: [], part: [] };
+  const h = near.heads ?? [];
+  for (let i = 0; i < h.length; i += 4) {
+    const [x, y, z, r] = [h[i] as number, h[i + 1] as number, h[i + 2] as number, (h[i + 3] as number) * 0.85];
+    s.pos.push(x - r, y - r * 0.6, z, x + r, y - r * 0.6, z, x, y + r, z);
+    s.pos.push(x, y - r * 0.6, z - r, x, y - r * 0.6, z + r, x, y + r, z);
+    s.bend.push(1, 1, 1, 1, 1, 1);
+    s.part.push(0.75, 0.75, 1.0, 0.75, 0.75, 1.0);
+  }
+  return s;
+}
+
+/**
  * A clump of heather (plan M6 Task 2; reference book §8): a low, dense mound of short stiff sprigs, more upright and
  * many more than the short meadow's blades; the upper half of each sprig is the flowering spike.
  */
@@ -432,7 +465,12 @@ export function plantWeight(state: Pick<FrameState, 'kind' | 'a' | 'b' | 't'>, s
 }
 
 /** Coast (x, y, z) → three (x, z, −y), and the instance arrays for one shape of one stop. */
-function instances(plants: Plants, owner: number, pick: (kind: number) => boolean) {
+function instances(
+  plants: Plants,
+  owner: number,
+  pick: (kind: number) => boolean,
+  where: (x: number, y: number) => boolean = () => true,
+) {
   const a0: number[] = [];
   const a1: number[] = [];
   const r = mulberry32(77 + owner);
@@ -440,6 +478,7 @@ function instances(plants: Plants, owner: number, pick: (kind: number) => boolea
     const o = i * PLANT_STRIDE;
     const kind = plants.data[o + 5] as number;
     if (plants.data[o + 6] !== owner || !pick(kind)) continue;
+    if (!where(plants.data[o] as number, plants.data[o + 1] as number)) continue;
     a0.push(
       plants.data[o] as number,
       plants.data[o + 2] as number,
@@ -606,41 +645,55 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   material.colorNode = varying(mix(seen, vec3(grey).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)));
 
   const group = new Group();
-  const shapes = [
-    [tallTuft(), (k: number) => k === PLANT.tall],
-    [shortTuft(), (k: number) => k === PLANT.short],
-    [flowerClump(), (k: number) => k === PLANT.pink],
-    [buttercupClump(), (k: number) => k === PLANT.yellow],
-    [daisyClump(), (k: number) => k === PLANT.white],
-    [poppyClump(), (k: number) => k === PLANT.red],
-    [heatherMound(), (k: number) => k === PLANT.heather],
-    [tussockShape(), (k: number) => k === TUSSOCK_KIND],
-  ] as const;
+  const shapes: readonly (readonly [(tall: number) => Shape, (k: number) => boolean])[] = [
+    [() => tallTuft(), (k: number) => k === PLANT.tall],
+    [() => shortTuft(), (k: number) => k === PLANT.short],
+    [(t) => flowerClump(t), (k: number) => k === PLANT.pink],
+    [(t) => buttercupClump(t), (k: number) => k === PLANT.yellow],
+    [(t) => daisyClump(t), (k: number) => k === PLANT.white],
+    [(t) => poppyClump(t), (k: number) => k === PLANT.red],
+    [() => heatherMound(), (k: number) => k === PLANT.heather],
+    [() => tussockShape(), (k: number) => k === TUSSOCK_KIND],
+  ];
   /** drawn[] slot per shape: tall, short, flowers (every kind), heather; Sunset's tussocks count as tall */
   const SLOT = [0, 1, 2, 2, 2, 2, 3, 0];
   /** the least share a shape draws at any tier: the tussocks keep Sunset's hill from reading bare at low (Task 16e) */
   const FLOOR = [0, 0, 0, 0, 0, 0, 0, 0.67];
-  const meshes = PLANT_STOPS.flatMap((id, owner) =>
-    shapes.flatMap(([shape, pick], shapeIndex) => {
-      const { a0, a1, n } = instances(plants, owner, pick);
-      if (n === 0) return [];
-      const g = new InstancedBufferGeometry();
-      g.setAttribute('position', new BufferAttribute(new Float32Array(shape.pos), 3));
-      g.setAttribute('bend', new BufferAttribute(new Float32Array(shape.bend), 1));
-      g.setAttribute('part', new BufferAttribute(new Float32Array(shape.part), 1));
-      g.setAttribute('inst0', new InstancedBufferAttribute(a0, 4));
-      g.setAttribute('inst1', new InstancedBufferAttribute(a1, 4));
-      g.instanceCount = n;
-      const mesh = new Mesh(g, material);
-      mesh.frustumCulled = false; // instances cover the whole cove; the shader shrinks the far ones
-      mesh.layers.set(EYE_ONLY_LAYER);
-      mesh.userData.weight = 1;
-      group.add(mesh);
-      const slot = SLOT[shapeIndex] as number;
-      const floor = FLOOR[shapeIndex] as number;
-      return [{ mesh, g, n, shapeIndex: slot, floor, stopIndex: STOP_IDS.indexOf(id) }];
-    }),
-  );
+  const meshes = PLANT_STOPS.flatMap((id, owner) => {
+    const eye = STOPS.find((st) => st.id === id)?.cam;
+    // Sunset's flowers stand taller (s33: from a 0.5 m eye they hid in the grass); only their stalks grow, not their heads
+    const tall = id === 'sunset' ? SUNSET_TALL : 1;
+    return shapes.flatMap(([make, pick], shapeIndex) => {
+      const isFlower = shapeIndex >= 2 && shapeIndex <= 5;
+      const near = make(tall);
+      const away = (x: number, y: number) => eye !== undefined && Math.hypot(x - eye[0], y - eye[1]) >= FAR_FROM;
+      const variants: [Shape, (x: number, y: number) => boolean][] = isFlower
+        ? [
+            [near, (x, y) => !away(x, y)],
+            [farOf(near), away],
+          ]
+        : [[near, () => true]];
+      return variants.flatMap(([shape, where]) => {
+        const { a0, a1, n } = instances(plants, owner, pick, where);
+        if (n === 0) return [];
+        const g = new InstancedBufferGeometry();
+        g.setAttribute('position', new BufferAttribute(new Float32Array(shape.pos), 3));
+        g.setAttribute('bend', new BufferAttribute(new Float32Array(shape.bend), 1));
+        g.setAttribute('part', new BufferAttribute(new Float32Array(shape.part), 1));
+        g.setAttribute('inst0', new InstancedBufferAttribute(a0, 4));
+        g.setAttribute('inst1', new InstancedBufferAttribute(a1, 4));
+        g.instanceCount = n;
+        const mesh = new Mesh(g, material);
+        mesh.frustumCulled = false; // instances cover the whole cove; the shader shrinks the far ones
+        mesh.layers.set(EYE_ONLY_LAYER);
+        mesh.userData.weight = 1;
+        group.add(mesh);
+        const slot = SLOT[shapeIndex] as number;
+        const floor = FLOOR[shapeIndex] as number;
+        return [{ mesh, g, n, shapeIndex: slot, floor, stopIndex: STOP_IDS.indexOf(id) }];
+      });
+    });
+  });
   group.layers.set(EYE_ONLY_LAYER);
   const drawn = [0, 0, 0, 0];
   const count = (share: number) => {

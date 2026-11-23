@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buttercupClump,
   daisyClump,
+  farOf,
   flowerClump,
   plantWeight,
   poppyClump,
@@ -37,5 +38,16 @@ describe('the cove plants (plan M3 Task 1)', () => {
     expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(70);
     for (const shape of [daisyClump(), buttercupClump(), poppyClump()])
       expect(shape.pos.length / 9).toBeLessThanOrEqual(70);
+  });
+
+  it('draws far flowers as their heads alone, at the same places and size, for a fraction of the triangles (s33)', () => {
+    for (const near of [flowerClump(), daisyClump(), buttercupClump(), poppyClump()]) {
+      const far = farOf(near);
+      const heads = (near.heads?.length ?? 0) / 4;
+      expect(heads).toBeGreaterThan(0);
+      expect(far.pos.length / 9).toBe(heads * 2);
+      expect(far.pos.length).toBeLessThan(near.pos.length / 4);
+      for (let i = 1; i < far.pos.length; i += 3) expect(far.pos[i] as number).toBeGreaterThan(0.3);
+    }
   });
 });
