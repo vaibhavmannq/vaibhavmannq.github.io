@@ -418,15 +418,15 @@
   },
   {
    "path": "sky/cards.json",
-   "bytes": 2149,
-   "sha256": "f91fafae3b29b3adba836c9d11022bdeb33357c23074213cb2e875ea8d05fc9c",
+   "bytes": 2898,
+   "sha256": "fe470cde15da87cc01adec85dcd54e524f29c0fd639fffd6f8fd8a9e4fd09235",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "sky/cards.png",
-   "bytes": 1260543,
-   "sha256": "7b1b3df3fe4232879a64c22fc2fbf730ba07b1669e7fa6b485d86311ba1930aa",
+   "bytes": 1729978,
+   "sha256": "2de6cb4320f9c738d8aafe56574074c3ba9c5cc9864f1844fdf6d1b681df882e",
    "stage": "B",
    "stops": "all"
   },

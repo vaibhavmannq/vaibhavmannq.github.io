@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CARD_ATLAS_W, cardCrops } from '../../src/world/cloudCards';
 
 describe('cloud cards cropped to their visible cloud (Task 16a, s33)', () => {
-  const H = 1024;
+  const H = 1536;
   const data = new Uint8Array(CARD_ATLAS_W * H * 4);
   // cell 0, a whole 256² card: cloud in x 20–99 and, counted up from the base row (254), rows 10–129
   for (let j = 10; j < 130; j++) for (let x = 20; x < 100; x++) data[((254 - j) * CARD_ATLAS_W + x) * 4] = 200;

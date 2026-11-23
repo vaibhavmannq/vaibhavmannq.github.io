@@ -16,7 +16,8 @@ const manifest = (files: FileEntry[]): Manifest => ({ version: 1, base, skies: {
 
 describe('the pack budget check (spec §14)', () => {
   it('uses the spec budgets', () => {
-    expect(BUDGETS).toEqual({ stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 5e6 }); // D30: 5 MB per place; D53: base 5 MB
+    // D30: 5 MB per place; D53 (≈ 10 MB before the first place): base 6.8 MB since s33 (+ Golden's ~3.1 MB ≈ 9.9)
+    expect(BUDGETS).toEqual({ stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 6.8e6 });
   });
 
   it('passes a pack inside every budget', () => {
@@ -50,10 +51,10 @@ describe('the pack budget check (spec §14)', () => {
 
 describe('the shared world base budget (M1)', () => {
   it('fails when the files every stop shares pass 5 MB (D53)', () => {
-    const over = checkBudgets(manifest([file('base/heights.bin', 5.1e6, 'B', 'all')]), BUDGETS);
+    const over = checkBudgets(manifest([file('base/heights.bin', 6.9e6, 'B', 'all')]), BUDGETS);
     expect(over.ok).toBe(false);
     expect(over.lines.some((l) => l.includes('world base') && l.includes('over'))).toBe(true);
-    const under = checkBudgets(manifest([file('base/heights.bin', 4.9e6, 'B', 'all')]), BUDGETS);
+    const under = checkBudgets(manifest([file('base/heights.bin', 6.7e6, 'B', 'all')]), BUDGETS);
     expect(under.ok).toBe(true);
   });
 });

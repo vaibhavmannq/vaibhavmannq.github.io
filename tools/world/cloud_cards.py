@@ -24,10 +24,15 @@ sys.path.insert(0, HERE)
 from clear_sky import push_pull, blur  # noqa: E402
 
 SRC = os.environ.get("WORLD_SRC", os.path.join(ROOT, ".superpowers", "brainstorm", "lookdev", "assets"))
-OUT = os.path.join(ROOT, "public", "world", "sky")
-SOURCES = ["kloppenheim_06_puresky_4k.hdr", "citrus_orchard_road_puresky_4k.hdr"]
+OUT = os.environ.get("CLOUD_OUT", os.path.join(ROOT, "public", "world", "sky"))
+# s33: a third CC0 daylight sky (Poly Haven drackenstein_quarry, 8K read at 4K) and 64 cells: 31 shapes repeated in the
+# dense hours (R238 carry)
+SOURCES = os.environ.get(
+    "CLOUD_SOURCES",
+    "kloppenheim_06_puresky_4k.hdr,citrus_orchard_road_puresky_4k.hdr,drackenstein_quarry_puresky_8k.hdr",
+).split(",")
 CELL = 256
-COLS, ROWS = 8, 4
+COLS, ROWS = 8, int(os.environ.get("CLOUD_ROWS", "8"))
 LUM = np.array([0.2126, 0.7152, 0.0722], np.float32)
 
 
@@ -35,6 +40,8 @@ def load(name):
     img = cv2.imread(os.path.join(SRC, "hdri", name), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(name)
+    if img.shape[1] > 4096:  # an 8K sky is read at 4K: the cut's sizes and thresholds are tuned there
+        img = cv2.resize(img, (4096, 2048), interpolation=cv2.INTER_AREA)
     return img[..., ::-1].astype(np.float32)
 
 

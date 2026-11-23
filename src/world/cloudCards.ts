@@ -41,9 +41,9 @@ import { blendWeather, CLOUD_WEATHER } from './skyClouds';
 type V3 = Node<'vec3'>;
 type F = Node<'float'>;
 
-/** The atlas (tools/world/cloud_cards.py): 8 × 4 cells of 256², R a cloud's share, G its brightness. */
+/** The atlas (tools/world/cloud_cards.py): 8 × 6 cells of 256² (42 clouds from four CC0 skies, s33), R a cloud's share, G its brightness. */
 export const CARD_ATLAS_W = 2048;
-export const CARD_ATLAS_H = 1024;
+export const CARD_ATLAS_H = 1536;
 const CELL = 256;
 
 /**

@@ -104,10 +104,11 @@ export interface Budgets {
 
 /** Spec §14: the first view's world files stay under 1.2 MB (1.6 MB with code); each stop adds at most 3 MB. */
 /**
- * D30: 5 MB per place. The base was 1 MB until D53 relaxed the limits (≈ 10 MB before the first place): it is 5 MB now,
- * so the base and the opening place's pack together stay inside that (s30: the baked light's 3.1 MB joined the base).
+ * D30: 5 MB per place. The base was 1 MB until D53 relaxed the limits (≈ 10 MB before the first place): 5 MB in s30
+ * (the baked light's 3.1 MB joined it); 6.8 MB since s33 (s32's clear skies and cloud cards, s33's 42-cloud atlas): with
+ * Golden's pack (3.11 MB) and stage A that is 9.5 MB before the first view, inside D53's ≈ 10 MB.
  */
-export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 5e6 };
+export const BUDGETS: Budgets = { stageABytes: 1.2e6, perStopBytes: 5e6, baseBytes: 6.8e6 };
 
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 
