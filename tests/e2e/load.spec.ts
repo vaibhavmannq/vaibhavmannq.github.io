@@ -23,7 +23,7 @@ test('the name and the first view arrive in time on 10 Mbit/s', async ({ page, b
     const t = request.timing();
     finished.set(new URL(request.url()).pathname, t.startTime + t.responseEnd);
   });
-  await page.goto('/', { waitUntil: 'commit' });
+  await page.goto('/?name=on', { waitUntil: 'commit' });
   const origin = await page.evaluate(() => performance.timeOrigin);
   await expect(page.locator('#name')).toBeVisible({ timeout: 5000 });
   // The browser's own first contentful paint: the name is the page's first content. Timing the test runner's

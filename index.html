@@ -11,6 +11,10 @@
     <!-- stage A starts with the manifest (plan M8 Task 10): fetched with the page, not after the script runs -->
     <link rel="preload" href="/world/manifest.json" as="fetch" crossorigin />
     <title>Vaibhav Mann</title>
+    <!-- owner, s33: the name and line hidden while the views are judged; back in M9 (?name=on shows them) -->
+    <script>
+      if (new URLSearchParams(location.search).get('name') !== 'on') document.documentElement.classList.add('no-masthead');
+    </script>
   </head>
   <body>
     <div class="poster" id="poster" aria-hidden="true"></div>

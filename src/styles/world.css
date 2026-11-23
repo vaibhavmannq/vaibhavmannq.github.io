@@ -131,6 +131,18 @@ html.is-stills .world {
   color: var(--ink-soft);
 }
 
+/* owner, s33: "remove my name and i build line so we can actually focus on view now - we can do it in M9": hidden from
+   sight (still read by screen readers) unless ?name=on; the hairline loader stays */
+.no-masthead #name,
+.no-masthead #line {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* The loading line (plan M8 Task 5; owner-sites: Originkit "Hairline Loader"): a hairline under the name that fills as
    the first view loads, then fades once the world is in. --p is set by boot.ts. */
 .hairline {

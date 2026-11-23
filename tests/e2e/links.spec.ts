@@ -23,7 +23,7 @@ test('the rail jumps to a place and marks it', async ({ page }) => {
 });
 
 test('with no GPU, the name and a still show at the start and the end (Review Focus 3)', async ({ page }) => {
-  await page.goto('/?nogl');
+  await page.goto('/?nogl&name=on');
   await expect(page.locator('#name')).toBeVisible();
   const visibleStill = page.locator('#stills img[data-shown="true"]');
   await expect(visibleStill).toHaveCount(1, { timeout: 15_000 });
