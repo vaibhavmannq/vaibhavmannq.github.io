@@ -78,13 +78,22 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   const keyCol = u.keyColor as unknown as V3;
   const glowHue = mix(keyCol.div(dot(keyCol, vec3(0.2126, 0.7152, 0.0722)).max(1e-3)), vec3(1.45, 0.9, 0.3), 0.6);
   /** The sky's colour `c` along `dir`, turned gold and lifted toward a low sun (its own brightness kept as the scale). */
-  const horizonGlow = (c: V3, dir: V3): V3 => {
-    const flat = normalize(vec3(dir.x, 0, dir.z).add(vec3(0.0001, 0, 0)));
-    const across = float(1).sub(dot(flat, sunFlat)); // 0 toward the sun; ~0.13 at 30°
-    const lobe = across.div(GLOW[1]).negate().exp().mul(dir.y.max(0).div(GLOW[2]).negate().exp()).mul(glowOn);
-    const gold = glowHue.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
-    return mix(c, gold, lobe.mul(GLOW[0]).min(1)).mul(lobe.mul(GLOW[0]).mul(0.15).add(1));
-  };
+  // Every material's haze reads colorAt, so the glow's maths sits behind a uniform branch: skipped at every hour whose
+  // sun is not low and up (s33: the night stops paid +0.3–0.9 ms at low for a glow of 0). Values are passed in, not read
+  // through a closure (the Fn body runs when the shader is built; s32 lesson).
+  const glowFn = Fn(([c, dir]: [V3, V3]) => {
+    const out = vec3(0).toVar();
+    out.assign(c);
+    If(glowOn.greaterThan(0.001), () => {
+      const flat = normalize(vec3(dir.x, 0, dir.z).add(vec3(0.0001, 0, 0)));
+      const across = float(1).sub(dot(flat, sunFlat)); // 0 toward the sun; ~0.13 at 30°
+      const lobe = across.div(GLOW[1]).negate().exp().mul(dir.y.max(0).div(GLOW[2]).negate().exp()).mul(glowOn);
+      const gold = glowHue.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
+      out.assign(mix(c, gold, lobe.mul(GLOW[0]).min(1)).mul(lobe.mul(GLOW[0]).mul(0.15).add(1)));
+    });
+    return out;
+  });
+  const horizonGlow = (c: V3, dir: V3): V3 => glowFn(c, dir) as unknown as V3;
   const colorAt = (dir: V3, row?: number): V3 => {
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
     return horizonGlow(
