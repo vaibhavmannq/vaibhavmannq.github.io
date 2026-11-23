@@ -4,7 +4,7 @@ import { collectConsoleErrors } from './helpers';
 test('name is on screen at once', async ({ page }) => {
   const errors = collectConsoleErrors(page);
   const start = Date.now();
-  await page.goto('/?name=on') // owner s33: hidden by default until M9;
+  await page.goto('/?name=on'); // owner s33: the name is hidden by default until M9
   const name = page.locator('#name');
   await expect(name).toHaveText('Vaibhav Mann', { timeout: 1000 });
   await expect(name).toBeVisible({ timeout: 1000 });
