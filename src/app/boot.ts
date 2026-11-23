@@ -106,6 +106,7 @@ import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
 import { STIR_SPACING, stir, waterHit } from '../world/stir';
 import { baseGeometrySteps, createTerrain } from '../world/terrain';
+import { scatterTussocks } from '../world/tussocks';
 import { createVines, vineLeaves } from '../world/vines';
 import { createWaterfall } from '../world/waterfall';
 import { installBench } from './bench';
@@ -401,9 +402,12 @@ async function loadBase(
   // in slices: one block, it froze the lantern room ~0.3 s (s29 Task 7b)
   const cove = await runSliced(scatterCoveSteps(surface), SLICE_MS, yieldTask);
   const ridgePlants = scatterRidge(ridgeGround, ridgeSite, PLANT_STOPS.indexOf('midnight'));
-  const plants = new Float32Array(cove.data.length + ridgePlants.length);
+  // Sunset's tussocks along the sea's edge and over its hill (plan Task 16e, s33)
+  const tussocks = scatterTussocks(surface);
+  const plants = new Float32Array(cove.data.length + ridgePlants.length + tussocks.length);
   plants.set(cove.data);
   plants.set(ridgePlants, cove.data.length);
+  plants.set(tussocks, cove.data.length + ridgePlants.length);
   await yieldTask(); // the lantern room may draw between build steps (R216)
   parts.push(['meadow', createMeadow({ data: plants, count: plants.length / PLANT_STRIDE }, light)]);
   await yieldTask(); // the lantern room may draw between build steps (R216)

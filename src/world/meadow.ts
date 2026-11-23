@@ -35,12 +35,18 @@ import { STOP_IDS } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
 import { smoothstep as smoothstepJS } from '../shared/math';
 import { mulberry32 } from '../shared/random';
+import { gustAt, gustTimes } from './gust';
 import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
 import type { WorldPart } from './part';
 import { COVE_STOPS, PLANT, PLANT_STRIDE, type Plants, swayAmplitude } from './scatter';
+import { TUSSOCK_KIND } from './tussocks';
 
 /** The share of a plant's surface that stands upright and takes a low sun from the side (s22). */
 export const BLADE_UP = 0.6;
+
+/** s33 16e, temporary: `?gust=0` turns Sunset's gust off, `?gust=now` starts one at once (to watch it). */
+const GUST_Q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('gust');
+const GUST_ON = GUST_Q === '0' ? 0 : 1;
 
 /** s33 16c, temporary: `?gg=` the backlit grass glow (0.25 before). */
 const GRASS_GLOW = Number(
@@ -330,6 +336,55 @@ export function poppyClump(): Shape {
 }
 
 /**
+ * A tussock of tufted hair-grass (Task 16e, s33; prep-16e.md): a fountain of 16 arching blades leaning out from a
+ * tight base, and 3 thin culms above them for the seed haze that glows backlit (the Sunset render's edge grass).
+ */
+export function tussockShape(): Shape {
+  const s: Shape = { pos: [], bend: [], part: [] };
+  const r = mulberry32(808);
+  const v = (p: readonly number[], b: number) => {
+    s.pos.push(p[0] as number, p[1] as number, p[2] as number);
+    s.bend.push(b);
+    s.part.push(0);
+  };
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * 2 * Math.PI + r() * 0.3;
+    const rr = 0.1 * Math.sqrt(r());
+    const x = Math.cos(a) * rr;
+    const z = Math.sin(a) * rr;
+    // lean outward along the blade's own bearing, so the outline arches
+    const lean = 0.35 + 0.35 * r();
+    const h = 0.55 + 0.45 * r();
+    const cx = Math.cos(a + Math.PI / 2);
+    const cz = Math.sin(a + Math.PI / 2);
+    const w = 0.035;
+    const mx = x + Math.cos(a) * lean * h * 0.35;
+    const mz = z + Math.sin(a) * lean * h * 0.35;
+    const L0 = [x - cx * w, 0, z - cz * w];
+    const R0 = [x + cx * w, 0, z + cz * w];
+    const L1 = [mx - cx * w * 0.7, h * 0.55, mz - cz * w * 0.7];
+    const R1 = [mx + cx * w * 0.7, h * 0.55, mz + cz * w * 0.7];
+    const tip = [x + Math.cos(a) * lean * h, h * 0.9, z + Math.sin(a) * lean * h];
+    v(L0, 0);
+    v(R0, 0);
+    v(R1, 0.55);
+    v(L0, 0);
+    v(R1, 0.55);
+    v(L1, 0.55);
+    v(L1, 0.55);
+    v(R1, 0.55);
+    v(tip, 1);
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = r() * 2 * Math.PI;
+    const x = Math.cos(a) * 0.04;
+    const z = Math.sin(a) * 0.04;
+    stalk(s, x, z, [x + Math.cos(a) * 0.2, 1.1 + 0.2 * r(), z + Math.sin(a) * 0.2]);
+  }
+  return s;
+}
+
+/**
  * A clump of heather (plan M6 Task 2; reference book §8): a low, dense mound of short stiff sprigs, more upright and
  * many more than the short meadow's blades; the upper half of each sprig is the flowering spike.
  */
@@ -398,6 +453,11 @@ function instances(plants: Plants, owner: number, pick: (kind: number) => boolea
 
 export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const amp = uniform(swayAmplitude(0));
+  /** Sunset's gust (Task 16e): its strength 0..1 and its front, metres along the wind (three.js x, z) */
+  const gustAmp = uniform(0);
+  const gustFront = uniform(0);
+  const gustTimesS = GUST_Q === 'now' ? [2, ...gustTimes(24 * 3600).map((t) => t + 24)] : gustTimes(24 * 3600);
+  const sunsetAt = STOP_IDS.indexOf('sunset');
   /** where the wind blows TO, three.js x, z (unit) */
   const windTo = uniform(new Vector2(0, 1));
   /** each mesh's own share (plantWeight), read per object so all of them share one material (D13) */
@@ -428,7 +488,16 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   );
   const gust = pow(wave.mul(0.5).add(0.5), 2.0);
   const tremble = sin(time.mul(2 * Math.PI * 2.3).add(rnd.mul(40))).mul(0.015);
-  const lean = amp.mul(gust.mul(0.75).add(0.25)).add(tremble).mul(bend.mul(bend));
+  // Task 16e: a gust band (gust.ts) rolls along the wind, a sharp 5 m front and a 14 m recovery behind it; the blades in
+  // it bend 3x as far and catch more light. `gustAmp` is 0 outside Sunset.
+  const dx = along.sub(gustFront);
+  const band = mix(smoothstep(-14, 0, dx), smoothstep(5, 0, dx), step(0, dx)).mul(gustAmp);
+  const lean = amp
+    .mul(gust.mul(0.75).add(0.25))
+    .mul(band.mul(2).add(1))
+    .add(band.mul(0.2))
+    .add(tremble)
+    .mul(bend.mul(bend));
   const wind3 = vec3(windTo.x, 0, windTo.y);
   const material = new MeshBasicNodeMaterial({ side: DoubleSide });
   material.name = 'meadow.material';
@@ -492,6 +561,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const toSun = saturate(dot(normalize(positionWorld.sub(cameraPosition)), light.keyDir));
   const through = pow(toSun, 3.0)
     .mul(bend)
+    .mul(band.mul(0.25).add(1))
     .mul(mix(float(1), float(0.4), bright.min(1)));
   // a poppy's petals are thin and glow red against a low sun (M8.5 #4; owner's meadow photo: rim-lit, not dull)
   const petalGlow = isRed.mul(step(0.3, part)).mul(float(1).sub(isEye)).mul(pow(toSun, 2.0));
@@ -544,7 +614,12 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
     [daisyClump(), (k: number) => k === PLANT.white],
     [poppyClump(), (k: number) => k === PLANT.red],
     [heatherMound(), (k: number) => k === PLANT.heather],
+    [tussockShape(), (k: number) => k === TUSSOCK_KIND],
   ] as const;
+  /** drawn[] slot per shape: tall, short, flowers (every kind), heather; Sunset's tussocks count as tall */
+  const SLOT = [0, 1, 2, 2, 2, 2, 3, 0];
+  /** the least share a shape draws at any tier: the tussocks keep Sunset's hill from reading bare at low (Task 16e) */
+  const FLOOR = [0, 0, 0, 0, 0, 0, 0, 0.67];
   const meshes = PLANT_STOPS.flatMap((id, owner) =>
     shapes.flatMap(([shape, pick], shapeIndex) => {
       const { a0, a1, n } = instances(plants, owner, pick);
@@ -561,9 +636,9 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
       mesh.layers.set(EYE_ONLY_LAYER);
       mesh.userData.weight = 1;
       group.add(mesh);
-      // drawn[] keeps its four slots: tall, short, flowers (every kind), heather
-      const slot = shapeIndex <= 1 ? shapeIndex : shapeIndex === shapes.length - 1 ? 3 : 2;
-      return [{ mesh, g, n, shapeIndex: slot, stopIndex: STOP_IDS.indexOf(id) }];
+      const slot = SLOT[shapeIndex] as number;
+      const floor = FLOOR[shapeIndex] as number;
+      return [{ mesh, g, n, shapeIndex: slot, floor, stopIndex: STOP_IDS.indexOf(id) }];
     }),
   );
   group.layers.set(EYE_ONLY_LAYER);
@@ -571,7 +646,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const count = (share: number) => {
     drawn.fill(0);
     for (const m of meshes) {
-      m.g.instanceCount = Math.floor(m.n * share);
+      m.g.instanceCount = Math.floor(m.n * Math.max(share, m.floor));
       drawn[m.shapeIndex] = (drawn[m.shapeIndex] as number) + m.g.instanceCount;
     }
   };
@@ -594,6 +669,11 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
       amp.value = swayAmplitude(w.beaufort);
       const az = (w.windAz * Math.PI) / 180;
       windTo.value.set(-Math.sin(az), Math.cos(az));
+      // the gust, only where Sunset's plants show and the wind is force 1.5+ (Dusk's and Sunrise's meadows stay still)
+      const g = gustAt(f.timeS, gustTimesS);
+      const [ex, , ez] = f.pose.position;
+      gustAmp.value = GUST_ON * g.amp * plantWeight(f.state, sunsetAt) * smoothstepJS(1.5, 2, w.beaufort);
+      gustFront.value = ex * windTo.value.x + ez * windTo.value.y + g.front;
     },
     setTier(t: TierSettings) {
       count(t.grass);
