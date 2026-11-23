@@ -74,8 +74,9 @@ const SWELL_MIRROR = 0.34;
 /** Where the swell travels, three.js x and z: from 340° (north-north-west) toward the coast. */
 const SWELL_FROM_DEG = 340;
 export type SeaMode = 'original' | 'swell';
+/** The swell by default since the owner chose it on his phone (s31, D57); `?sea=original` is the water before. */
 export const seaMode = (search: string): SeaMode =>
-  new URLSearchParams(search).get('sea') === 'swell' ? 'swell' : 'original';
+  new URLSearchParams(search).get('sea') === 'original' ? 'original' : 'swell';
 
 /** Pure: a swell component's heading (three.js x, z) and wavenumber; deep water, ω = √(g·k). */
 export function swellWave(turnDeg: number, lengthM: number): { dx: number; dz: number; k: number; omega: number } {

@@ -348,9 +348,12 @@ no borrowed set pieces (no towers, piano, etc.).
   - 12: **`?sky=drift` by default**: the photo's clouds move with depth, the glow stays (≈ +0.1 ms); `?sky=photo` before.
     The volumetric cloud layer is not built (carried).
   - 13: a swell behind `?sea=swell` (tilt only; off by default, D48); mirrors unchanged (a finer mirror showed nothing).
-- **Next:** the owner's feel test of `?blacks=today`, `?sky=photo`, `?sea=swell`, `?rest=boost` on his phone; then
-  Phase 3 (each place a complete set), Sunset first per the owner's s30 note (a rich tree for high/ultra against the
-  render; old vs new framing, D38). Phase 3 also takes Phase 1's light cost at high on VI → VII (R233).
+- **Owner, end of s31 (D57):** kept the swell and the rest boost (now default); felt no difference between the photo
+  sky and the drift: **the clouds must be different**.
+- **Next (s32): the sky's own clouds** (D52's bigger job, plan C6: clear-sky copies of the photos and a cloud layer of
+  our own, lit by the hour, cheap enough for the phone at high), judged in motion against `?sky=photo` on the phone,
+  all nine places and rides (D47). Then Phase 3 (each place a complete set), Sunset first (s30 note; D38). Phase 3 also
+  takes Phase 1's light cost at high on VI → VII (R233).
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk

@@ -375,3 +375,9 @@ the boost); then "work all night … choose recommended if you have a decision t
 rule (owner-references §17, "no darker than about #10123a"; M2.5's `SHADOW_FLOOR`): "judge what's looks good - rules can be
 bent". The newer wish (s30: the renders' true blacks) wins where it looks better; `?blacks=today` keeps the old look for
 his A/B. Ledger R228.
+
+**D57 · 2026-11-23 · (owner, end of s31) The swell and the rest boost by default; the clouds must change.** After his
+phone test of the four switches he kept `?sea=swell&rest=boost`: both are now the default (`?sea=original`, `?rest=off`
+give the old). On the sky: "honestly i felt no difference with sky photo and new sky - the clouds must be different
+(next session work)": the drift (R230) does not answer #3a; the next session builds clouds of our own (D52's bigger
+job, the plan's C6), judged in motion against the photo sky. Deep blacks were not objected to (stay the default).

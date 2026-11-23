@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { SWELL, seaMode, swellWave } from '../../src/world/sea';
 
 describe('the swell (Phase 2 Task 13, ?sea=swell)', () => {
-  it('the original water is the default (D48)', () => {
-    expect(seaMode('')).toBe('original');
-    expect(seaMode('?sea=new')).toBe('original');
+  it('the swell is the default since the owner chose it (D57); ?sea=original is the water before', () => {
+    expect(seaMode('')).toBe('swell');
     expect(seaMode('?sea=swell')).toBe('swell');
+    expect(seaMode('?sea=original')).toBe('original');
   });
   it('travels from the open sea (north-north-west) toward the coast', () => {
     const w = swellWave(0, 96);

@@ -684,8 +684,8 @@ export async function boot(): Promise<App> {
   const params = readParams(location.search);
   // `?blacks=today|half|zero|deep` (Phase 2 Task 14): how far the grade lifts the darkest pixels; deep by default
   const blacks = blacksMode(new URLSearchParams(location.search).get('blacks'));
-  // `?rest=boost` (Task 14b): more quality while resting at a stop, rides at the governor's tier; off by default
-  const restBoost = new RestBoost(new URLSearchParams(location.search).get('rest') === 'boost');
+  // the rest boost (Task 14b): on since the owner chose it on his phone (s31, D57); `?rest=off` turns it off
+  const restBoost = new RestBoost(new URLSearchParams(location.search).get('rest') !== 'off');
   const track = buildTrack(STOPS);
   const trackEl = document.getElementById('track');
   if (trackEl) trackEl.style.height = `${(track.total + 1) * 100}lvh`;
