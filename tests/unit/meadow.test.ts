@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { flowerClump, plantWeight, shortTuft, tallTuft } from '../../src/world/meadow';
+import {
+  buttercupClump,
+  daisyClump,
+  flowerClump,
+  plantWeight,
+  poppyClump,
+  shortTuft,
+  tallTuft,
+} from '../../src/world/meadow';
 
 describe('the cove plants (plan M3 Task 1)', () => {
   it('shows only the stop’s own plants at a stop (their cost does not add up across the cove)', () => {
@@ -25,7 +33,9 @@ describe('the cove plants (plan M3 Task 1)', () => {
   it('keeps every shape cheap (triangles per plant)', () => {
     expect(tallTuft().pos.length / 9).toBeLessThanOrEqual(30);
     expect(shortTuft().pos.length / 9).toBeLessThanOrEqual(16);
-    // s16: 58, five-sided heads (the four-sided ones read as diamonds up close)
-    expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(60);
+    // s16: 58, five-sided heads (the four-sided ones read as diamonds up close); s33: 67, four round heads of 15
+    expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(70);
+    for (const shape of [daisyClump(), buttercupClump(), poppyClump()])
+      expect(shape.pos.length / 9).toBeLessThanOrEqual(70);
   });
 });

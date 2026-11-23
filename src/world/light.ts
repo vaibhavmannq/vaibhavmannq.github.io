@@ -49,15 +49,30 @@ export function shadowFloor(hour: HourPreset): RGB {
  * and the bounce light halved (s31: with the floor gone, Golden, Blue hour, Before dawn and Sunrise still had almost no
  * near-black pixels; the fill lights every shaded side). `?blacks=` for the owner's A/B.
  */
-export type Blacks = 'today' | 'half' | 'zero' | 'deep';
-const BLACKS_SHARE: Readonly<Record<Blacks, number>> = { today: 1, half: 0.5, zero: 0, deep: 0 };
-/** How much of the sky's fill and the bounce light each mode keeps. */
-export const FILL_SHARE_BY_BLACKS: Readonly<Record<Blacks, number>> = { today: 1, half: 1, zero: 1, deep: 0.5 };
 /**
- * The site's mode from `?blacks=`: `deep` unless another is named (s31, my call under the owner's "choose recommended":
- * judged at all nine places and on every ride at high, D47; `?blacks=today` is the look before).
+ * `mid` (owner, s33: "going all black … made every colour we worked so hard on vanish - can we find a middle ground"):
+ * the colour of shaded sides comes from the sky's fill, which `deep` halves; `mid` keeps most of it and a third of the
+ * floor, so the deepest pixels still go dark. s33, temporary: `?mid=floor,fill` to tune.
  */
-export const blacksMode = (v: string | null): Blacks => (v === 'today' || v === 'half' || v === 'zero' ? v : 'deep');
+const MID = ((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('mid')) ?? '0.35,0.85')
+  .split(',')
+  .map(Number) as [number, number];
+export type Blacks = 'today' | 'half' | 'mid' | 'zero' | 'deep';
+const BLACKS_SHARE: Readonly<Record<Blacks, number>> = { today: 1, half: 0.5, mid: MID[0], zero: 0, deep: 0 };
+/** How much of the sky's fill and the bounce light each mode keeps. */
+export const FILL_SHARE_BY_BLACKS: Readonly<Record<Blacks, number>> = {
+  today: 1,
+  half: 1,
+  mid: MID[1],
+  zero: 1,
+  deep: 0.5,
+};
+/**
+ * The site's mode from `?blacks=`: `mid` unless another is named (owner, s33: deep made the colours vanish; s31's
+ * default was `deep`; `?blacks=today` is the look before Task 14).
+ */
+export const blacksMode = (v: string | null): Blacks =>
+  v === 'today' || v === 'half' || v === 'zero' || v === 'deep' ? v : 'mid';
 /** The floor the grade lifts to under that mode, linear light (a uniform's value: switching builds no shader). */
 export function floorFor(hour: HourPreset, mode: Blacks): RGB {
   const k = BLACKS_SHARE[mode];

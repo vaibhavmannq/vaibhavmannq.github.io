@@ -140,7 +140,7 @@ export function shortTuft(): Shape {
 export function flowerClump(): Shape {
   const s: Shape = { pos: [], bend: [], part: [] };
   const r = mulberry32(303);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 4; i++) {
     const rr = 0.16 * Math.sqrt(r());
     const a = r() * 2 * Math.PI;
     const x = Math.cos(a) * rr;
@@ -152,25 +152,27 @@ export function flowerClump(): Shape {
     s.pos.push(x - 0.012, 0, z, x + 0.012, 0, z, ...top);
     s.bend.push(0, 0, 1);
     s.part.push(0, 0, 0);
-    // the head: a low dome on five sides, turned at random (thrift is a ball of florets 1.5–2.5 cm across, reference
-    // book §8); s16: the four-sided octahedron read as a diamond card up close
-    const hr = 0.06 + 0.02 * r();
-    const c = [top[0], top[1] + hr * 0.45, top[2]] as const;
+    // the head: a ball of florets (thrift, reference book §8, 1.5–2.5 cm): a ring of five round its middle, a crown
+    // above and a foot below, turned at random (s33: the low five-sided dome read as a pink diamond up close)
+    const hr = 0.055 + 0.02 * r();
+    const c = [top[0], top[1] + hr * 0.7, top[2]] as const;
     const turn = r() * Math.PI;
-    const ring = [0, 1, 2, 3, 4].map((k) => [
-      c[0] + Math.cos(turn + (k * 2 * Math.PI) / 5) * hr,
-      c[1],
-      c[2] + Math.sin(turn + (k * 2 * Math.PI) / 5) * hr,
-    ]);
+    const ring = (k: number, rad: number, dy: number) => [
+      c[0] + Math.cos(turn + (k * 2 * Math.PI) / 5) * rad,
+      c[1] + dy,
+      c[2] + Math.sin(turn + (k * 2 * Math.PI) / 5) * rad,
+    ];
+    const crown = [c[0], c[1] + hr * 0.95, c[2]];
     for (let k = 0; k < 5; k++) {
-      const p = ring[k] as number[];
-      const q = ring[(k + 1) % 5] as number[];
-      s.pos.push(...p, ...q, c[0], c[1] + hr * 0.75, c[2]);
-      s.pos.push(...q, ...p, c[0], c[1] - hr * 0.55, c[2]);
-      s.bend.push(1, 1, 1, 1, 1, 1);
-      // `part` > 0.3 on a head, and its brightness: full at the crown, falling toward the rim and darker beneath, so
-      // each facet shades like a ball's (a ball, not a flat chip)
-      s.part.push(0.8, 0.8, 1.1, 0.6, 0.6, 0.4);
+      const a = ring(k, hr, 0);
+      const b = ring(k + 1, hr, 0);
+      const ua = ring(k + 0.5, hr * 0.62, hr * 0.62);
+      s.pos.push(...a, ...b, ...ua, ...ua, ...b, ...ring(k + 1.5, hr * 0.62, hr * 0.62));
+      s.pos.push(...ua, ...ring(k + 1.5, hr * 0.62, hr * 0.62), ...crown);
+      s.bend.push(1, 1, 1, 1, 1, 1, 1, 1, 1);
+      // `part` > 0.3 on a head, and its brightness: full at the crown, the ring a little less (no underside: double-
+      // sided, and the eye is rarely under a head)
+      s.part.push(0.75, 0.75, 0.95, 0.95, 0.75, 0.95, 0.95, 0.95, 1.1);
     }
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.35 + 0.2 * r(), 0.03, 0.35, 0);
@@ -473,7 +475,13 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const floret = fract(sin(dot(positionLocal, vec3(127.1, 311.7, 74.7)).mul(43758.5)))
     .mul(0.45)
     .add(0.78);
-  const flower = mix(stem, mix(head, eyeCol, isEye).mul(bright).mul(floret), step(0.3, part));
+  // thrift runs from pale to deep rose plant by plant (owner meadow 2, the render's pinks)
+  const rose = mix(
+    head,
+    mix(vec3(0.95, 0.62, 0.74), vec3(0.7, 0.16, 0.36), rnd),
+    float(1).sub(step(2.5, kind)).mul(0.7),
+  );
+  const flower = mix(stem, mix(rose, eyeCol, isEye).mul(bright).mul(floret), step(0.3, part));
   const grass = mix(tall, short, step(0.5, kind));
   // heather (plan M6 Task 2; research/m6-midnight-references.md): dark woody stems, the flowering upper half mauve;
   // the moon's light and the grade turn it grey-violet

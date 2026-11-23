@@ -196,10 +196,11 @@ describe('true blacks: ?blacks= (Phase 2 Task 14, owner s30)', () => {
       });
     }
   });
-  it('today is the floor as it was; the site defaults to deep', () => {
+  it('today is the floor as it was; the site defaults to mid (owner, s33: deep made the colours vanish)', () => {
     expect(floorFor(HOURS.night, 'today')).toEqual(shadowFloor(HOURS.night));
-    expect(blacksMode('nonsense')).toBe('deep');
-    expect(blacksMode(null)).toBe('deep');
+    expect(blacksMode('nonsense')).toBe('mid');
+    expect(blacksMode(null)).toBe('mid');
+    expect(blacksMode('mid')).toBe('mid');
     expect(blacksMode('today')).toBe('today');
     expect(blacksMode('zero')).toBe('zero');
     expect(blacksMode('deep')).toBe('deep');
@@ -211,6 +212,12 @@ describe('true blacks: ?blacks= (Phase 2 Task 14, owner s30)', () => {
     expect(deep.skyFill).toBeCloseTo(today.skyFill / 2, 9);
     expect(deep.fillGain).toBe(0.5);
     expect(lightValues(HOURS.dusk, ambA, ambB, 0, 'zero').skyFill).toBe(today.skyFill);
+  });
+  it('mid keeps most of the fill (the shaded sides' colour) and a third of the floor', () => {
+    const today = lightValues(HOURS.dusk, ambA, ambB, 0);
+    const mid = lightValues(HOURS.dusk, ambA, ambB, 0, 'mid');
+    expect(mid.skyFill).toBeCloseTo(today.skyFill * 0.85, 9);
+    mid.shadowFloor.forEach((c, i) => expect(c).toBeCloseTo((today.shadowFloor[i] as number) * 0.35, 9));
   });
   it('lightValues carries the chosen floor', () => {
     expect(lightValues(HOURS.night, ambA, ambB, 0, 'zero').shadowFloor).toEqual([0, 0, 0]);
