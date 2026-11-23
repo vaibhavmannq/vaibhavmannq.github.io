@@ -9,6 +9,7 @@ import {
   positionWorld,
   smoothstep,
   texture,
+  time,
   uv,
   vec2,
   vec3,
@@ -51,12 +52,13 @@ export interface CardMeta {
 }
 
 /** How many cards share the sky; each hour shows a share of them (its cover). */
-const COUNT = 420;
+const COUNT = 640;
 /** Cards live in a square this wide around the eye and wrap as the wind carries them (m). */
 const BOX = 72_000;
 /** Drawn no further than this (the camera's far plane is 14 km), shrunk toward the eye to keep their size on screen. */
 const DRAW_MAX = 11_000;
-const MIN_ALOFT = 8;
+/** The wind aloft never under this, m/s: 24 m/s at 2 km reads as motion while the visitor rests (owner: "alive"). */
+const MIN_ALOFT = 24;
 
 /** An empty atlas, filled later from cards.png (no shader rebuild when the pixels arrive). */
 export function cardAtlasTexture(): DataTexture {
@@ -88,17 +90,42 @@ export interface CloudCards extends WorldPart {
  * Sorted far to near each frame so their overlaps blend right. Above ~35° they fade (seen from beneath, a card is a
  * line).
  */
-export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: (dir: V3) => V3): CloudCards {
+export function createCloudCards(
+  u: LightUniforms,
+  atlas: DataTexture,
+  colorAt: (dir: V3) => V3,
+  /** The sky's cloud map (skyLayer.ts): its fine detail (G) slowly eats each card's thin edges, so clouds change shape. */
+  noise: DataTexture,
+  /** Lowest elevation a card is drawn at, radians: `band` keeps the photo's own clouds down there (and the far cards,
+   * hundreds deep, would only stack on each other), so its cards start a little above them. */
+  minElev = 0,
+): CloudCards {
   const rand = mulberry32(4242);
-  const base = Array.from({ length: COUNT }, () => ({
+  // clouds come in fields (s32, owner: "clouds must be dense"): cards gathered round cluster centres, each cluster's
+  // cards near one height, a few big masses among many small ones; the gaps between fields keep the sky readable
+  const CLUSTERS = Math.round(COUNT / 7);
+  const centres = Array.from({ length: CLUSTERS }, () => ({
     x: (rand() - 0.5) * BOX,
     z: (rand() - 0.5) * BOX,
-    y: 1300 + rand() * 1300,
-    // a few big masses among many small ones
-    size: 900 + rand() ** 2.2 * 5200,
+    y: 1200 + rand() * 1500,
+    spread: 1500 + rand() * 3500,
     rank: rand(),
-    card: Math.floor(rand() * 1000),
   }));
+  const base = Array.from({ length: COUNT }, (_, i) => {
+    const c = centres[i % CLUSTERS] as (typeof centres)[number];
+    const ang = rand() * Math.PI * 2;
+    const r = Math.sqrt(rand()) * c.spread;
+    return {
+      x: c.x + Math.cos(ang) * r,
+      z: c.z + Math.sin(ang) * r,
+      y: c.y + (rand() - 0.5) * 300,
+      size: 1200 + rand() ** 2 * 6000,
+      // a cluster comes out as a whole as the cover grows, its cards a little apart
+      rank: Math.min(0.999, c.rank * 0.85 + rand() * 0.15),
+      card: Math.floor(rand() * 1000),
+      seed: rand(),
+    };
+  });
   let meta: CardMeta | null = null;
   let shown = 0;
   let carryX = 0;
@@ -116,11 +143,13 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
   const iRect = new InstancedBufferAttribute(new Float32Array(COUNT * 4), 4);
   // mirror (±1), alpha, aerial fade (from the true distance: drawn ones are pulled in to DRAW_MAX)
   const iInfo = new InstancedBufferAttribute(new Float32Array(COUNT * 3), 3);
-  for (const a of [iCenter, iSize, iRect, iInfo]) a.setUsage(35048); // DynamicDrawUsage
+  const iSeed = new InstancedBufferAttribute(new Float32Array(COUNT), 1);
+  for (const a of [iCenter, iSize, iRect, iInfo, iSeed]) a.setUsage(35048); // DynamicDrawUsage
   geo.setAttribute('iCenter', iCenter);
   geo.setAttribute('iSize', iSize);
   geo.setAttribute('iRect', iRect);
   geo.setAttribute('iInfo', iInfo);
+  geo.setAttribute('iSeed', iSeed);
   geo.instanceCount = 0;
 
   const center = attribute('iCenter', 'vec3') as unknown as V3;
@@ -139,7 +168,17 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
   const ux = mix(corner.x, float(1).sub(corner.x), info.x.lessThan(0).select(float(1), float(0)));
   const at = vec2(rect.x.add(ux.mul(rect.z)).div(CARD_ATLAS_W), rect.y.sub(corner.y.mul(rect.w)).div(CARD_ATLAS_H));
   const s = texture(atlas, at);
-  const a = smoothstep(0.04, 0.55, s.r);
+  // alive (owner, s32): drifting noise eats the thin parts, slowly, a different place for each card, so its edges boil
+  // and its shape changes over a minute; the core stays
+  const seed = attribute('iSeed', 'float');
+  const boil = texture(
+    noise,
+    corner
+      .mul(vec2(1.7, 1.1))
+      .add(vec2(seed.mul(7.3), seed.mul(3.1)))
+      .add(vec2(time.mul(0.012), time.mul(0.005))),
+  ).g;
+  const a = smoothstep(0.04, 0.55, s.r.sub(float(1).sub(boil).mul(0.3).mul(float(1).sub(s.r))));
   const g = s.g;
   const dir = normalize(positionWorld.sub(cameraPosition));
   const key = u.keyDir as unknown as V3;
@@ -176,12 +215,30 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
   const cosK = dot(dir, key);
   const backlit = smoothstep(0.25, 0.9, cosK);
   const keyVis = smoothstep(-0.12, 0.08, key.y).mul(0.65).add(0.35);
-  // toward the key: the photo's front light is wrong; cores go dark, thin parts glow
-  const light = mix(g.mul(keyVis), float(1).sub(a).mul(0.7), backlit.mul(0.45));
-  // the silver edge: where the cloud thins (mid alpha), toward the key; light through thin cloud warms the cores a little
+  // The Witcher 3's way (s32, owner's reference): the card is lit through a normal from its own height (B), so our sun
+  // or moon lights it from the side it really is on, in every view and ride. Two more reads of the height beside this pixel.
+  const du = 2 / CARD_ATLAS_W;
+  const dv = 2 / CARD_ATLAS_H;
+  const hAt = (ox: number, oy: number): F => texture(atlas, at.add(vec2(ox, oy))).b;
+  const mirror = info.x.lessThan(0).select(float(-1), float(1));
+  // forward differences from the read already made (two reads, not four: s32, First light's stacked cards)
+  const dhx = hAt(du, 0).sub(s.b).mul(2).mul(mirror);
+  const dhy = hAt(0, -dv).sub(s.b).mul(2); // up the card is up the image, where v falls
+  const bump = 3.5;
+  const nl = normalize(vec3(dhx.mul(-bump), dhy.mul(-bump), 1));
+  const normal = normalize(
+    right
+      .mul(nl.x)
+      .add(vec3(0, nl.y, 0))
+      .add(fwd.mul(nl.z)),
+  );
+  // half-Lambert (light wraps round a cloud), sharpened a little; the photo's own lit bumps (G) add fine detail
+  const wrap = dot(normal, key).mul(0.5).add(0.5).pow(1.6);
+  const light = wrap.mul(g.mul(0.5).add(0.6)).mul(keyVis).min(1);
+  // toward the key: light through the thin parts (low height) warms them; the silver edge where the cloud thins
+  const through = litCol.mul(backlit).mul(float(1).sub(s.b)).mul(a).mul(0.2);
   const edge = s.r.mul(float(1).sub(s.r)).mul(4);
-  const silver = max(cosK, 0).pow(8).mul(0.9).mul(edge);
-  const through = litCol.mul(backlit).mul(float(1).sub(a)).mul(0.3);
+  const silver = max(cosK, 0).pow(10).mul(0.5).mul(edge);
   const col = mix(mix(shadeCol, litCol, light).add(litCol.mul(silver)).add(through), sky, info.z);
   material.colorNode = col;
   material.opacityNode = a.mul(info.y).mul(smoothstep(0.0, 0.02, dir.y));
@@ -208,8 +265,9 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
         u.skyWeight.value,
       );
       // the share of the cards out: Night and Midnight a few, the overcast hours nearly all
-      const share = Math.min(1, w.cover * 1.25);
-      const grow = 0.8 + w.cover * 0.8;
+      // capped: past 0.85 the cards stack deep and cost (First light, s32) without looking denser
+      const share = Math.min(0.85, w.cover * 1.8);
+      const grow = 0.9 + w.cover * 0.9;
       let [vx, vy] = windVector(f.hour.world).map((v) => v * 3) as [number, number];
       const sp = Math.hypot(vx, vy);
       if (sp < MIN_ALOFT) {
@@ -218,8 +276,8 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
       }
       carryX += vx * f.dtS;
       carryZ -= vy * f.dtS;
-      const keyX = u.keyDir.value.x;
-      const keyZ = u.keyDir.value.z;
+      const _keyX = u.keyDir.value.x;
+      const _keyZ = u.keyDir.value.z;
       const pos = new Float32Array(COUNT * 3);
       const vis = new Float32Array(COUNT);
       for (let i = 0; i < COUNT; i++) {
@@ -236,7 +294,8 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
           smooth(2500, 4500, flat) *
           smooth(BOX / 2, BOX / 2 - 5000, flat) *
           smooth(0.75, 0.5, elev) *
-          smooth(b.rank, b.rank - 0.08, share);
+          smooth(minElev, minElev + 0.03, elev) *
+          smooth(b.rank - 0.08, b.rank, share);
         pos[i * 3] = x;
         pos[i * 3 + 1] = y;
         pos[i * 3 + 2] = z;
@@ -263,15 +322,13 @@ export function createCloudCards(u: LightUniforms, atlas: DataTexture, colorAt: 
         const pw = card.w * CELL;
         const ph = card.h * CELL;
         iRect.setXYZW(n, col * CELL + (CELL - pw) / 2, row * CELL + CELL - 2, pw, ph);
-        // the sun to the card's right as seen from here? Its photo was lit from `lit`'s side: mirror if they differ
-        const fx = (cx - x) / Math.max(1e-3, Math.hypot(cx - x, cz - z));
-        const fz = (cz - z) / Math.max(1e-3, Math.hypot(cx - x, cz - z));
-        const sunRight = keyX * fz + keyZ * -fx > 0 ? 1 : -1;
-        iInfo.setXYZ(n, sunRight === card.lit ? 1 : -1, vis[i] as number, (1 - Math.exp(-d / 30000)) * 0.6);
+        // mirrored at random for variety: the normal from the height lights it from the true side either way
+        iSeed.setX(n, b.seed);
+        iInfo.setXYZ(n, b.rank > 0.5 ? 1 : -1, vis[i] as number, (1 - Math.exp(-d / 30000)) * 0.6);
         n++;
       }
       geo.instanceCount = n;
-      for (const attr of [iCenter, iSize, iRect, iInfo]) {
+      for (const attr of [iCenter, iSize, iRect, iInfo, iSeed]) {
         attr.clearUpdateRanges();
         attr.addUpdateRange(0, n * attr.itemSize);
         attr.needsUpdate = true;

@@ -9,7 +9,9 @@ Sources: Poly Haven (CC0) 4K skies with white cloud on blue sky (kloppenheim_06,
    and the cloud's own brightness from un-mixing it from the sky behind.
 3. Clouds = connected patches 4°–40° up of a useful size; each cut out, unwarped (equirect width × cos(elevation)),
    fitted into a 256² cell of a 2048 × 1024 atlas (8 × 4 cells).
-Writes public/world/sky/cards.png (R share, G brightness 0..1 within the cloud, B 0, A 255) and cards.json (per cell:
+Writes public/world/sky/cards.png (R share, G brightness 0..1 within the cloud, B height: a soft dome over the cloud's
+shape, which the browser turns into normals so our sun lights each card from its true side, as The Witcher 3's
+normal-mapped cloud layers do; A 255) and cards.json (per cell:
 width/height, which side the sun lit: +1 right, −1 left).
 """
 import json, os, sys
@@ -128,6 +130,14 @@ def main():
         atlas[oy:oy + nh, ox:ox + nw, 0] = np.clip(ra * 255 + 0.5, 0, 255).astype(np.uint8)
         atlas[oy:oy + nh, ox:ox + nw, 1] = np.clip(rg * 255 + 0.5, 0, 255).astype(np.uint8)
         meta.append({"cell": k, "w": round(nw / CELL, 4), "h": round(nh / CELL, 4), "lit": c["lit"]})
+    # B, the height: the share blurred at two scales (a broad dome and the billows on it) and a touch of the photo's own
+    # brightness (its lit bumps are its high parts)
+    a = atlas[..., 0].astype(np.float32) / 255
+    g = atlas[..., 1].astype(np.float32) / 255
+    broad = cv2.GaussianBlur(a, (0, 0), 14)
+    billow = cv2.GaussianBlur(a, (0, 0), 4)
+    hgt = np.clip(broad * 0.6 + billow * 0.3 + g * a * 0.15, 0, 1) ** 0.7
+    atlas[..., 2] = np.clip(hgt * 255 + 0.5, 0, 255).astype(np.uint8)
     cv2.imwrite(os.path.join(OUT, "cards.png"), cv2.cvtColor(atlas, cv2.COLOR_RGBA2BGRA), [cv2.IMWRITE_PNG_COMPRESSION, 9])
     with open(os.path.join(OUT, "cards.json"), "w", encoding="utf-8", newline=chr(10)) as f:
         json.dump({"cols": COLS, "rows": ROWS, "cards": meta}, f, indent=1)

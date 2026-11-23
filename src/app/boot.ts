@@ -1017,7 +1017,13 @@ export async function boot(): Promise<App> {
   // Task 12 option `cards` (s32): real cumulus cut from photos, standing in the world
   if (mode === 'cards' || mode === 'band') {
     const atlas = cardAtlasTexture();
-    const cards = createCloudCards(light, atlas, (d) => sky.colorAt(d));
+    const cards = createCloudCards(
+      light,
+      atlas,
+      (d) => sky.colorAt(d),
+      cloudMap ?? cloudMapTexture(),
+      mode === 'band' ? (4 * Math.PI) / 180 : 0,
+    );
     app.addPart(cards, 'clouds');
     Promise.all([
       fillCloudMap(atlas, '/world/sky/cards.png'),

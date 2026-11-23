@@ -219,10 +219,12 @@ export function createSky(
   // Task 12 (s32): our own clouds over the clear sky (skyLayer.ts), over the sun, moon and stars too
   const clouds = !cloudMap
     ? null
-    : mode === 'cards' || mode === 'band'
-      ? // the cards carry scattered cloud; only an overcast hour's deck is drawn behind them
-        createCloudLayer(u, cloudMap, 'deck', colorAt, (c) => Math.min(1, Math.max(0, (c - 0.55) * 3)))
-      : createCloudLayer(u, cloudMap, mode, colorAt);
+    : mode === 'band'
+      ? null // dense cards carry even the overcast hours; the photo keeps its own low deck (s32: the deck cost ~1 ms)
+      : mode === 'cards'
+        ? // the cards carry scattered cloud; only an overcast hour's deck is drawn behind them
+          createCloudLayer(u, cloudMap, 'deck', colorAt, (c) => Math.min(1, Math.max(0, (c - 0.55) * 3)))
+        : createCloudLayer(u, cloudMap, mode, colorAt);
   if (clouds) col = clouds.over(colorAt(dir), col, dir);
 
   const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
