@@ -7,6 +7,7 @@ import {
   RGBAFormat,
   SphereGeometry,
   SRGBColorSpace,
+  Vector3,
 } from 'three/webgpu';
 import { STOPS } from '../journey/stops';
 import { stopCentre } from '../journey/timeline';
@@ -208,6 +209,76 @@ export function installBench(app: App): void {
   window.__joined = () => Object.fromEntries([...app.joined].map(([k, v]) => [k, Math.round(v)]));
   window.__stageB = () => app.stageB;
   window.__quality = (q) => app.setQuality(q);
+
+  // s33 16a: the screen pixels each drawn cloud card covers, summed (overdraw in screens), field and banks apart
+  (window as unknown as { __cloudPx: () => unknown }).__cloudPx = () => {
+    const mesh = app.parts.get('clouds')?.object as
+      | {
+          geometry: {
+            instanceCount: number;
+            getAttribute(n: string): { getX(i: number): number; getY(i: number): number; getZ(i: number): number };
+          };
+        }
+      | undefined;
+    if (!mesh) return null;
+    const g = mesh.geometry;
+    const c = g.getAttribute('iCenter');
+    const sz = g.getAttribute('iSize');
+    const cam = app.camera;
+    cam.updateMatrixWorld();
+    const W = innerWidth;
+    const H = innerHeight;
+    let field = 0;
+    let banks = 0;
+    let n = 0;
+    const e = cam.position;
+    const p = new Vector3();
+    for (let i = 0; i < g.instanceCount; i++) {
+      const cx = c.getX(i);
+      const cy = c.getY(i);
+      const cz = c.getZ(i);
+      let fx = e.x - cx;
+      let fz = e.z - cz;
+      const fl = Math.hypot(fx, fz) || 1;
+      fx /= fl;
+      fz /= fl;
+      const w = sz.getX(i);
+      const h = sz.getY(i);
+      let x0 = Infinity;
+      let x1 = -Infinity;
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      let behind = false;
+      for (const [a, b] of [
+        [-0.5, 0],
+        [0.5, 0],
+        [-0.5, 1],
+        [0.5, 1],
+      ] as const) {
+        p.set(cx + fz * a * w, cy + b * h, cz - fx * a * w);
+        p.applyMatrix4(cam.matrixWorldInverse);
+        if (p.z > -1) behind = true;
+        p.applyMatrix4(cam.projectionMatrix);
+        x0 = Math.min(x0, p.x);
+        x1 = Math.max(x1, p.x);
+        y0 = Math.min(y0, p.y);
+        y1 = Math.max(y1, p.y);
+      }
+      if (behind) continue;
+      const px =
+        ((Math.max(-1, Math.min(1, x1)) - Math.max(-1, Math.min(1, x0))) / 2) *
+        W *
+        (((Math.max(-1, Math.min(1, y1)) - Math.max(-1, Math.min(1, y0))) / 2) * H);
+      if (px <= 0) continue;
+      n++;
+      // banks are flattened (iInfo.z's fade is 0.3 × … for banks): tell them by their aspect instead, wide and low
+      const ud = (mesh as unknown as { userData: { bank?: Uint8Array; kept?: Float32Array } }).userData;
+      const k = ud.kept?.[i] ?? 1;
+      if (ud.bank?.[i]) banks += px * k;
+      else field += px * k;
+    }
+    return { field: +(field / (W * H)).toFixed(2), banks: +(banks / (W * H)).toFixed(2), cards: n };
+  };
 
   window.__parts = (off) => {
     app.partsOff = new Set(off);

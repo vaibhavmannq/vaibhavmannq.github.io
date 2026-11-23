@@ -43,6 +43,18 @@ const hash3 = (c: V3): F => fract(sin(dot(c, vec3(127.1, 311.7, 74.7))).mul(4375
 /** Where the painted horizon rows are read: inside the bottom HORIZON_ROWS (6) rows of a 1024-row photo. */
 const HORIZON_V = 2.5 / 1024;
 
+/** s33 16b, temporary: `?glow=strength,width,height` the gold lobe toward a low sun (width 1 − cos, height in y). */
+const GLOW = (
+  (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('glow')) ?? '1.6,0.25,0.18'
+)
+  .split(',')
+  .map(Number) as [number, number, number];
+
+/** s33 16b, temporary: `?aur=core,skirt,wide` strengths of the sun's aureole, to pick by eye. */
+const AUR = ((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('aur')) ?? '2,0.6,0.12')
+  .split(',')
+  .map(Number) as [number, number, number];
+
 export interface Sky extends WorldPart {
   /** The sky colour seen along a direction (three.js axes), for reflections in water and wet sand. */
   colorAt(dir: V3): V3;
@@ -55,11 +67,32 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   const texA = slotTexture(first, 'sky-a');
   const texB = slotTexture(first, 'sky-b');
 
+  // Task 16b (s33; the Sunset render: gold toward the sun along the horizon, violet overhead and away; reference book
+  // §light): under a low sun the haze toward it glows gold, a lobe ~40° wide hugging the horizon. In the sky's own
+  // colour, so the fog, the water's reflections and the clouds' fade agree with it. Only from the sun, only when low.
+  const sunFlat = normalize(vec3(u.keyDir.x, 0, u.keyDir.z).add(vec3(0.0001, 0, 0)));
+  const glowOn = smoothstep(0.42, 0.04, u.keyDir.y)
+    .mul(smoothstep(-0.1, -0.015, u.keyDir.y))
+    .mul(float(1).sub(step(0.001, u.moonStrength)))
+    .mul(min(u.keyStrength, 1));
+  const keyCol = u.keyColor as unknown as V3;
+  const glowHue = mix(keyCol.div(dot(keyCol, vec3(0.2126, 0.7152, 0.0722)).max(1e-3)), vec3(1.45, 0.9, 0.3), 0.6);
+  /** The sky's colour `c` along `dir`, turned gold and lifted toward a low sun (its own brightness kept as the scale). */
+  const horizonGlow = (c: V3, dir: V3): V3 => {
+    const flat = normalize(vec3(dir.x, 0, dir.z).add(vec3(0.0001, 0, 0)));
+    const across = float(1).sub(dot(flat, sunFlat)); // 0 toward the sun; ~0.13 at 30°
+    const lobe = across.div(GLOW[1]).negate().exp().mul(dir.y.max(0).div(GLOW[2]).negate().exp()).mul(glowOn);
+    const gold = glowHue.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
+    return mix(c, gold, lobe.mul(GLOW[0]).min(1)).mul(lobe.mul(GLOW[0]).mul(0.15).add(1));
+  };
   const colorAt = (dir: V3, row?: number): V3 => {
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
-    return mix(decode(texA.sample(st).level(float(0)).rgb), decode(texB.sample(st).level(float(0)).rgb), u.skyWeight)
-      .mul(u.skyGain)
-      .mul(u.skyTint);
+    return horizonGlow(
+      mix(decode(texA.sample(st).level(float(0)).rgb), decode(texB.sample(st).level(float(0)).rgb), u.skyWeight)
+        .mul(u.skyGain)
+        .mul(u.skyTint),
+      dir,
+    );
   };
 
   // Far things fade into the sky's soft horizon colour in their compass direction (horizonAt, used as the scene's fog),
@@ -78,6 +111,22 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     .mul(isSun)
     .mul(u.road);
   col = col.add(u.keyColor.mul(sunDisc));
+  // The sun's aureole (Task 16b, s33; the Sunset render's hot gold bloom; reference book §light: forward scattering by
+  // haze, a bright core ~2° and a wide skirt ~10°, strongest when the sun is low and its light crosses the most air).
+  // The clear-sky copies (R235) blurred the photos' own aureole away; this puts it back, the sun's colour, not white.
+  const cosSun = max(dot(dir, u.keyDir), 0);
+  const low = smoothstep(0.45, 0.02, u.keyDir.y);
+  const aureole = cosSun
+    .pow(2000)
+    .mul(AUR[0])
+    .add(cosSun.pow(180).mul(AUR[1]))
+    .add(cosSun.pow(18).mul(AUR[2]))
+    .mul(min(u.keyStrength, 1))
+    .mul(isSun)
+    .mul(u.road)
+    .mul(low)
+    .mul(smoothstep(-0.04, 0.01, dir.y));
+  col = col.add(u.keyColor.mul(aureole));
 
   // The moon (owner night-sky-and-moon 3, 4, 5, 8): a small sharp disc, lit as a crescent by its phase, the dark part
   // faintly grey (earthshine), a soft halo that lights the sky and cloud beside it. Tested on squared angles

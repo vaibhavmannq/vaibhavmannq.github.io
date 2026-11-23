@@ -46,6 +46,47 @@ export const CARD_ATLAS_W = 2048;
 export const CARD_ATLAS_H = 1024;
 const CELL = 256;
 
+/**
+ * Each card's quad is cropped to the part of its cell that holds visible cloud (Task 16a, s33): only 36 % of a card's
+ * rectangle holds cloud, and the field cards cover 4–7.6 screens of pixels at most stops. A tight crop keeps ~73 % of
+ * the area with the same four vertices. (A grid of small quads with the empty ones collapsed kept 61 % but multiplied
+ * the vertices ×120, and their sky reads cost more than the pixels saved: 3.3 vs 1.3 ms at low, s33.)
+ */
+const KEEP_SHARE = 0.08;
+
+/**
+ * The visible part of every card, pure: [u0, u1, v0, v1] on the card (u across, v up from its base), where its cloud's
+ * share is over KEEP_SHARE (alpha ≈ 0.02), with 2 px to spare for filtering. `data` is the atlas, RGBA, rows top first.
+ */
+export function cardCrops(data: Uint8Array, width: number, meta: CardMeta): [number, number, number, number][] {
+  return meta.cards.map((card) => {
+    const pw = Math.round(card.w * CELL);
+    const ph = Math.round(card.h * CELL);
+    const x0 = (card.cell % meta.cols) * CELL + (CELL - pw) / 2;
+    const yb = Math.floor(card.cell / meta.cols) * CELL + CELL - 2;
+    const limit = KEEP_SHARE * 255;
+    let ua = pw;
+    let ub = -1;
+    let va = ph;
+    let vb = -1;
+    for (let j = 0; j < ph; j++)
+      for (let i = 0; i < pw; i++)
+        if ((data[((yb - j) * width + Math.floor(x0 + i)) * 4] as number) > limit) {
+          ua = Math.min(ua, i);
+          ub = Math.max(ub, i);
+          va = Math.min(va, j);
+          vb = Math.max(vb, j);
+        }
+    if (ub < 0) return [0, 1, 0, 1];
+    return [
+      Math.max(0, (ua - 2) / pw),
+      Math.min(1, (ub + 3) / pw),
+      Math.max(0, (va - 2) / ph),
+      Math.min(1, (vb + 3) / ph),
+    ];
+  });
+}
+
 export interface CardMeta {
   cols: number;
   rows: number;
@@ -63,6 +104,13 @@ const BOX = 72_000;
 const DRAW_MAX = 11_000;
 /** The wind aloft never under this, m/s: 24 m/s at 2 km reads as motion while the visitor rests (owner: "alive"). */
 const MIN_ALOFT = 24;
+
+/** s33 16a, temporary (until the phone's A/B): `?cl=nocrop` draws the whole quads. */
+/** s33 16b, temporary: `?cw=` the warm low-sun light's strength (0 = before). */
+const CW = Number((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('cw')) ?? '1.4');
+const CL = new Set(
+  (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('cl') ?? '')).split(','),
+);
 
 /** An empty atlas, filled later from cards.png (no shader rebuild when the pixels arrive). */
 export function cardAtlasTexture(): DataTexture {
@@ -193,31 +241,36 @@ export function createCloudCards(
   let carryZ = 0;
 
   const quad = new PlaneGeometry(1, 1);
-  quad.translate(0, 0.5, 0); // the cloud's base on its height
+  quad.translate(0.5, 0.5, 0);
   const geo = new InstancedBufferGeometry();
   geo.index = quad.index;
   geo.setAttribute('position', quad.getAttribute('position'));
   geo.setAttribute('uv', quad.getAttribute('uv'));
+  let crops: [number, number, number, number][] = [];
   const iCenter = new InstancedBufferAttribute(new Float32Array(TOTAL * 3), 3);
   const iSize = new InstancedBufferAttribute(new Float32Array(TOTAL * 2), 2);
   // atlas x, y of the cloud's bottom-left (px), its width and height (px)
   const iRect = new InstancedBufferAttribute(new Float32Array(TOTAL * 4), 4);
   // mirror (±1), alpha, aerial fade (from the true distance: drawn ones are pulled in to DRAW_MAX)
-  const iInfo = new InstancedBufferAttribute(new Float32Array(TOTAL * 3), 3);
-  const iSeed = new InstancedBufferAttribute(new Float32Array(TOTAL), 1);
-  for (const a of [iCenter, iSize, iRect, iInfo, iSeed]) a.setUsage(35048); // DynamicDrawUsage
+  // … and the card's seed (w)
+  const iInfo = new InstancedBufferAttribute(new Float32Array(TOTAL * 4), 4);
+  // the crop on the card as drawn (mirrored ones flipped): u from, u to, v from, v to
+  const iCrop = new InstancedBufferAttribute(new Float32Array(TOTAL * 4), 4);
+  for (const a of [iCenter, iSize, iRect, iInfo, iCrop]) a.setUsage(35048); // DynamicDrawUsage
   geo.setAttribute('iCenter', iCenter);
   geo.setAttribute('iSize', iSize);
   geo.setAttribute('iRect', iRect);
   geo.setAttribute('iInfo', iInfo);
-  geo.setAttribute('iSeed', iSeed);
+  geo.setAttribute('iCrop', iCrop);
   geo.instanceCount = 0;
 
   const center = attribute('iCenter', 'vec3') as unknown as V3;
   const size = attribute('iSize', 'vec2');
   const rect = attribute('iRect', 'vec4');
-  const info = attribute('iInfo', 'vec3');
-  const corner = uv();
+  const info = attribute('iInfo', 'vec4');
+  const crop = attribute('iCrop', 'vec4');
+  // where on the card (as drawn) this corner of the cropped quad lies
+  const corner = mix(crop.xz, crop.yw, uv());
   const toEye = vec3(cameraPosition.x.sub(center.x), 0, cameraPosition.z.sub(center.z));
   const fwd = normalize(toEye.add(vec3(0.0001, 0, 0)));
   const right = vec3(fwd.z, 0, fwd.x.negate());
@@ -231,7 +284,7 @@ export function createCloudCards(
   const s = texture(atlas, at);
   // alive (owner, s32): drifting noise eats the thin parts, slowly, a different place for each card, so its edges boil
   // and its shape changes over a minute; the core stays
-  const seed = attribute('iSeed', 'float');
+  const seed = info.w;
   const boil = texture(
     noise,
     corner
@@ -300,7 +353,19 @@ export function createCloudCards(
   const through = litCol.mul(backlit).mul(float(1).sub(s.b)).mul(a).mul(0.2);
   const edge = s.r.mul(float(1).sub(s.r)).mul(4);
   const silver = max(cosK, 0).pow(10).mul(0.5).mul(edge);
-  const col = mix(mix(shadeCol, litCol, light).add(litCol.mul(silver)).add(through), sky, info.z);
+  // Task 16b (s33; the Sunset render; reference book §light): under a low sun a cloud is lit by the sun's own light,
+  // redder and more saturated than the sky round it, and its base, seen from below, glows (the light comes in under
+  // it). Only from the sun (the moon's hours keep their grey clouds), strongest as the sun nears the horizon.
+  const isSun = float(1).sub(smoothstep(0.0, 0.001, u.moonStrength as unknown as F));
+  const lowSun = smoothstep(0.4, 0.03, key.y)
+    .mul(smoothstep(-0.1, -0.01, key.y))
+    .mul(isSun)
+    .mul(CW);
+  const sunHue = (u.keyColor as unknown as V3).div(lum(u.keyColor as unknown as V3));
+  const warmLit = mix(litCol, sunHue.mul(lum(litCol)), lowSun.mul(0.65));
+  const cloudBase = smoothstep(0.55, 0.0, corner.y).mul(smoothstep(0.85, 0.2, s.b));
+  const under = warmLit.mul(cloudBase).mul(lowSun).mul(max(cosK, 0).mul(0.6).add(0.4)).mul(0.55);
+  const col = mix(mix(shadeCol, warmLit, light).add(warmLit.mul(silver)).add(through).add(under), sky, info.z);
   material.colorNode = col;
   material.opacityNode = a.mul(info.y).mul(smoothstep(0.0, 0.02, dir.y));
 
@@ -310,11 +375,18 @@ export function createCloudCards(
 
   const order: number[] = Array.from({ length: TOTAL }, (_, i) => i);
   const dist2 = new Float32Array(TOTAL);
+  /** which drawn instance is a bank (bench.ts `__cloudPx`, s33) */
+  const bankOf = new Uint8Array(TOTAL);
+  mesh.userData.bank = bankOf;
+  /** the share of each drawn instance's quad that is drawn (bench.ts `__cloudPx`) */
+  const keptOf = new Float32Array(TOTAL);
+  mesh.userData.kept = keptOf;
 
   return {
     object: mesh,
     ready(m) {
       meta = m;
+      crops = cardCrops(atlas.image.data as Uint8Array, CARD_ATLAS_W, m);
     },
     update(f) {
       if (!meta || meta.cards.length === 0) return;
@@ -384,12 +456,23 @@ export function createCloudCards(
         const ph = card.h * CELL;
         iRect.setXYZW(n, col * CELL + (CELL - pw) / 2, row * CELL + CELL - 2, pw, ph);
         // mirrored at random for variety: the normal from the height lights it from the true side either way
-        iSeed.setX(n, b.seed);
-        iInfo.setXYZ(n, b.rank > 0.5 ? 1 : -1, vis[i] as number, (b.bank ? 0.3 : 0.6) * (1 - Math.exp(-d / 30000)));
+        const cr = CL.has('nocrop') ? undefined : crops[b.card % meta.cards.length];
+        const [u0, u1, v0, v1] = cr ?? [0, 1, 0, 1];
+        if (b.rank > 0.5) iCrop.setXYZW(n, u0, u1, v0, v1);
+        else iCrop.setXYZW(n, 1 - u1, 1 - u0, v0, v1);
+        keptOf[n] = (u1 - u0) * (v1 - v0);
+        bankOf[n] = b.bank ? 1 : 0;
+        iInfo.setXYZW(
+          n,
+          b.rank > 0.5 ? 1 : -1,
+          vis[i] as number,
+          (b.bank ? 0.3 : 0.6) * (1 - Math.exp(-d / 30000)),
+          b.seed,
+        );
         n++;
       }
       geo.instanceCount = n;
-      for (const attr of [iCenter, iSize, iRect, iInfo, iSeed]) {
+      for (const attr of [iCenter, iSize, iRect, iInfo, iCrop]) {
         attr.clearUpdateRanges();
         attr.addUpdateRange(0, n * attr.itemSize);
         attr.needsUpdate = true;
