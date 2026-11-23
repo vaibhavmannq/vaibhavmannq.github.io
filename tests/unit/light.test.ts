@@ -196,10 +196,10 @@ describe('true blacks: ?blacks= (Phase 2 Task 14, owner s30)', () => {
       });
     }
   });
-  it('today is the floor as it was; the site defaults to mid (owner, s33: deep made the colours vanish)', () => {
+  it('today is the floor as it was and the default again (owner, end of s33: "&blacks=today is better")', () => {
     expect(floorFor(HOURS.night, 'today')).toEqual(shadowFloor(HOURS.night));
-    expect(blacksMode('nonsense')).toBe('mid');
-    expect(blacksMode(null)).toBe('mid');
+    expect(blacksMode('nonsense')).toBe('today');
+    expect(blacksMode(null)).toBe('today');
     expect(blacksMode('mid')).toBe('mid');
     expect(blacksMode('today')).toBe('today');
     expect(blacksMode('zero')).toBe('zero');

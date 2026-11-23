@@ -68,11 +68,11 @@ export const FILL_SHARE_BY_BLACKS: Readonly<Record<Blacks, number>> = {
   deep: 0.5,
 };
 /**
- * The site's mode from `?blacks=`: `mid` unless another is named (owner, s33: deep made the colours vanish; s31's
- * default was `deep`; `?blacks=today` is the look before Task 14).
+ * The site's mode from `?blacks=`: `today` unless another is named (owner, end of s33, after testing deep, mid and
+ * today: "&blacks=today is better"; s31's default was `deep`, s33's first answer `mid`).
  */
 export const blacksMode = (v: string | null): Blacks =>
-  v === 'today' || v === 'half' || v === 'zero' || v === 'deep' ? v : 'mid';
+  v === 'mid' || v === 'half' || v === 'zero' || v === 'deep' ? v : 'today';
 /** The floor the grade lifts to under that mode, linear light (a uniform's value: switching builds no shader). */
 export function floorFor(hour: HourPreset, mode: Blacks): RGB {
   const k = BLACKS_SHARE[mode];

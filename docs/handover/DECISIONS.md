@@ -396,3 +396,5 @@ made every colour we worked so hard on vanish - can we find a middle ground": `?
 35 % of the floor) is the default; `deep` and `today` stay for his A/B (R245). On agents: "i meant for reading and
 preparing or for researching": helper agents do research and prep notes only; building and measuring stay with the main
 session (one test browser on this laptop). Also: judging shots at 1920 × 1080.
+  Amended at the end of s33 after his own test of `deep`, `mid` and `today`: "&blacks=today is better and so is gust":
+  **`today` is the default again** (the floor as before Task 14); `mid` and `deep` stay as switches; the gust is kept.
