@@ -338,7 +338,8 @@ no borrowed set pieces (no towers, piano, etc.).
   D55, D56; commits 37b750f … e10ed24, not pushed; owner page https://claude.ai/artifact/3z7UmoN2huKFvy92cDtxHW). The owner unplugged the phone early ("we perfect it on laptop and do it on
   phone at last") and left for the night ("choose recommended"; "judge what's looks good - rules can be bent").
   - 11d: the phone's lost tier is **one ride, VI → VII (Midnight → Before dawn)**: the drifting sky + Phase 1's light
-    extras added up (R232); both cut (laptop: the session's work +0.0–0.5 ms at low). The phone check of the fix is owed.
+    extras added up (R232). Cut on the laptop (the session's work +0.0–0.5 ms at low), **not on the phone: still 54–55 vs
+    old 59 fps at high on that ride**; next tries in R232. Phone setting to undo: `stay_on_while_plugged_in` back to 0.
   - 11e: light maps per hour, the opening hour's before the first view (−2.5 MB before it; first view ≈ 1.5–1.8 s sooner).
   - 14: `?blacks=today|half|zero|deep`, **deep by default** (D56; Night's walls, Blue hour's silhouettes, the cave lifted
     by their own causes → Phase 3).
