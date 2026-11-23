@@ -517,17 +517,66 @@ export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart 
   };
 }
 
-/** s33 16d, temporary: `?ft=` the framing tree's turn about its trunk, radians (0 before). */
-const FRAME_TURN = Number(
-  (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('ft')) ?? '0',
-);
+/** s33 16d, temporary: `?fo=offsetDeg,metres,scale,turn` and `?fc=minZ,keep,scale` to pick the framing tree's place and crown. */
+const q = (name: string, def: string) =>
+  ((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get(name)) ?? def)
+    .split(',')
+    .map(Number);
+const FO = q('fo', '-30,9,1.4,5.5') as [number, number, number, number];
+const FC = q('fc', '2.6,0.55,0.75') as [number, number, number];
 
 /**
- * Sunset's framing tree (plan M8 Task 3, D38: "the old sunset" with a tree framing the left; owner meadow 10): the
- * old tree's model 8 m out, 36° left of the gaze, so the canopy reaches over the frame's top-left corner and the
- * pointer's parallax has a near layer; the sea, the arch and the lone tree stay open.
+ * Sunset's framing tree (plan M8 Task 3, D38: "the old sunset" with a tree framing the left; owner meadow 10). s33 (Task
+ * 16d, prep-16d.md): at −36° the trunk was outside the 28 mm frame (half-width 32.8°), so only crown showed, a black
+ * blob; now 30° left, 9 m out, turned 5.5 rad so its trunk and limbs read against the sky (the Sunset render).
  */
-export const SUNSET_FRAME: readonly ScrubSpot[] = [[-36, 8, 1.4, 0, FRAME_TURN]];
+export const SUNSET_FRAME: readonly ScrubSpot[] = [[FO[0], FO[1], FO[2], 0, FO[3]]];
+/** The framing tree's crown (Task 16d): leaves only from 2.6 m of the model up, 55 % of them, each 0.75 the size. */
+export const SUNSET_CROWN: CrownTrim = { minZ: FC[0], keep: FC[1], scale: FC[2] };
+
+export interface CrownTrim {
+  /** keep cards whose centre is at least this high in the model's frame (m) */
+  minZ: number;
+  /** then this share of them, chosen at random (seeded) */
+  keep: number;
+  /** each kept card shrunk about its centre by this */
+  scale: number;
+}
+
+/**
+ * A copy of `proto` with a thinner, higher crown (Task 16d, s33), pure: the wood unchanged, cards with their centre
+ * under `minZ` dropped, a seeded `keep` share of the rest kept, each shrunk about its centre. So the fork and limbs of a
+ * tree seen against a bright sky read, with sky through the leaves (the Sunset render).
+ */
+export function trimCrown(proto: GroveProto, t: CrownTrim): GroveProto {
+  const n = proto.cardDepth.length;
+  const r = mulberry32(1606);
+  const keep: number[] = [];
+  for (let c = 0; c < n; c++) {
+    let z = 0;
+    for (let k = 0; k < 4; k++) z += proto.cardPos[(c * 4 + k) * 3 + 2] as number;
+    const pass = r() < t.keep;
+    if (z / 4 >= t.minZ && pass) keep.push(c);
+  }
+  const cardPos = new Float32Array(keep.length * 12);
+  const cardBent = new Float32Array(keep.length * 12);
+  const cardDepth = new Float32Array(keep.length);
+  keep.forEach((c, i) => {
+    const centre = [0, 1, 2].map((a) => {
+      let m = 0;
+      for (let k = 0; k < 4; k++) m += proto.cardPos[(c * 4 + k) * 3 + a] as number;
+      return m / 4;
+    });
+    for (let k = 0; k < 4; k++)
+      for (let a = 0; a < 3; a++) {
+        const v = proto.cardPos[(c * 4 + k) * 3 + a] as number;
+        cardPos[(i * 4 + k) * 3 + a] = (centre[a] as number) + (v - (centre[a] as number)) * t.scale;
+        cardBent[(i * 4 + k) * 3 + a] = proto.cardBent[(c * 4 + k) * 3 + a] as number;
+      }
+    cardDepth[i] = proto.cardDepth[c] as number;
+  });
+  return { ...proto, cardPos, cardBent, cardDepth };
+}
 
 /** A shrub or tree placed from a stop's eye: degrees right of the gaze, metres out, scale, model (GROVE_KINDS index). */
 export type ScrubSpot = readonly [offsetDeg: number, metres: number, scale: number, model: number, turn?: number];
@@ -561,8 +610,11 @@ export function createGroveProps(
   stop: StopId,
   name: string,
   mirror = true,
+  /** one model's crown trimmed for these plants only (trimCrown; Sunset's framing tree, Task 16d) */
+  crown?: { model: number; trim: CrownTrim },
 ): WorldPart {
-  const g = bakeGrove({ instances, protos: grove.protos }, groundAt);
+  const protos = crown ? grove.protos.map((p, k) => (k === crown.model ? trimCrown(p, crown.trim) : p)) : grove.protos;
+  const g = bakeGrove({ instances, protos }, groundAt);
   const geometry = groveGeometry(g);
   const mesh = new Mesh(geometry, grove.material);
   mesh.name = name;

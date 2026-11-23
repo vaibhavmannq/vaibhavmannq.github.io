@@ -59,6 +59,7 @@ import {
   createGroveProps,
   createLoneTree,
   decodeGrove,
+  SUNSET_CROWN,
   SUNSET_FRAME,
   scrubInstances,
 } from '../world/grove';
@@ -591,7 +592,12 @@ async function loadBase(
         // Sunset's framing tree (plan M8 Task 3, D38)
         const sunsetEye = [SHOTS.sunset.cam[0], SHOTS.sunset.cam[1]] as const;
         const frame = scrubInstances(sunsetEye, SHOTS.sunset.look[0], SUNSET_FRAME, surfaceAt);
-        joins.push(compileThenAdd(app, createGroveProps(grove, frame, surfaceAt, 'sunset', 'scrub'), 'scrub'));
+        // out of the sea's mirror (s33, Task 16d: its reflection is hidden by the clifftop from Sunset's eye; R203)
+        const scrub = createGroveProps(grove, frame, surfaceAt, 'sunset', 'scrub', false, {
+          model: 0,
+          trim: SUNSET_CROWN,
+        });
+        joins.push(compileThenAdd(app, scrub, 'scrub'));
         await yieldTask(); // each grove prop bakes its own plants (20-60 ms): the lantern room draws between (s29)
         // shrubs clinging to the drops below Dusk's and Sunrise's eye (M8.5 #2 part 2), on the ground as drawn
         for (const site of cragSites.filter((s) => s.id === 'dusk' || s.id === 'sunrise')) {
