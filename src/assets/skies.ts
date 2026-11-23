@@ -10,7 +10,7 @@ import {
 } from 'three/webgpu';
 import type { FrameState } from '../journey/timeline';
 import { STOP_IDS } from '../journey/types';
-import { skyMode } from '../world/skyClouds';
+import { type SkyMode, skyMode, usesClearSky } from '../world/skyClouds';
 import type { Manifest, SkyAmbient } from './manifest';
 import type { SkyDecodeReply } from './skyDecode.worker';
 import { paintHorizon } from './skyHorizon';
@@ -64,7 +64,7 @@ export interface SkyStore {
  * the photo itself is always read at level 0 (the seam where equirect u wraps would otherwise pick a blurred level).
  */
 export function prepareSky(t: Texture): Texture {
-  const mips = typeof location !== 'undefined' && skyMode(location.search) !== 'photo';
+  const mips = typeof location !== 'undefined' && skyMode(location.search) === 'drift';
   t.colorSpace = NoColorSpace;
   t.wrapS = RepeatWrapping;
   t.generateMipmaps = mips;
@@ -73,7 +73,15 @@ export function prepareSky(t: Texture): Texture {
   return t;
 }
 
+/** The file a sky mode draws: the clear-sky copy for the modes with our own clouds (Task 12), else the photo. */
+export function skyFileFor(entry: { file: string; clear?: string; band?: string }, mode: SkyMode): string {
+  if (mode === 'band') return entry.band ?? entry.file;
+  return usesClearSky(mode) && entry.clear ? entry.clear : entry.file;
+}
+
 export interface SkyStoreOptions {
+  /** Which copy of each sky to load (Task 12); the photos when absent. */
+  mode?: SkyMode;
   base?: string;
   /** How a sky file becomes a texture; tests pass a controllable fake. */
   loadTexture?: (url: string) => Promise<Texture>;
@@ -174,7 +182,8 @@ export function createSkyStore(manifest: Manifest, fallback: Texture, options: S
     const inFlight = pending.get(index);
     if (inFlight) return inFlight;
     const id = STOP_IDS[index];
-    const file = id ? manifest.skies[id]?.file : undefined;
+    const entry = id ? manifest.skies[id] : undefined;
+    const file = entry ? skyFileFor(entry, options.mode ?? 'photo') : undefined;
     if (!file) return Promise.reject(new Error(`no sky ${index}`));
     const p = loadTexture(base + file).then(
       (t) => {

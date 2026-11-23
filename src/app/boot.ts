@@ -46,6 +46,7 @@ import { capInstances } from '../world/caps';
 import { caveLightSliced, caveLure, createCave, decodeCave, fungiLightSliced } from '../world/cave';
 import { caveFloorSite, floorGeometry, fungiClusters, scatterFloor } from '../world/caveFloor';
 import { createCliffs, decodeCliffs } from '../world/cliffs';
+import { type CardMeta, cardAtlasTexture, createCloudCards } from '../world/cloudCards';
 import { createCloudSea } from '../world/cloudSea';
 import { coronaCurves, coronaShot } from '../world/corona';
 import { COVE_SEEN_FROM } from '../world/cove';
@@ -99,6 +100,7 @@ import { createSetStreamer, type SetStreamer } from '../world/setStreamer';
 import { SET_PARTS, wantedSets } from '../world/sets';
 import { createSky, type Sky } from '../world/sky';
 import { skyMode } from '../world/skyClouds';
+import { cloudMapTexture, fillCloudMap } from '../world/skyLayer';
 import { createSkylight, openRoof, roofAbove, SKYLIGHT } from '../world/skylight';
 import { createSpotGlints } from '../world/spotGlints';
 import { createStacks, decodeStacks } from '../world/stacks';
@@ -981,6 +983,7 @@ export async function boot(): Promise<App> {
   light.install(scene);
   const blank = blankSky();
   const skies = createSkyStore(manifest, blank, {
+    mode: skyMode(location.search),
     onLoaded: (t) => {
       pipeline?.renderer.initTexture(t);
     },
@@ -988,7 +991,19 @@ export async function boot(): Promise<App> {
   // With no GPU nothing shows the skies, so jumps never wait for them (review I5).
   if (pipeline)
     jumps.ready = (i) => Promise.all([skies.ready(i), setShown(app, STOP_IDS[i], 3000)]).then(() => undefined);
-  const sky = createSky(light, skies, blank, skyMode(location.search));
+  // Task 12 (s32): the modes with our own clouds read a baked cloud map; the shader is built against an empty one and
+  // the pixels arrive later (no rebuild), the clouds fading in over a second
+  const mode = skyMode(location.search);
+  const cloudMap =
+    mode === 'deck' || mode === 'layers' || mode === 'volume' || mode === 'cards' || mode === 'band'
+      ? cloudMapTexture()
+      : undefined;
+  const sky = createSky(light, skies, blank, mode, cloudMap);
+  if (cloudMap)
+    fillCloudMap(cloudMap, '/world/sky/clouds.png').then(
+      () => sky.cloudsReady(),
+      (e: unknown) => console.warn('cloud map failed to load', e),
+    );
   // Distance fades into the sky's own horizon colour, not a separate fog colour (see sky.ts horizonAt).
   // First light's mist (plan M3 Task 3) is height fog in the same colour, folded into the one fog: no draw, and the
   // mirror pass shows it because it renders this scene. Zero at every hour but First light and Sunrise.
@@ -999,6 +1014,19 @@ export async function boot(): Promise<App> {
     haze.oneMinus().mul(mist.factor.oneMinus()).oneMinus(),
   );
   app.addPart(sky, 'sky');
+  // Task 12 option `cards` (s32): real cumulus cut from photos, standing in the world
+  if (mode === 'cards' || mode === 'band') {
+    const atlas = cardAtlasTexture();
+    const cards = createCloudCards(light, atlas, (d) => sky.colorAt(d));
+    app.addPart(cards, 'clouds');
+    Promise.all([
+      fillCloudMap(atlas, '/world/sky/cards.png'),
+      fetch('/world/sky/cards.json').then((r) => r.json() as Promise<CardMeta>),
+    ]).then(
+      ([, meta]) => cards.ready(meta),
+      (e: unknown) => console.warn('cloud cards failed to load', e),
+    );
+  }
   app.addPart(mist.part, 'mist');
   // Golden's paper lantern, the first near layer (plan M2.5 Task 7), and the glints of its spots: no download, so
   // they join with the first view.

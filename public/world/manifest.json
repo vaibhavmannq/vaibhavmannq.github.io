@@ -123,7 +123,9 @@
     0.1811,
     0.1176,
     0.1137
-   ]
+   ],
+   "clear": "sky/golden-clear.jpg",
+   "band": "sky/golden-band.jpg"
   },
   "sunset": {
    "file": "sky/sunset.jpg",
@@ -136,7 +138,9 @@
     0.2163,
     0.1327,
     0.1002
-   ]
+   ],
+   "clear": "sky/sunset-clear.jpg",
+   "band": "sky/sunset-band.jpg"
   },
   "dusk": {
    "file": "sky/dusk.jpg",
@@ -149,7 +153,9 @@
     0.1688,
     0.0797,
     0.102
-   ]
+   ],
+   "clear": "sky/dusk-clear.jpg",
+   "band": "sky/dusk-band.jpg"
   },
   "bluehour": {
    "file": "sky/bluehour.jpg",
@@ -162,7 +168,9 @@
     0.0761,
     0.0593,
     0.0669
-   ]
+   ],
+   "clear": "sky/bluehour-clear.jpg",
+   "band": "sky/bluehour-band.jpg"
   },
   "night": {
    "file": "sky/night.jpg",
@@ -175,7 +183,9 @@
     0.0105,
     0.0106,
     0.0208
-   ]
+   ],
+   "clear": "sky/night.jpg",
+   "band": "sky/night.jpg"
   },
   "midnight": {
    "file": "sky/midnight.jpg",
@@ -188,7 +198,9 @@
     0.0723,
     0.0714,
     0.1029
-   ]
+   ],
+   "clear": "sky/midnight.jpg",
+   "band": "sky/midnight.jpg"
   },
   "beforedawn": {
    "file": "sky/beforedawn.jpg",
@@ -201,7 +213,9 @@
     0.0301,
     0.0276,
     0.0451
-   ]
+   ],
+   "clear": "sky/beforedawn-clear.jpg",
+   "band": "sky/beforedawn-band.jpg"
   },
   "firstlight": {
    "file": "sky/firstlight.jpg",
@@ -214,7 +228,9 @@
     0.1334,
     0.0844,
     0.1034
-   ]
+   ],
+   "clear": "sky/firstlight-clear.jpg",
+   "band": "sky/firstlight-band.jpg"
   },
   "sunrise": {
    "file": "sky/sunrise.jpg",
@@ -227,7 +243,9 @@
     0.2449,
     0.1626,
     0.1526
-   ]
+   ],
+   "clear": "sky/sunrise-clear.jpg",
+   "band": "sky/sunrise-band.jpg"
   }
  },
  "files": [
@@ -372,12 +390,48 @@
    "stops": "all"
   },
   {
+   "path": "sky/beforedawn-band.jpg",
+   "bytes": 72745,
+   "sha256": "f4430d0f74ee097920a5df60619ccf0c58969cc76a0f46920d7da112eef076f4",
+   "stage": "B",
+   "stops": [
+    "beforedawn"
+   ]
+  },
+  {
+   "path": "sky/beforedawn-clear.jpg",
+   "bytes": 62994,
+   "sha256": "900f7600187c7fcf073546e42169a728cc9435456e83321f475de3bd82364497",
+   "stage": "B",
+   "stops": [
+    "beforedawn"
+   ]
+  },
+  {
    "path": "sky/beforedawn.jpg",
    "bytes": 110532,
    "sha256": "7bbfdc7ba692389d08235aa3cbbb96e8704aeff7b9be0051238249ef216f3a64",
    "stage": "B",
    "stops": [
     "beforedawn"
+   ]
+  },
+  {
+   "path": "sky/bluehour-band.jpg",
+   "bytes": 73214,
+   "sha256": "7b3c558a97b563cc75b85b0a1e981134d094928753e1faf9c06f6e8a7c084ab1",
+   "stage": "B",
+   "stops": [
+    "bluehour"
+   ]
+  },
+  {
+   "path": "sky/bluehour-clear.jpg",
+   "bytes": 67168,
+   "sha256": "2f2e6dfaec5cc680d9fcb3401e40cc2cc821eb566df5248f19a3e83530535ca8",
+   "stage": "B",
+   "stops": [
+    "bluehour"
    ]
   },
   {
@@ -390,6 +444,45 @@
    ]
   },
   {
+   "path": "sky/cards.json",
+   "bytes": 2149,
+   "sha256": "f91fafae3b29b3adba836c9d11022bdeb33357c23074213cb2e875ea8d05fc9c",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "sky/cards.png",
+   "bytes": 883146,
+   "sha256": "4e9852e61e2304447e57e9efd73cb92cb53eccdefc7cd628e43861515798758a",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "sky/clouds.png",
+   "bytes": 460634,
+   "sha256": "9bdb9783fa68bc83121314e1774be368789f50c1bc5612c794c98309c453f49c",
+   "stage": "B",
+   "stops": "all"
+  },
+  {
+   "path": "sky/dusk-band.jpg",
+   "bytes": 95900,
+   "sha256": "b11c7944f84d2bfee915d2d45c39ea721565c4f5142dc58e8eb4018ca2c65182",
+   "stage": "B",
+   "stops": [
+    "dusk"
+   ]
+  },
+  {
+   "path": "sky/dusk-clear.jpg",
+   "bytes": 75832,
+   "sha256": "1fdcd4757bb4e07ff863ced7c7ac86da61a45c0f27fde70ec365e661b8870623",
+   "stage": "B",
+   "stops": [
+    "dusk"
+   ]
+  },
+  {
    "path": "sky/dusk.jpg",
    "bytes": 103675,
    "sha256": "d50c80ee8a8877f84c63641ee970bac043fa0a9aeda80430ce49c39b8c016fb2",
@@ -399,12 +492,48 @@
    ]
   },
   {
+   "path": "sky/firstlight-band.jpg",
+   "bytes": 73057,
+   "sha256": "16f523764e18c79d1b8594419f20ce92eb06eafdbc4275c60e573c8ca250912a",
+   "stage": "B",
+   "stops": [
+    "firstlight"
+   ]
+  },
+  {
+   "path": "sky/firstlight-clear.jpg",
+   "bytes": 64945,
+   "sha256": "4731d79abc4bdaae26d712812b59914d19270a73a16b6dd6aedb90fd5b874f27",
+   "stage": "B",
+   "stops": [
+    "firstlight"
+   ]
+  },
+  {
    "path": "sky/firstlight.jpg",
    "bytes": 95198,
    "sha256": "8d1a554f3d205d373de70347e5188f5fb8d170764e3c921faffad0f106cded94",
    "stage": "B",
    "stops": [
     "firstlight"
+   ]
+  },
+  {
+   "path": "sky/golden-band.jpg",
+   "bytes": 92509,
+   "sha256": "554b380318b1abf334b67a532b8eb94d241c2be1d3f976156e406d0734ff635e",
+   "stage": "B",
+   "stops": [
+    "golden"
+   ]
+  },
+  {
+   "path": "sky/golden-clear.jpg",
+   "bytes": 72363,
+   "sha256": "8c7b838e02ae6a0209d4db58ec3d62e3477a58c92137b0e98d82cc60074879c6",
+   "stage": "B",
+   "stops": [
+    "golden"
    ]
   },
   {
@@ -435,12 +564,48 @@
    ]
   },
   {
+   "path": "sky/sunrise-band.jpg",
+   "bytes": 88376,
+   "sha256": "6bbc1bbc47d0530810d031bd92199f4e44955966850a0c453d9f74fba60d6b36",
+   "stage": "B",
+   "stops": [
+    "sunrise"
+   ]
+  },
+  {
+   "path": "sky/sunrise-clear.jpg",
+   "bytes": 72961,
+   "sha256": "8236beb1e7fe22d296f9804f0a71694e46c2205588005bf15ea113f25e16b233",
+   "stage": "B",
+   "stops": [
+    "sunrise"
+   ]
+  },
+  {
    "path": "sky/sunrise.jpg",
    "bytes": 93144,
    "sha256": "da3183c1afccab40e9121264b26355327d48c7e513bc5157bb724efffcf5245d",
    "stage": "B",
    "stops": [
     "sunrise"
+   ]
+  },
+  {
+   "path": "sky/sunset-band.jpg",
+   "bytes": 70775,
+   "sha256": "7c7f06a4e79753615298ae72b8027cf09f3322b47996438c021e96a7820378d7",
+   "stage": "B",
+   "stops": [
+    "sunset"
+   ]
+  },
+  {
+   "path": "sky/sunset-clear.jpg",
+   "bytes": 65105,
+   "sha256": "ca7bf55eafa153e4ea817271548b71808e7f97c840a41fc73732977152d193cc",
+   "stage": "B",
+   "stops": [
+    "sunset"
    ]
   },
   {

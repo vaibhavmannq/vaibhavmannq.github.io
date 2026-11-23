@@ -29,9 +29,13 @@ function stopsOf(path: string): StopId[] | 'all' {
   const id = path
     .split('/')[1]
     ?.split('.')[0]
-    ?.replace(/-portrait$/, '') as StopId;
+    ?.replace(/-portrait$/, '')
+    // a sky's clear copy (Task 12) counts against its stop like the photo
+    .replace(/-(clear|band)$/, '') as StopId;
   if ((path.startsWith('sky/') || path.startsWith('stills/')) && STOP_IDS.includes(id)) return [id];
   if (path.startsWith('base/')) return 'all';
+  // the sky's own cloud map (Task 12b): one tiling texture for every hour
+  if (path === 'sky/clouds.png' || path === 'sky/cards.png' || path === 'sky/cards.json') return 'all';
   // the baked light (world-to-100 Task 11): every hour's maps in one set of files, loaded with the base
   if (path.startsWith('light/')) return 'all';
   // the headland's place pack (ruling R15): counted against the stops that see the arch, not the world base

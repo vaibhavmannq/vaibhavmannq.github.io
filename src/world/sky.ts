@@ -18,7 +18,6 @@ import {
   sin,
   smoothstep,
   step,
-  texture,
   time,
   uniform,
   vec2,
@@ -26,6 +25,7 @@ import {
 } from 'three/tsl';
 import {
   BackSide,
+  type DataTexture,
   Mesh,
   MeshBasicNodeMaterial,
   type Node,
@@ -40,20 +40,11 @@ import { SHOTS } from '../journey/shots';
 import { STOP_IDS } from '../journey/types';
 import { type LightUniforms, MIN_MOON_RADIUS } from './light';
 import type { WorldPart } from './part';
-import {
-  CLOUD_COVER,
-  cloudNoiseTexture,
-  LAYER_BASE,
-  LAYER_DEPTH,
-  NOISE_TILE_M,
-  PHOTO_CEILING,
-  photoDrift,
-  type SkyMode,
-} from './skyClouds';
+import { PHOTO_CEILING, photoDrift, type SkyMode, usesClearSky } from './skyClouds';
+import { createCloudLayer } from './skyLayer';
 import { slotTexture } from './slotTexture';
 
 type V3 = Node<'vec3'>;
-type V2 = Node<'vec2'>;
 type F = Node<'float'>;
 
 /** The sky files store e = (x / (1 + x))^(1/2.2) (tools/world/prep_sky.py); this gives x back. */
@@ -84,16 +75,20 @@ const eyeOf = (i: number): [number, number, number] => {
   return [s.cam[0], s.eyeZ, -s.cam[1]];
 };
 
-export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mode: SkyMode = 'photo'): Sky {
+export function createSky(
+  u: LightUniforms,
+  skies: SkyStore,
+  first: Texture,
+  mode: SkyMode = 'photo',
+  cloudMap?: DataTexture,
+): Sky & { cloudsReady(): void } {
   // each slot its own binding, so the shaders built at a stop (one texture in both) serve the flights (R121)
   const texA = slotTexture(first, 'sky-a');
   const texB = slotTexture(first, 'sky-b');
-  // M8.5 #3a: the eyes the two photos were made for, the drift of the photo's ceiling, the layer's wind and cover
+  // M8.5 #3a: the eyes the two photos were made for and the drift of the photo's ceiling (`drift`)
   const eyeA = uniform(new Vector3(...eyeOf(0)));
   const eyeB = uniform(new Vector3(...eyeOf(0)));
   const drift = uniform(new Vector2());
-  const carry = uniform(new Vector2());
-  const cover = uniform(0.4);
   let carried = 0;
 
   /** `drift`: the direction from the photo's own eye to where `d` meets the (drifted) ceiling; `d` itself low down. */
@@ -186,6 +181,9 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
   // Colour by temperature: most white to pale orange, a few blue-white. Twinkle is stronger near the horizon.
   // Only an hour with stars pays for them (s17: the field cost ~1 ms at mid on this laptop at every stop): a uniform
   // branch, so the derivative inside stays in uniform control flow.
+  // the sky the stars must outshine, fixed here: the Fn body runs when the shader is built, when `col` already holds the
+  // clouds drawn over the stars (s32: read through the closure, the whole cloud layer was built inside the stars' If)
+  const skyBehindStars = col;
   const starField = Fn(() => {
     const stars = vec3(0).toVar();
     If(u.stars.greaterThan(0.01), () => {
@@ -198,7 +196,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
       const dPx = length(fract(p).sub(0.5).sub(centre)).div(cellsPerPx);
       // flux relative to the faintest star a cell can hold: N(< m) ∝ 10^(0.43 m) → flux = u^(−0.4 / 0.43)
       const flux = hash3(cell.add(5.0)).max(1e-4).pow(-0.93).min(600.0);
-      const skyLum = dot(col, vec3(0.2126, 0.7152, 0.0722)).max(0.0015);
+      const skyLum = dot(skyBehindStars, vec3(0.2126, 0.7152, 0.0722)).max(0.0015);
       // near the horizon a star looks through more air: up to two magnitudes dimmer (×0.16)
       const air = mix(float(0.16), float(1), smoothstep(0.0, 0.25, dir.y)).mul(smoothstep(-0.01, 0.03, dir.y));
       const seen = flux.mul(air).mul(max(u.stars, 0)).mul(0.0002);
@@ -218,72 +216,14 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
   });
   col = col.add(starField());
 
-  // M8.5 #3a `layer` / `volume`: a cloud layer in the world (skyClouds.ts), over the photo and its stars.
-  if (mode === 'layer' || mode === 'volume') {
-    const noise = cloudNoiseTexture();
-    const photo = colorAt(dir);
-    const sunXZ = normalize(vec2(u.keyDir.x, u.keyDir.z).add(vec2(0.0001, 0)));
-    /** cloud density 0..1 at a point (three.js x, z) of the layer, `h` 0..1 up through it */
-    const density = (p: V2, h: F): F => {
-      const q = p.add(carry).div(NOISE_TILE_M);
-      const big = texture(noise, q).r;
-      // the detail slides with height, so the layer's top and bottom differ (the `volume` steps)
-      const fine = texture(noise, q.mul(4.3).add(vec2(h.mul(0.37), h.mul(0.21)))).g;
-      const shape = big.mul(0.82).add(fine.mul(0.24));
-      // flat bases, rounded tops: thinner toward the top of the layer; soft edges, not speckle
-      const need = float(1).sub(cover.mul(1.3)).add(h.mul(0.14));
-      return smoothstep(need, need.add(0.3), shape);
-    };
-    const flat = (h: number): V2 => {
-      const t = float(LAYER_BASE + h)
-        .sub(cameraPosition.y)
-        .div(dir.y.max(0.012));
-      return vec2(cameraPosition.x, cameraPosition.z).add(vec2(dir.x, dir.z).mul(t));
-    };
-    // far away the layer thins into the photo's own haze; below ~1.5 degrees nothing
-    const reach = float(LAYER_BASE).sub(cameraPosition.y).div(dir.y.max(0.012));
-    const fade = smoothstep(32000, 9000, reach).mul(smoothstep(0.012, 0.06, dir.y));
-    // the photo's colour in this direction gives the hour's palette: shadowed undersides darker, toward the sky's
-    // ambient; lit sides brighter, toward the key light; a silver edge where thin cloud faces the sun
-    const shadowCol = photo.mul(0.5).add((u.ambSky as unknown as V3).mul(0.05));
-    const litCol = photo.mul(1.35).add((u.keyColor as unknown as V3).mul(u.keyStrength).mul(0.08));
-    const forward = max(dot(dir, u.keyDir), 0).pow(7);
-    let cloudCol: V3;
-    let alpha: F;
-    if (mode === 'layer') {
-      const p = flat(LAYER_DEPTH * 0.3);
-      const d = density(p, float(0.3));
-      const toward = density(p.add(sunXZ.mul(140)), float(0.3));
-      const lit = d.sub(toward).mul(2.2).add(0.55).clamp(0, 1);
-      const edge = d.mul(float(1).sub(d)).mul(4);
-      cloudCol = mix(shadowCol, litCol, lit).add(litCol.mul(forward).mul(edge).mul(0.9));
-      alpha = d.mul(0.92).mul(fade);
-    } else {
-      // five steps through the layer, front to back, each lit by one look toward the sun
-      const STEPS = 5;
-      let acc: V3 = vec3(0);
-      let trans: F = float(1);
-      for (let i = 0; i < STEPS; i++) {
-        const h = (i + 0.5) / STEPS;
-        const p = flat(LAYER_DEPTH * h);
-        const d = density(p, float(h));
-        const toward = density(p.add(sunXZ.mul(160)), float(Math.min(1, h + 0.25)));
-        const light = toward
-          .mul(-1.6)
-          .exp()
-          .mul(0.75)
-          .add(h * 0.25);
-        const a = d.mul(0.55);
-        const stepCol = mix(shadowCol, litCol, light).add(litCol.mul(forward).mul(float(1).sub(d)).mul(0.8));
-        acc = acc.add(stepCol.mul(a).mul(trans));
-        trans = trans.mul(float(1).sub(a));
-      }
-      const opacity = float(1).sub(trans);
-      cloudCol = acc.div(opacity.max(0.001));
-      alpha = opacity.mul(fade);
-    }
-    col = mix(col, cloudCol, alpha.clamp(0, 1));
-  }
+  // Task 12 (s32): our own clouds over the clear sky (skyLayer.ts), over the sun, moon and stars too
+  const clouds = !cloudMap
+    ? null
+    : mode === 'cards' || mode === 'band'
+      ? // the cards carry scattered cloud; only an overcast hour's deck is drawn behind them
+        createCloudLayer(u, cloudMap, 'deck', colorAt, (c) => Math.min(1, Math.max(0, (c - 0.55) * 3)))
+      : createCloudLayer(u, cloudMap, mode, colorAt);
+  if (clouds) col = clouds.over(colorAt(dir), col, dir);
 
   const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
   material.name = 'sky.material';
@@ -296,12 +236,14 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
     object: mesh,
     colorAt,
     horizonAt,
+    cloudsReady: () => clouds?.ready(),
     update(f) {
       skies.update(f.state);
       texA.value = skies.get(f.state.a);
       texB.value = skies.get(f.state.b);
       mesh.position.set(...f.pose.position);
-      if (mode !== 'photo') {
+      clouds?.update(f.state.a, f.state.b, u.skyWeight.value, windVector(f.hour.world), f.dtS);
+      if (mode === 'drift') {
         eyeA.value.set(...eyeOf(f.state.a));
         eyeB.value.set(...eyeOf(f.state.b));
         // aloft the wind is ~3x the ground's (coast x east, y north; three.js z is -north)
@@ -310,12 +252,6 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture, mod
         carried += speed * f.dtS;
         const k = speed > 1e-6 ? photoDrift(carried) / speed : 0;
         drift.value.set(wx * k, -wy * k);
-        // the layer's noise is read at p + carry: moving with the wind means carry runs against it
-        carry.value.x -= wx * f.dtS;
-        carry.value.y += wy * f.dtS;
-        const ca = CLOUD_COVER[STOP_IDS[f.state.a] ?? 'golden'];
-        const cb = CLOUD_COVER[STOP_IDS[f.state.b] ?? 'golden'];
-        cover.value = ca + (cb - ca) * u.skyWeight.value;
       }
     },
     setTier() {},

@@ -1,0 +1,95 @@
+{
+ "golden": {
+  "threshold": 0.1,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ },
+ "sunset": {
+  "threshold": 0.08,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ },
+ "dusk": {
+  "threshold": 0.1,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ },
+ "bluehour": {
+  "threshold": 0.08,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ },
+ "night": "same",
+ "midnight": "same",
+ "beforedawn": {
+  "threshold": 0.06,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ },
+ "firstlight": {
+  "threshold": 0.06,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ },
+ "sunrise": {
+  "threshold": 0.1,
+  "scales": [
+   8,
+   32
+  ],
+  "grow": 6,
+  "smooth": 8,
+  "feather": 4,
+  "whole": true,
+  "smooth_u": 90,
+  "smooth_v": 18
+ }
+}
