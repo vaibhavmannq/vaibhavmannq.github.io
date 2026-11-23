@@ -213,7 +213,7 @@ describe('true blacks: ?blacks= (Phase 2 Task 14, owner s30)', () => {
     expect(deep.fillGain).toBe(0.5);
     expect(lightValues(HOURS.dusk, ambA, ambB, 0, 'zero').skyFill).toBe(today.skyFill);
   });
-  it('mid keeps most of the fill (the shaded sides' colour) and a third of the floor', () => {
+  it('mid keeps most of the fill (the colour of shaded sides) and a third of the floor', () => {
     const today = lightValues(HOURS.dusk, ambA, ambB, 0);
     const mid = lightValues(HOURS.dusk, ambA, ambB, 0, 'mid');
     expect(mid.skyFill).toBeCloseTo(today.skyFill * 0.85, 9);
