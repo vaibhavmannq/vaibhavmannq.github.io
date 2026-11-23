@@ -32,6 +32,7 @@ import {
   SRGBColorSpace,
   type Texture,
 } from 'three/webgpu';
+import { STOPS } from '../journey/stops';
 import { STOP_IDS } from '../journey/types';
 import { runAll } from '../shared/slice';
 import { groundWeightsNode } from './ground';
@@ -201,7 +202,14 @@ function groundDetail(tex: Texture, macroTex: Texture, wxy: Node<'vec2'>, z: Nod
   const m = texture(macroTex, wxy.div(MACRO_TILE)).rgb;
   const m2 = texture(macroTex, vec2(wxy.y, wxy.x.negate()).div(MACRO_TILE * 0.37)).b;
   const dry = smoothstep(0.3, 0.7, m.r);
-  const grassHue = mix(vec3(1), mix(vec3(0.9, 1.04, 0.93), vec3(1.1, 1.0, 0.78), dry), grass);
+  // Sunset's meadow (Task 16e D, s33; prep-16e.md): around its eye the turf is a dry summer clifftop, gold-olive like the
+  // plants on it (where plants thinned, a lawn-green ground read as lawn); full to 120 m, gone by 180 m
+  const meadowDry = smoothstep(180, 120, wxy.sub(vec2(SUNSET_EYE[0], SUNSET_EYE[1])).length()).mul(DRY);
+  const grassHue = mix(
+    vec3(1),
+    mix(mix(vec3(0.9, 1.04, 0.93), vec3(1.1, 1.0, 0.78), dry), vec3(1.16, 0.98, 0.66), meadowDry),
+    grass,
+  );
   const shade = m.g
     .add(m2)
     .sub(1)
@@ -211,6 +219,10 @@ function groundDetail(tex: Texture, macroTex: Texture, wxy: Node<'vec2'>, z: Nod
   const macro = mix(vec3(1), grassHue.mul(shade), macroFade);
   return near.mul(macro) as Node<'vec3'>;
 }
+
+/** Sunset's eye (coast x, y) for its dry meadow ring, and the ring's strength (s33 16e D, temporary `?dry=`). */
+const SUNSET_EYE = STOPS.find((s) => s.id === 'sunset')?.cam ?? [0, 0, 0];
+const DRY = Number((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('dry')) ?? '1');
 
 /** The macro layer: metres per repeat, how far it holds, and its swing (see groundDetail). */
 const MACRO_TILE = 64;
