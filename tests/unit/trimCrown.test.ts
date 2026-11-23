@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type GroveProto, trimCrown } from '../../src/world/grove';
+import { bakeGrove, type GroveProto, trimCrown } from '../../src/world/grove';
 
 /** Cards on a vertical line, one every metre from 0.5 m up, each a 1 m square round its centre. */
 function proto(n: number): GroveProto {
@@ -50,5 +50,27 @@ describe("Sunset's framing tree crown (Task 16d, s33)", () => {
     expect(a.cardDepth.length).toBeGreaterThan(0);
     expect(a.cardDepth.length).toBeLessThan(10);
     expect(Array.from(p.cardPos)).toEqual(Array.from(before));
+  });
+});
+
+describe("the framing tree's wood rim is scoped to its own vertices (Task 16d C, s33)", () => {
+  const p: GroveProto = {
+    woodPos: new Float32Array([0, 0, 0, 0, 0, 2, 0.2, 0, 1]),
+    woodNrm: new Float32Array([1, 0, 0, 1, 0, 0, 1, 0, 0]),
+    woodIndex: new Uint16Array([0, 1, 2]),
+    cardPos: new Float32Array([-0.5, 0, 2, 0.5, 0, 2, 0.5, 0, 3, -0.5, 0, 3]),
+    cardBent: new Float32Array(12).fill(0.5),
+    cardDepth: new Float32Array([0.7]),
+  };
+  const inst = new Float32Array([0, 0, 0, 0, 1, 1, 1, 0, 0, 0]);
+  const flat = () => 5;
+  it('marks wood aux.y only when asked, and never touches the cards', () => {
+    const plain = bakeGrove({ instances: inst, protos: [p] }, flat);
+    const rim = bakeGrove({ instances: inst, protos: [p], woodRim: 1 }, flat);
+    for (let v = 0; v < 3; v++) {
+      expect(plain.aux[v * 4 + 1]).toBe(0);
+      expect(rim.aux[v * 4 + 1]).toBe(1);
+    }
+    for (let v = 3; v < 7; v++) expect(rim.aux[v * 4 + 1]).toBe(plain.aux[v * 4 + 1]);
   });
 });

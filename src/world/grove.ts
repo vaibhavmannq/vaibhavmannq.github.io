@@ -57,6 +57,11 @@ export interface Grove {
   /** 10 floats per plant: model, x, y, z (coast axes), scale x, y, z, turn x, y, z (radians, Blender XYZ) */
   instances: Float32Array;
   protos: GroveProto[];
+  /**
+   * A warm rim on these plants' wood where a low sun grazes it from behind (Task 16d C, s33; prep-16d.md: the Sunset
+   * render's framing tree), carried in the wood's free `aux.y` so no other plant drawn with this material changes. 0: none.
+   */
+  woodRim?: number;
 }
 
 /** Reads grove.bin (layout: tools/world/blender/export_parts.py export_grove). */
@@ -207,6 +212,7 @@ export function* bakeGroveSteps(grove: Grove, groundAt: HeightAt): Generator<voi
     const w0 = v;
     for (let k = 0; k < p.woodPos.length / 3; k++) {
       put(placePoint(inst, 0, p.woodPos.subarray(k * 3, k * 3 + 3)), apply(N, p.woodNrm.subarray(k * 3, k * 3 + 3)));
+      if (grove.woodRim) aux[v * 4 + 1] = grove.woodRim;
       v++;
     }
     for (const k of p.woodIndex) wood.push(w0 + k);
@@ -385,7 +391,22 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
     .add(glow.mul(float(1).sub(moonlit.mul(0.9))));
   // the baked key share and sky share at the leaf (a crown in a cliff's shadow takes no sun); per vertex, one varying
   const atLeaf = light.baked.at(positionWorld.add(vec3(0, 0.5, 0)));
-  const seen = byKey.mul(atLeaf.x).add(albedo.mul(hemi).mul(shade).mul(atLeaf.y)).add(albedo.mul(fillIrr).mul(shade));
+  // the warm rim (Task 16d C, s33): wood flagged in aux.y (only Sunset's framing tree), edges grazed by a sun behind
+  // them, on their sun side; not scaled by the baked shadow (a sun 1° up is "shadowed" by the bake, the rim is not)
+  const toEye = normalize(cameraPosition.sub(positionWorld));
+  const rim = light.keyColor
+    .mul(light.keyStrength)
+    .mul(saturate(dot(toEye.negate(), light.keyDir)))
+    .mul(pow(float(1).sub(dot(N, toEye).abs()), 3.0))
+    .mul(saturate(dot(N, light.keyDir).add(0.3)))
+    .mul(depth.mul(float(1).sub(leaf)))
+    .mul(float(1).sub(moonlit))
+    .mul(0.6);
+  const seen = byKey
+    .mul(atLeaf.x)
+    .add(albedo.mul(hemi).mul(shade).mul(atLeaf.y))
+    .add(albedo.mul(fillIrr).mul(shade))
+    .add(rim);
   const lit = varying(
     mix(seen, vec3(dot(seen, vec3(0.2126, 0.7152, 0.0722))).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)),
   );
@@ -524,6 +545,8 @@ const q = (name: string, def: string) =>
     .map(Number);
 const FO = q('fo', '-30,9,1.4,5.5') as [number, number, number, number];
 const FC = q('fc', '2.6,0.55,0.75') as [number, number, number];
+/** s33 16d C, temporary: `?rim=` the framing tree's rim strength (×0.6 in the shader). */
+const WOOD_RIM = q('rim', '1')[0] as number;
 
 /**
  * Sunset's framing tree (plan M8 Task 3, D38: "the old sunset" with a tree framing the left; owner meadow 10). s33 (Task
@@ -614,7 +637,7 @@ export function createGroveProps(
   crown?: { model: number; trim: CrownTrim },
 ): WorldPart {
   const protos = crown ? grove.protos.map((p, k) => (k === crown.model ? trimCrown(p, crown.trim) : p)) : grove.protos;
-  const g = bakeGrove({ instances, protos }, groundAt);
+  const g = bakeGrove({ instances, protos, woodRim: crown ? WOOD_RIM : 0 }, groundAt);
   const geometry = groveGeometry(g);
   const mesh = new Mesh(geometry, grove.material);
   mesh.name = name;
