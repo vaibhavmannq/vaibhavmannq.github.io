@@ -71,12 +71,12 @@
  "grove": {
   "file": "stops/cove/grove.bin",
   "scale": 4000,
-  "instances": 44,
+  "instances": 37,
   "protos": [
    {
     "kind": "island_tree_01",
-    "woodVerts": 1891,
-    "woodTris": 2425,
+    "woodVerts": 4026,
+    "woodTris": 5820,
     "cards": 500
    },
    {

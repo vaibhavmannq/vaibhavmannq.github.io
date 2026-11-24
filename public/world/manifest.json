@@ -69,12 +69,12 @@
   "grove": {
    "file": "stops/cove/grove.bin",
    "scale": 4000,
-   "instances": 44,
+   "instances": 37,
    "protos": [
     {
      "kind": "island_tree_01",
-     "woodVerts": 1891,
-     "woodTris": 2425,
+     "woodVerts": 4026,
+     "woodTris": 5820,
      "cards": 500
     },
     {
@@ -298,50 +298,50 @@
   },
   {
    "path": "light/ao-coarse.webp",
-   "bytes": 167670,
-   "sha256": "d742ee20acba534a53175d44c89b0b281d441d34f06135e970421db3bfe368c6",
+   "bytes": 167588,
+   "sha256": "b2754491f78788c3b1d961a04f7aba5dc36fe1f814817546340988fb4a90c845",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-golden.webp",
-   "bytes": 376630,
-   "sha256": "0137838ad0f315dbe9d428d0a92801ecedeec3d67ebd6080380fa7fc8b85534e",
+   "bytes": 376678,
+   "sha256": "34ac5d7181ac599641aac6ac62b1619ca3005125af56b01350058e9b7a1af7fc",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-midnight.webp",
-   "bytes": 313240,
-   "sha256": "110e018badd75bd766152f7124bd8ea6b658c171710ca857cda2f18bf4596fb1",
+   "bytes": 313542,
+   "sha256": "ef1321ec219f9b40d653ffea147c6ffdfa84c874b9b099ce7dc0975860320bbb",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-night.webp",
-   "bytes": 303118,
-   "sha256": "d5d8159e0e5c6945673450b111ed448203160e4fefe45c0de2ce291c1669f994",
+   "bytes": 303100,
+   "sha256": "16539687ac0843db6344b752724f1081f26e3817a617189d14765a3b777688a1",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-sunrise.webp",
-   "bytes": 358260,
-   "sha256": "56c5622d76f76240e13158e40df4fa61b6936743ae86ac72c539b4b8bc8eead5",
+   "bytes": 358508,
+   "sha256": "397a8ddf1c60747b813fc35869985ef9cf08dc4cacf4703aec054e4eb9378a57",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-sunset.webp",
-   "bytes": 358660,
-   "sha256": "894f9f13fc83e5e221865a1c8f32f679bba268938885ec372ae49a725d5b0135",
+   "bytes": 358902,
+   "sha256": "4eef8fe4fa26f6442cc2916b5d518dea657840d5058f33fd7036c03f7b6e46d7",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-fine-golden.webp",
-   "bytes": 108924,
-   "sha256": "8ace64db9228792edfed711eddba660ed680b8634c72b6cc996af9bf6671fc0c",
+   "bytes": 107764,
+   "sha256": "96729d826276bf983a5cfff0ef878e8b81b91805db4d7a0890c1eab482569f1c",
    "stage": "B",
    "stops": "all"
   },
@@ -354,22 +354,22 @@
   },
   {
    "path": "light/key-fine-night.webp",
-   "bytes": 151778,
-   "sha256": "29df21d6eb42ce124342d3b137056a9ffe4c1287bf67b6afd280468970f9581a",
+   "bytes": 150478,
+   "sha256": "dfa262de99f56a67ef4779570d2b1e0f43c8b390c5023a6b64daeecfed21aebb",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-fine-sunrise.webp",
-   "bytes": 122080,
-   "sha256": "4dc89c2b23f7c93fbf0ef9940bd771d6ad47f357c44a5532ccc9dbe8e035a9e3",
+   "bytes": 121134,
+   "sha256": "dab41cca099ebc625428de4f6c26ee2193f038a6e9337d0c8aba16691ce02c2e",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-fine-sunset.webp",
-   "bytes": 155600,
-   "sha256": "c9d6ecb88be4563d47434e665296f0bf26fefbfa2c68f4749689de12832b6fa9",
+   "bytes": 154102,
+   "sha256": "1020c7a589f52cb65745e30d6484f0e193867d67956ac22c126744ca25edd0bd",
    "stage": "B",
    "stops": "all"
   },
@@ -731,8 +731,8 @@
   },
   {
    "path": "stops/cove/grove.bin",
-   "bytes": 183840,
-   "sha256": "deb9d4b7d216ac2bdf54bc8634958a187edefe115aa87bd2e755935c63fd9d43",
+   "bytes": 225276,
+   "sha256": "e74b45c58a54cca27b60918baea7d11a6b8433fd47a559f6d8373657d07eecb7",
    "stage": "B",
    "stops": [
     "golden",

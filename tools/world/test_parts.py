@@ -441,7 +441,7 @@ def read_grove():
 
 def test_grove():
     """M3 Task 2: the cove's trees and shrubs (coast.py grove_plants) in the cove pack: each Poly Haven model as
-    simplified wood (<= 3 k triangles) and leaf cards (<= 600), every plant where the renders put it, standing on the
+    simplified wood (<= 3 k triangles; island_tree_01 <= 6 k since s33) and leaf cards (<= 600), every plant where the renders put it, standing on the
     ground, and the cards' bent normals pointing out of their crown."""
     import coastlib
     sys.path.insert(0, os.path.join(HERE, "blender"))
@@ -450,7 +450,7 @@ def test_grove():
     m, inst, protos = read_grove()
     plants = c.grove_plants()
     assert [p["kind"] for p in m["protos"]] == list(c.GROVE_KINDS)
-    assert len(inst) == len(plants) >= 40, len(inst)
+    assert len(inst) == len(plants) >= 35, len(inst)   # s33: 7 crest plants out for Sunset's view (44 -> 37)
     for row, p in zip(inst, plants):
         assert c.GROVE_KINDS[int(row[0])] == p["kind"]
         assert np.allclose(row[1:4], (p["x"], p["y"], p["z"]), atol=0.01), (row[1:4], p)
@@ -458,7 +458,7 @@ def test_grove():
         assert np.allclose(row[4:7], p["scale"], atol=1e-4) and np.allclose(row[7:10], p["rot"], atol=1e-4)
     for pr in protos:
         pm = pr["meta"]
-        assert pm["woodTris"] <= 3000 and 100 <= pm["cards"] <= 600, pm
+        assert pm["woodTris"] <= 6000 and 100 <= pm["cards"] <= 600, pm   # s33: island_tree_01 at 5.8 k (the framing tree)
         assert np.abs(np.linalg.norm(pr["bent"], axis=2) - 1).max() < 0.03
         assert pr["cards"][:, :, 2].max() > 1.0                                      # the crown above the root
         if pm["kind"].startswith("island_tree"):                                     # a trunk (the shrub's twigs: none)

@@ -1017,6 +1017,11 @@ LONE_TREE = (62.8, 145.8)       # Sunset's lone tree (grove_plants, group "lone"
 COVE_HOURS = ("golden", "sunset", "dusk", "firstlight", "sunrise")
 GROVE_KINDS = ("island_tree_01", "island_tree_02", "island_tree_03", "searsia_burchellii")
 
+# s33: plants (x, y) taken out of the crest for Sunset's view, and rim shrubs lowered (see grove_plants)
+SUNSET_CLEAR = [(12.9, 140.4), (6.9, 147.4), (7.9, 154.4), (-1.1, 153.4), (42.9, 149.4), (28.9, 138.4), (36.9, 154.4)]
+SUNSET_SQUAT = [(-9.1, 142.4), (9.9, 136.4), (-9.1, 136.7), (-4.6, 138.7), (-0.4, 137.0), (6.2, 136.4), (10.9, 136.7),
+                (14.7, 137.0), (19.1, 137.3)]
+
 def grove_plants():
     """Every tree and shrub of the cove, in coast axes: dicts with kind (GROVE_KINDS; "island_tree_01" is the old tree's
     model), x, y, z (the model's origin: the ground less its sink), scale (x, y, z), rot (radians, Blender XYZ) and group
@@ -1060,6 +1065,21 @@ def grove_plants():
     # the meadow's far ridge, 55 m out at 25 deg right of the stop's look, its crown against the sky right of the sun
     x, y = LONE_TREE
     put("island_tree_01", x, y, 0.25, (2.2,) * 3, (0, 0, 200), "lone")
+    # s33 (owner, Task 16): from Sunset's meadow the crest's trees hid the arch and the sun and its rim scrub read as a
+    # black hedge; from Golden they are the headland's treeline. Chosen in the browser (`?hide=`, `?squat=`): the 7 that
+    # only crowd Sunset's view are gone, and the rim's shrubs are wind-cut cushions at 60 % of their height, under
+    # Sunset's line of sight but still on Golden's skyline. Matched by place, so a change to the lists above cannot
+    # drop the wrong plant.
+    near = lambda p, q: abs(p["x"] - q[0]) < 0.25 and abs(p["y"] - q[1]) < 0.25
+    gone = [q for q in SUNSET_CLEAR if any(near(p, q) for p in out)]
+    assert len(gone) == len(SUNSET_CLEAR), f"Sunset clear: {len(gone)} of {len(SUNSET_CLEAR)} found"
+    out = [p for p in out if not any(near(p, q) for q in SUNSET_CLEAR)]
+    squat = 0
+    for p in out:
+        if any(near(p, q) for q in SUNSET_SQUAT):
+            p["scale"] = (p["scale"][0], p["scale"][1], p["scale"][2] * 0.6)
+            squat += 1
+    assert squat == len(SUNSET_SQUAT), f"Sunset squat: {squat} of {len(SUNSET_SQUAT)} found"
     return out
 
 # ---------------- render setup ----------------
