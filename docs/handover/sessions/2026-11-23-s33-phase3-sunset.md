@@ -47,6 +47,14 @@ preparing or for researching"): `.superpowers/w100/s33/prep-16d.md`, `prep-16e.m
 - Temporary switches to settle or remove: `?glow= ?aur= ?cw= ?cl=nocrop ?gg= ?fs= ?fo= ?fc= ?mid= ?gust=`.
 - Servers left: 4181 (main dist), 4186 (pre-s33 build, `s33/dist-head`), 4187 (`s33/dist-16e`).
 
+## Day 2 (2026-11-24) and the close
+- Owner: "looks beautiful"; then "A and do until you feel everything is 100%". Done: far flowers as heads (−43 %
+  triangles, look kept), the tree's warm rim, shrubs on the hill, dry gold turf, 42 cloud shapes, a finer trunk, the
+  crest opened for the arch and sun (owner's pick, Golden's treeline kept), name and line hidden until M9 (`?name=on`),
+  blacks `today` (owner's test). Ledger R249–R251. Sunset ~84 %.
+- Learned: run browser checks alone (world tests on the CPU made a fake 500 ms freeze); servers do not survive a
+  restart; a scrolled/partial frame means a stale test profile (R243).
+
 ## Next
-Phone check on the final build (cool phone), then 16f: owner's test link with the switches, his notes. Then the carried
-16c/16d/16e items, or Golden (journey order) if he calls Sunset good enough for now.
+The phone on today's build (far flowers' saving). Then, if the owner says go, Sunset's last stretch (R251's plan: sun
+shafts and motes first), or Golden (journey order).

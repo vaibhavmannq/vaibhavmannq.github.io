@@ -363,8 +363,11 @@ no borrowed set pieces (no towers, piano, etc.).
   flowers by kind, the framing tree placed so its trunk reads, tussocks and a gust on the hill; blacks `mid` by default
   (owner). The lost phone tier on II → III is heat, not the clouds (old build the same). Sunset 72 → ~78 %. Helpers
   did read-only prep (owner's rule). Test tool fixed: Chrome now really closes (R243).
-- **Next (s34):** the phone on the final Sunset build (cool phone), the owner's test of Sunset, then its carry list or
-  Golden. Phase 3: 0 of 17 closed, Sunset ~75 % through.
+- **s33 day 2:** the owner called Sunset "beautiful" and asked for 100 %: far flowers as heads, the tree's rim and finer
+  trunk, shrubs, dry turf, 42 clouds, the crest opened for the arch and sun (Golden's treeline kept), blacks `today`, the
+  name hidden until M9. Sunset ~84 % (R251, with a plan to ~95).
+- **Next (s34):** the phone on today's build; then Sunset's last stretch (sun shafts and motes first) or Golden.
+  Phase 3: 0 of 17 closed; Sunset nearly there.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
