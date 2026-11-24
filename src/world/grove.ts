@@ -538,15 +538,11 @@ export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart 
   };
 }
 
-/** s33 16d, temporary: `?fo=offsetDeg,metres,scale,turn` and `?fc=minZ,keep,scale` to pick the framing tree's place and crown. */
-const q = (name: string, def: string) =>
-  ((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get(name)) ?? def)
-    .split(',')
-    .map(Number);
-const FO = q('fo', '-30,9,1.4,5.5') as [number, number, number, number];
-const FC = q('fc', '2.6,0.55,0.75') as [number, number, number];
-/** s33 16d C, temporary: `?rim=` the framing tree's rim strength (×0.6 in the shader). */
-const WOOD_RIM = q('rim', '1')[0] as number;
+/** The framing tree's place (degrees from the gaze, metres, scale, turn) and crown trim, picked in the browser (s33). */
+const FO = [-30, 9, 1.4, 5.5] as const;
+const FC = [2.6, 0.55, 0.75] as const;
+/** Its wood's rim strength (×0.6 in the shader; 2.5 read plastic, s33). */
+const WOOD_RIM = 1;
 
 /**
  * Sunset's framing tree (plan M8 Task 3, D38: "the old sunset" with a tree framing the left; owner meadow 10). s33 (Task

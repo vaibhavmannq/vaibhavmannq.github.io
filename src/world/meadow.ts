@@ -54,10 +54,8 @@ export const FAR_FROM = 22;
 /** Sunset's flowers' stalks × this, heads unchanged (s33: tried 1.7 with true-size heads; read as pink mushrooms; 1 keeps the approved look, scatter's flowerScale sizes them). */
 export const SUNSET_TALL = 1;
 
-/** s33 16c, temporary: `?gg=` the backlit grass glow (0.25 before). */
-const GRASS_GLOW = Number(
-  (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('gg')) ?? '0.45',
-);
+/** The backlit grass glow (0.25 before s33; 0.45 matches the render's gold tips). */
+const GRASS_GLOW = 0.45;
 
 /**
  * The cove's ground cover (plan M3 Task 1): tall tufts, a short meadow and three flowers, one instanced draw per

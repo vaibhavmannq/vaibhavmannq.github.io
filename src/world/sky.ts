@@ -43,17 +43,11 @@ const hash3 = (c: V3): F => fract(sin(dot(c, vec3(127.1, 311.7, 74.7))).mul(4375
 /** Where the painted horizon rows are read: inside the bottom HORIZON_ROWS (6) rows of a 1024-row photo. */
 const HORIZON_V = 2.5 / 1024;
 
-/** s33 16b, temporary: `?glow=strength,width,height` the gold lobe toward a low sun (width 1 − cos, height in y). */
-const GLOW = (
-  (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('glow')) ?? '1.6,0.25,0.18'
-)
-  .split(',')
-  .map(Number) as [number, number, number];
+/** The gold lobe toward a low sun: strength, width (1 − cos), height (in y); picked against the render (s33, R241). */
+const GLOW = [1.6, 0.25, 0.18] as const;
 
-/** s33 16b, temporary: `?aur=core,skirt,wide` strengths of the sun's aureole, to pick by eye. */
-const AUR = ((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('aur')) ?? '2,0.6,0.12')
-  .split(',')
-  .map(Number) as [number, number, number];
+/** The sun's aureole: core, skirt, wide strengths (s33, R241). */
+const AUR = [2, 0.6, 0.12] as const;
 
 export interface Sky extends WorldPart {
   /** The sky colour seen along a direction (three.js axes), for reflections in water and wet sand. */

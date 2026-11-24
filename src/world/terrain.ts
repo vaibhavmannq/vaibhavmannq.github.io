@@ -223,9 +223,9 @@ function groundDetail(tex: Texture, macroTex: Texture, wxy: Node<'vec2'>, z: Nod
   return near.mul(macro) as Node<'vec3'>;
 }
 
-/** Sunset's eye (coast x, y) for its dry meadow ring, and the ring's strength (s33 16e D, temporary `?dry=`). */
+/** Sunset's eye (coast x, y) for its dry meadow ring, and the ring's strength (s33 16e D). */
 const SUNSET_EYE = STOPS.find((s) => s.id === 'sunset')?.cam ?? [0, 0, 0];
-const DRY = Number((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('dry')) ?? '1');
+const DRY = 1;
 
 /** The macro layer: metres per repeat, how far it holds, and its swing (see groundDetail). */
 const MACRO_TILE = 64;

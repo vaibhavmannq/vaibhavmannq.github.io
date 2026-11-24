@@ -52,11 +52,9 @@ export function shadowFloor(hour: HourPreset): RGB {
 /**
  * `mid` (owner, s33: "going all black … made every colour we worked so hard on vanish - can we find a middle ground"):
  * the colour of shaded sides comes from the sky's fill, which `deep` halves; `mid` keeps most of it and a third of the
- * floor, so the deepest pixels still go dark. s33, temporary: `?mid=floor,fill` to tune.
+ * floor, so the deepest pixels still go dark. (The owner then chose `today`; `mid` stays as `?blacks=mid`.)
  */
-const MID = ((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('mid')) ?? '0.35,0.85')
-  .split(',')
-  .map(Number) as [number, number];
+const MID = [0.35, 0.85] as const;
 export type Blacks = 'today' | 'half' | 'mid' | 'zero' | 'deep';
 const BLACKS_SHARE: Readonly<Record<Blacks, number>> = { today: 1, half: 0.5, mid: MID[0], zero: 0, deep: 0 };
 /** How much of the sky's fill and the bounce light each mode keeps. */

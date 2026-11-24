@@ -105,12 +105,8 @@ const DRAW_MAX = 11_000;
 /** The wind aloft never under this, m/s: 24 m/s at 2 km reads as motion while the visitor rests (owner: "alive"). */
 const MIN_ALOFT = 24;
 
-/** s33 16a, temporary (until the phone's A/B): `?cl=nocrop` draws the whole quads. */
-/** s33 16b, temporary: `?cw=` the warm low-sun light's strength (0 = before). */
-const CW = Number((typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('cw')) ?? '1.4');
-const CL = new Set(
-  (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('cl') ?? '')).split(','),
-);
+/** The warm low-sun light on the cards (Task 16b, s33; picked by eye at Sunset against the render). */
+const CW = 1.4;
 
 /** An empty atlas, filled later from cards.png (no shader rebuild when the pixels arrive). */
 export function cardAtlasTexture(): DataTexture {
@@ -456,7 +452,8 @@ export function createCloudCards(
         const ph = card.h * CELL;
         iRect.setXYZW(n, col * CELL + (CELL - pw) / 2, row * CELL + CELL - 2, pw, ph);
         // mirrored at random for variety: the normal from the height lights it from the true side either way
-        const cr = CL.has('nocrop') ? undefined : crops[b.card % meta.cards.length];
+        // cropped to its visible cloud (16a; the phone: +1.7 fps, a third fewer slow frames on VI → VII, R244)
+        const cr = crops[b.card % meta.cards.length];
         const [u0, u1, v0, v1] = cr ?? [0, 1, 0, 1];
         if (b.rank > 0.5) iCrop.setXYZW(n, u0, u1, v0, v1);
         else iCrop.setXYZW(n, 1 - u1, 1 - u0, v0, v1);
