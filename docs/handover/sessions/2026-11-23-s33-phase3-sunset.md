@@ -55,6 +55,16 @@ preparing or for researching"): `.superpowers/w100/s33/prep-16d.md`, `prep-16e.m
 - Learned: run browser checks alone (world tests on the CPU made a fake 500 ms freeze); servers do not survive a
   restart; a scrolled/partial frame means a stale test profile (R243).
 
+## Day 2, the end: speed and the phone (R252–R254, D60)
+- Every laptop GPU number had shared the GPU with the owner's site tab in Brave (15 % at rest): close site tabs first.
+- Clean: the 60 fps rule at low was not met at six stops, and the pre-clouds build missed it at five (an older gap).
+- Ground in 5 × 5 tiles (−0.5 M triangles at every stop, eye and mirror); at low the mirror redrawn every 3rd frame at
+  rest. Low: every ride 57–59 fps (faster than before); at rest 60 at five stops. Cold ride: 0 late pipelines, 0 slow.
+- Phone: today faster than the old build on Sunset's rides (I → II 58.3 vs 56.3, II → III 56.3 vs 53.6), level on
+  VI → VII; natural nights the same tier path, today equal or better on every ride.
+- Tuning switches written in as values. Commits through the docs of R254.
+
 ## Next
-The phone on today's build (far flowers' saving). Then, if the owner says go, Sunset's last stretch (R251's plan: sun
-shafts and motes first), or Golden (journey order).
+s34: Sunset to ~95 % (plan Task 16, "Status at the end of s33": 16g shafts and motes first, then 16h–16l, 16f close with
+the owner's test); speed carries (Sunrise 54 at rest on low, the II → III judder after a short rest). s35: Golden, then
+the other places in journey order.

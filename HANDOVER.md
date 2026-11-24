@@ -366,8 +366,11 @@ no borrowed set pieces (no towers, piano, etc.).
 - **s33 day 2:** the owner called Sunset "beautiful" and asked for 100 %: far flowers as heads, the tree's rim and finer
   trunk, shrubs, dry turf, 42 clouds, the crest opened for the arch and sun (Golden's treeline kept), blacks `today`, the
   name hidden until M9. Sunset ~84 % (R251, with a plan to ~95).
-- **Next (s34):** the phone on today's build; then Sunset's last stretch (sun shafts and motes first) or Golden.
-  Phase 3: 0 of 17 closed; Sunset nearly there.
+- **s33 end (R252–R254, D60):** clean speed (close the owner's site tabs first!): ground tiles and a resting mirror; low
+  rides 57–59 fps; phone faster than before on Sunset's rides; switches written in.
+- **Next (s34): Sunset to ~95 %** (plan Task 16 status block: 16g shafts and motes, 16h violet high sky, 16i leaf glow,
+  16j near flowers, 16k petals/birds/sound, 16l the feet, 16f close + owner's test). **s35: Golden**, then journey
+  order. Phase 3: 0 of 17 closed; Sunset ~84 %.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk

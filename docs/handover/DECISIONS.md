@@ -398,3 +398,10 @@ preparing or for researching": helper agents do research and prep notes only; bu
 session (one test browser on this laptop). Also: judging shots at 1920 × 1080.
   Amended at the end of s33 after his own test of `deep`, `mid` and `today`: "&blacks=today is better and so is gust":
   **`today` is the default again** (the floor as before Task 14); `mid` and `deep` stay as switches; the gust is kept.
+
+**D60 · 2026-11-24 · (owner, s33) Sunset's composition: one framing tree, the arch and sun clear, Golden's treeline kept.**
+From five running previews he picked "only the near left tree" and refused a raised eye (the sun road); "the trees at the
+right most side" seen from Golden must stay. Resolved by removing from the world only the 7 crest plants that crowd
+Sunset (invisible or minor from Golden) and making the rim's shrubs wind-cut cushions at 60 % height (coast.py
+SUNSET_CLEAR / SUNSET_SQUAT). Also from him: blacks `today` (D59 amended), the gust kept, the name and line hidden until
+M9, and the order for next sessions: Sunset to ~95 % in s34, the other places from s35.
