@@ -29,11 +29,11 @@ describe('TIERS (spec §13.1)', () => {
   });
 
   it('match the spec table', () => {
-    expect(TIERS[0]).toEqual({ scale: 0.5, reflect: 0.25, bloom: false, grass: 0.4, leaves: 0.8 });
-    expect(TIERS[1]).toEqual({ scale: 0.75, reflect: 0.3, bloom: true, grass: 0.7, leaves: 1.0 }); // s22: mirror 0.35 → 0.3 (read smooth)
-    expect(TIERS[2]).toEqual({ scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0 });
+    expect(TIERS[0]).toEqual({ scale: 0.5, reflect: 0.25, bloom: false, grass: 0.4, leaves: 0.8, mirrorEvery: 3 }); // s33: the mirror every 3rd frame at rest
+    expect(TIERS[1]).toEqual({ scale: 0.75, reflect: 0.3, bloom: true, grass: 0.7, leaves: 1.0, mirrorEvery: 1 }); // s22: mirror 0.35 → 0.3 (read smooth)
+    expect(TIERS[2]).toEqual({ scale: 1.0, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0, mirrorEvery: 1 });
     // ultra: only the drawing size rises, to what held 60 fps at Night on the owner's phone (s24)
-    expect(TIERS[3]).toEqual({ scale: 1.15, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0 });
+    expect(TIERS[3]).toEqual({ scale: 1.15, reflect: 0.5, bloom: true, grass: 1.0, leaves: 1.0, mirrorEvery: 1 });
   });
 
   it('never get cheaper as the tier rises', () => {

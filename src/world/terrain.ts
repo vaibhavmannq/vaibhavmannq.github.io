@@ -21,6 +21,7 @@ import {
   vec3,
 } from 'three/tsl';
 import {
+  Box3,
   BufferAttribute,
   BufferGeometry,
   Group,
@@ -29,8 +30,10 @@ import {
   NoColorSpace,
   type Node,
   RepeatWrapping,
+  Sphere,
   SRGBColorSpace,
   type Texture,
+  Vector3,
 } from 'three/webgpu';
 import { STOPS } from '../journey/stops';
 import { STOP_IDS } from '../journey/types';
@@ -245,6 +248,53 @@ function faceUp(g: BufferGeometry): void {
   g.computeVertexNormals();
 }
 
+/**
+ * The base grid cut into tiles that share its vertices (s33, R252: the 401 × 501 grid was one mesh with culling off, so
+ * its 400 k triangles were drawn whole for the eye and again for the mirror at every stop, the biggest cost at low).
+ * Each triangle goes to the tile its centre falls in; each tile gets its own index and bounding sphere, so the camera
+ * and the mirror's camera skip the tiles out of view. Pure: the same triangles, in the same order within a tile.
+ */
+export function tileGeometry(g: BufferGeometry, tilesX: number, tilesZ: number): BufferGeometry[] {
+  const pos = g.getAttribute('position');
+  const idx = g.getIndex();
+  if (!idx) return [g];
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (let v = 0; v < pos.count; v++) {
+    minX = Math.min(minX, pos.getX(v));
+    maxX = Math.max(maxX, pos.getX(v));
+    minZ = Math.min(minZ, pos.getZ(v));
+    maxZ = Math.max(maxZ, pos.getZ(v));
+  }
+  const lists: number[][] = Array.from({ length: tilesX * tilesZ }, () => []);
+  const at = (v: number) => idx.getX(v);
+  for (let t = 0; t < idx.count; t += 3) {
+    const a = at(t);
+    const b = at(t + 1);
+    const c = at(t + 2);
+    const cx = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3;
+    const cz = (pos.getZ(a) + pos.getZ(b) + pos.getZ(c)) / 3;
+    const tx = Math.min(tilesX - 1, Math.floor(((cx - minX) / (maxX - minX || 1)) * tilesX));
+    const tz = Math.min(tilesZ - 1, Math.floor(((cz - minZ) / (maxZ - minZ || 1)) * tilesZ));
+    (lists[tz * tilesX + tx] as number[]).push(a, b, c);
+  }
+  return lists
+    .filter((l) => l.length > 0)
+    .map((l) => {
+      const t = new BufferGeometry();
+      for (const name of Object.keys(g.attributes)) t.setAttribute(name, g.getAttribute(name));
+      t.setIndex(new BufferAttribute(new Uint32Array(l), 1));
+      const box = new Box3();
+      const p = new Vector3();
+      for (const v of l) box.expandByPoint(p.fromBufferAttribute(pos, v));
+      t.boundingBox = box;
+      t.boundingSphere = box.getBoundingSphere(new Sphere());
+      return t;
+    });
+}
+
 /** The horizon ring out to 7 km: quads inside the base grid are skipped, edge vertices tuck 1.2 m under it (slice). */
 export function ringGeometry(q: Uint16Array, r: RingMeta, base: GridMeta): BufferGeometry {
   const x1 = base.x0 + (base.nx - 1) * base.step;
@@ -382,13 +432,13 @@ export function createTerrain(
   }
 
   const group = new Group();
-  const base = new Mesh(baseGeo ?? baseGeometry(heights, meta.heights), material);
+  // the base grid in 5 × 5 tiles the camera and the mirror can skip (s33, R252)
+  const base = tileGeometry(baseGeo ?? baseGeometry(heights, meta.heights), 5, 5).map((g) => new Mesh(g, material));
   const far = new Mesh(ringGeometry(ring, meta.ring, meta.heights), material);
-  base.frustumCulled = false;
   far.frustumCulled = false;
   const fine = patches.map((g) => new Mesh(g, material));
-  group.add(base, far, ...fine);
-  const all = [base, far, ...fine];
+  group.add(...base, far, ...fine);
+  const all = [...base, far, ...fine];
   return {
     object: group,
     material,

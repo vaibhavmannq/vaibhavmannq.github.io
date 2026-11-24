@@ -28,6 +28,7 @@ import {
   Group,
   HalfFloatType,
   LinearFilter,
+  Matrix4,
   Mesh,
   MeshBasicNodeMaterial,
   type Node,
@@ -118,6 +119,15 @@ export interface Mirror {
   target(eye: Camera): RenderTarget;
 }
 
+/** The camera has not moved more than 2 mm nor turned more than ~0.01° between these two world matrices. Pure. */
+export function stillSince(a: Matrix4, b: Matrix4): boolean {
+  const x = a.elements;
+  const y = b.elements;
+  for (let i = 0; i < 12; i++) if (Math.abs((x[i] as number) - (y[i] as number)) > 2e-4) return false;
+  for (let i = 12; i < 15; i++) if (Math.abs((x[i] as number) - (y[i] as number)) > 2e-3) return false;
+  return true;
+}
+
 export function createSea(
   heights: DataTexture,
   meta: GridMeta,
@@ -140,6 +150,30 @@ export function createSea(
       const v = own(c);
       v.layers.disable(EYE_ONLY_LAYER);
       return v;
+    };
+  }
+  // While the camera is still, the mirror is redrawn every `mirrorEvery` frames (TierSettings; s33, R252: at low the
+  // mirror cost 3–4 ms at the sunlit stops). Still: moved under 2 mm and turned under ~0.01° since the last redraw (the
+  // resting drift moves ~0.1 mm a frame). A look-around drag, a ride or a tier change redraws at once.
+  let mirrorEvery = tier.mirrorEvery;
+  let skipped = 0;
+  const lastPose = new Matrix4();
+  let posed = false;
+  const mirrorNode = base as unknown as { updateBefore?: (frame: { camera?: Camera }) => unknown } | undefined;
+  if (mirrorNode?.updateBefore) {
+    const redraw = mirrorNode.updateBefore.bind(mirrorNode);
+    mirrorNode.updateBefore = (frame) => {
+      const cam = frame.camera;
+      if (cam && mirrorEvery > 1 && posed && skipped + 1 < mirrorEvery && stillSince(lastPose, cam.matrixWorld)) {
+        skipped++;
+        return undefined;
+      }
+      skipped = 0;
+      if (cam) {
+        lastPose.copy(cam.matrixWorld);
+        posed = true;
+      }
+      return redraw(frame);
     };
   }
   const chop = uniform(1);
@@ -312,6 +346,8 @@ export function createSea(
     },
     setTier(t) {
       reflection.reflector.resolutionScale = t.reflect;
+      mirrorEvery = t.mirrorEvery;
+      posed = false; // the next frame redraws at the new size
     },
     dispose() {
       sea.geometry.dispose();
