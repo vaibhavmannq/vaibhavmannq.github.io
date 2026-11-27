@@ -10,6 +10,7 @@ import {
   LIFE_STOPS,
   type LifeKind,
   lifeSprites,
+  MOTES,
   RING_SPEED,
   ringAt,
   type Sprite,
@@ -18,7 +19,7 @@ import {
 const base = JSON.parse(readFileSync('public/world/base/base.json', 'utf8'));
 const hb = readFileSync('public/world/base/heights.bin');
 const ground = createSurfaceSampler(new Uint16Array(hb.buffer, hb.byteOffset, hb.byteLength / 2), base.heights);
-const KINDS: LifeKind[] = ['gull', 'bat', 'flock', 'petal', 'dew'];
+const KINDS: LifeKind[] = ['gull', 'bat', 'flock', 'petal', 'dew', 'mote'];
 const at = (stop: StopId, t: number, since = t, reduced = false) =>
   lifeSprites(stop, t, since, HOURS[stop].world, ground, reduced);
 const times = Array.from({ length: 241 }, (_, i) => i * 0.25); // a minute
@@ -181,6 +182,36 @@ describe('the fish ring at First light', () => {
       const gap = (starts[i] as number) - (starts[i - 1] as number);
       expect(gap).toBeGreaterThanOrEqual(4 - 1e-6);
       expect(gap).toBeLessThanOrEqual(9 + 1e-6);
+    }
+  });
+});
+
+// Task 16g (s34): Sunset's motes hang in front of the eye over the turf (one drifting past the lens is faded by the
+// shader) and drift slowly
+describe('motes', () => {
+  it('are at Sunset only, all of them, in the air ahead, and off under reduced motion', () => {
+    for (const stop of STOP_IDS) {
+      const n = at(stop, 10).filter((s) => s.kind === 'mote').length;
+      expect(n).toBe(stop === 'sunset' ? MOTES : 0);
+    }
+    expect(at('sunset', 10, 10, true).some((s) => s.kind === 'mote')).toBe(false);
+    const sh = SHOTS.sunset;
+    for (const t of [0, 7.5, 33, 90])
+      for (const s of at('sunset', t).filter((m) => m.kind === 'mote')) {
+        const d = Math.hypot(s.x - sh.cam[0], s.y - sh.cam[1]);
+        expect(d).toBeLessThan(25); // 16 m out, ±10 m across, ±4.5 m of drift
+        expect(s.z).toBeGreaterThan(Math.max(0, ground(s.x, s.y)) + 0.1);
+        expect(s.alpha).toBeGreaterThanOrEqual(0);
+        expect(s.alpha).toBeLessThanOrEqual(1);
+      }
+  });
+  it('move under 0.4 m/s', () => {
+    const a = at('sunset', 20).filter((m) => m.kind === 'mote');
+    const b = at('sunset', 20.25).filter((m) => m.kind === 'mote');
+    for (let i = 0; i < a.length; i++) {
+      const [p, q] = [a[i] as Sprite, b[i] as Sprite];
+      const step = Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z);
+      if (step < 3) expect(step / 0.25).toBeLessThan(0.4); // a wrap jumps the drift's length, faded out
     }
   });
 });

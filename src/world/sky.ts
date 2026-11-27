@@ -1,4 +1,5 @@
 import {
+  atan,
   cameraPosition,
   dot,
   equirectUV,
@@ -48,6 +49,19 @@ const GLOW = [1.6, 0.25, 0.18] as const;
 
 /** The sun's aureole: core, skirt, wide strengths (s33, R241). */
 const AUR = [2, 0.6, 0.12] as const;
+
+/**
+ * The crepuscular rays: strength, reach (1 − cos: 0.1 ≈ 26°), how much a shadow beam darkens, how much a light beam
+ * adds of the sun's gold, drift (radians of fan per second). `?rays=a,b,c,d,e` while tuning (s34).
+ */
+const RAYS: number[] = [2, 0.11, 0.25, 0.65, 0.004];
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('rays') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < RAYS.length) RAYS[i] = n;
+  });
+}
 
 export interface Sky extends WorldPart {
   /** The sky colour seen along a direction (three.js axes), for reflections in water and wet sand. */
@@ -130,6 +144,54 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     .mul(low)
     .mul(smoothstep(-0.04, 0.01, dir.y));
   col = col.add(u.keyColor.mul(aureole));
+
+  // Crepuscular rays (Task 16g, s34; reference book §light): a low sun behind cloud past the horizon throws a fan of
+  // light and shadow beams across the hazy sky, radiating from the sun, strongest 3-30° from it, gone by ~60°. Each beam
+  // is a direction around the sun (its polar angle), so the fan is a sum of whole-number sines of that angle (no seam),
+  // drifting slowly as the far clouds do. Light beams take the sun's gold, shadow beams only darken. Drawn on the dome
+  // alone, so the sea's mirror shows them and nothing else pays; behind the glow's uniform branch.
+  const raysFn = Fn(([c, d]: [V3, V3]) => {
+    const out = vec3(0).toVar();
+    out.assign(c);
+    If(glowOn.greaterThan(0.001), () => {
+      const s = normalize(u.keyDir as unknown as V3);
+      const up = normalize(
+        vec3(0, 1, 0)
+          .sub(s.mul(s.y))
+          .add(vec3(0, 0.0001, 0)),
+      );
+      const right = s.cross(up);
+      const around = atan(dot(d, right), dot(d, up));
+      const drift = time.mul(RAYS[4]);
+      const beam = sin(around.mul(11).add(drift))
+        .add(sin(around.mul(23).sub(drift.mul(1.7)).add(1.3)).mul(0.7))
+        .add(sin(around.mul(41).add(drift.mul(0.6)).add(4.1)).mul(0.45))
+        .add(sin(around.mul(67).add(2.6)).mul(0.3));
+      // a few distinct beams of uneven width with wide gaps, not a regular sunburst: only the sum's tops are light beams,
+      // only its troughs shadow; most of the fan is the sky as it was
+      const lit = smoothstep(0.7, 1.9, beam)
+        .sub(smoothstep(-0.9, -2.0, beam).mul(0.8))
+        .add(0.5);
+      const x = float(1).sub(dot(d, s)); // 1 − cos of the angle to the sun
+      const reach = smoothstep(0.0012, 0.008, x)
+        .mul(x.div(RAYS[1]).negate().exp())
+        .mul(smoothstep(-0.005, 0.05, d.y))
+        .mul(glowOn)
+        // only a sun on the horizon (Sunset 1°): at Golden's 3.6° the same fan read as a hard white sunburst (s34); Golden
+        // judges its own in its own pass
+        .mul(smoothstep(0.06, 0.03, s.y));
+      const k = reach.mul(RAYS[0]);
+      const gold = glowHue.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
+      // lit: 0.5 the sky as it was, up to 1.5 a light beam, down to −0.3 a shadow one
+      out.assign(
+        c
+          .mul(float(1).sub(k.mul(RAYS[2]).mul(float(0.5).sub(lit).max(0))))
+          .add(gold.mul(k.mul(RAYS[3]).mul(lit.sub(0.5).max(0)))),
+      );
+    });
+    return out;
+  });
+  col = raysFn(col, dir) as unknown as V3;
 
   // The moon (owner night-sky-and-moon 3, 4, 5, 8): a small sharp disc, lit as a crescent by its phase, the dark part
   // faintly grey (earthshine), a soft halo that lights the sky and cloud beside it. Tested on squared angles

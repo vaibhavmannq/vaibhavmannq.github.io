@@ -6,6 +6,7 @@ import {
   exp,
   float,
   max,
+  min,
   mix,
   normalize,
   select,
@@ -41,15 +42,16 @@ import type { WorldPart } from './part';
  * mirror (VIII, in the sea shader). One sprite draw for all but the ring; off under reduced motion except the dew.
  */
 
-export type LifeKind = 'gull' | 'bat' | 'flock' | 'petal' | 'dew';
+export type LifeKind = 'gull' | 'bat' | 'flock' | 'petal' | 'dew' | 'mote';
 export const LIFE_STOPS: Record<LifeKind, StopId[]> = {
   gull: ['golden', 'sunset', 'sunrise'],
   bat: ['dusk'],
   flock: ['sunrise'],
   petal: ['sunset'],
   dew: ['sunrise'],
+  mote: ['sunset'],
 };
-const KIND_INDEX: Record<LifeKind, number> = { gull: 0, bat: 1, flock: 2, petal: 3, dew: 4 };
+const KIND_INDEX: Record<LifeKind, number> = { gull: 0, bat: 1, flock: 2, petal: 3, dew: 4, mote: 5 };
 
 /** Seconds after arriving at Sunrise before the flock lifts. */
 export const FLOCK_AFTER = 1.5;
@@ -274,6 +276,68 @@ function petals(t: number, world: Pick<WorldState, 'windAz' | 'beaufort'>, groun
   }
 }
 
+/** A mote's flare toward the sun: the lobe's power and its gain over the key light (`?mote=lobe,gain` while tuning). */
+const MOTE_TUNE = (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('mote') ?? ''))
+  .split(',')
+  .map(Number.parseFloat);
+const MOTE_LOBE = Number.isFinite(MOTE_TUNE[0]) ? (MOTE_TUNE[0] as number) : 3;
+const MOTE_GAIN = Number.isFinite(MOTE_TUNE[1]) ? (MOTE_TUNE[1] as number) : 40;
+/** How many motes hang in Sunset's air (Task 16g). */
+export const MOTES = 300;
+
+/**
+ * Sunset's motes (Task 16g, s34; the owner's backlit-meadow photo, reference book §light: pollen, dust and seed fluff
+ * over a summer meadow show only against a low sun, as points that flare and fade as they turn). In a wedge in front of
+ * the eye, 1.5-16 m out (most near), 0.3-3 m over the turf; carried by the wind at a quarter of its speed and lifted
+ * by the warm air, each wobbling on its own; a few larger tufts of seed fluff. They wrap round the wedge, faded at its
+ * ends. The shader brightens them toward the sun.
+ */
+function motes(t: number, world: Pick<WorldState, 'windAz' | 'beaufort'>, groundAt: HeightAt, out: Sprite[]) {
+  const [wx, wy] = windVector(world);
+  const w = Math.hypot(wx, wy) || 1;
+  const [ux, uy] = [wx / w, wy / w];
+  const s = SHOTS.sunset;
+  const look = s.look[0] * D2R;
+  const [fx, fy] = [Math.sin(look), Math.cos(look)];
+  const L = 9; // metres of drift before a mote wraps
+  // slow and lazy: pollen hangs in the warm evening air (and the high tier's temporal smoothing keeps a slow point whole)
+  const speed = 0.07 * Math.max(w, 1.2);
+  for (let i = 0; i < MOTES; i++) {
+    const r = rngFor(500, i);
+    const d = 1.5 + 14.5 * r() ** 1.6;
+    // about −25..+40° of the gaze: most toward the sun (8° right at Sunset), where they flare
+    const across = (r() - 0.38) * 1.3 * d;
+    const h = 0.3 + 2.7 * r();
+    const fluff = r() < 0.08;
+    const phase = r() * 6.283;
+    const rate = 0.12 + 0.25 * r();
+    const bright = 0.25 + 0.75 * r() ** 2.5;
+    const flare = 0.6 + 1.2 * r();
+    const s0 = r() * L;
+    const along = ((s0 + speed * t) % L) - L / 2;
+    const cx = s.cam[0] + fx * d + fy * across;
+    const cy = s.cam[1] + fy * d - fx * across;
+    const x = cx + ux * along + 0.12 * Math.sin(rate * t + phase);
+    const y = cy + uy * along + 0.12 * Math.cos(0.8 * rate * t + phase);
+    const ground = Math.max(0, groundAt(x, y));
+    out.push({
+      kind: 'mote',
+      x,
+      y,
+      z: ground + h + 0.1 * (along / L + 0.5) + 0.06 * Math.sin(1.3 * rate * t + 2 * phase),
+      size: fluff ? 0.045 + 0.025 * r() : 0.022 + 0.016 * r(),
+      flap: 0,
+      flapping: false,
+      rot: 0,
+      // each turns as it floats: most of the time a faint speck, now and then a flare
+      alpha:
+        sstep(L / 2, L / 2 - 1.5, Math.abs(along)) *
+        bright *
+        (0.3 + 0.7 * Math.abs(Math.sin(0.5 * flare * t + phase)) ** 4),
+    });
+  }
+}
+
 function dew(t: number, groundAt: HeightAt, reduced: boolean, out: Sprite[]) {
   for (const d of placements(groundAt).dew)
     out.push({
@@ -308,6 +372,7 @@ export function lifeSprites(
     if (has('bat')) bats(timeS, out);
     if (has('flock')) flock(sinceS, groundAt, out);
     if (has('petal')) petals(timeS, world, groundAt, out);
+    if (has('mote')) motes(timeS, world, groundAt, out);
   }
   if (has('dew')) dew(timeS, groundAt, reduced, out);
   return out;
@@ -348,7 +413,7 @@ export function lifeWeight(s: Pick<FrameState, 'kind' | 'a' | 'b' | 't'>, stop: 
   return 0;
 }
 
-const MAX = 224;
+const MAX = 480;
 const COVE: StopId[] = ['golden', 'sunset', 'dusk', 'firstlight', 'sunrise'];
 
 /** The life layer's one sprite draw, and the fish ring's uniforms each frame. */
@@ -406,7 +471,10 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
       .add(exp(abs(r.y).mul(-25)).mul(exp(abs(r.x).mul(-5))))
       .mul(0.35),
   );
-  const shape = select(isWing, birdShape, select(kind.lessThan(3.5), petalShape, glint));
+  // a mote: a soft round point, its core hot (Task 16g)
+  const mote = exp(r.dot(r).mul(-9));
+  const isMote = kind.greaterThan(4.5);
+  const shape = select(isWing, birdShape, select(kind.lessThan(3.5), petalShape, select(isMote, mote, glint)));
 
   // Gulls are pale lit from the front and dark against a bright sky (reference book §10); bats and the small birds
   // are dark; petals take the light; dew is a hot point of the low sun.
@@ -417,10 +485,16 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
   const dark = u.ambSky.mul(0.12);
   const petal = vec3(0.95, 0.5, 0.66).mul(u.ambSky.mul(0.9).add(key.mul(0.3)));
   const dewCol = u.keyColor.mul(8);
+  // seen toward the sun a mote scatters its light forward and flares; side-on only the sky's fill shows it
+  const toward = max(dot(toThing, u.keyDir), 0);
+  const moteCol = u.keyColor
+    .mul(min(u.keyStrength, 1))
+    .mul(toward.pow(MOTE_LOBE).mul(MOTE_GAIN).add(0.12))
+    .add(u.ambSky.mul(0.25));
   m.colorNode = select(
     kind.lessThan(0.5),
     gull,
-    select(kind.lessThan(2.5), dark, select(kind.lessThan(3.5), petal, dewCol)),
+    select(kind.lessThan(2.5), dark, select(kind.lessThan(3.5), petal, select(isMote, moteCol, dewCol))),
   );
   // nothing a hand's width from the eye: a petal passing a walking visitor fades rather than filling the frame
   m.opacityNode = shape.mul(b.w).mul(smoothstep(0.6, 1.8, a.xyz.sub(cameraPosition).length()));
