@@ -5,6 +5,7 @@ import {
   dot,
   float,
   fract,
+  fwidth,
   mix,
   normalize,
   positionLocal,
@@ -19,6 +20,7 @@ import {
   varying,
   vec2,
   vec3,
+  vec4,
 } from 'three/tsl';
 import {
   BufferAttribute,
@@ -176,6 +178,7 @@ export function flowerClump(tall = 1): Shape {
       c[2] + Math.sin(turn + (k * 2 * Math.PI) / 5) * rad,
     ];
     const crown = [c[0], c[1] + hr * 0.95, c[2]];
+    const foot = [c[0], c[1] - hr * 0.75, c[2]];
     for (let k = 0; k < 5; k++) {
       const a = ring(k, hr, 0);
       const b = ring(k + 1, hr, 0);
@@ -186,6 +189,11 @@ export function flowerClump(tall = 1): Shape {
       // `part` > 0.3 on a head, and its brightness: full at the crown, the ring a little less (no underside: double-
       // sided, and the eye is rarely under a head)
       s.part.push(0.75, 0.75, 0.95, 0.95, 0.75, 0.95, 0.95, 0.95, 1.1);
+      // the lower half (s34, 16 look pass): without it a head was a dome on a stalk, a pink mushroom cap at the lens;
+      // a shallow cone to a foot on the stalk, in the head's own shade
+      s.pos.push(...a, ...foot, ...b);
+      s.bend.push(1, 1, 1);
+      s.part.push(0.6, 0.42, 0.6);
     }
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.35 + 0.2 * r(), 0.03, 0.35, 0);
@@ -640,7 +648,22 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const baked = light.baked.at(positionWorld.add(vec3(0, 0.3, 0)));
   const seen = byKey.mul(baked.x).add(albedo.mul(skyIrr).mul(baked.y)).add(albedo.mul(fillIrr));
   const grey = dot(seen, vec3(0.2126, 0.7152, 0.0722));
-  material.colorNode = varying(mix(seen, vec3(grey).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)));
+  // Florets on a thrift head (s34, the look pass: up close a head read as one smooth pink ball): per pixel, dots of
+  // ~7 mm in the world with darker gaps, each a little different; only where a floret is over ~2 px, so a far head keeps
+  // its plain colour and nothing shimmers. The head flag rides in the colour varying's spare slot (s30: each extra
+  // varying cost ~1 ms at Sunset on low); the world position is the one the fog already passes.
+  const thriftHead = step(1.5, kind)
+    .mul(float(1).sub(step(2.5, kind)))
+    .mul(step(0.3, part))
+    .mul(float(1).sub(isEye));
+  const shaded = varying(vec4(mix(seen, vec3(grey).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)), thriftHead));
+  const q = positionWorld.div(0.007);
+  const cell = q.floor();
+  const fromCentre = q.fract().sub(0.5).length();
+  const cellHash = fract(sin(dot(cell, vec3(127.1, 311.7, 74.7))).mul(43758.5));
+  const dotted = mix(float(0.78), float(1.32), smoothstep(0.5, 0.15, fromCentre)).mul(cellHash.mul(0.3).add(0.85));
+  const sharpEnough = smoothstep(0.9, 0.4, fwidth(q).length());
+  material.colorNode = shaded.rgb.mul(mix(float(1), dotted, shaded.a.mul(sharpEnough).mul(float(1).sub(moonlit))));
 
   const group = new Group();
   const shapes: readonly (readonly [(tall: number) => Shape, (k: number) => boolean])[] = [

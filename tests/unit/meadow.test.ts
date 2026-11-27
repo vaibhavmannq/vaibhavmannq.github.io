@@ -35,7 +35,8 @@ describe('the cove plants (plan M3 Task 1)', () => {
     expect(tallTuft().pos.length / 9).toBeLessThanOrEqual(30);
     expect(shortTuft().pos.length / 9).toBeLessThanOrEqual(16);
     // s16: 58, five-sided heads (the four-sided ones read as diamonds up close); s33: 67, four round heads of 15
-    expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(70);
+    // s34: + a lower half per head (a dome on a stalk read as a mushroom cap): 87
+    expect(flowerClump().pos.length / 9).toBeLessThanOrEqual(90);
     for (const shape of [daisyClump(), buttercupClump(), poppyClump()])
       expect(shape.pos.length / 9).toBeLessThanOrEqual(70);
   });
