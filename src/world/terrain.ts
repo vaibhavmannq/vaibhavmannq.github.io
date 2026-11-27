@@ -1,8 +1,10 @@
 import {
   cameraPosition,
   dot,
+  Fn,
   float,
   fwidth,
+  If,
   max,
   mix,
   mx_noise_float,
@@ -398,22 +400,44 @@ export function createTerrain(
   const v = normalize(cameraPosition.sub(positionWorld));
   const fresnel = float(0.02).add(float(0.98).mul(float(1).sub(max(v.y, 0)).pow(5)));
   const near = smoothstep(70.0, 20.0, cameraPosition.sub(positionWorld).length());
-  const sheen = sky.colorAt(reflect(v.negate(), vec3(0, 1, 0))).mul(wet.mul(0.35).mul(fresnel).mul(near));
+  // only wet sand near the eye reads the sky (s34, Sunrise at low: the ground was 3.5 ms of 13, and every ground pixel
+  // paid two sky reads and the glow's maths for a sheen that shows on a few); the sky's reads take an explicit level, so
+  // they may sit in this per-pixel branch
+  const sheenW = wet.mul(0.35).mul(fresnel).mul(near);
+  const sheen = Fn(() => {
+    const out = vec3(0).toVar();
+    If(sheenW.greaterThan(0.0005), () => {
+      out.assign(sky.colorAt(reflect(v.negate(), vec3(0, 1, 0))).mul(sheenW));
+    });
+    return out;
+  })();
   // s16: a meadow seen against a low sun glows (reference book §8: grass backlit shows bright yellow-green tops); the
   // 8 m ground has no blades, so its gentle grassy slopes above the beach take the meadow's own light-through term
   // (meadow.ts `through`, in patches: denser and thinner grass). Sunset's mid-ground was a flat dark brown.
+  // the gradient noise only where the glow can show (s34: it ran on every ground pixel at every hour); the texture reads
+  // stay outside the branch
+  const glowW = light
+    ? pow(saturate(dot(v.negate(), light.keyDir)), 4.0)
+        .mul(smoothstep(0.82, 0.95, normalWorld.y))
+        .mul(smoothstep(2.0, 5.0, z))
+    : float(0);
+  const patchy = Fn(() => {
+    const out = float(0).toVar();
+    If(glowW.greaterThan(0.002), () => {
+      out.assign(
+        mx_noise_float(vec3(wxy.mul(0.09), 4.0))
+          .mul(0.45)
+          .add(0.8),
+      ); // denser and thinner patches
+    });
+    return out;
+  })();
   const backlit = light
     ? light.keyColor
         .mul(light.keyStrength)
         .mul(vec3(0.42, 0.55, 0.14))
-        .mul(
-          mx_noise_float(vec3(wxy.mul(0.09), 4.0))
-            .mul(0.45)
-            .add(0.8),
-        ) // denser and thinner patches
-        .mul(pow(saturate(dot(v.negate(), light.keyDir)), 4.0))
-        .mul(smoothstep(0.82, 0.95, normalWorld.y))
-        .mul(smoothstep(2.0, 5.0, z))
+        .mul(patchy)
+        .mul(glowW)
         .mul(texture(colour, uv()).g.mul(2.2).clamp(0, 1))
         .mul(light.baked.shadowCheap) // no glow through turf the sun does not reach (Task 11; one coarse texel, 11d)
         .mul(0.5)
