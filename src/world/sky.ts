@@ -202,6 +202,8 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
       const reach = smoothstep(0.0012, 0.008, x)
         .mul(x.div(RAYS[1]).negate().exp())
         .mul(smoothstep(-0.005, 0.05, d.y))
+        // the beams live in the low haze: gone by ~25 deg up (looking up, they read as searchlights; s34)
+        .mul(smoothstep(0.42, 0.12, d.y))
         .mul(glowOn)
         // only a sun on the horizon (Sunset 1°): at Golden's 3.6° the same fan read as a hard white sunburst (s34); Golden
         // judges its own in its own pass

@@ -41,6 +41,11 @@ interface Rules {
    * where a ~20 m patch noise is over `patch`, thinning toward a drift's edge.
    */
   poppies?: { candidates: number; from: number; to: number; spread: number; patch: number };
+  /**
+   * The ground at the feet (Task 16l, s34): `count` short mats and low flowers in a ring `from`–`to` m round the eye, all
+   * the way round (look-around), whatever the bare noise says: looking down at Sunset ended in bare soil.
+   */
+  feet?: { count: number; from: number; to: number };
   /** flowers' height × this (s33: Sunset's eye is 0.5 m up; at 0.2–0.35 m its daisies stood hidden in the grass) */
   flowerScale?: number;
 }
@@ -76,6 +81,7 @@ const RULES: Record<CoveStop, Rules> = {
     // from 22 m: nearer, the field's drifts already hold flowers (and the cove stays inside its 60 000 plants)
     poppies: { candidates: 110000, from: 22, to: 115, spread: 1.4, patch: 0.5 },
     flowerScale: 1.7,
+    feet: { count: 1400, from: 0.75, to: 4 },
   },
   // III looks down from the headland (owner cove-and-stacks: "from above, with grass in front"): grass clumps at the
   // lens sides and more flowers near the eye, the near layer the shot lacked (plan M8 Task 7, s22)
@@ -335,6 +341,28 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
       // to ~3.5× by 100 m (owner, batch 3: dense drifts, "not specks"; s33 tried ×2.2 with other kinds mixed in: thinner,
       // worse, dropped)
       put(x, y, 0.45 * (0.85 + 0.4 * tall) * (1 + 2.5 * Math.min(1, Math.max(0, d - 25) / 75)), PLANT.red, turn);
+    }
+
+    // the ground at the feet (Task 16l): its own random stream, so every plant above keeps its place
+    const Ft = R.feet;
+    if (Ft) {
+      const rf = mulberry32(7700 + si);
+      for (let i = 0; i < Ft.count; i++) {
+        const d = Ft.from + (Ft.to - Ft.from) * Math.sqrt(rf());
+        const a = rf() * 2 * Math.PI;
+        const x = cx + d * Math.sin(a);
+        const y = cy + d * Math.cos(a);
+        const kindPick = rf();
+        const hgt = 0.8 + 0.5 * rf();
+        const turn = rf() * 2 * Math.PI;
+        const z = surface(x, y);
+        if (z <= R.zmin || slopeAt(x, y) >= TURF_SLOPE) continue;
+        if (kindPick < 0.82) put(x, y, 0.3 * hgt, PLANT.short, turn);
+        else {
+          const k = kindPick < 0.9 ? PLANT.pink : kindPick < 0.95 ? PLANT.white : PLANT.yellow;
+          put(x, y, 0.22 * hgt, speckle(k, hsh(x * 7.1, y * 7.1), hsh(x * 3.3 + 5, y * 3.3), id === 'sunset'), turn);
+        }
+      }
     }
   }
 

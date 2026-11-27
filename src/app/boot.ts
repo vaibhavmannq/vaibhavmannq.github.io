@@ -64,6 +64,7 @@ import {
   SUNSET_SCRUB,
   scrubInstances,
 } from '../world/grove';
+import { GUST_TIMES, gustAt } from '../world/gust';
 import {
   createDrawnHeightSampler,
   createHeightSampler,
@@ -74,7 +75,6 @@ import {
 } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
-import { GUST_TIMES, gustAt } from '../world/gust';
 import { createLife, lifeWeight } from '../world/life';
 import { blacksMode, createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, EYE_ONLY_LAYER, PLANT_STOPS } from '../world/meadow';
@@ -1545,8 +1545,13 @@ export async function boot(): Promise<App> {
         for (const part of parts) part.setTier(s);
         loop.pacer.rearm();
       }
-      // Sunset's near-field defocus (Task 16j), at its stop and fading over the rides in and out
-      pipeline?.setNearBlur(lifeWeight(f.state, SUNSET_INDEX));
+      // Sunset's near-field defocus (Task 16j), at its stop and fading over the rides in and out; looking down, the eye
+      // focuses on the ground at its feet and the blur racks off (16l: the ground there melted into one dark tone)
+      const lookingDown = Math.min(1, Math.max(0, (-4 - head.pitch) / 9));
+      // (part-way: sharp, the nearest blades read as flat spikes)
+      pipeline?.setNearBlur(
+        lifeWeight(f.state, SUNSET_INDEX) * (1 - 0.65 * lookingDown * lookingDown * (3 - 2 * lookingDown)),
+      );
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
       // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).
