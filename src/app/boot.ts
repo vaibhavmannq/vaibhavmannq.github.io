@@ -74,7 +74,7 @@ import {
 } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
-import { createLife } from '../world/life';
+import { createLife, lifeWeight } from '../world/life';
 import { blacksMode, createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, EYE_ONLY_LAYER, PLANT_STOPS } from '../world/meadow';
 import { createMist } from '../world/mist';
@@ -114,6 +114,9 @@ import { installBench } from './bench';
 import { detectCapabilities } from './capabilities';
 import { createLoop } from './loop';
 import { readParams } from './params';
+
+/** Sunset's place in the night (its near-field defocus, Task 16j). */
+const SUNSET_INDEX = STOP_IDS.indexOf('sunset');
 
 /** What the overlay, the HUD and the benchmarks need from a running world (Tasks 12–14 add to it). */
 export interface App {
@@ -1540,6 +1543,8 @@ export async function boot(): Promise<App> {
         for (const part of parts) part.setTier(s);
         loop.pacer.rearm();
       }
+      // Sunset's near-field defocus (Task 16j), at its stop and fading over the rides in and out
+      pipeline?.setNearBlur(lifeWeight(f.state, SUNSET_INDEX));
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);
       // The governor rests while the benchmark drives the camera or the tier is pinned by `?tier=` (review I3).

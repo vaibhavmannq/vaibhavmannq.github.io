@@ -8,9 +8,12 @@ import {
   Fn,
   float,
   getViewPosition,
+  If,
   max,
   min,
+  mix,
   pass,
+  perspectiveDepthToViewZ,
   rtt,
   saturation,
   screenSize,
@@ -39,6 +42,13 @@ import type { AaMode } from './aa';
 /** The brightest a pixel may feed the bloom, scene-linear (s22: Golden's and Blue hour's glare). */
 export const BLOOM_CAP = 3;
 
+/**
+ * The near field's defocus (plan world-to-100 Task 16j, s34; the owner's meadow photos: whatever stands at the lens of
+ * a photograph focused on the view is soft). Distance (m) where the blur is full and where it is gone, and its radius as a
+ * share of the screen's height. `?nb=a,b,c` while tuning.
+ */
+export const NEAR_BLUR = { full: 0.7, none: 2.8, radius: 0.015 };
+
 /** The two settings the pipeline itself changes (the tier table lives in quality/tiers.ts). */
 export interface PipelineTier {
   scale: number;
@@ -63,6 +73,8 @@ export interface Pipeline {
   compile(object: Object3D, opts?: { mirror?: boolean }): Promise<void>;
   /** The sea's mirror: from now on `compile` also builds each part for it (R38, plan M6). */
   setMirror(mirror: Mirror | null): void;
+  /** How much of the near field's defocus shows (0..1; boot sets it per frame from the stop: Sunset's, Task 16j). */
+  setNearBlur(k: number): void;
   /** Throws away the temporal history (a cut: aa.ts `cutBetween`); a no-op unless the mode is `taau`. */
   resetHistory(): void;
   /**
@@ -130,12 +142,25 @@ export async function createPipeline(
     camWorld: uniform(new Matrix4()),
     fresh: true,
   };
+  // the near field's defocus (Task 16j): how much shows, and the eye's clip planes for the depth's distance
+  const near = { on: uniform(0), zNear: uniform(0.1), zFar: uniform(1000) };
+  const nb = { ...NEAR_BLUR };
+  {
+    const q = (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('nb') ?? ''))
+      .split(',')
+      .map(Number.parseFloat);
+    (['full', 'none', 'radius'] as const).forEach((k, i) => {
+      if (Number.isFinite(q[i])) nb[k] = q[i] as number;
+    });
+  }
+  let nearTex: ReturnType<typeof rtt> | null = null;
   /** TAAU gathers at the scene's size and resolves at the canvas's: like the upscaler, the canvas stays full size */
   const fullCanvas = () => upscale.up || aaNow === 'taau';
   const applyScale = () => {
     scenePass?.setResolutionScale(sceneScale.value);
     velocityTex?.setResolutionScale(sceneScale.value);
     bloomNode?.setResolutionScale(0.5 * sceneScale.value);
+    nearTex?.setResolutionScale(0.5 * sceneScale.value);
   };
   const select = () => {
     const o = outputs.get(aaNow);
@@ -184,8 +209,49 @@ export async function createPipeline(
         velocityTex = rtt(moved, null, null, { resolutionScale: sceneScale.value });
         taauNode = taau(raw, depth, velocityTex, camera);
       }
-      const direct = (upscale.up ? vec4(sharpened, 1) : raw) as unknown as typeof raw;
-      const temporal = (taauNode ? taauNode.getTextureNode() : direct) as unknown as typeof raw;
+      // The near field's defocus (Task 16j): at half size, each pixel gathers two rings round it; a tap counts by how
+      // blurred its own point is, so a near blade spreads over the view behind it (a lens's foreground bokeh) and the view
+      // never smears onto the blade. The share it covers is the near taps' share, or its own blur. Behind a uniform
+      // branch: a stop without it pays one empty half-size quad.
+      const sceneDepthN = scenePass.getTextureNode('depth');
+      const cocAt = (at: Node<'vec2'>) =>
+        smoothstep(
+          nb.none,
+          nb.full,
+          perspectiveDepthToViewZ(sceneDepthN.sample(at).level(float(0)).r, near.zNear, near.zFar).negate(),
+        );
+      const rings: [number, number, number][] = [];
+      for (let k = 0; k < 6; k++)
+        rings.push([0.5 * Math.cos((k + 0.25) * (Math.PI / 3)), 0.5 * Math.sin((k + 0.25) * (Math.PI / 3)), 0.6]);
+      for (let k = 0; k < 10; k++) rings.push([Math.cos((k * Math.PI) / 5), Math.sin((k * Math.PI) / 5), 1]);
+      const gather = Fn(() => {
+        const out = vec4(0).toVar();
+        If(near.on.greaterThan(0.001), () => {
+          const own = cocAt(screenUV);
+          const step = vec2(float(nb.radius).mul(screenSize.y.div(screenSize.x)), nb.radius);
+          const sum = vec3(0).toVar();
+          const wsum = float(0).toVar();
+          for (const [x, y, ring] of rings) {
+            const at = screenUV.add(vec2(x, y).mul(step));
+            const c = cocAt(at);
+            // an outer tap only counts for a point blurred enough to reach it
+            const w = ring < 1 ? c : c.mul(c);
+            sum.addAssign((raw.sample(at).level(float(0)).rgb as Node<'vec3'>).mul(w));
+            wsum.addAssign(w);
+          }
+          const cover = max(own, wsum.div(rings.length * 0.55).min(1));
+          out.assign(vec4(sum.div(wsum.max(1e-4)), cover.mul(near.on)));
+        });
+        return out;
+      })();
+      nearTex = rtt(gather, null, null, { resolutionScale: 0.5 * sceneScale.value });
+      const nearBlur = nearTex.sample(screenUV);
+      const defocus = (c: typeof raw) =>
+        vec4(mix((c as unknown as Node<'vec4'>).rgb, nearBlur.rgb, nearBlur.a), 1) as unknown as typeof raw;
+      const direct = defocus((upscale.up ? vec4(sharpened, 1) : raw) as unknown as typeof raw);
+      const temporal = (taauNode
+        ? defocus(taauNode.getTextureNode() as unknown as typeof raw)
+        : direct) as unknown as typeof raw;
       // The renders' vivid grade (grade.py, as in the slice): ACES, saturation 1.32, a warm tint, a soft vignette.
       const grade = (c: Node<'vec4'>): Node<'vec4'> => {
         let g = acesFilmicToneMapping(c.rgb, light.exposure) as Node<'vec3'>;
@@ -248,6 +314,14 @@ export async function createPipeline(
         motion.camWorld.value.copy(cam.matrixWorld);
       }
       pipeline.render();
+    },
+    setNearBlur(k) {
+      near.on.value = k;
+      const cam = view?.camera as { near?: number; far?: number } | undefined;
+      if (cam?.near && cam.far) {
+        near.zNear.value = cam.near;
+        near.zFar.value = cam.far;
+      }
     },
     setMirror(m) {
       mirror = m;
