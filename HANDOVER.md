@@ -374,7 +374,11 @@ no borrowed set pieces (no towers, piano, etc.).
   grass at the feet; the ground cheaper everywhere. Speed level with the base; "Sunrise 54 at rest" was the GPU-timer tool.
   Phone (R260): I → II level, II → III ~1–2 fps under the old build after two fixes. Open: the owner's test; carry B
   (~50 ms frames on every low ride, both builds); Sunset held at high and a natural night on the phone (heat).
-- **Next:** finish 16f (phone + owner's test), then **s35: Golden**, then journey order. Phase 3: 0 of 17 closed.
+- **s34 night (owner asleep, "continue … then start something else"):** Sunset's look pass (R261: thrift heads as balls
+  of florets; the skein closer; **TAAU at high had been erasing every moving sprite**, fixed by depth-writing sprites; sun
+  road and nearest blades carried with reasons) → **Sunset ~91 %**. Golden begun (Task 17, R262: violet bank, rays) ~82 %.
+- **Next:** the owner's test of Sunset (and his call on the sea for the sun road); then Task 17's list. Phase 3: 0 of 17
+  closed.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
