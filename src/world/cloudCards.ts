@@ -107,6 +107,13 @@ const MIN_ALOFT = 24;
 
 /** The warm low-sun light on the cards (Task 16b, s33; picked by eye at Sunset against the render). */
 const CW = 1.4;
+/** Golden's bright cloud: how much a low sun lifts the lit side of clouds near it (s34). */
+const CG = (() => {
+  const v = Number.parseFloat(
+    typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('cg') ?? ''),
+  );
+  return Number.isFinite(v) ? v : 0.7;
+})();
 /** Golden's violet bank: how far low clouds' shaded sides turn violet under a sun within ~5° (s34). */
 const VB = (() => {
   const v = Number.parseFloat(
@@ -379,7 +386,21 @@ export function createCloudCards(
     .div(0.2126 * 0.141 + 0.7152 * 0.069 + 0.0722 * 0.325)
     .mul(lum(shadeCol).mul(0.62));
   const shadeBanked = mix(shadeCol, violetShade, bankOn.mul(lowCloud).mul(VB));
-  const col = mix(mix(shadeBanked, warmLit, light).add(warmLit.mul(silver)).add(through).add(under), sky, info.z);
+  // Golden's bright cloud (s34, Task 17b; the Golden render): under a low sun the clouds near it are lit gold-white, their
+  // edges silver, brighter than the sky behind; ours stayed beige. Their lit side lifts toward the sun, by `?cg=`.
+  // Golden's only (a sun above ~2°): at Sunset it washed the violet clouds pale
+  const nearSun = smoothstep(0.55, 0.95, cosK)
+    .mul(bankOn)
+    .mul(smoothstep(0.03, 0.055, key.y));
+  const litNear = warmLit.mul(float(1).add(nearSun.mul(CG)));
+  const col = mix(
+    mix(shadeBanked, litNear, light)
+      .add(litNear.mul(silver.mul(float(1).add(nearSun.mul(CG * 2)))))
+      .add(through)
+      .add(under),
+    sky,
+    info.z,
+  );
   material.colorNode = col;
   material.opacityNode = a.mul(info.y).mul(smoothstep(0.0, 0.02, dir.y));
 
