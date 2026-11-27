@@ -54,7 +54,8 @@ const RULES: Record<CoveStop, Rules> = {
   golden: {
     candidates: 22000,
     near: [
-      [-46, 2.4, 0.45],
+      // s34 (Task 17f; the Golden render frames its left edge with tall dune grass at the lens): nearer and further in
+      [-36, 1.7, 0.4],
       [49, 2.2, 0.5],
     ],
     nearFlowers: 0,
