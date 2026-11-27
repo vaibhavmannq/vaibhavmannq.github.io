@@ -51,6 +51,21 @@ const GLOW = [1.6, 0.25, 0.18] as const;
 const AUR = [2, 0.6, 0.12] as const;
 
 /**
+ * The violet high sky (Task 16h): strength, brightness kept (× the sky's own), from and to which height (dir.y) it
+ * comes in. `?violet=a,b,c,d` while tuning (s34).
+ */
+const VIOLET: number[] = [0.55, 0.9, 0.08, 0.55];
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('violet') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < VIOLET.length) VIOLET[i] = n;
+  });
+}
+/** Violet at unit brightness, linear light (the render's overhead: ~#6a4a9a). */
+const VIOLET_HUE = vec3(0.141, 0.069, 0.325).div(0.2126 * 0.141 + 0.7152 * 0.069 + 0.0722 * 0.325);
+
+/**
  * The crepuscular rays: strength, reach (1 − cos: 0.1 ≈ 26°), how much a shadow beam darkens, how much a light beam
  * adds of the sun's gold, drift (radians of fan per second). `?rays=a,b,c,d,e` while tuning (s34).
  */
@@ -83,6 +98,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     .mul(smoothstep(-0.1, -0.015, u.keyDir.y))
     .mul(float(1).sub(step(0.001, u.moonStrength)))
     .mul(min(u.keyStrength, 1));
+  const violetOn = glowOn.mul(smoothstep(0.06, 0.03, u.keyDir.y));
   const keyCol = u.keyColor as unknown as V3;
   const glowHue = mix(keyCol.div(dot(keyCol, vec3(0.2126, 0.7152, 0.0722)).max(1e-3)), vec3(1.45, 0.9, 0.3), 0.6);
   /** The sky's colour `c` along `dir`, turned gold and lifted toward a low sun (its own brightness kept as the scale). */
@@ -98,6 +114,16 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
       const lobe = across.div(GLOW[1]).negate().exp().mul(dir.y.max(0).div(GLOW[2]).negate().exp()).mul(glowOn);
       const gold = glowHue.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
       out.assign(mix(c, gold, lobe.mul(GLOW[0]).min(1)).mul(lobe.mul(GLOW[0]).mul(0.15).add(1)));
+      // Task 16h (s34; the Sunset render: violet overhead and away from the sun; reference book §light: once the sun is
+      // on the horizon the high sky is lit only through the long path, its red and blue left, the green taken by ozone).
+      // The high sky turns violet at its own brightness, a little deeper; the gold lobe keeps its side. Only a sun on the
+      // horizon (Sunset), as the rays. The clouds read this colour, so their tops away from the sun follow.
+      const high = smoothstep(VIOLET[2], VIOLET[3], dir.y)
+        .mul(float(1).sub(lobe.mul(GLOW[0]).min(1)))
+        .mul(violetOn)
+        .mul(VIOLET[0]);
+      const lc = dot(out, vec3(0.2126, 0.7152, 0.0722));
+      out.assign(mix(out, VIOLET_HUE.mul(lc.mul(VIOLET[1])), high));
     });
     return out;
   });

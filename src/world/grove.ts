@@ -302,6 +302,16 @@ function leafAtlas(): CanvasTexture {
   return tex;
 }
 
+/** The crown edge's glow (Task 16i): strength, the lobe's power toward the sun, how strictly the outermost leaves. */
+const LEAF_EDGE: number[] = [0.8, 5, 8];
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('lg') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < LEAF_EDGE.length) LEAF_EDGE[i] = n;
+  });
+}
+
 /** Leaf colours (linear; Poly Haven island_tree leaves: mean of the leaf texels (0.116, 0.135, 0.014), made greener for
  * the coast's dark olive crowns (owner cove-and-stacks 6, 12); the shrub darker). Bark: a dark grey-brown. */
 const LEAF: V3 = [0.095, 0.125, 0.032];
@@ -402,11 +412,26 @@ export function createGrove(grove: Grove, groundAt: HeightAt, light: LightUnifor
     .mul(depth.mul(float(1).sub(leaf)))
     .mul(float(1).sub(moonlit))
     .mul(0.6);
+  // Leaf glow at the crown's edge (Task 16i, s34; reference book §8; the owner's backlit-meadow photo): a sun on the
+  // horizon shines through the outermost leaves of a crown seen toward it, gold-green at the rim, while the inside stays
+  // a silhouette. Like the wood's rim, not scaled by the bake (a 1° sun reads as shadowed there), and only for a sun on
+  // the horizon (Sunset; the rays' gate in sky.ts): Golden's crowns keep their look until their own pass.
+  const horizonSun = smoothstep(0.06, 0.03, light.keyDir.y).mul(smoothstep(-0.02, 0.0, light.keyDir.y));
+  const edge = light.keyColor
+    .mul(light.keyStrength)
+    .mul(vec3(0.62, 0.55, 0.14))
+    .mul(pow(toSun, LEAF_EDGE[1]))
+    .mul(pow(depth, LEAF_EDGE[2]))
+    .mul(leaf)
+    .mul(horizonSun)
+    .mul(float(1).sub(moonlit))
+    .mul(LEAF_EDGE[0]);
   const seen = byKey
     .mul(atLeaf.x)
     .add(albedo.mul(hemi).mul(shade).mul(atLeaf.y))
     .add(albedo.mul(fillIrr).mul(shade))
-    .add(rim);
+    .add(rim)
+    .add(edge);
   const lit = varying(
     mix(seen, vec3(dot(seen, vec3(0.2126, 0.7152, 0.0722))).mul(vec3(0.8, 0.92, 1.25)), moonlit.mul(0.5)),
   );
