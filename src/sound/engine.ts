@@ -43,6 +43,8 @@ export interface Sound {
   frame(f: FrameIn): void;
   /** The eye's real position (three.js axes) and coast yaw, when the world is drawn. */
   eye(position: Vec3, yawDeg: number): void;
+  /** Sunset's gust now, 0..1, weighted by Sunset's share of the frame (Task 16k); 0 when the world is not drawn. */
+  gust(amp: number): void;
 }
 
 const stopEye = (id: StopId): Vec3 => toThree([SHOTS[id].cam[0], SHOTS[id].cam[1], SHOTS[id].eyeZ]);
@@ -54,6 +56,7 @@ export function createSound(base = '/world/sound/'): Sound {
   const gains = new Map<LoopId, GainNode>();
   let on = false;
   let eyeAt: { position: Vec3; yaw: number } | null = null;
+  let gustNow = 0;
   let last = 0;
 
   const start = async (first: Levels) => {
@@ -105,7 +108,7 @@ export function createSound(base = '/world/sound/'): Sound {
     const w = current.hourWeight;
     const beaufort = HOURS[a].world.beaufort * (1 - w) + HOURS[b].world.beaufort * w;
     const eye = eyeAt?.position ?? (w < 0.5 ? stopEye(a) : stopEye(b));
-    return mix({ a, b, w, beaufort, eye });
+    return mix({ a, b, w, beaufort, eye, gust: gustNow });
   };
 
   return {
@@ -147,6 +150,9 @@ export function createSound(base = '/world/sound/'): Sound {
     },
     eye(position, yaw) {
       eyeAt = { position, yaw };
+    },
+    gust(amp) {
+      gustNow = amp;
     },
   };
 }

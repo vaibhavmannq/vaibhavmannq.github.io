@@ -7,12 +7,14 @@ import { STOP_IDS, type StopId } from '../../src/journey/types';
 import { createSurfaceSampler } from '../../src/world/heights';
 import {
   FLOCK_AFTER,
+  GUST_PETALS,
   LIFE_STOPS,
   type LifeKind,
   lifeSprites,
   MOTES,
   RING_SPEED,
   ringAt,
+  SKEIN,
   type Sprite,
 } from '../../src/world/life';
 
@@ -213,5 +215,25 @@ describe('motes', () => {
       const step = Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z);
       if (step < 3) expect(step / 0.25).toBeLessThan(0.4); // a wrap jumps the drift's length, faded out
     }
+  });
+});
+
+// Task 16k (s34): petals ride in behind Sunset's gust; a skein crosses the sun now and then
+describe('Sunset in the gust, and its skein', () => {
+  const petalsAt = (gust: { amp: number; front: number }) =>
+    lifeSprites('sunset', 50, 50, HOURS.sunset.world, ground, false, gust).filter((s) => s.kind === 'petal').length;
+  it('a gust in view adds petals; none without one or under reduced motion', () => {
+    const calm = petalsAt({ amp: 0, front: -110 });
+    expect(petalsAt({ amp: 1, front: -20 })).toBeGreaterThan(calm + GUST_PETALS / 2);
+    expect(petalsAt({ amp: 1, front: -300 })).toBe(calm);
+    const reduced = lifeSprites('sunset', 50, 50, HOURS.sunset.world, ground, true, { amp: 1, front: -20 });
+    expect(reduced.some((s) => s.kind === 'petal')).toBe(false);
+  });
+  it('seven birds cross in each window and none outside it', () => {
+    const birds = (t: number) => at('sunset', t).filter((s) => s.kind === 'flock').length;
+    expect(birds(SKEIN.first + SKEIN.cross / 2)).toBe(7);
+    expect(birds(SKEIN.first + SKEIN.every + SKEIN.cross / 2)).toBe(7);
+    expect(birds(SKEIN.first + SKEIN.cross + 5)).toBe(0);
+    expect(birds(SKEIN.first - 1)).toBe(0);
   });
 });

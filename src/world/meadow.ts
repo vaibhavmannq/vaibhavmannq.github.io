@@ -36,7 +36,7 @@ import { STOP_IDS } from '../journey/types';
 import type { TierSettings } from '../quality/tiers';
 import { smoothstep as smoothstepJS } from '../shared/math';
 import { mulberry32 } from '../shared/random';
-import { gustAt, gustTimes } from './gust';
+import { GUST_TIMES, gustAt } from './gust';
 import { FILL_SHARE, HEMI_INTENSITY, type LightUniforms } from './light';
 import type { WorldPart } from './part';
 import { COVE_STOPS, PLANT, PLANT_STRIDE, type Plants, swayAmplitude } from './scatter';
@@ -493,7 +493,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   /** Sunset's gust (Task 16e): its strength 0..1 and its front, metres along the wind (three.js x, z) */
   const gustAmp = uniform(0);
   const gustFront = uniform(0);
-  const gustTimesS = GUST_Q === 'now' ? [2, ...gustTimes(24 * 3600).map((t) => t + 24)] : gustTimes(24 * 3600);
+  const gustTimesS = GUST_TIMES;
   const sunsetAt = STOP_IDS.indexOf('sunset');
   /** where the wind blows TO, three.js x, z (unit) */
   const windTo = uniform(new Vector2(0, 1));

@@ -27,7 +27,8 @@ export type Levels = Record<LoopId, number>;
  */
 export const BED: Record<StopId, Partial<Levels>> = {
   golden: { 'cove-lap': 1 },
-  sunset: { 'cove-lap': 0.55, 'ridge-wind': 0.35 },
+  // s34 (Task 16k): the meadow's first crickets under the lap and the breeze (reference book §11: they start at sunset)
+  sunset: { 'cove-lap': 0.55, 'ridge-wind': 0.35, 'cove-evening': 0.3 },
   dusk: { 'cove-lap': 0.5, 'cove-evening': 0.8 },
   bluehour: { 'open-sea': 1 },
   night: { 'night-air': 0.55 },
@@ -84,13 +85,20 @@ export interface MixInput {
   beaufort: number;
   /** three.js axes */
   eye: Vec3;
+  /** Sunset's gust now, 0..1, already weighted by how much of Sunset this frame is (Task 16k) */
+  gust?: number;
 }
 
+/** How much a full gust adds to the wind loop. */
+export const GUST_SWELL = 0.55;
+
 /** Every loop's level, 0..~1.3, for this frame. Pure. */
-export function mix({ a, b, w, beaufort, eye }: MixInput): Levels {
+export function mix({ a, b, w, beaufort, eye, gust = 0 }: MixInput): Levels {
   const out = Object.fromEntries(LOOPS.map((id) => [id, 0])) as Levels;
   for (const id of LOOPS) out[id] = (BED[a][id] ?? 0) * (1 - w) + (BED[b][id] ?? 0) * w;
   out['ridge-wind'] *= windLevel(beaufort);
+  // a gust is heard as the wind rising for its few seconds (spec §4.5's cue)
+  out['ridge-wind'] += GUST_SWELL * gust;
   out['cove-lap'] *= shoreNear(eye[1]);
   out.falls = fallsNear(eye);
   return out;

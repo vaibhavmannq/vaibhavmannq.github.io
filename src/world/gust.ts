@@ -26,6 +26,16 @@ export function gustTimes(untilS: number, seed = 4): number[] {
   return t;
 }
 
+/**
+ * The night's gust times, shared by the meadow's blades, the petals and the wind's sound (s34) so all three see the same
+ * gust; `?gust=now` puts one 2 s in (a test aid).
+ */
+export const GUST_TIMES: readonly number[] = (() => {
+  const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('gust');
+  const t = gustTimes(24 * 3600);
+  return q === 'now' ? [2, ...t.map((x) => x + 24)] : t;
+})();
+
 const smooth = (a: number, b: number, x: number) => {
   const u = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return u * u * (3 - 2 * u);

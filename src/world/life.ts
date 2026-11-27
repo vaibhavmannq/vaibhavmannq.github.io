@@ -31,6 +31,7 @@ import type { FrameState } from '../journey/timeline';
 import { STOP_IDS, type StopId, type WorldState } from '../journey/types';
 import { smoothstep as sstep } from '../shared/math';
 import { mulberry32 } from '../shared/random';
+import { GUST_TIMES, gustAt } from './gust';
 import type { HeightAt } from './heights';
 import type { LightUniforms } from './light';
 import type { WorldPart } from './part';
@@ -46,7 +47,7 @@ export type LifeKind = 'gull' | 'bat' | 'flock' | 'petal' | 'dew' | 'mote';
 export const LIFE_STOPS: Record<LifeKind, StopId[]> = {
   gull: ['golden', 'sunset', 'sunrise'],
   bat: ['dusk'],
-  flock: ['sunrise'],
+  flock: ['sunset', 'sunrise'], // Sunset's skein across the sun (s34), Sunrise's flock lifting
   petal: ['sunset'],
   dew: ['sunrise'],
   mote: ['sunset'],
@@ -338,6 +339,88 @@ function motes(t: number, world: Pick<WorldState, 'windAz' | 'beaufort'>, ground
   }
 }
 
+/**
+ * Petals torn loose by Sunset's gust (Task 16k, s34): they ride in behind its front, 1-15 m back, rising as they trail,
+ * over the meadow in front of the eye, and settle when it has passed. `front` is metres along the wind from the eye.
+ */
+function gustPetals(
+  t: number,
+  world: Pick<WorldState, 'windAz' | 'beaufort'>,
+  groundAt: HeightAt,
+  gust: { amp: number; front: number },
+  out: Sprite[],
+) {
+  if (gust.amp <= 0.01) return;
+  const [wx, wy] = windVector(world);
+  const w = Math.hypot(wx, wy) || 1;
+  const [ux, uy] = [wx / w, wy / w];
+  const s = SHOTS.sunset;
+  for (let i = 0; i < GUST_PETALS; i++) {
+    const r = rngFor(450, i);
+    const behind = 1 + 14 * r();
+    const lat = (r() - 0.5) * 16;
+    const spinRate = 2 + 3 * r();
+    const phase = r() * 6.283;
+    const along = gust.front - behind;
+    if (along > 4 || along < -70) continue;
+    const x = s.cam[0] + ux * along - uy * lat;
+    const y = s.cam[1] + uy * along + ux * lat;
+    const spin = t * spinRate + phase;
+    const near = Math.hypot(x - s.cam[0], y - s.cam[1]);
+    out.push({
+      kind: 'petal',
+      x,
+      y,
+      z: Math.max(0, groundAt(x, y)) + 0.3 + 0.09 * behind + 0.25 * Math.sin(1.7 * t + phase),
+      size: 0.05 * (0.35 + 0.65 * Math.abs(Math.cos(spin))),
+      flap: 0,
+      flapping: false,
+      rot: spin * 0.6,
+      alpha: gust.amp * sstep(0, 1.5, behind) * sstep(15, 11, behind) * sstep(1.2, 2.5, near),
+    });
+  }
+}
+/** Petals one gust tears loose. */
+export const GUST_PETALS = 40;
+
+/** Seconds between skeins of birds across Sunset's sun, and how long one takes to cross. */
+export const SKEIN = { every: 52, first: 9, cross: 20 } as const;
+
+/**
+ * A skein of seven birds across the sun (Task 16k, s34; reference book §10: birds heading to roost at sunset, ~12 m/s,
+ * in a loose line): ~150 m out, 1.6-3 deg up (across the sun's glow), from 25 deg left of the gaze to 35 deg right, flapping with glides. Dark
+ * against the gold, as the small birds are.
+ */
+function skein(t: number, out: Sprite[]) {
+  const k = Math.floor((t - SKEIN.first) / SKEIN.every);
+  if (k < 0) return;
+  const tau = t - SKEIN.first - k * SKEIN.every;
+  if (tau > SKEIN.cross) return;
+  const r0 = rngFor(600, k);
+  const el0 = 1.6 + 1.2 * r0(); // over the sun's glow (the sun is 1 deg up)
+  for (let i = 0; i < 7; i++) {
+    const r = rngFor(610, k * 8 + i);
+    const phase = r() * 6.283;
+    const lag = i * (0.35 + 0.15 * r()); // each a little behind the one ahead
+    const da = -25 + (60 * tau) / SKEIN.cross - lag * 2.2;
+    const d = 150 + (i % 2 === 0 ? 1 : -1) * i * 3;
+    const el = el0 + 0.18 * i * (i % 2 === 0 ? 1 : -0.6) + 0.1 * Math.sin(0.6 * tau + phase);
+    const [x, y, z] = from('sunset', da, d, el);
+    const gliding = Math.sin(0.9 * tau + phase) < -0.4;
+    out.push({
+      kind: 'flock',
+      x,
+      y,
+      z,
+      size: 1.05,
+      flap: gliding ? 0.1 : Math.sin(2 * Math.PI * 3.2 * tau + phase),
+      flapping: !gliding,
+      rot: 0.05 * Math.sin(tau + phase),
+      alpha: sstep(0, 1.5, tau - lag * 0.4) * sstep(SKEIN.cross, SKEIN.cross - 1.5, tau),
+    });
+  }
+}
+
 function dew(t: number, groundAt: HeightAt, reduced: boolean, out: Sprite[]) {
   for (const d of placements(groundAt).dew)
     out.push({
@@ -364,15 +447,20 @@ export function lifeSprites(
   world: Pick<WorldState, 'windAz' | 'beaufort'>,
   groundAt: HeightAt,
   reduced: boolean,
+  gust: { amp: number; front: number } = { amp: 0, front: -110 },
 ): Sprite[] {
   const out: Sprite[] = [];
   const has = (k: LifeKind) => LIFE_STOPS[k].includes(stop);
   if (!reduced) {
     if (has('gull')) gulls(stop, timeS, groundAt, out);
     if (has('bat')) bats(timeS, out);
-    if (has('flock')) flock(sinceS, groundAt, out);
+    if (stop === 'sunrise') flock(sinceS, groundAt, out);
     if (has('petal')) petals(timeS, world, groundAt, out);
     if (has('mote')) motes(timeS, world, groundAt, out);
+    if (stop === 'sunset') {
+      gustPetals(timeS, world, groundAt, gust, out);
+      skein(timeS, out);
+    }
   }
   if (has('dew')) dew(timeS, groundAt, reduced, out);
   return out;
@@ -519,7 +607,16 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
         if (w === 0) since[stop] = null;
         if (w <= 0) continue;
         if (stop === 'firstlight') continue;
-        const list = lifeSprites(stop, f.timeS, f.timeS - (since[stop] ?? f.timeS), f.hour.world, groundAt, reduced);
+        const gust = stop === 'sunset' ? gustAt(f.timeS, GUST_TIMES) : undefined;
+        const list = lifeSprites(
+          stop,
+          f.timeS,
+          f.timeS - (since[stop] ?? f.timeS),
+          f.hour.world,
+          groundAt,
+          reduced,
+          gust,
+        );
         for (const s of list) {
           if (n >= MAX || s.alpha * w <= 0.001) continue;
           const o = n * 4;

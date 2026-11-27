@@ -74,6 +74,7 @@ import {
 } from '../world/heights';
 import { createLantern, LANTERN_AT } from '../world/lantern';
 import { createDuskLanterns, SHALLOWS_AT } from '../world/lanterns';
+import { GUST_TIMES, gustAt } from '../world/gust';
 import { createLife, lifeWeight } from '../world/life';
 import { blacksMode, createLightUniforms, type LightUniforms, lightValues } from '../world/light';
 import { createMeadow, EYE_ONLY_LAYER, PLANT_STOPS } from '../world/meadow';
@@ -1507,6 +1508,7 @@ export async function boot(): Promise<App> {
       }
       for (const part of parts) part.update(f);
       sound.eye(f.pose.position, f.pose.yaw);
+      sound.gust(gustAt(f.timeS, GUST_TIMES).amp * lifeWeight(f.state, SUNSET_INDEX));
       for (const name of app.partsOff) {
         const held = named.get(name);
         if (held) held.object.visible = false;

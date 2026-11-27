@@ -231,16 +231,25 @@ export async function createPipeline(
           const step = vec2(float(nb.radius).mul(screenSize.y.div(screenSize.x)), nb.radius);
           const sum = vec3(0).toVar();
           const wsum = float(0).toVar();
+          const all = (raw.sample(screenUV).level(float(0)).rgb as Node<'vec3'>).toVar();
           for (const [x, y, ring] of rings) {
             const at = screenUV.add(vec2(x, y).mul(step));
             const c = cocAt(at);
+            const col = raw.sample(at).level(float(0)).rgb as Node<'vec3'>;
             // an outer tap only counts for a point blurred enough to reach it
             const w = ring < 1 ? c : c.mul(c);
-            sum.addAssign((raw.sample(at).level(float(0)).rgb as Node<'vec3'>).mul(w));
+            sum.addAssign(col.mul(w));
             wsum.addAssign(w);
+            all.addAssign(col);
           }
-          const cover = max(own, wsum.div(rings.length * 0.55).min(1));
-          out.assign(vec4(sum.div(wsum.max(1e-4)), cover.mul(near.on)));
+          // a blurred near point is the whole disc's average, the view behind included (a thin blade at the lens is a
+          // faint wide band, not a solid one); a point behind takes only the near points' light that spills onto it
+          const nearAvg = sum.div(wsum.max(1e-4));
+          const allAvg = all.div(rings.length + 1);
+          const spill = wsum.div(rings.length * 0.55).min(1);
+          const cover = max(own, spill);
+          const col = mix(nearAvg, allAvg, own.div(cover.max(1e-4)));
+          out.assign(vec4(col, cover.mul(near.on)));
         });
         return out;
       })();
