@@ -372,7 +372,8 @@ no borrowed set pieces (no towers, piano, etc.).
   8179b66 … 22f4131, not pushed). Rays on the sky for a horizon sun (screen shafts tried, dropped: nothing in front of the
   sun), motes, violet high sky, leaf glow, a near-field defocus, gust petals, a skein over the sun, crickets + gust swell,
   grass at the feet; the ground cheaper everywhere. Speed level with the base; "Sunrise 54 at rest" was the GPU-timer tool.
-  Open: the phone, five views at low, the owner's test; carry B (~50 ms frames on every low ride, both builds).
+  Phone (R260): I → II level, II → III ~1–2 fps under the old build after two fixes. Open: the owner's test; carry B
+  (~50 ms frames on every low ride, both builds); Sunset held at high and a natural night on the phone (heat).
 - **Next:** finish 16f (phone + owner's test), then **s35: Golden**, then journey order. Phase 3: 0 of 17 closed.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
