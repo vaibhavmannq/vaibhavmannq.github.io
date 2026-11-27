@@ -444,7 +444,15 @@ export function createTerrain(
     : vec3(0);
   // a crescent behind the turf lights no glow through it (Midnight's hills glowed daylight green, plan M6 Task 4)
   material.emissiveNode = sheen.add(backlit.mul(float(1).sub(moonlit)));
-  material.roughnessNode = mix(float(0.92), float(0.3), wet);
+  // Wet sand shines where a film of water lies, in streaks along the swash, not as one smooth sheet (s34, Golden: a
+  // grazing sun stretched the smooth sheet's highlight into a straight white bar to the lens). Two slow sine products
+  // (no noise call): long streaks across the beach broken into patches.
+  const film = smoothstep(
+    -0.05,
+    0.35,
+    sines(wxy.mul(vec2(0.35, 1.6)).add(3.0)).add(sines(wxy.mul(1.1).add(11.0)).mul(0.6)),
+  );
+  material.roughnessNode = mix(float(0.92), mix(float(0.62), float(0.22), film), wet);
   // No baked sky share on the ground (s30, R225): it barely read in any of the 90 views and cost the phone a tier's worth of
   // reads on every ground pixel at every hour. The plants keep theirs (one read gives both).
   material.metalnessNode = float(0);
