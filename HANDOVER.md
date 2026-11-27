@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-23, session s33 (see `docs/handover/sessions/2026-11-23-s33-phase3-sunset.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-27, session s34 (see `docs/handover/sessions/2026-11-27-s34-sunset-to-89.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -368,9 +368,12 @@ no borrowed set pieces (no towers, piano, etc.).
   name hidden until M9. Sunset ~84 % (R251, with a plan to ~95).
 - **s33 end (R252–R254, D60):** clean speed (close the owner's site tabs first!): ground tiles and a resting mirror; low
   rides 57–59 fps; phone faster than before on Sunset's rides; switches written in.
-- **Next (s34): Sunset to ~95 %** (plan Task 16 status block: 16g shafts and motes, 16h violet high sky, 16i leaf glow,
-  16j near flowers, 16k petals/birds/sound, 16l the feet, 16f close + owner's test). **s35: Golden**, then journey
-  order. Phase 3: 0 of 17 closed; Sunset ~84 %.
+- **s34 (2026-11-27): Sunset ~84 → ~89 %** (log `sessions/2026-11-27-s34-sunset-to-89.md`; ledger R255–R259; commits
+  8179b66 … 22f4131, not pushed). Rays on the sky for a horizon sun (screen shafts tried, dropped: nothing in front of the
+  sun), motes, violet high sky, leaf glow, a near-field defocus, gust petals, a skein over the sun, crickets + gust swell,
+  grass at the feet; the ground cheaper everywhere. Speed level with the base; "Sunrise 54 at rest" was the GPU-timer tool.
+  Open: the phone, five views at low, the owner's test; carry B (~50 ms frames on every low ride, both builds).
+- **Next:** finish 16f (phone + owner's test), then **s35: Golden**, then journey order. Phase 3: 0 of 17 closed.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
