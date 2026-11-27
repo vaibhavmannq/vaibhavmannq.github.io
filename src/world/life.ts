@@ -456,7 +456,13 @@ export function lifeSprites(
     if (has('bat')) bats(timeS, out);
     if (stop === 'sunrise') flock(sinceS, groundAt, out);
     if (has('petal')) petals(timeS, world, groundAt, out);
-    if (has('mote')) motes(timeS, world, groundAt, out);
+    if (
+      has('mote') &&
+      !(typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('s34off') ?? '')).includes(
+        'mote',
+      )
+    )
+      motes(timeS, world, groundAt, out);
     if (stop === 'sunset') {
       gustPetals(timeS, world, groundAt, gust, out);
       skein(timeS, out);

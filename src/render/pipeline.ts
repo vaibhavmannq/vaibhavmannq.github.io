@@ -48,6 +48,8 @@ export const BLOOM_CAP = 3;
  * share of the screen's height. `?nb=a,b,c` while tuning.
  */
 export const NEAR_BLUR = { full: 0.7, none: 2.8, radius: 0.015 };
+/** Its gather's share of the scene's size (s34: half size cost the phone ~1.7 fps on II → III; it is a soft blur). */
+export const NEAR_BLUR_SCALE = 0.25;
 
 /** The two settings the pipeline itself changes (the tier table lives in quality/tiers.ts). */
 export interface PipelineTier {
@@ -160,7 +162,7 @@ export async function createPipeline(
     scenePass?.setResolutionScale(sceneScale.value);
     velocityTex?.setResolutionScale(sceneScale.value);
     bloomNode?.setResolutionScale(0.5 * sceneScale.value);
-    nearTex?.setResolutionScale(0.5 * sceneScale.value);
+    nearTex?.setResolutionScale(NEAR_BLUR_SCALE * sceneScale.value);
   };
   const select = () => {
     const o = outputs.get(aaNow);
@@ -253,7 +255,7 @@ export async function createPipeline(
         });
         return out;
       })();
-      nearTex = rtt(gather, null, null, { resolutionScale: 0.5 * sceneScale.value });
+      nearTex = rtt(gather, null, null, { resolutionScale: NEAR_BLUR_SCALE * sceneScale.value });
       const nearBlur = nearTex.sample(screenUV);
       const defocus = (c: typeof raw) =>
         vec4(mix((c as unknown as Node<'vec4'>).rgb, nearBlur.rgb, nearBlur.a), 1) as unknown as typeof raw;
@@ -325,7 +327,7 @@ export async function createPipeline(
       pipeline.render();
     },
     setNearBlur(k) {
-      near.on.value = k;
+      near.on.value = nb.radius > 0 ? k : 0; // `?nb=…,0`: off (s34 phone test)
       const cam = view?.camera as { near?: number; far?: number } | undefined;
       if (cam?.near && cam.far) {
         near.zNear.value = cam.near;

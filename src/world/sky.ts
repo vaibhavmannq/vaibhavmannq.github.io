@@ -98,7 +98,15 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     .mul(smoothstep(-0.1, -0.015, u.keyDir.y))
     .mul(float(1).sub(step(0.001, u.moonStrength)))
     .mul(min(u.keyStrength, 1));
-  const violetOn = glowOn.mul(smoothstep(0.06, 0.03, u.keyDir.y));
+  const violetOn = glowOn
+    .mul(smoothstep(0.06, 0.03, u.keyDir.y))
+    .mul(
+      (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('s34off') ?? '')).includes(
+        'sky',
+      )
+        ? 0
+        : 1,
+    );
   const keyCol = u.keyColor as unknown as V3;
   const glowHue = mix(keyCol.div(dot(keyCol, vec3(0.2126, 0.7152, 0.0722)).max(1e-3)), vec3(1.45, 0.9, 0.3), 0.6);
   /** The sky's colour `c` along `dir`, turned gold and lifted toward a low sun (its own brightness kept as the scale). */
@@ -118,24 +126,37 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
       // on the horizon the high sky is lit only through the long path, its red and blue left, the green taken by ozone).
       // The high sky turns violet at its own brightness, a little deeper; the gold lobe keeps its side. Only a sun on the
       // horizon (Sunset), as the rays. The clouds read this colour, so their tops away from the sun follow.
+      // (its own function, violetFn: the haze every material reads per pixel is at the horizon, where it is 0; s34 phone)
+    });
+    return out;
+  });
+  const violetFn = Fn(([c, dir]: [V3, V3]) => {
+    const out = vec3(0).toVar();
+    out.assign(c);
+    If(violetOn.greaterThan(0.001), () => {
+      const flat = normalize(vec3(dir.x, 0, dir.z).add(vec3(0.0001, 0, 0)));
+      const across = float(1).sub(dot(flat, sunFlat));
+      const lobe = across.div(GLOW[1]).negate().exp().mul(dir.y.max(0).div(GLOW[2]).negate().exp()).mul(glowOn);
       const high = smoothstep(VIOLET[2], VIOLET[3], dir.y)
         .mul(float(1).sub(lobe.mul(GLOW[0]).min(1)))
         .mul(violetOn)
         .mul(VIOLET[0]);
-      const lc = dot(out, vec3(0.2126, 0.7152, 0.0722));
-      out.assign(mix(out, VIOLET_HUE.mul(lc.mul(VIOLET[1])), high));
+      const lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      out.assign(mix(c, VIOLET_HUE.mul(lc.mul(VIOLET[1])), high));
     });
     return out;
   });
   const horizonGlow = (c: V3, dir: V3): V3 => glowFn(c, dir) as unknown as V3;
   const colorAt = (dir: V3, row?: number): V3 => {
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
-    return horizonGlow(
+    const glowed = horizonGlow(
       mix(decode(texA.sample(st).level(float(0)).rgb), decode(texB.sample(st).level(float(0)).rgb), u.skyWeight)
         .mul(u.skyGain)
         .mul(u.skyTint),
       dir,
     );
+    // the horizon row (the haze) is never violet: skip it there
+    return row === undefined ? (violetFn(glowed, dir) as unknown as V3) : glowed;
   };
 
   // Far things fade into the sky's soft horizon colour in their compass direction (horizonAt, used as the scene's fog),
@@ -179,7 +200,13 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
   const raysFn = Fn(([c, d]: [V3, V3]) => {
     const out = vec3(0).toVar();
     out.assign(c);
-    If(glowOn.greaterThan(0.001), () => {
+    // only pixels in the low cone round the sun pay for the angle and the sines (s34 phone: II -> III)
+    const inCone = violetOn
+      .greaterThan(0.001)
+      .and(dot(d, u.keyDir as unknown as V3).greaterThan(1 - 6 * RAYS[1]))
+      .and(d.y.lessThan(0.42))
+      .and(d.y.greaterThan(-0.005));
+    If(inCone, () => {
       const s = normalize(u.keyDir as unknown as V3);
       const up = normalize(
         vec3(0, 1, 0)

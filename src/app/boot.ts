@@ -118,6 +118,20 @@ import { readParams } from './params';
 
 /** Sunset's place in the night (its near-field defocus, Task 16j). */
 const SUNSET_INDEX = STOP_IDS.indexOf('sunset');
+/**
+ * How much of a stop's near-field defocus shows: all of it there, fading over the first and last 8 % of its rides (s34:
+ * over the life layer's quarter it cost the phone ~1.7 fps on II → III, and a moving eye does not see a lens's blur).
+ */
+export function nearBlurWeight(s: { kind: string; a: number; b: number; t: number }, stop: number): number {
+  const ss = (e0: number, e1: number, x: number) => {
+    const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+    return u * u * (3 - 2 * u);
+  };
+  if (s.kind === 'stop') return s.a === stop ? 1 : 0;
+  if (s.b === stop) return ss(0.92, 1, s.t);
+  if (s.a === stop) return 1 - ss(0, 0.08, s.t);
+  return 0;
+}
 
 /** What the overlay, the HUD and the benchmarks need from a running world (Tasks 12–14 add to it). */
 export interface App {
@@ -1550,7 +1564,7 @@ export async function boot(): Promise<App> {
       const lookingDown = Math.min(1, Math.max(0, (-4 - head.pitch) / 9));
       // (part-way: sharp, the nearest blades read as flat spikes)
       pipeline?.setNearBlur(
-        lifeWeight(f.state, SUNSET_INDEX) * (1 - 0.65 * lookingDown * lookingDown * (3 - 2 * lookingDown)),
+        nearBlurWeight(f.state, SUNSET_INDEX) * (1 - 0.65 * lookingDown * lookingDown * (3 - 2 * lookingDown)),
       );
       active.render();
       governor.setTargetInterval(loop.pacer.targetIntervalMs);

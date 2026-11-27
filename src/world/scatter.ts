@@ -345,7 +345,12 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
 
     // the ground at the feet (Task 16l): its own random stream, so every plant above keeps its place
     const Ft = R.feet;
-    if (Ft) {
+    if (
+      Ft &&
+      !(typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('s34off') ?? '')).includes(
+        'feet',
+      )
+    ) {
       const rf = mulberry32(7700 + si);
       for (let i = 0; i < Ft.count; i++) {
         const d = Ft.from + (Ft.to - Ft.from) * Math.sqrt(rf());
