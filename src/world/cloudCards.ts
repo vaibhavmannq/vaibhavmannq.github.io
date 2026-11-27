@@ -107,6 +107,13 @@ const MIN_ALOFT = 24;
 
 /** The warm low-sun light on the cards (Task 16b, s33; picked by eye at Sunset against the render). */
 const CW = 1.4;
+/** Golden's violet bank: how far low clouds' shaded sides turn violet under a sun within ~5° (s34). */
+const VB = (() => {
+  const v = Number.parseFloat(
+    typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('vb') ?? ''),
+  );
+  return Number.isFinite(v) ? v : 1;
+})();
 
 /** An empty atlas, filled later from cards.png (no shader rebuild when the pixels arrive). */
 export function cardAtlasTexture(): DataTexture {
@@ -361,7 +368,18 @@ export function createCloudCards(
   const warmLit = mix(litCol, sunHue.mul(lum(litCol)), lowSun.mul(0.65));
   const cloudBase = smoothstep(0.55, 0.0, corner.y).mul(smoothstep(0.85, 0.2, s.b));
   const under = warmLit.mul(cloudBase).mul(lowSun).mul(max(cosK, 0).mul(0.6).add(0.4)).mul(0.55);
-  const col = mix(mix(shadeCol, warmLit, light).add(warmLit.mul(silver)).add(through).add(under), sky, info.z);
+  // Golden's violet bank (s34; the Golden and Sunset renders, reference book §light): under a sun within ~5° of the
+  // horizon the low clouds' shaded sides are lit only by the high sky through the long path, its red and blue left:
+  // violet, darker than the sky behind them. Not at Sunrise's 12° sun, not under the moon. `?vb=` while tuning.
+  const bankOn = smoothstep(0.12, 0.05, key.y)
+    .mul(smoothstep(-0.02, 0.0, key.y))
+    .mul(isSun);
+  const lowCloud = smoothstep(0.3, 0.03, dir.y);
+  const violetShade = vec3(0.141, 0.069, 0.325)
+    .div(0.2126 * 0.141 + 0.7152 * 0.069 + 0.0722 * 0.325)
+    .mul(lum(shadeCol).mul(0.62));
+  const shadeBanked = mix(shadeCol, violetShade, bankOn.mul(lowCloud).mul(VB));
+  const col = mix(mix(shadeBanked, warmLit, light).add(warmLit.mul(silver)).add(through).add(under), sky, info.z);
   material.colorNode = col;
   material.opacityNode = a.mul(info.y).mul(smoothstep(0.0, 0.02, dir.y));
 

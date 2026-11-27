@@ -70,11 +70,18 @@ const VIOLET_HUE = vec3(0.141, 0.069, 0.325).div(0.2126 * 0.141 + 0.7152 * 0.069
  * adds of the sun's gold, drift (radians of fan per second). `?rays=a,b,c,d,e` while tuning (s34).
  */
 const RAYS: number[] = [2, 0.11, 0.25, 0.65, 0.004];
+/** Golden's share of the rays' strength, and how much higher they reach there (`?rg=a,b` while tuning, s34). */
+const RAYS_GOLDEN: number[] = [0.8, 0];
 {
   const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('rays') ?? '');
   q.split(',').forEach((v, i) => {
     const n = Number.parseFloat(v);
     if (Number.isFinite(n) && i < RAYS.length) RAYS[i] = n;
+  });
+  const g = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('rg') ?? '');
+  g.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < RAYS_GOLDEN.length) RAYS_GOLDEN[i] = n;
   });
 }
 
@@ -98,6 +105,8 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     .mul(smoothstep(-0.1, -0.015, u.keyDir.y))
     .mul(float(1).sub(step(0.001, u.moonStrength)))
     .mul(min(u.keyStrength, 1));
+  // the rays reach up to Golden's 3.6° sun (s34); the violet stays Sunset's
+  const raysOn = glowOn.mul(smoothstep(0.1, 0.05, u.keyDir.y));
   const violetOn = glowOn
     .mul(smoothstep(0.06, 0.03, u.keyDir.y))
     .mul(
@@ -201,7 +210,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     const out = vec3(0).toVar();
     out.assign(c);
     // only pixels in the low cone round the sun pay for the angle and the sines (s34 phone: II -> III)
-    const inCone = violetOn
+    const inCone = raysOn
       .greaterThan(0.001)
       .and(dot(d, u.keyDir as unknown as V3).greaterThan(1 - 6 * RAYS[1]))
       .and(d.y.lessThan(0.42))
@@ -232,9 +241,16 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
         // the beams live in the low haze: gone by ~25 deg up (looking up, they read as searchlights; s34)
         .mul(smoothstep(0.42, 0.12, d.y))
         .mul(glowOn)
-        // only a sun on the horizon (Sunset 1°): at Golden's 3.6° the same fan read as a hard white sunburst (s34); Golden
-        // judges its own in its own pass
-        .mul(smoothstep(0.06, 0.03, s.y));
+        // full for a sun on the horizon (Sunset 1°); Golden's 3.6° sun takes its own share (s34: at Sunset's strength
+        // the fan read as a hard white sunburst there; the Golden render's rays are softer and reach higher)
+        .mul(mix(float(RAYS_GOLDEN[0]), float(1), smoothstep(0.06, 0.03, s.y)))
+        .mul(
+          float(1).add(
+            smoothstep(0.035, 0.06, s.y)
+              .mul(RAYS_GOLDEN[1])
+              .mul(smoothstep(0.42, 0.12, d.y).oneMinus()),
+          ),
+        );
       const k = reach.mul(RAYS[0]);
       const gold = glowHue.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
       // lit: 0.5 the sky as it was, up to 1.5 a light beam, down to −0.3 a shadow one
