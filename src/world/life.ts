@@ -383,18 +383,22 @@ function gustPetals(
 /** Petals one gust tears loose. */
 export const GUST_PETALS = 40;
 
+const SKEIN_NOW = typeof location !== 'undefined' && new URLSearchParams(location.search).get('skein') === 'now';
 /** Seconds between skeins of birds across Sunset's sun, and how long one takes to cross. */
-export const SKEIN = { every: 52, first: 9, cross: 20 } as const;
+export const SKEIN = { every: 52, first: 9, cross: 8 } as const;
 
 /**
  * A skein of seven birds across the sun (Task 16k, s34; reference book §10: birds heading to roost at sunset, ~12 m/s,
- * in a loose line): ~150 m out, 1.6-3 deg up (across the sun's glow), from 25 deg left of the gaze to 35 deg right, flapping with glides. Dark
+ * in a loose line): ~100 m out at a gull's 9 m/s, 1.6-3 deg up (across the sun's glow), from 15 deg left of the gaze to 25 deg right, flapping with glides. Dark
  * against the gold, as the small birds are.
  */
 function skein(t: number, out: Sprite[]) {
-  const k = Math.floor((t - SKEIN.first) / SKEIN.every);
+  // `?skein=now` (a test aid): one crossing after another
+  const every = SKEIN_NOW ? SKEIN.cross + 1 : SKEIN.every;
+  const first = SKEIN_NOW ? 0 : SKEIN.first;
+  const k = Math.floor((t - first) / every);
   if (k < 0) return;
-  const tau = t - SKEIN.first - k * SKEIN.every;
+  const tau = t - first - k * every;
   if (tau > SKEIN.cross) return;
   const r0 = rngFor(600, k);
   const el0 = 1.6 + 1.2 * r0(); // over the sun's glow (the sun is 1 deg up)
@@ -402,8 +406,8 @@ function skein(t: number, out: Sprite[]) {
     const r = rngFor(610, k * 8 + i);
     const phase = r() * 6.283;
     const lag = i * (0.35 + 0.15 * r()); // each a little behind the one ahead
-    const da = -25 + (60 * tau) / SKEIN.cross - lag * 2.2;
-    const d = 150 + (i % 2 === 0 ? 1 : -1) * i * 3;
+    const da = -15 + (40 * tau) / SKEIN.cross - lag * 2.2;
+    const d = 100 + (i % 2 === 0 ? 1 : -1) * i * 3;
     const el = el0 + 0.18 * i * (i % 2 === 0 ? 1 : -0.6) + 0.1 * Math.sin(0.6 * tau + phase);
     const [x, y, z] = from('sunset', da, d, el);
     const gliding = Math.sin(0.9 * tau + phase) < -0.4;
@@ -412,11 +416,11 @@ function skein(t: number, out: Sprite[]) {
       x,
       y,
       z,
-      size: 1.05,
+      size: 1.7, // s34 look pass: ~25 px at 100 m (at 150 m the wings were a pixel thick and vanished in the glow)
       flap: gliding ? 0.1 : Math.sin(2 * Math.PI * 3.2 * tau + phase),
       flapping: !gliding,
       rot: 0.05 * Math.sin(tau + phase),
-      alpha: sstep(0, 1.5, tau - lag * 0.4) * sstep(SKEIN.cross, SKEIN.cross - 1.5, tau),
+      alpha: sstep(0, 1, tau - lag * 0.15) * sstep(SKEIN.cross + 1, SKEIN.cross - 0.5, tau),
     });
   }
 }
@@ -529,7 +533,11 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
   const kind = b.x;
   const flap = b.y;
   const isWing = kind.lessThan(2.5);
-  const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false });
+  // Depth written where a sprite is solid enough (s34): the high tier's temporal smoothing (TAAU) keeps ~97 % of each
+  // pixel's history and locks thin features to it, so a small dark bird or a petal moving over bright sky averaged
+  // into the sky and vanished; a depth change under a sprite tells it the history there is stale.
+  const m = new SpriteNodeMaterial({ transparent: true, depthWrite: true });
+  m.alphaTest = 0.04;
   m.positionNode = a.xyz;
   // wings: a quad twice as wide as tall; a petal a little narrower; dew round
   m.scaleNode = vec2(a.w, a.w.mul(select(isWing, float(0.5), select(kind.lessThan(3.5), float(0.6), float(1)))));
