@@ -405,3 +405,12 @@ right most side" seen from Golden must stay. Resolved by removing from the world
 Sunset (invisible or minor from Golden) and making the rim's shrubs wind-cut cushions at 60 % height (coast.py
 SUNSET_CLEAR / SUNSET_SQUAT). Also from him: blacks `today` (D59 amended), the gust kept, the name and line hidden until
 M9, and the order for next sessions: Sunset to ~95 % in s34, the other places from s35.
+
+**D61 · 2026-11-28 · (owner, s35) Golden's grade, lantern and water: built behind switches; the result called "beautiful and
+amazing".** Asked before each (s34 left them for him): the sepia grade "Golden only, behind a switch"; the lantern
+"rebuild it now"; the water "try it behind a switch" (D48 stands for every other hour). After opening Golden on this
+build: "it's actually beautiful and amazing, keep up the awesome work". The new versions are the defaults; `?grade=0`,
+`?lantern=old`, `?water=old` keep the old for A/B until Phase 4 tidies the switches. Also this session: a second session
+(s35b, Dusk) ran beside this one on its own branch, sharing the laptop by a lock file (`.superpowers/browser.lock`); with
+two sessions and Brave open there is room for one test Chrome only (one shot job was killed for low memory). Ledger
+R264–R267.
