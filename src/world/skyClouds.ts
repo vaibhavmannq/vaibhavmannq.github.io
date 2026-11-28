@@ -20,15 +20,13 @@ export function skyMode(search: string): SkyMode {
 export interface CloudWeather {
   cover: number;
   opacity: number;
-  /** 0..1: Dusk's twilight look (s35b, Task 18b; the Dusk render): low clouds dark violet, a pink rim toward the set sun */
-  twilight?: number;
 }
 
 export const CLOUD_WEATHER: Record<StopId, CloudWeather> = {
   // scattered fair-weather cumulus
   golden: { cover: 0.4, opacity: 0.95 },
   sunset: { cover: 0.5, opacity: 0.9 },
-  dusk: { cover: 0.36, opacity: 0.92, twilight: 1 },
+  dusk: { cover: 0.36, opacity: 0.92 },
   bluehour: { cover: 0.46, opacity: 0.88 },
   // the aurora rules: a few thin moonlit clouds
   night: { cover: 0.08, opacity: 0.55 },
@@ -43,11 +41,5 @@ export const CLOUD_WEATHER: Record<StopId, CloudWeather> = {
 export function blendWeather(a: CloudWeather, b: CloudWeather, w: number): CloudWeather {
   const t = Math.min(1, Math.max(0, w));
   const c = (v: number) => Math.min(1, Math.max(0, v));
-  const ta = a.twilight ?? 0;
-  const tb = b.twilight ?? 0;
-  return {
-    cover: c(a.cover + (b.cover - a.cover) * t),
-    opacity: c(a.opacity + (b.opacity - a.opacity) * t),
-    twilight: c(ta + (tb - ta) * t),
-  };
+  return { cover: c(a.cover + (b.cover - a.cover) * t), opacity: c(a.opacity + (b.opacity - a.opacity) * t) };
 }
