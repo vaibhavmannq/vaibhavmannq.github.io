@@ -3,8 +3,10 @@ import {
   cos,
   dot,
   exp,
+  Fn,
   float,
   fwidth,
+  If,
   max,
   mix,
   mx_noise_float,
@@ -272,27 +274,35 @@ export function createSea(
     }
   }
   // Dusk's long ripples, along the hour's wind (three.js x, z), only where the hour asks (u.ripple)
+  // in a branch on u.ripple (s35 close: three cos per sea pixel at every hour cost time where they are multiplied by 0)
   const rippleOn = u.ripple as unknown as Node<'float'>;
-  let rx: Node<'float'> = float(0);
-  let rz: Node<'float'> = float(0);
-  for (const [turn, length, slope] of RIPPLES) {
-    const a = ((DUSK_WIND_AZ + turn) * Math.PI) / 180;
-    const dx = -Math.sin(a);
-    const dz = Math.cos(a);
-    const k = (2 * Math.PI) / length;
-    const c = cos(
-      p.x
-        .mul(dx * k)
-        .add(p.y.mul(dz * k))
-        .sub(time.mul(Math.sqrt(9.8 * k) * 0.5)),
-    )
-      .mul(slope * RP[0])
-      .mul(smoothstep(1.2, 0.35, pixel.mul(k)));
-    rx = rx.add(c.mul(dx));
-    rz = rz.add(c.mul(dz));
-  }
-  rx = rx.mul(rippleOn);
-  rz = rz.mul(rippleOn);
+  const ripple = Fn(() => {
+    const out = vec2(0).toVar();
+    If(rippleOn.greaterThan(0.001), () => {
+      let rx: Node<'float'> = float(0);
+      let rz: Node<'float'> = float(0);
+      for (const [turn, length, slope] of RIPPLES) {
+        const a = ((DUSK_WIND_AZ + turn) * Math.PI) / 180;
+        const dx = -Math.sin(a);
+        const dz = Math.cos(a);
+        const k = (2 * Math.PI) / length;
+        const c = cos(
+          p.x
+            .mul(dx * k)
+            .add(p.y.mul(dz * k))
+            .sub(time.mul(Math.sqrt(9.8 * k) * 0.5)),
+        )
+          .mul(slope * RP[0])
+          .mul(smoothstep(1.2, 0.35, pixel.mul(k)));
+        rx = rx.add(c.mul(dx));
+        rz = rz.add(c.mul(dz));
+      }
+      out.assign(vec2(rx, rz).mul(rippleOn));
+    });
+    return out;
+  })();
+  const rx = ripple.x;
+  const rz = ripple.y;
   const n = normalize(vec3(gx.negate().mul(flatten).sub(sx).sub(rx), 1, gz.negate().mul(flatten).sub(sz).sub(rz)));
   const v = normalize(toCam);
   const fresnel = float(0.02).add(
@@ -343,9 +353,16 @@ export function createSea(
   // sky dims and leans violet there (a ruffled sea mirrors less than a flat one), and light far brighter than the sky
   // (the sun and its road) is kept. Golden only, through its rides (u.grade); `?water=old` for the A/B (D48).
   const gw = (u.grade as unknown as Node<'float'>).mul(GOLDEN_WATER);
-  const mirLum = dot(mirrored, vec3(0.2126, 0.7152, 0.0722));
-  const mirrorTone = mix(vec3(0.5, 0.42, 0.66), vec3(1, 1, 1), smoothstep(1.2, 3.5, mirLum));
-  const mirroredG = mirrored.mul(mix(vec3(1, 1, 1), mirrorTone, gw));
+  // in a branch on its weight (s35 close); the mirror's reads stay outside it
+  const mirroredG = Fn(() => {
+    const m = vec3(mirrored).toVar();
+    If(gw.greaterThan(0.001), () => {
+      const mirLum = dot(m, vec3(0.2126, 0.7152, 0.0722));
+      const mirrorTone = mix(vec3(0.5, 0.42, 0.66), vec3(1, 1, 1), smoothstep(1.2, 3.5, mirLum));
+      m.assign(m.mul(mix(vec3(1, 1, 1), mirrorTone, gw)));
+    });
+    return m;
+  })();
   const bodyG = body.mul(mix(vec3(1, 1, 1), vec3(0.8, 0.6, 1.3), gw));
   let col = mix(bodyG, mirroredG, fresnel).add(glint);
 

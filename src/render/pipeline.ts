@@ -271,19 +271,27 @@ export async function createPipeline(
         // against violet, where ours read sepia, an even beige-brown). The darks sink (a toe: pow 1.35 below mid grey,
         // highlights kept), the shadows lean violet and the lights gold (a split tone by brightness), and the mid tones
         // gain saturation. Weighted by the hour (1 at Golden, fading through its rides); `?grade=` for the A/B.
+        // in a branch on its weight (s35 close: computed on every pixel at every hour it cost ~0.5 ms at low elsewhere)
         {
           const k = (light.grade as unknown as Node<'float'>).mul(GOLDEN_GRADE);
-          const y = dot(g, vec3(0.2126, 0.7152, 0.0722));
-          const toe = g.mul(
-            y
-              .add(1e-4)
-              .pow(0.35)
-              .mul(smoothstep(0.0, 0.6, y).oneMinus())
-              .add(smoothstep(0.0, 0.6, y)),
-          );
-          const split = mix(vec3(0.93, 0.9, 1.1), vec3(1.05, 1.0, 0.9), smoothstep(0.08, 0.55, y));
-          const graded = (saturation(toe.mul(split), 1.18) as Node<'vec3'>).clamp(0, 1);
-          g = mix(g, graded, k);
+          const g0 = g;
+          g = Fn(() => {
+            const gv = vec3(g0).toVar();
+            If(k.greaterThan(0.001), () => {
+              const y = dot(gv, vec3(0.2126, 0.7152, 0.0722));
+              const toe = gv.mul(
+                y
+                  .add(1e-4)
+                  .pow(0.35)
+                  .mul(smoothstep(0.0, 0.6, y).oneMinus())
+                  .add(smoothstep(0.0, 0.6, y)),
+              );
+              const split = mix(vec3(0.93, 0.9, 1.1), vec3(1.05, 1.0, 0.9), smoothstep(0.08, 0.55, y));
+              const graded = (saturation(toe.mul(split), 1.18) as Node<'vec3'>).clamp(0, 1);
+              gv.assign(mix(gv, graded, k));
+            });
+            return gv;
+          })() as Node<'vec3'>;
         }
         const q = screenUV
           .sub(0.5)

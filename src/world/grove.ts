@@ -565,7 +565,11 @@ export function createLoneTree(grove: GrovePart, groundAt: HeightAt): WorldPart 
 
 /** The framing tree's place (degrees from the gaze, metres, scale, turn) and crown trim, picked in the browser (s33). */
 const FO = [-30, 9, 1.4, 5.5] as const;
-const FC = [2.6, 0.55, 0.75] as const;
+/**
+ * s35 (owner's screenshot from the flowers spot: leaf patches floating off the limbs): whole clumps of 1 m kept or dropped,
+ * full size, instead of single cards at 0.75 (s33), so each kept clump is whole on its limb and the sky shows between.
+ */
+const FC = [2.6, 0.55, 1, 1] as const;
 /** Its wood's rim strength (×0.6 in the shader; 2.5 read plastic, s33). */
 const WOOD_RIM = 1;
 
@@ -592,8 +596,8 @@ export const SUNSET_SCRUB: readonly ScrubSpot[] = [
   [30, 47, 1.4, 3],
 ];
 
-/** The framing tree's crown (Task 16d): leaves only from 2.6 m of the model up, 55 % of them, each 0.75 the size. */
-export const SUNSET_CROWN: CrownTrim = { minZ: FC[0], keep: FC[1], scale: FC[2] };
+/** The framing tree's crown (Task 16d; s35): leaves only from 2.6 m of the model up, 55 % of its 1 m clumps. */
+export const SUNSET_CROWN: CrownTrim = { minZ: FC[0], keep: FC[1], scale: FC[2], cell: FC[3] };
 
 export interface CrownTrim {
   /** keep cards whose centre is at least this high in the model's frame (m) */
@@ -602,6 +606,11 @@ export interface CrownTrim {
   keep: number;
   /** each kept card shrunk about its centre by this */
   scale: number;
+  /**
+   * > 0: keep or drop whole clumps, the cards in one cube of this size (m) together (s35: cards dropped one by one left
+   * single cards floating apart from each other and the limbs, cut-outs up close at the flowers spot)
+   */
+  cell?: number;
 }
 
 /**
@@ -616,7 +625,16 @@ export function trimCrown(proto: GroveProto, t: CrownTrim): GroveProto {
   for (let c = 0; c < n; c++) {
     let z = 0;
     for (let k = 0; k < 4; k++) z += proto.cardPos[(c * 4 + k) * 3 + 2] as number;
-    const pass = r() < t.keep;
+    let pass = r() < t.keep;
+    if (t.cell && t.cell > 0) {
+      const at = [0, 1, 2].map((a) => {
+        let m = 0;
+        for (let k = 0; k < 4; k++) m += proto.cardPos[(c * 4 + k) * 3 + a] as number;
+        return Math.floor(m / 4 / (t.cell as number));
+      });
+      // a seeded draw per cube, the same for every card in it
+      pass = mulberry32((at[0]! * 73856093) ^ (at[1]! * 19349663) ^ (at[2]! * 83492791) ^ 1606)() < t.keep;
+    }
     if (z / 4 >= t.minZ && pass) keep.push(c);
   }
   const cardPos = new Float32Array(keep.length * 12);
