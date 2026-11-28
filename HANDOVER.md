@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-28, session s35 (see `docs/handover/sessions/2026-11-28-s35-golden-and-two-sessions.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-28, session s36 (see `docs/handover/sessions/2026-11-28-s36-dusk-wall-and-sky.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -390,8 +390,10 @@ no borrowed set pieces (no towers, piano, etc.).
   Close: s35b merged (4c4ff36); three Golden/Dusk-only terms moved into uniform branches after the sweep caught them
   costing elsewhere; merged build level with the session's start (R268); Sunset's framing tree thinned by clumps (owner:
   "looks good").
-- **Next:** Dusk (Task 18) on: s35b's list in its log (the
-  rides' lanterns, the far left wall), the owner's test. Phase 3: Sunset and Golden done on looks (2 of 9 places), 0 of 17 formally closed.
+- **s36 (2026-11-28): Dusk's far left wall and its sky** (log `sessions/2026-11-28-s36-dusk-wall-and-sky.md`; ledger R271;
+  8b686b7). 14 basalt columns where the left face stands on the beach (`wall_rocks`; Dusk's and Sunrise's left views);
+  a violet high sky at Dusk, off the mirror, behind `?dv=` (his call). Low sweep and phone level. Dusk ~71 %.
+- **Next:** the owner's test of Dusk (the wall; `?dv=0` vs the violet sky); then Task 18 closes on his word. Phase 3: Sunset and Golden done on looks (2 of 9 places), 0 of 17 formally closed.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
