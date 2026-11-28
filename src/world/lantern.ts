@@ -1,6 +1,7 @@
 import {
   abs,
   float,
+  fract,
   frontFacing,
   mix,
   mx_noise_float,
@@ -8,6 +9,7 @@ import {
   positionLocal,
   sin,
   smoothstep,
+  step,
   uniform,
   uv,
   vec3,
@@ -40,6 +42,15 @@ import type { WorldPart } from './part';
 export const LANTERN_AT: Vec3 = [7.574, -1.444, 0.158];
 const PAPER = { w: 0.3, h: 0.32 };
 const FLOAT_H = 0.05;
+/**
+ * `?lantern=old` (s35, Task 17e) gives the lantern before Golden's paper pass: the owner's video 4 shows warm peach paper
+ * all over (ours had a blue-white top under Golden's warm light, a frosted-glass block), handwriting in lines across a
+ * face, and a float hidden under the paper (ours, a dark slab wider than the lantern).
+ */
+const OLD_LANTERN =
+  (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('lantern') ?? '')) === 'old';
+const FLOAT_W = OLD_LANTERN ? 0.38 : 0.31;
+const FLOAT_HH = OLD_LANTERN ? FLOAT_H : 0.022;
 
 /** The flame's brightness factor: steady in calm air, a ~10 Hz shiver from force 2 (reference book §7). Pure. */
 export function lanternFlicker(timeS: number, beaufort: number): number {
@@ -157,6 +168,32 @@ export function paperLit(p: N3, w: number, h: number, glow: N1 | number): N3 {
   return mix(inside, outside, float(frontFacing)) as unknown as N3;
 }
 
+/**
+ * Golden's own lantern paper (s35, Task 17e; owner video 4, getty 1414041450): the shared look, then the top warmed from
+ * cream-white to peach (in Golden's warm light a near-white top read cold, blue-white), and handwriting: on two
+ * opposite faces, rows of short dark strokes ~1 cm high with gaps between words, the lines a little uneven, fading where
+ * the candle's glow is brightest. Outside faces only.
+ */
+export function goldenPaper(p: N3, w: number, h: number, glow: N1 | number): N3 {
+  const base = paperLit(p, w, h, glow);
+  const y = p.y.div(h).add(0.5);
+  const peach = mix(vec3(1, 1, 1), vec3(1.0, 0.8, 0.62), smoothstep(0.25, 0.85, y));
+  // across the face: x on the faces turned along z, z on the others (the paper is centred, so the larger of |x|, |z|
+  // says which wall a point is on)
+  const onZ = step(abs(p.x), abs(p.z));
+  const u = mix(p.z, p.x, onZ);
+  const written = mix(step(0, p.x), step(0, p.z), onZ); // two of the four walls
+  const line = p.y.div(0.016).add(mx_noise_float(vec3(u.mul(9), p.y.mul(3), 1.7)).mul(0.25));
+  const inLine = smoothstep(0.32, 0.12, abs(fract(line).sub(0.5)));
+  const strokes = smoothstep(0.1, 0.32, mx_noise_float(vec3(u.mul(260), line.floor().mul(7.3), 0.3)).abs()).oneMinus();
+  const words = smoothstep(-0.15, 0.05, mx_noise_float(vec3(u.mul(28), line.floor().mul(3.1), 5.1)));
+  const margin = smoothstep(w * 0.5, w * 0.36, abs(u))
+    .mul(smoothstep(0.1, 0.18, y))
+    .mul(smoothstep(0.9, 0.82, y));
+  const ink = float(1).sub(inLine.mul(strokes).mul(words).mul(margin).mul(written).mul(0.55));
+  return mix(base, base.mul(peach).mul(ink), float(frontFacing)) as unknown as N3;
+}
+
 export interface LanternOptions {
   /** where it stands (coast axes; z its foot) */
   at?: Vec3;
@@ -173,18 +210,20 @@ export function createLantern(opts: LanternOptions = {}): Lantern {
   const inPlay = opts.inPlay ?? atGolden;
   const level = opts.level ?? (() => 1);
   const glow = uniform(1);
-  const centreY = FLOAT_H + PAPER.h / 2;
+  const centreY = FLOAT_HH + PAPER.h / 2;
   const paperMat = new MeshBasicNodeMaterial({ side: DoubleSide });
   paperMat.name = 'lantern.paperMat';
-  paperMat.colorNode = paperLit(positionLocal, PAPER.w, PAPER.h, glow);
+  paperMat.colorNode = OLD_LANTERN
+    ? paperLit(positionLocal, PAPER.w, PAPER.h, glow)
+    : goldenPaper(positionLocal, PAPER.w, PAPER.h, glow);
   const paper = new Mesh(paperShape(PAPER.w, PAPER.h), paperMat);
-  paper.position.y = FLOAT_H + PAPER.h / 2;
+  paper.position.y = FLOAT_HH + PAPER.h / 2;
 
   const floatMat = new MeshBasicNodeMaterial();
   floatMat.name = 'lantern.floatMat';
   floatMat.colorNode = vec3(0.07, 0.045, 0.03).add(vec3(0.25, 0.12, 0.04).mul(glow).mul(0.3));
-  const floatMesh = new Mesh(new BoxGeometry(0.38, FLOAT_H, 0.38), floatMat);
-  floatMesh.position.y = FLOAT_H / 2;
+  const floatMesh = new Mesh(new BoxGeometry(FLOAT_W, FLOAT_HH, FLOAT_W), floatMat);
+  floatMesh.position.y = FLOAT_HH / 2;
 
   // The streak on the wet sand: as long as the lantern is tall, broken into bars by the film of water (owner video 4).
   const streakMat = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
