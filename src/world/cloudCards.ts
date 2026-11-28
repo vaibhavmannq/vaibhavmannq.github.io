@@ -389,13 +389,14 @@ export function createCloudCards(
   // Golden's bright cloud (s34, Task 17b; the Golden render): under a low sun the clouds near it are lit gold-white, their
   // edges silver, brighter than the sky behind; ours stayed beige. Their lit side lifts toward the sun, by `?cg=`.
   // Golden's only (a sun above ~2°): at Sunset it washed the violet clouds pale
-  const nearSun = smoothstep(0.55, 0.95, cosK)
-    .mul(bankOn)
-    .mul(smoothstep(0.03, 0.055, key.y));
+  const golden = smoothstep(0.03, 0.055, key.y).mul(bankOn); // Golden only (not Sunset's 1° sun, not Sunrise's 12°)
+  const nearSun = smoothstep(0.55, 0.95, cosK).mul(golden);
+  // the silver edge only on the side a card turns to the sun (s35: on every edge it outlined each card like a sticker)
+  const sunSide = mix(float(1), smoothstep(0.35, 0.8, light), golden);
   const litNear = warmLit.mul(float(1).add(nearSun.mul(CG)));
   const col = mix(
     mix(shadeBanked, litNear, light)
-      .add(litNear.mul(silver.mul(float(1).add(nearSun.mul(CG * 2)))))
+      .add(litNear.mul(silver.mul(float(1).add(nearSun.mul(CG * 2))).mul(sunSide)))
       .add(through)
       .add(under),
     sky,
