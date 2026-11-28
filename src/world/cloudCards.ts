@@ -526,10 +526,30 @@ export function createCloudCards(
         const z = pos[i * 3 + 2] as number;
         const d = Math.sqrt(dist2[i] as number);
         const k = d > DRAW_MAX ? DRAW_MAX / d : 1;
-        iCenter.setXYZ(n, cx + (x - cx) * k, cy + (y - cy) * k, cz + (z - cz) * k);
         const worldW = b.size * grow * k;
         // far banks are seen nearly edge-on: flattened to a quarter, as distance flattens real clouds
-        iSize.setXY(n, worldW, ((worldW * card.h) / Math.max(card.w, 1e-3)) * (b.bank ? 0.28 : b.sunBank ? 0.32 : 1));
+        const worldH = ((worldW * card.h) / Math.max(card.w, 1e-3)) * (b.bank ? 0.28 : b.sunBank ? 0.32 : 1);
+        const cr = crops[b.card % meta.cards.length];
+        const [u0, u1, v0, v1] = cr ?? [0, 1, 0, 1];
+        // as drawn: mirrored ones flipped
+        const [du0, du1] = b.rank > 0.5 ? [u0, u1] : [1 - u1, 1 - u0];
+        let px = cx + (x - cx) * k;
+        let py = cy + (y - cy) * k;
+        let pz = cz + (z - cz) * k;
+        if (b.sunBank) {
+          // Golden's sun bank cropped like every card (s35, the phone: uncropped, its transparent margins cost 1–2 fps on
+          // I → II), the card moved so its visible cloud keeps the place the whole card had: centred across, foot down
+          const fx = cx - px;
+          const fz = cz - pz;
+          const fl = Math.hypot(fx, fz) || 1;
+          const [rx, rz] = [fz / fl, -fx / fl]; // the shader's `right`
+          const across = -((du0 + du1) / 2 - 0.5) * worldW;
+          px += rx * across;
+          pz += rz * across;
+          py -= v0 * worldH;
+        }
+        iCenter.setXYZ(n, px, py, pz);
+        iSize.setXY(n, worldW, worldH);
         const col = card.cell % meta.cols;
         const row = Math.floor(card.cell / meta.cols);
         const pw = card.w * CELL;
@@ -537,11 +557,7 @@ export function createCloudCards(
         iRect.setXYZW(n, col * CELL + (CELL - pw) / 2, row * CELL + CELL - 2, pw, ph);
         // mirrored at random for variety: the normal from the height lights it from the true side either way
         // cropped to its visible cloud (16a; the phone: +1.7 fps, a third fewer slow frames on VI → VII, R244)
-        const cr = crops[b.card % meta.cards.length];
-        // the sun bank uncropped: a crop shifts the drawn cloud off the card's foot, and these must sit across the sun
-        const [u0, u1, v0, v1] = b.sunBank ? [0, 1, 0, 1] : (cr ?? [0, 1, 0, 1]);
-        if (b.rank > 0.5) iCrop.setXYZW(n, u0, u1, v0, v1);
-        else iCrop.setXYZW(n, 1 - u1, 1 - u0, v0, v1);
+        iCrop.setXYZW(n, du0, du1, v0, v1);
         keptOf[n] = (u1 - u0) * (v1 - v0);
         bankOf[n] = b.bank || b.sunBank ? 1 : 0;
         iInfo.setXYZW(
