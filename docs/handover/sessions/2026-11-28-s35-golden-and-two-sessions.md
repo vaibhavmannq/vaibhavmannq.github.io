@@ -21,8 +21,12 @@ marked), `phone-hold.mjs` (a stop held on the phone), `pink.py`).
 5. **Sunset's +1.3 ms at low**: bisected, spread over 16g–16j, no single culprit; closed, no change (R266).
 6. **Carry B** traced: the ~50 ms frames on low rides are the GPU's ceiling mid-ride (Chrome's last paint waits ~35 ms
    for our frame); Phase 4 (R267).
-7. **Close**: s35b merged (bcf7267); nine stops old vs new: only Golden, Sunset (skein) and Dusk (s35b) differ (D47 holds
-   for the sea ripples and the sun bank); whole-night sweep: R268.
+7. **Close**: s35b merged (bcf7267, then 4c4ff36); nine stops old vs new: only Golden, Sunset (skein) and Dusk (s35b)
+   differ (D47 holds for the sea ripples and the sun bank); the first whole-night sweep caught +0.4–1.1 ms at untouched
+   stops (Golden's grade and water, Dusk's ripples computed × 0 everywhere), fixed with uniform branches; the third sweep
+   level with the session's start within noise (R268).
+8. **Sunset's framing tree** (owner's screenshot: leaf patches floating off the limbs): thinned by whole 1 m clumps at
+   full size; owner: "both looks good" (the tree and Dusk).
 
 ## The owner this session
 - Golden on this build: **"it's actually beautiful and amazing, keep up the awesome work"** (D61).
@@ -38,7 +42,7 @@ Sunset ~91 % (owner: "perfect"), Golden ~90 % (owner: "beautiful and amazing"), 
 Golden done on looks; Golden's phone check on the final build owed (R268).
 
 ## Open / next
-- The phone at Golden and Dusk on the merged build (held at high, their rides), if not done in R268.
+- **The phone at Golden and Dusk on the merged build** (held at high, their rides): not done (unplugged at the close).
 - Golden's camera at the water's edge (the render's) if the owner wants the darker water to show: his call.
 - Dusk (s35b's list): its clouds (low dark banks with lit edges; cloudCards.ts, s35b asked to add a `twi` weight beside
   the sun bank), 18e (the left wall, foam line, walk glint), the owner's test.

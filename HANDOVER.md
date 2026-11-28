@@ -4,7 +4,7 @@ Read this file first, then `docs/handover/DECISIONS.md`, then the newest file in
 That is the whole ritual: three files, ten minutes, and you know exactly what to do. Older sessions are history,
 not required reading; dig into them only when a decision needs its context.
 
-Last updated: 2026-11-27, session s34 (see `docs/handover/sessions/2026-11-27-s34-sunset-to-89.md`). **After the three files of the ritual, also read
+Last updated: 2026-11-28, session s35 (see `docs/handover/sessions/2026-11-28-s35-golden-and-two-sessions.md`). **After the three files of the ritual, also read
 `docs/superpowers/specs/2026-11-11-world-design-amendment-1.md` and `docs/handover/research/README.md`.**
 The owner switches accounts and models between sessions: always start fresh from these files, never resume.
 
@@ -378,8 +378,20 @@ no borrowed set pieces (no towers, piano, etc.).
   of florets; the skein closer; **TAAU at high had been erasing every moving sprite**, fixed by depth-writing sprites; sun
   road and nearest blades carried with reasons) → **Sunset ~91 %**. Golden begun (Task 17, R262: violet bank, rays,
   bright near-sun clouds, the wet sand's bar broken into film) ~84 %.
-- **Next:** the owner's test of Sunset (and his call on the sea for the sun road); then Task 17's list. Phase 3: 0 of 17
-  closed.
+- **s35 (2026-11-28): Sunset checked, Golden to ~90 %, a second session beside this one** (log
+  `sessions/2026-11-28-s35-golden-and-two-sessions.md`; ledger R264–R268; D61, D62). Thrift pink back to s33's; Sunset on
+  the phone checked; Golden's sticker-like cloud outlines fixed; with the owner's yes a Golden-only grade, the lantern as
+  his water-lantern clip, darker violet water and a dense violet bank low across the sun (`?grade=0 ?lantern=old
+  ?water=old ?sunbank=0`). **Owner: Golden "beautiful and amazing", Sunset "perfect"** once the skein was removed (D62).
+  Speed carries closed: Sunset's +1.3 ms is spread (R266); low rides' 50 ms frames are the GPU's ceiling (R267, Phase 4).
+  **s35b** (a second session, Dusk Task 18, log `sessions/2026-11-28-s35b-dusk.md`): 80 lanterns as a ribbon, ripples,
+  right-slope flowers, afterglow off; Dusk ~68 %; merged bcf7267. Two sessions share this laptop by
+  `.superpowers/browser.lock` (one test Chrome at a time; vitest `--maxWorkers=2`).
+  Close: s35b merged (4c4ff36); three Golden/Dusk-only terms moved into uniform branches after the sweep caught them
+  costing elsewhere; merged build level with the session's start (R268); Sunset's framing tree thinned by clumps (owner:
+  "looks good").
+- **Next:** the phone at Golden and Dusk on this build (owed, R268); then Dusk (Task 18) on: s35b's list in its log (the
+  rides' lanterns, the far left wall), the owner's test. Phase 3: Sunset and Golden done on looks (2 of 9 places), 0 of 17 formally closed.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
   - First visits: measure with `QUIET_COLD=1` (`.superpowers/quiet-browser.mjs`; a second Chrome with no shader disk
