@@ -79,10 +79,11 @@ export const SKY_FILL: Record<StopId, number> = {
 export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
 
 /**
- * The twilight glow over the set sun (s35b, Task 18b; the Dusk render: the sun 2° under the horizon, the sky above it
- * pink-white and brightest, rays fanning up from under the horizon). Dusk only; sky.ts draws it behind a uniform branch.
+ * Long slow ripples on the mirror (s35b, Task 18f; owner: "yes for ripples"; the Dusk render: rings of ripple that
+ * break the reflections from the cliff top). Seen from Dusk's 26 m the sea's fine ripples are under a pixel and fade, so
+ * the mirror read flat; these are metres long. Dusk only (D48: water is the owner's), through its rides.
  */
-export const AFTERGLOW: Partial<Record<StopId, number>> = { dusk: 1 };
+export const RIPPLE: Partial<Record<StopId, number>> = { dusk: 1 };
 // s35b Task 18 tuning (temporary): ?df=skyFill,fogTrim for Dusk
 {
   const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('df') ?? '');
@@ -146,7 +147,7 @@ function preset(id: StopId): HourPreset {
     plankton: PLANKTON[id],
     road: 1,
     grade: id === 'golden' ? 1 : 0,
-    afterglow: AFTERGLOW[id] ?? 0,
+    ripple: RIPPLE[id] ?? 0,
   };
 }
 
@@ -268,6 +269,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     plankton: lerp(a.plankton, b.plankton, w),
     road: roadBetween(a, b, w),
     grade: lerp(a.grade, b.grade, w),
-    afterglow: lerp(a.afterglow, b.afterglow, w),
+    ripple: lerp(a.ripple, b.ripple, w),
   };
 }

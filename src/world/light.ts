@@ -160,8 +160,8 @@ export interface LightValues {
   road: number;
   /** 0..1: Golden's own grade (HourPreset.grade) */
   grade: number;
-  /** 0..1: the twilight glow over the set sun (HourPreset.afterglow) */
-  afterglow: number;
+  /** 0..1: Dusk's long ripples (HourPreset.ripple) */
+  ripple: number;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
@@ -206,7 +206,7 @@ export function lightValues(
     fillGain: FILL_SHARE_BY_BLACKS[blacks],
     road: hour.road,
     grade: hour.grade,
-    afterglow: hour.afterglow,
+    ripple: hour.ripple,
   };
 }
 
@@ -239,8 +239,8 @@ export function createLightUniforms() {
     road: uniform(1),
     /** 0..1: how much of Golden's own look applies (HourPreset.grade; s35, Tasks 17d, the grade, and water) */
     grade: uniform(0),
-    /** 0..1: the twilight glow over the set sun (HourPreset.afterglow; s35b, Task 18b): Dusk only */
-    afterglow: uniform(0),
+    /** 0..1: Dusk's long ripples on the mirror (HourPreset.ripple; s35b, Task 18f) */
+    ripple: uniform(0),
   };
   const key = new DirectionalLight(0xffffff, 2);
   // The key's light at a point is its colour × the baked shadow there (plan world-to-100 Task 11): one hook, so every
@@ -282,7 +282,7 @@ export function createLightUniforms() {
       u.moonLit.value = v.moonLit;
       u.road.value = v.road;
       u.grade.value = v.grade;
-      u.afterglow.value = v.afterglow;
+      u.ripple.value = v.ripple;
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
       u.shadowFloor.value.setRGB(...v.shadowFloor);

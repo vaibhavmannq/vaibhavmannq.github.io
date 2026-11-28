@@ -105,6 +105,9 @@ const RULES: Record<CoveStop, Rules> = {
     // M8.5 #5 (owner: "a few more colourful flowers"; the Dusk render's slope of thrift and yellow): drifts on the
     // headland around the eye, pink, yellow and white by band, as Sunset's
     field: { candidates: 1600, from: 3, to: 24, patch: 0.5 },
+    // Task 18d (s35b; the Dusk render's right third; owner: "flowers are always welcomed"): thrift in tall grass down
+    // the right slope and across the plateau, in patches with gaps (s35b shots `18d2`: denser read as a pink carpet)
+    side: { candidates: 2500, from: 3, to: 45, a0: 10, a1: 75, patch: 0.5, tall: 2 },
   },
   firstlight: { candidates: 16000, near: [[-44, 2.8, 0.25]], nearFlowers: 0, lensClear: 5, zmin: 0.8, dland: 7 },
   // M8.5 #14 (owner: "more flowers"): drifts down the rim's slope in the turn, more than Dusk's light scattering
@@ -351,8 +354,10 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
       const band = coastFbm(x * 0.09 + 13, y * 0.09 + 5, 3);
       const kind = band < 0.56 ? PLANT.pink : band < 0.66 ? PLANT.yellow : PLANT.white;
       put(x, y, 0.3 * (0.9 + 0.5 * r()), speckle(kind, hsh(x * 7.1, y * 7.1), hsh(x * 3.3 + 5, y * 3.3), false), r() * 2 * Math.PI);
-      if (S.tall > 0 && i % S.tall === 0 && sl < TALL_SLOPE && d > R.lensClear) {
-        put(x + (r() - 0.5) * 0.6, y + (r() - 0.5) * 0.6, 0.8 * (0.75 + 0.6 * r()), PLANT.tall, r() * 2 * Math.PI);
+      if (S.tall > 0 && i % S.tall === 0 && d > R.lensClear) {
+        const tx = x + (r() - 0.5) * 0.6;
+        const ty = y + (r() - 0.5) * 0.6;
+        if (slopeAt(tx, ty) < TALL_SLOPE) put(tx, ty, 0.8 * (0.75 + 0.6 * r()), PLANT.tall, r() * 2 * Math.PI);
       }
     }
 

@@ -109,6 +109,6 @@ export interface HourPreset {
   road: number;
   /** 0..1: Golden's own grade (s35, Task 17d; the Golden render): deeper darks, gold against violet. 1 at Golden only. */
   grade: number;
-  /** 0..1: the twilight glow over the set sun (s35b, Task 18b; the Dusk render). 1 at Dusk only (hours.ts AFTERGLOW). */
-  afterglow: number;
+  /** 0..1: long slow ripples that break the mirror from a height (s35b, Task 18f; the Dusk render). Dusk only (hours.ts RIPPLE). */
+  ripple: number;
 }
