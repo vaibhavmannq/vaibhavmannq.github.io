@@ -178,7 +178,9 @@ for hour in ("golden", "sunrise"):
     rocks = w.SHOTS[hour]["cliff_rocks"]
     for x, y, r, h, lean in rocks:
         d = to_shore(x, y)
-        check(d <= 5.5, f"{hour}'s column at ({x}, {y}) is {d:.1f} m from the shore (not on a face)")
+        # s36 wall_rocks: on the beach stretch the face's foot is sand, so "on a face" is the ground falling 8 m within 6 m
+        g = G(np.array([x]), np.array([y]))[0]; ring = G(x + 6 * np.cos(np.arange(8) * np.pi / 4), y + 6 * np.sin(np.arange(8) * np.pi / 4))
+        check(d <= 5.5 or g - ring.min() >= 8.0, f"{hour}'s column at ({x}, {y}) is {d:.1f} m from the shore (not on a face)")
         check(min(math.hypot(x - cx, y - cy) for cx, cy in cams) >= 9.9, f"{hour}'s column at ({x}, {y}) stands in front of a lens")
     face = [q for q in rocks if q[3] >= 6.0 and abs(q[1]) < 100 and q[0] > -200]
     xs = np.array([q[0] for q in face if (q[0] > 0) == (hour == "golden")])

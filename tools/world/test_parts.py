@@ -393,13 +393,13 @@ def test_cove_cliffs():
     import coastlib
     c = coastlib.load("bluehour")
     m, P, light, moss, T = read_rock("cliffs", "cove")
-    assert T.max() < len(P) and m["tris"] <= 60_000, m["tris"]
+    assert T.max() < len(P) and m["tris"] <= 70_000, m["tris"]          # s36: 68 k with the left wall's columns
     W = P + np.array([m["x"], m["y"], 0.0])
     sys.path.insert(0, os.path.join(HERE, "blender"))
     from export_parts import cliff_columns, live_ground, CLIFF_CLEAR
     at = live_ground(BASE)
     cols = [t[2:] for t in cliff_columns(c.SHOTS, at)]
-    assert len(cols) == 55                                                  # M8.5 #13: along the new faces, aprons, corner rocks
+    assert len(cols) == 69                                                  # M8.5 #13: along the new faces, aprons, corner rocks; s36: +14 on the left wall
     # no column top just pokes out of the turf (s14: a moss blob seen from the land)
     assert all(h - at(x, y) >= CLIFF_CLEAR or h < at(x, y) for (x, y, r, h, lean) in cols)
     # each vertex belongs to the column whose axis is nearest (in its own radii)

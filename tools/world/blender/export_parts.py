@@ -34,7 +34,7 @@ STACKS_TRIS = 96_000          # the stacks part (brief: <= 150 k, aim <= 100 k; 
 HEADLAND = os.path.join("..", "stops", "headland")   # the headland's place pack, beside base/ (src/world/headland.ts)
 COVE = os.path.join("..", "stops", "cove")           # the cove's place pack (src/world/cove.ts): cliffs.bin, grove.bin
 CLIFF_SCALE = 100             # cliffs.bin: Int16 units per metre (the columns reach ~70 m from their middle)
-CLIFF_TRIS = 58_000           # the cliff columns (plan M3 Task 2; s26: 55 with the terrace and the aprons; the cove pack has 3.1 MB beside the headland's 1.9)
+CLIFF_TRIS = 68_000           # the cliff columns (plan M3 Task 2; s26: 55 with the terrace and the aprons; s36: +14 on the left wall; the cove pack has 3.1 MB beside the headland's 1.9)
 GROVE_SCALE = 4000            # grove.bin: Int16 units per metre in a model's own frame (models reach ~5 m from their root)
 WOOD_TRIS = {"island_tree_01": 6000,  # s33: the framing tree's trunk read faceted at 9 m (Task 16d E)
              "island_tree_02": 2500, "island_tree_03": 2500, "searsia_burchellii": 0}

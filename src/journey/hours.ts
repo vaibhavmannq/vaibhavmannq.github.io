@@ -84,6 +84,13 @@ export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
  * the mirror read flat; these are metres long. Dusk only (D48: water is the owner's), through its rides.
  */
 export const RIPPLE: Partial<Record<StopId, number>> = { dusk: 1 };
+
+/**
+ * The high sky deepened to violet after sunset (s36, Task 18; the Dusk render: bright low sky, deep violet overhead;
+ * no glow or rays added: the owner turned the afterglow off). Built for his A/B (`?dv=0` is the sky before); his call.
+ * Sunset's violet (sky.ts) needs a sun on the horizon; Dusk's is under it. Dusk only, through its rides.
+ */
+export const HIGH_SKY: Partial<Record<StopId, number>> = { dusk: 1 };
 // s35b Task 18 tuning (temporary): ?df=skyFill,fogTrim for Dusk
 {
   const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('df') ?? '');
@@ -148,6 +155,7 @@ function preset(id: StopId): HourPreset {
     road: 1,
     grade: id === 'golden' ? 1 : 0,
     ripple: RIPPLE[id] ?? 0,
+    highSky: HIGH_SKY[id] ?? 0,
   };
 }
 
@@ -270,5 +278,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     road: roadBetween(a, b, w),
     grade: lerp(a.grade, b.grade, w),
     ripple: lerp(a.ripple, b.ripple, w),
+    highSky: lerp(a.highSky, b.highSky, w),
   };
 }

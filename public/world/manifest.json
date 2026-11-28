@@ -59,12 +59,12 @@
   },
   "cliffs": {
    "file": "stops/cove/cliffs.bin",
-   "verts": 29202,
-   "tris": 56839,
+   "verts": 34205,
+   "tris": 66639,
    "indexBytes": 2,
    "scale": 100,
-   "x": -39.3,
-   "y": 74.7
+   "x": -39.2,
+   "y": 34.1
   },
   "grove": {
    "file": "stops/cove/grove.bin",
@@ -298,50 +298,50 @@
   },
   {
    "path": "light/ao-coarse.webp",
-   "bytes": 167588,
-   "sha256": "b2754491f78788c3b1d961a04f7aba5dc36fe1f814817546340988fb4a90c845",
+   "bytes": 167822,
+   "sha256": "2a337f97951cc6d87a5adf6514e4309030be49b9a6393c4d525e89fc41c71507",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-golden.webp",
-   "bytes": 376678,
-   "sha256": "34ac5d7181ac599641aac6ac62b1619ca3005125af56b01350058e9b7a1af7fc",
+   "bytes": 376538,
+   "sha256": "e312f69a10c17bd6b35c7a8fecaaf80d10d5cd5988ee1d512c8e6d92049a0d68",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-midnight.webp",
-   "bytes": 313542,
-   "sha256": "ef1321ec219f9b40d653ffea147c6ffdfa84c874b9b099ce7dc0975860320bbb",
+   "bytes": 313220,
+   "sha256": "35c8519e88dd9296b35f08b0c6965c8cabfe28afdcbcd5501fe8a7654eb0fad6",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-night.webp",
-   "bytes": 303100,
-   "sha256": "16539687ac0843db6344b752724f1081f26e3817a617189d14765a3b777688a1",
+   "bytes": 303194,
+   "sha256": "7d7f6a44e0b3c63c962190b749e8552b62a5af8901b39b97b944057c2bf8075c",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-sunrise.webp",
-   "bytes": 358508,
-   "sha256": "397a8ddf1c60747b813fc35869985ef9cf08dc4cacf4703aec054e4eb9378a57",
+   "bytes": 358418,
+   "sha256": "903d442456f2c319a508a9d4b02d9addc07d64e69cd25ff7bfe0401d142768a7",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-coarse-sunset.webp",
-   "bytes": 358902,
-   "sha256": "4eef8fe4fa26f6442cc2916b5d518dea657840d5058f33fd7036c03f7b6e46d7",
+   "bytes": 358602,
+   "sha256": "aae77d17a300a3c74bbcc7a70768674c505820dc01a6c84933bc491a47f4f322",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-fine-golden.webp",
-   "bytes": 107764,
-   "sha256": "96729d826276bf983a5cfff0ef878e8b81b91805db4d7a0890c1eab482569f1c",
+   "bytes": 108100,
+   "sha256": "05782e218453f170b3aaf99eb66596d434c8b6428e63a49dc66ed38f29bf5c6a",
    "stage": "B",
    "stops": "all"
   },
@@ -354,22 +354,22 @@
   },
   {
    "path": "light/key-fine-night.webp",
-   "bytes": 150478,
-   "sha256": "dfa262de99f56a67ef4779570d2b1e0f43c8b390c5023a6b64daeecfed21aebb",
+   "bytes": 150982,
+   "sha256": "4a206afcd2aa6cb4e17469b63ed513fabd351339d9cab4403deb951276c0caf1",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-fine-sunrise.webp",
-   "bytes": 121134,
-   "sha256": "dab41cca099ebc625428de4f6c26ee2193f038a6e9337d0c8aba16691ce02c2e",
+   "bytes": 121462,
+   "sha256": "3ce6d6a436da8266bd6a851c797cc9fdae2e5ac0499ff4a5961bb6f8749d5d16",
    "stage": "B",
    "stops": "all"
   },
   {
    "path": "light/key-fine-sunset.webp",
-   "bytes": 154102,
-   "sha256": "1020c7a589f52cb65745e30d6484f0e193867d67956ac22c126744ca25edd0bd",
+   "bytes": 155070,
+   "sha256": "31fba0593fd880652198b7f9bef15485543720adaaee36213b2b0c5ea93cd9e7",
    "stage": "B",
    "stops": "all"
   },
@@ -718,8 +718,8 @@
   },
   {
    "path": "stops/cove/cliffs.bin",
-   "bytes": 691458,
-   "sha256": "ad9eb0aa8f934f2736e8bf21ea4036025cbd2117c81d00b1f7940116bbd5097b",
+   "bytes": 810294,
+   "sha256": "9b962d4e5caa8d4596a80b8361770d8d1076475244dbf82d9fc096ab879cdbcd",
    "stage": "B",
    "stops": [
     "golden",

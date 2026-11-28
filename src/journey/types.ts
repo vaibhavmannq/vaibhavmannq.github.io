@@ -111,4 +111,6 @@ export interface HourPreset {
   grade: number;
   /** 0..1: long slow ripples that break the mirror from a height (s35b, Task 18f; the Dusk render). Dusk only (hours.ts RIPPLE). */
   ripple: number;
+  /** 0..1: the high sky deepened to violet with the sun under the horizon (s36, Task 18; the Dusk render). Dusk only (hours.ts HIGH_SKY). */
+  highSky: number;
 }

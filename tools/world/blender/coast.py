@@ -558,6 +558,21 @@ def face_rocks(y0, y1, x_from, inland, seed, n, apron, h_share=(0.55, 0.85), r_r
                        round(float(rr.uniform(2.0, 4.5)), 1), round(float(rr.uniform(-0.06, 0.06)), 2)))
     return tuple(out + blocks)
 
+def wall_rocks(y0, y1, x_from, inland, seed, n, rise=8.0, h_share=(0.72, 0.95), r_range=(4.0, 6.5), h_cap=42.0, setback=(0.5, 2.5)):
+    """Columns along a face whose foot is beach, not sea (face_rocks needs a waterline): a scan from x_from toward
+    `inland` finds where the ground first stands `rise` m over the scan's start; n columns (x, y, r, h, lean) there."""
+    rr = np.random.default_rng(seed); out = []
+    for y in np.linspace(y0, y1, n) + rr.uniform(-1.5, 1.5, n):
+        xs = x_from + 0.25 * inland * np.arange(0, 480)
+        h = ground_base(xs, np.full_like(xs, float(y)))
+        i = int(np.argmax(h > max(float(h[0]), 0.0) + rise))
+        if not h[i] > max(float(h[0]), 0.0) + rise: continue
+        x = float(xs[i]) + inland * rr.uniform(*setback)
+        top = float(ground_base(x + inland * 10.0, y))
+        hh = float(np.clip(top * rr.uniform(*h_share), 6.0, h_cap))
+        out.append((round(x, 1), round(float(y), 1), round(float(rr.uniform(*r_range)), 1), round(hh, 1), round(float(rr.uniform(-0.03, 0.03)), 2)))
+    return tuple(out)
+
 # Golden: the right face from its beach corner into the bay north of Dusk (its corner's ground cannot move: Golden's eye
 # is 9.5 m away; s26 tried three low rocks there, and at 10 m they read as one soft blob). Sunrise: the left face from
 # the beach to its rounded tip.
@@ -571,6 +586,9 @@ TERRACE_ROCKS = (rocks_along([(x + _rng.uniform(-1.5, 1.5), 95.0) for x in np.ar
 # at low, measured part on/off).
 SHOTS["golden"]["cliff_rocks"] = face_rocks(14.0, 100.0, 0.0, +1, 71, 13, 3, h_share=(0.4, 0.62), setback=(2.5, 5.5)) + TERRACE_ROCKS
 SHOTS["sunrise"]["cliff_rocks"] = face_rocks(-6.0, 80.0, -60.0, -1, 72, 12, 3, h_share=(0.6, 0.9))
+# s36: the left face south of Sunrise's row (to the edge of Sunrise's left view), where its foot is the beach: Dusk's left view saw a bare 35-45 m curtain
+# there (the live 8 m grid smears it into a ramp with stretched texture). Appended, so the older columns keep their seeds.
+SHOTS["sunrise"]["cliff_rocks"] += wall_rocks(-85.0, -10.0, -75.0, -1, 77, 14)
 
 # ---------------- the arch's shape (pure data; Blender builds the mesh in build_arch) ----------------
 # Owner cliffs-and-columns 1 (Gatklettur) and reference-landforms §2 ("arches are lopsided because rock is not

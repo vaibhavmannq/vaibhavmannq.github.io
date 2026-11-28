@@ -162,6 +162,8 @@ export interface LightValues {
   grade: number;
   /** 0..1: Dusk's long ripples (HourPreset.ripple) */
   ripple: number;
+  /** 0..1: Dusk's violet high sky (HourPreset.highSky) */
+  highSky: number;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
@@ -207,6 +209,7 @@ export function lightValues(
     road: hour.road,
     grade: hour.grade,
     ripple: hour.ripple,
+    highSky: hour.highSky,
   };
 }
 
@@ -241,6 +244,8 @@ export function createLightUniforms() {
     grade: uniform(0),
     /** 0..1: Dusk's long ripples on the mirror (HourPreset.ripple; s35b, Task 18f) */
     ripple: uniform(0),
+    /** 0..1: Dusk's violet high sky (HourPreset.highSky; s36, Task 18) */
+    highSky: uniform(0),
   };
   const key = new DirectionalLight(0xffffff, 2);
   // The key's light at a point is its colour × the baked shadow there (plan world-to-100 Task 11): one hook, so every
@@ -283,6 +288,7 @@ export function createLightUniforms() {
       u.road.value = v.road;
       u.grade.value = v.grade;
       u.ripple.value = v.ripple;
+      u.highSky.value = v.highSky;
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
       u.shadowFloor.value.setRGB(...v.shadowFloor);

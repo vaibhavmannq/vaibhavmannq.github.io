@@ -62,6 +62,18 @@ const VIOLET: number[] = [0.55, 0.9, 0.08, 0.55];
     if (Number.isFinite(n) && i < VIOLET.length) VIOLET[i] = n;
   });
 }
+/**
+ * Dusk's violet high sky (s36, Task 18): strength, brightness kept (× the sky's own), from and to which height (dir.y),
+ * and how much of it the sea's mirror shows (0: the water as before; D48, the water is the owner's). `?dv=a,b,c,d,e`.
+ */
+const DUSK_VIOLET: number[] = [0.8, 0.62, 0.04, 0.5, 0];
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('dv') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < DUSK_VIOLET.length) DUSK_VIOLET[i] = n;
+  });
+}
 /** Violet at unit brightness, linear light (the render's overhead: ~#6a4a9a). */
 const VIOLET_HUE = vec3(0.141, 0.069, 0.325).div(0.2126 * 0.141 + 0.7152 * 0.069 + 0.0722 * 0.325);
 
@@ -152,6 +164,16 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
         .mul(VIOLET[0]);
       const lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
       out.assign(mix(c, VIOLET_HUE.mul(lc.mul(VIOLET[1])), high));
+    });
+    // s36 (Task 18; the Dusk render): with the sun under the horizon the sky over the cove goes deep violet while the
+    // low sky keeps its brightness. No glow or rays are added (the owner turned the afterglow off); this is his call:
+    // `?dv=0` is the sky before. Its own weight (Dusk and its rides).
+    If(u.highSky.greaterThan(0.001), () => {
+      // the mirror's eye stands under the sea plane: there only DUSK_VIOLET[4] of it (the water unchanged by default)
+      const seen = mix(float(DUSK_VIOLET[4]), float(1), step(0, cameraPosition.y));
+      const high = smoothstep(DUSK_VIOLET[2], DUSK_VIOLET[3], dir.y).mul(u.highSky).mul(DUSK_VIOLET[0]).mul(seen);
+      const lc = dot(out, vec3(0.2126, 0.7152, 0.0722));
+      out.assign(mix(out, VIOLET_HUE.mul(lc.mul(DUSK_VIOLET[1])), high));
     });
     return out;
   });
