@@ -1,7 +1,7 @@
 # Session s35 · 2026-11-28 · Sunset's checks, Golden to ~90 %, the speed carries, a second session beside this one
 
 Opus 5.5, main account, inline on `world` (main checkout). Ledger `docs/handover/ledgers/2026-11-21-world-to-100.md`
-R264–R268; D61, D62. A second session, **s35b** (Dusk, Task 18), ran beside this one on branch `s35b` in
+R264–R269; D61, D62. A second session, **s35b** (Dusk, Task 18), ran beside this one on branch `s35b` in
 `.claude/worktrees/s35b`; its log is `2026-11-28-s35b-dusk.md`; merged into `world` as bcf7267. Working files:
 `.superpowers/w100/s35/` (`one.mjs`, `nine.mjs` (shoots during the hold), `sweep.mjs` (STOPS=), `bisect.sh`,
 `sweepab.sh`, `gpuidle.ps1` (waits for a quiet GPU), `trace.mjs` + `tr.py` (a Chrome trace of one ride, slow frames
