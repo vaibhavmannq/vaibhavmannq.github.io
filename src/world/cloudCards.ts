@@ -4,8 +4,6 @@ import {
   cameraPosition,
   dot,
   float,
-  Fn,
-  If,
   max,
   mix,
   normalize,
@@ -443,23 +441,15 @@ export function createCloudCards(
   // Dusk's twilight clouds (s35b, Task 18b; the Dusk render): with the sun just set, the low clouds are dark violet
   // bodies against the glow, their edges and tops on the sun's side lit pink. × twi (CloudWeather.twilight: Dusk only).
   // `?dc=strength,rim,dark` while tuning.
-  // Behind a uniform branch (s35's sweep: terms for one hour must not cost the others); no texture reads inside.
-  const twilightFn = Fn(([shade, lit, lt, vs, e, ck, dy, sk]: [V3, V3, F, V3, F, F, F, V3]) => {
-    const out = vec3(0).toVar();
-    out.assign(mix(shade, lit, lt));
-    If(twi.greaterThan(0.001), () => {
-      const twiOn = twi.mul(DC[0]);
-      const lowT = smoothstep(0.35, 0.02, dy);
-      const shadeTwi = mix(shade, vs.mul(DC[2]), twiOn.mul(lowT));
-      const sunward = smoothstep(-0.2, 0.8, ck);
-      const pink = vec3(1.0, 0.55, 0.62).mul(lum(sk).max(0.05));
-      const rimT = pink.mul(e.mul(sunward).mul(DC[1]).add(lt.mul(sunward).mul(DC[1] * 0.35))).mul(twiOn);
-      out.assign(mix(shadeTwi, lit, lt.mul(float(1).sub(twiOn.mul(lowT).mul(0.5)))).add(rimT));
-    });
-    return out;
-  });
+  const twiOn = twi.mul(DC[0]);
+  const lowT = smoothstep(0.35, 0.02, dir.y);
+  const shadeTwi = mix(shadeSun, violetShade.mul(DC[2]), twiOn.mul(lowT));
+  const sunward = smoothstep(-0.2, 0.8, cosK);
+  const pink = vec3(1.0, 0.55, 0.62).mul(lum(sky as unknown as V3).max(0.05));
+  const rimT = pink.mul(edge.mul(sunward).mul(DC[1]).add(light.mul(sunward).mul(DC[1] * 0.35))).mul(twiOn);
   const col = mix(
-    (twilightFn(shadeSun, litNear, light, violetShade, edge, cosK, dir.y, sky) as unknown as V3)
+    mix(shadeTwi, litNear, light.mul(float(1).sub(twiOn.mul(lowT).mul(0.5))))
+      .add(rimT)
       .add(litNear.mul(silver.mul(float(1).add(nearSun.mul(CG * 2))).mul(sunSide)))
       .add(through.mul(float(1).sub(isSunBank.mul(0.6))))
       .add(under),
