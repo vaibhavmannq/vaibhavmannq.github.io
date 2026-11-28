@@ -55,9 +55,9 @@ export const SHADOW_FLOOR: Record<StopId, RGB> = {
 export const SKY_FILL: Record<StopId, number> = {
   golden: 1,
   sunset: 1,
-  // s35b, Task 18c (the Dusk render: the headlands near-black against the glow, the light behind them): 1 as every hour;
-  // the faces still show their beds (s22's 2 lit them purple, as if the light were behind the camera)
-  dusk: 1,
+  // s35b, Task 18c (the Dusk render: the headlands near-black against the glow): 1 and 0.6 tried (`?df=1,0.4`); it
+  // darkens toward the blacks the owner rules on (D56, D59), so s22's 2 stays until he judges the shots
+  dusk: 2,
   bluehour: 1,
   night: 1,
   midnight: 1,
@@ -75,8 +75,8 @@ export const SKY_FILL: Record<StopId, number> = {
  * Dusk the render's arch and stacks are dark silhouettes with reflections; the live fog, the night's heaviest (0.28),
  * paled them into flat ghosts in the horizon's own colour.
  */
-// s35b, Task 18c: 0.4 (the arch darker against the glow; was 0.5)
-export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.4 };
+// s35b, Task 18c: 0.4 tried (the arch darker); held at 0.5 until the owner judges it (`?df=,0.4`)
+export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
 
 /**
  * The twilight glow over the set sun (s35b, Task 18b; the Dusk render: the sun 2° under the horizon, the sky above it
