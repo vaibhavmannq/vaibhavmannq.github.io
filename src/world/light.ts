@@ -158,6 +158,8 @@ export interface LightValues {
   fillGain: number;
   /** 0..1: the sea's sun or moon road (HourPreset.road) */
   road: number;
+  /** 0..1: Golden's own grade (HourPreset.grade) */
+  grade: number;
 }
 
 const mix3 = (a: RGB, b: RGB, w: number): RGB =>
@@ -201,6 +203,7 @@ export function lightValues(
     skyFill: hour.skyFill * FILL_SHARE_BY_BLACKS[blacks],
     fillGain: FILL_SHARE_BY_BLACKS[blacks],
     road: hour.road,
+    grade: hour.grade,
   };
 }
 
@@ -231,6 +234,8 @@ export function createLightUniforms() {
     skyFill: uniform(1),
     /** 0..1: the sea's sun or moon road (HourPreset.road; M8.5 #3b) */
     road: uniform(1),
+    /** 0..1: how much of Golden's own look applies (HourPreset.grade; s35, Tasks 17d, the grade, and water) */
+    grade: uniform(0),
   };
   const key = new DirectionalLight(0xffffff, 2);
   // The key's light at a point is its colour × the baked shadow there (plan world-to-100 Task 11): one hook, so every
@@ -271,6 +276,7 @@ export function createLightUniforms() {
       u.moonShadowDir.value.set(...v.moonShadowDir).normalize();
       u.moonLit.value = v.moonLit;
       u.road.value = v.road;
+      u.grade.value = v.grade;
       u.aurora.value = v.aurora;
       u.cloud.value = v.cloud;
       u.shadowFloor.value.setRGB(...v.shadowFloor);
@@ -294,6 +300,27 @@ export function createLightUniforms() {
 }
 
 export type LightUniforms = ReturnType<typeof createLightUniforms>;
+
+/**
+ * How strongly Golden's own grade shows (s35, Task 17d; owner: "Golden only, behind a switch"): `?grade=0` is the look
+ * before it, `?grade=0.5` half.
+ */
+export const GOLDEN_GRADE = (() => {
+  const v = Number.parseFloat(
+    typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('grade') ?? ''),
+  );
+  return Number.isFinite(v) ? v : 1;
+})();
+
+/**
+ * How far Golden's water goes toward the render's (s35; owner: "try it behind a switch"): darker and violet, the sun's
+ * own reflection kept. `?water=old` (or `?water=0`) is the sea before it; D48 keeps every other hour's water.
+ */
+export const GOLDEN_WATER = (() => {
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('water') ?? '');
+  const v = q === 'old' ? 0 : Number.parseFloat(q);
+  return Number.isFinite(v) ? v : 1;
+})();
 
 /** The glitter's facets drift along the wind at this speed (reference-book §3: capillary ripples ride the wind). */
 export const GLITTER_DRIFT_MS = 0.05;

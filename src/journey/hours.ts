@@ -129,6 +129,7 @@ function preset(id: StopId): HourPreset {
     mist: MIST[id],
     plankton: PLANKTON[id],
     road: 1,
+    grade: id === 'golden' ? 1 : 0,
   };
 }
 
@@ -249,5 +250,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     mist: lerp(a.mist, b.mist, w),
     plankton: lerp(a.plankton, b.plankton, w),
     road: roadBetween(a, b, w),
+    grade: lerp(a.grade, b.grade, w),
   };
 }

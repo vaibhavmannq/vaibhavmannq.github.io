@@ -107,4 +107,6 @@ export interface HourPreset {
    * directions it dips while the key light swings through directions where no light is (M8.5 #3b).
    */
   road: number;
+  /** 0..1: Golden's own grade (s35, Task 17d; the Golden render): deeper darks, gold against violet. 1 at Golden only. */
+  grade: number;
 }

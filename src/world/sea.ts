@@ -40,7 +40,7 @@ import type { TierSettings } from '../quality/tiers';
 import { BOWL } from './bowl';
 import type { GridMeta } from './heights';
 import { fishRing, RING_SPEED } from './life';
-import { glitterCarry, glitterPower, type LightUniforms } from './light';
+import { GOLDEN_WATER, glitterCarry, glitterPower, type LightUniforms } from './light';
 import { EYE_ONLY_LAYER } from './meadow';
 import { mirrorCubic } from './mirrorSample';
 import type { WorldPart } from './part';
@@ -293,7 +293,16 @@ export function createSea(
     .mul(u.road);
   // the mirror read smooth (mirrorSample.ts): one bilinear tap stair-stepped its edges at 3–8× magnification (s22)
   const mirrored = reflection.uvNode ? mirrorCubic(reflection, reflection.uvNode as Node<'vec2'>) : reflection.rgb;
-  let col = mix(body, mirrored, fresnel).add(glint);
+  // Golden's water (s35; the Golden render: darker violet water under a bright sky, the clouds and the sun's white
+  // reflection in it). At Golden's low eye the sea mirrored the gold sky almost whole, a pale sheet; now the mirrored
+  // sky dims and leans violet there (a ruffled sea mirrors less than a flat one), and light far brighter than the sky
+  // (the sun and its road) is kept. Golden only, through its rides (u.grade); `?water=old` for the A/B (D48).
+  const gw = (u.grade as unknown as Node<'float'>).mul(GOLDEN_WATER);
+  const mirLum = dot(mirrored, vec3(0.2126, 0.7152, 0.0722));
+  const mirrorTone = mix(vec3(0.5, 0.42, 0.66), vec3(1, 1, 1), smoothstep(1.2, 3.5, mirLum));
+  const mirroredG = mirrored.mul(mix(vec3(1, 1, 1), mirrorTone, gw));
+  const bodyG = body.mul(mix(vec3(1, 1, 1), vec3(0.8, 0.6, 1.3), gw));
+  let col = mix(bodyG, mirroredG, fresnel).add(glint);
 
   // Shore: foam at the edge, a sheet in the swash, transparent shallows (slice); the depth is read above.
   const lace = smoothstep(
