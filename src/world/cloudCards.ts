@@ -1,4 +1,5 @@
 import {
+  abs,
   attribute,
   cameraPosition,
   dot,
@@ -8,6 +9,7 @@ import {
   normalize,
   positionWorld,
   smoothstep,
+  step,
   texture,
   time,
   uv,
@@ -97,7 +99,15 @@ export interface CardMeta {
 const COUNT = 640;
 /** Big cards on a far ring, the horizon's cloud banks. */
 const BANKS = 72;
-const TOTAL = COUNT + BANKS;
+/**
+ * Golden's bank across the sun (s35, Task 17; the Golden render: one dense dark-violet bank low across the sun, the sun
+ * peeking under it, gold-white edges): big cards on the far ring toward the sun, a band ~4–7° up so the 3.6° sun shows
+ * under its lower edge. Out only by the hour's Golden weight (HourPreset.grade); `?sunbank=0` for the A/B.
+ */
+const SUN_BANK = 12;
+const SUN_BANK_ON =
+  (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('sunbank') ?? '')) !== '0';
+const TOTAL = COUNT + BANKS + SUN_BANK;
 /** Cards live in a square this wide around the eye and wrap as the wind carries them (m). */
 const BOX = 72_000;
 /** Drawn no further than this (the camera's far plane is 14 km), shrunk toward the eye to keep their size on screen. */
@@ -228,6 +238,7 @@ export function createCloudCards(
       card: Math.floor(rand() * 1000),
       seed: rand(),
       bank: null as null | { ang: number; r: number },
+      sunBank: null as null | { off: number; el: number },
     };
   });
   // banks along the horizon (s32: with the photo's clouds gone, Dusk's and First light's horizons were empty): big
@@ -243,6 +254,23 @@ export function createCloudCards(
       card: Math.floor(rand() * 1000),
       seed: rand(),
       bank: { ang: rand() * Math.PI * 2, r: 35_000 + rand() * 25_000 },
+      sunBank: null,
+    });
+  // Golden's bank across the sun: overlapping cards from ~14° left of the sun to ~14° right, their feet ~4.2–4.8° up
+  for (let i = 0; i < SUN_BANK; i++)
+    base.push({
+      x: 0,
+      z: 0,
+      y: 0,
+      size: 10_000 + rand() * 6000,
+      rank: 0,
+      card: Math.floor(rand() * 1000),
+      seed: rand(),
+      bank: null,
+      sunBank: {
+        off: ((i - (SUN_BANK - 1) / 2) / ((SUN_BANK - 1) / 2)) * 0.24 + (rand() - 0.5) * 0.05,
+        el: 4.1 + rand() * 0.5,
+      },
     });
   let spin = 0;
   let meta: CardMeta | null = null;
@@ -394,10 +422,13 @@ export function createCloudCards(
   // the silver edge only on the side a card turns to the sun (s35: on every edge it outlined each card like a sticker)
   const sunSide = mix(float(1), smoothstep(0.35, 0.8, light), golden);
   const litNear = warmLit.mul(float(1).add(nearSun.mul(CG)));
+  // Golden's sun bank (±2 in info.x): the render's bank is dark violet against the gold, not the bright sky's shade
+  const isSunBank = step(1.5, abs(info.x));
+  const shadeSun = mix(shadeBanked, violetShade, isSunBank);
   const col = mix(
-    mix(shadeBanked, litNear, light)
+    mix(shadeSun, litNear, light)
       .add(litNear.mul(silver.mul(float(1).add(nearSun.mul(CG * 2))).mul(sunSide)))
-      .add(through)
+      .add(through.mul(float(1).sub(isSunBank.mul(0.6))))
       .add(under),
     sky,
     info.z,
@@ -452,18 +483,31 @@ export function createCloudCards(
       for (let i = 0; i < TOTAL; i++) {
         const b = base[i] as (typeof base)[number];
         const wrap = (v: number) => ((((v + BOX / 2) % BOX) + BOX) % BOX) - BOX / 2;
-        const x = b.bank ? cx + Math.cos(b.bank.ang + spin) * b.bank.r : cx + wrap(b.x + carryX - cx);
-        const z = b.bank ? cz + Math.sin(b.bank.ang + spin) * b.bank.r : cz + wrap(b.z + carryZ - cz);
-        const y = b.y;
+        // Golden's sun bank: on a 30 km ring toward the sun (three.js x, z), drifting a little with the banks
+        const sunAng = b.sunBank ? Math.atan2(u.keyDir.value.z, u.keyDir.value.x) + b.sunBank.off + spin * 0.3 : 0;
+        const x = b.sunBank
+          ? cx + Math.cos(sunAng) * 30_000
+          : b.bank
+            ? cx + Math.cos(b.bank.ang + spin) * b.bank.r
+            : cx + wrap(b.x + carryX - cx);
+        const z = b.sunBank
+          ? cz + Math.sin(sunAng) * 30_000
+          : b.bank
+            ? cz + Math.sin(b.bank.ang + spin) * b.bank.r
+            : cz + wrap(b.z + carryZ - cz);
+        const y = b.sunBank ? cy + Math.tan((b.sunBank.el * Math.PI) / 180) * 30_000 : b.y;
         const dx = x - cx;
         const dz = z - cz;
         const flat = Math.hypot(dx, dz);
         const elev = Math.atan2(y - cy, flat);
-        const fade =
-          (b.bank ? 1 : smooth(2500, 4500, flat) * smooth(BOX / 2, BOX / 2 - 5000, flat)) *
-          smooth(0.75, 0.5, elev) *
-          smooth(minElev, minElev + 0.03, elev) *
-          smooth(b.rank - 0.08, b.rank, share);
+        const fade = b.sunBank
+          ? SUN_BANK_ON
+            ? f.hour.grade
+            : 0
+          : (b.bank ? 1 : smooth(2500, 4500, flat) * smooth(BOX / 2, BOX / 2 - 5000, flat)) *
+            smooth(0.75, 0.5, elev) *
+            smooth(minElev, minElev + 0.03, elev) *
+            smooth(b.rank - 0.08, b.rank, share);
         pos[i * 3] = x;
         pos[i * 3 + 1] = y;
         pos[i * 3 + 2] = z;
@@ -485,7 +529,7 @@ export function createCloudCards(
         iCenter.setXYZ(n, cx + (x - cx) * k, cy + (y - cy) * k, cz + (z - cz) * k);
         const worldW = b.size * grow * k;
         // far banks are seen nearly edge-on: flattened to a quarter, as distance flattens real clouds
-        iSize.setXY(n, worldW, ((worldW * card.h) / Math.max(card.w, 1e-3)) * (b.bank ? 0.28 : 1));
+        iSize.setXY(n, worldW, ((worldW * card.h) / Math.max(card.w, 1e-3)) * (b.bank ? 0.28 : b.sunBank ? 0.32 : 1));
         const col = card.cell % meta.cols;
         const row = Math.floor(card.cell / meta.cols);
         const pw = card.w * CELL;
@@ -494,16 +538,17 @@ export function createCloudCards(
         // mirrored at random for variety: the normal from the height lights it from the true side either way
         // cropped to its visible cloud (16a; the phone: +1.7 fps, a third fewer slow frames on VI → VII, R244)
         const cr = crops[b.card % meta.cards.length];
-        const [u0, u1, v0, v1] = cr ?? [0, 1, 0, 1];
+        // the sun bank uncropped: a crop shifts the drawn cloud off the card's foot, and these must sit across the sun
+        const [u0, u1, v0, v1] = b.sunBank ? [0, 1, 0, 1] : (cr ?? [0, 1, 0, 1]);
         if (b.rank > 0.5) iCrop.setXYZW(n, u0, u1, v0, v1);
         else iCrop.setXYZW(n, 1 - u1, 1 - u0, v0, v1);
         keptOf[n] = (u1 - u0) * (v1 - v0);
-        bankOf[n] = b.bank ? 1 : 0;
+        bankOf[n] = b.bank || b.sunBank ? 1 : 0;
         iInfo.setXYZW(
           n,
-          b.rank > 0.5 ? 1 : -1,
+          (b.rank > 0.5 ? 1 : -1) * (b.sunBank ? 2 : 1), // ±2: Golden's sun bank (its own shade)
           vis[i] as number,
-          (b.bank ? 0.3 : 0.6) * (1 - Math.exp(-d / 30000)),
+          (b.bank ? 0.3 : b.sunBank ? 0.12 : 0.6) * (1 - Math.exp(-d / 30000)),
           b.seed,
         );
         n++;
