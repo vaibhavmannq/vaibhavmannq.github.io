@@ -85,6 +85,21 @@ const RAYS_GOLDEN: number[] = [0.8, 0];
   });
 }
 
+/**
+ * Dusk's afterglow (Task 18b, s35b): glow strength, width (1 − cos), height (in y), rays' strength, rays' reach
+ * (1 − cos). `?ag=a,b,c,d,e` while tuning.
+ */
+const AG: number[] = [1.2, 0.3, 0.12, 0.45, 0.25];
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('ag') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < AG.length) AG[i] = n;
+  });
+}
+/** The afterglow's pink-white at unit brightness, linear light (the render's sky over the set sun: ~#f3c6c8). */
+const AG_HUE = vec3(0.9, 0.56, 0.58).div(0.2126 * 0.9 + 0.7152 * 0.56 + 0.0722 * 0.58);
+
 export interface Sky extends WorldPart {
   /** The sky colour seen along a direction (three.js axes), for reflections in water and wet sand. */
   colorAt(dir: V3): V3;
@@ -155,7 +170,72 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     });
     return out;
   });
-  const horizonGlow = (c: V3, dir: V3): V3 => glowFn(c, dir) as unknown as V3;
+  // Task 18b (s35b; the Dusk render: the sun 2° under the horizon, a pink-white glow low on its side, fading up into
+  // violet; reference book §light, the twilight arch: after sunset the sky over the set sun stays brightest, warm near
+  // the horizon). Only where the hour asks for it (hours.ts AFTERGLOW: Dusk), behind a uniform branch, so every other
+  // hour builds and costs the same. `?ag=` while tuning.
+  const agSunFlat = normalize(vec3(u.keyDir.x, 0, u.keyDir.z).add(vec3(0.0001, 0, 0)));
+  const afterglowFn = Fn(([c, dir]: [V3, V3]) => {
+    const out = vec3(0).toVar();
+    out.assign(c);
+    If(u.afterglow.greaterThan(0.001), () => {
+      const flat = normalize(vec3(dir.x, 0, dir.z).add(vec3(0.0001, 0, 0)));
+      const across = float(1).sub(dot(flat, agSunFlat));
+      const lobe = across
+        .div(AG[1])
+        .negate()
+        .exp()
+        .mul(dir.y.max(0).div(AG[2]).negate().exp())
+        .mul(u.afterglow);
+      const lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      const k = lobe.mul(AG[0]);
+      out.assign(mix(c, AG_HUE.mul(lc), k.min(1).mul(0.8)).mul(k.mul(0.6).add(1)));
+    });
+    return out;
+  });
+  // The rays fan up from under the horizon (the render's beams; the same sines as Sunset's, around the set sun)
+  const afterRaysFn = Fn(([c, d]: [V3, V3]) => {
+    const out = vec3(0).toVar();
+    out.assign(c);
+    const inCone = u.afterglow
+      .greaterThan(0.001)
+      .and(dot(normalize(vec3(d.x, 0, d.z).add(vec3(0.0001, 0, 0))), agSunFlat).greaterThan(0.3))
+      .and(d.y.lessThan(0.7))
+      .and(d.y.greaterThan(-0.005));
+    If(inCone, () => {
+      const s = normalize(u.keyDir as unknown as V3);
+      const up = normalize(
+        vec3(0, 1, 0)
+          .sub(s.mul(s.y))
+          .add(vec3(0, 0.0001, 0)),
+      );
+      const right = s.cross(up);
+      const around = atan(dot(d, right), dot(d, up));
+      const drift = time.mul(RAYS[4]);
+      // s35b first shot: 9–61 waves read as a hard sunburst of spokes; the render's are a few broad soft shafts
+      const beam = sin(around.mul(5).add(drift))
+        .add(sin(around.mul(11).sub(drift.mul(1.7)).add(1.3)).mul(0.7))
+        .add(sin(around.mul(19).add(drift.mul(0.6)).add(4.1)).mul(0.35));
+      const lit = smoothstep(0.2, 1.8, beam)
+        .sub(smoothstep(-0.9, -2.0, beam).mul(0.8))
+        .add(0.5);
+      const x = float(1).sub(dot(d, s));
+      const reach = x
+        .div(AG[4])
+        .negate()
+        .exp()
+        .mul(smoothstep(-0.005, 0.04, d.y))
+        .mul(smoothstep(0.7, 0.2, d.y))
+        .mul(u.afterglow);
+      const k = reach.mul(AG[3]);
+      const warm = AG_HUE.mul(dot(c, vec3(0.2126, 0.7152, 0.0722)));
+      out.assign(
+        c.mul(float(1).sub(k.mul(0.35).mul(float(0.5).sub(lit).max(0)))).add(warm.mul(k.mul(0.7).mul(lit.sub(0.5).max(0)))),
+      );
+    });
+    return out;
+  });
+  const horizonGlow = (c: V3, dir: V3): V3 => afterglowFn(glowFn(c, dir), dir) as unknown as V3;
   const colorAt = (dir: V3, row?: number): V3 => {
     const st = row === undefined ? equirectUV(dir) : vec2(equirectUV(dir).x, row);
     const glowed = horizonGlow(
@@ -263,6 +343,7 @@ export function createSky(u: LightUniforms, skies: SkyStore, first: Texture): Sk
     return out;
   });
   col = raysFn(col, dir) as unknown as V3;
+  col = afterRaysFn(col, dir) as unknown as V3;
 
   // The moon (owner night-sky-and-moon 3, 4, 5, 8): a small sharp disc, lit as a crescent by its phase, the dark part
   // faintly grey (earthshine), a soft halo that lights the sky and cloud beside it. Tested on squared angles

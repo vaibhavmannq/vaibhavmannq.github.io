@@ -55,7 +55,9 @@ export const SHADOW_FLOOR: Record<StopId, RGB> = {
 export const SKY_FILL: Record<StopId, number> = {
   golden: 1,
   sunset: 1,
-  dusk: 2,
+  // s35b, Task 18c (the Dusk render: the headlands near-black against the glow, the light behind them): 1 as every hour;
+  // the faces still show their beds (s22's 2 lit them purple, as if the light were behind the camera)
+  dusk: 1,
   bluehour: 1,
   night: 1,
   midnight: 1,
@@ -73,7 +75,14 @@ export const SKY_FILL: Record<StopId, number> = {
  * Dusk the render's arch and stacks are dark silhouettes with reflections; the live fog, the night's heaviest (0.28),
  * paled them into flat ghosts in the horizon's own colour.
  */
-export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
+// s35b, Task 18c: 0.4 (the arch darker against the glow; was 0.5)
+export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.4 };
+
+/**
+ * The twilight glow over the set sun (s35b, Task 18b; the Dusk render: the sun 2° under the horizon, the sky above it
+ * pink-white and brightest, rays fanning up from under the horizon). Dusk only; sky.ts draws it behind a uniform branch.
+ */
+export const AFTERGLOW: Partial<Record<StopId, number>> = { dusk: 1 };
 // s35b Task 18 tuning (temporary): ?df=skyFill,fogTrim for Dusk
 {
   const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('df') ?? '');
@@ -137,6 +146,7 @@ function preset(id: StopId): HourPreset {
     plankton: PLANKTON[id],
     road: 1,
     grade: id === 'golden' ? 1 : 0,
+    afterglow: AFTERGLOW[id] ?? 0,
   };
 }
 
@@ -258,5 +268,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     plankton: lerp(a.plankton, b.plankton, w),
     road: roadBetween(a, b, w),
     grade: lerp(a.grade, b.grade, w),
+    afterglow: lerp(a.afterglow, b.afterglow, w),
   };
 }

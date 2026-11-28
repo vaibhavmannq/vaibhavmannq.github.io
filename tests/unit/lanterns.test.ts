@@ -23,7 +23,7 @@ const field = lanternField();
 const dusk = STOP_IDS.indexOf('dusk');
 
 describe("Dusk's lanterns (plan M3 Task 5; owner lanterns video 4; reference book §7)", () => {
-  it('are 44 on open water along coast.py’s path, out of the cove toward the arch', () => {
+  it('are DUSK_LANTERNS.n (80) on open water along coast.py’s path, out of the cove toward the arch', () => {
     expect(field.length).toBe(DUSK_LANTERNS.n);
     const [[x0, y0], [x1, y1]] = DUSK_LANTERNS.path;
     for (const l of field) {

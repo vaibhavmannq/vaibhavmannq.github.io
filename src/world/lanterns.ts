@@ -45,10 +45,12 @@ export const DUSK_LANTERNS = {
     [-12, 52],
     [-150, 190],
   ] as const,
-  n: 44,
-  bunch: 1.5,
-  w0: 3,
-  w1: 16,
+  // s35b, Task 18a (the Dusk render: a loose ribbon of lights running out to the arch; ours stopped halfway in a T-shaped
+  // row): 80 lanterns, spread evenly along the path (bunch 0.8), a wider band (?lf=44,1.5,3,16 was the s14 field)
+  n: 80,
+  bunch: 0.8,
+  w0: 4,
+  w1: 24,
   paper: { w: 0.42, h: 0.45 },
   float: 0.06,
 };
@@ -283,8 +285,10 @@ export function createDuskLanterns(reducedMotion = false): DuskLanterns {
   sg.instanceCount = n;
   // s16: the same quad also lays a soft warm pool on the water around each lantern (about 3 m across): from Dusk's stop,
   // 40–150 m off and high, a lantern is a few pixels, and the pool is what says it is lit (owner video 4).
-  const STREAK = { w: pick(lpq, 3, 0.32), l: pick(lpq, 2, 2.5), pool: pick(lpq, 0, 1.4) };
-  const POOL_GAIN = pick(lpq, 1, 0.8);
+  // s35b, Task 18a: from Dusk's height the 1.4 m pool and 2.5 m streak lay a wide ellipse with a spike under each
+  // lantern, a four-point star; video 4 shows a small halo and a short bar (?lp=1.4,0.8,2.5,0.32 was s16's)
+  const STREAK = { w: pick(lpq, 3, 0.25), l: pick(lpq, 2, 1.0), pool: pick(lpq, 0, 0.6) };
+  const POOL_GAIN = pick(lpq, 1, 0.4);
   const W = Math.max(STREAK.pool * 2.1, STREAK.w * 1.2);
   const root = vec3(a0.x.add(drift.x), 0.012, a0.y.add(drift.y));
   const toEye = vec3(cameraPosition.x.sub(root.x), 0, cameraPosition.z.sub(root.z)).normalize();
