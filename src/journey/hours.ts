@@ -74,6 +74,13 @@ export const SKY_FILL: Record<StopId, number> = {
  * paled them into flat ghosts in the horizon's own colour.
  */
 export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
+// s35b Task 18 tuning (temporary): ?df=skyFill,fogTrim for Dusk
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('df') ?? '');
+  const [f, t] = q.split(',').map((v) => (v === '' ? Number.NaN : Number(v)));
+  if (Number.isFinite(f)) SKY_FILL.dusk = f as number;
+  if (Number.isFinite(t)) FOG_TRIM.dusk = t as number;
+}
 
 export const MIST: Record<StopId, number> = {
   golden: 0,

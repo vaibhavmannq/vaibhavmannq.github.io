@@ -42,6 +42,12 @@ interface Rules {
    */
   poppies?: { candidates: number; from: number; to: number; spread: number; patch: number };
   /**
+   * A slope of thrift in tall grass to one side of the view (Task 18d, the Dusk render's right third): candidates
+   * thrown `from`–`to` m out between `a0` and `a1` degrees from the gaze (+ right); a patch noise over `patch` keeps a
+   * point; every `tall`-th point also gets a tall tuft beside it.
+   */
+  side?: { candidates: number; from: number; to: number; a0: number; a1: number; patch: number; tall: number };
+  /**
    * The ground at the feet (Task 16l, s34): `count` short mats and low flowers in a ring `from`–`to` m round the eye, all
    * the way round (look-around), whatever the bare noise says: looking down at Sunset ended in bare soil.
    */
@@ -120,6 +126,15 @@ const RULES: Record<CoveStop, Rules> = {
  */
 export const TURF_SLOPE = 1.3;
 export const TALL_SLOPE = 0.95;
+
+/** s35b Task 18d tuning (temporary): `?dsl=candidates,from,to,a0,a1,patch,tall` replaces Dusk's side rule. */
+function sideRule(id: CoveStop, d: Rules['side']): Rules['side'] {
+  if (id !== 'dusk') return d;
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('dsl') ?? '');
+  if (!q) return d;
+  const [candidates, from, to, a0, a1, patch, tall] = q.split(',').map(Number);
+  return { candidates, from, to, a0, a1, patch, tall } as NonNullable<Rules['side']>;
+}
 
 /** How far from a camera candidates are thrown (coast.py throws 260 m; the browser stops at what reads as plants). */
 const REACH = 150;
@@ -318,6 +333,27 @@ export function* scatterCoveSteps(surface: HeightAt): Generator<void, Plants> {
         speckle(kind, hsh(x * 7.1, y * 7.1), hsh(x * 3.3 + 5, y * 3.3), id === 'sunset'),
         r() * 2 * Math.PI,
       );
+    }
+
+    // a slope of thrift in tall grass to one side (Task 18d; the Dusk render's right third: pink heads thick in dark
+    // grass, threads of yellow); `?dsl=` while tuning (s35b)
+    const S = sideRule(id, R.side);
+    for (let i = 0; S && i < S.candidates; i++) {
+      if (due()) yield;
+      const d = S.from + (S.to - S.from) * r() ** 1.2;
+      const a = yaw + ((S.a0 + (S.a1 - S.a0) * r()) * Math.PI) / 180;
+      const x = cx + d * Math.sin(a);
+      const y = cy + d * Math.cos(a);
+      const z = surface(x, y);
+      const sl = slopeAt(x, y);
+      if (!ok(x, y, z, sl)) continue;
+      if (coastFbm(x * 0.12 + 3, y * 0.12 + 9, 3) <= S.patch) continue;
+      const band = coastFbm(x * 0.09 + 13, y * 0.09 + 5, 3);
+      const kind = band < 0.56 ? PLANT.pink : band < 0.66 ? PLANT.yellow : PLANT.white;
+      put(x, y, 0.3 * (0.9 + 0.5 * r()), speckle(kind, hsh(x * 7.1, y * 7.1), hsh(x * 3.3 + 5, y * 3.3), false), r() * 2 * Math.PI);
+      if (S.tall > 0 && i % S.tall === 0 && sl < TALL_SLOPE && d > R.lensClear) {
+        put(x + (r() - 0.5) * 0.6, y + (r() - 0.5) * 0.6, 0.8 * (0.75 + 0.6 * r()), PLANT.tall, r() * 2 * Math.PI);
+      }
     }
 
     // drifts of red poppies across the meadow and out to both sides of the turn (M8.5 #4; the owner's fireweed and
