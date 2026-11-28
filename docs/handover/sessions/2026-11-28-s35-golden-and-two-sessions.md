@@ -1,7 +1,7 @@
 # Session s35 · 2026-11-28 · Sunset's checks, Golden to ~90 %, the speed carries, a second session beside this one
 
 Opus 5.5, main account, inline on `world` (main checkout). Ledger `docs/handover/ledgers/2026-11-21-world-to-100.md`
-R264–R269; D61, D62. A second session, **s35b** (Dusk, Task 18), ran beside this one on branch `s35b` in
+R264–R270; D61, D62. A second session, **s35b** (Dusk, Task 18), ran beside this one on branch `s35b` in
 `.claude/worktrees/s35b`; its log is `2026-11-28-s35b-dusk.md`; merged into `world` as bcf7267. Working files:
 `.superpowers/w100/s35/` (`one.mjs`, `nine.mjs` (shoots during the hold), `sweep.mjs` (STOPS=), `bisect.sh`,
 `sweepab.sh`, `gpuidle.ps1` (waits for a quiet GPU), `trace.mjs` + `tr.py` (a Chrome trace of one ride, slow frames
@@ -39,10 +39,11 @@ marked), `phone-hold.mjs` (a stop held on the phone), `pink.py`).
 
 ## My %
 Sunset ~91 % (owner: "perfect"), Golden ~90 % (owner: "beautiful and amazing"), Dusk ~68 % (s35b). Phase 3: Sunset and
-Golden done on looks; Golden's phone check on the final build owed (R268).
+Golden done on looks and measured on the phone (R270).
 
 ## Open / next
-- **The phone at Golden and Dusk on the merged build** (held at high, their rides): not done (unplugged at the close).
+- The phone at Golden and Dusk: done at the very end (R270): held at high ~0.4 fps under the morning's build; the sun bank's
+  uncropped cards cost 1–2 fps on I → II, now cropped (≈ −0.6 fps left).
 - Golden's camera at the water's edge (the render's) if the owner wants the darker water to show: his call.
 - Dusk (s35b's log): twilight clouds tried and dropped (dark blobs with pale outlines; the owner prefers today's); 18e's
   foam (60 % fainter, `?fm=`) and walk glint (candle-warm) done; the far left wall open (crags tried, dropped); the rides

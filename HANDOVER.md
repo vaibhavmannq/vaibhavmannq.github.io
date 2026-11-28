@@ -390,7 +390,7 @@ no borrowed set pieces (no towers, piano, etc.).
   Close: s35b merged (4c4ff36); three Golden/Dusk-only terms moved into uniform branches after the sweep caught them
   costing elsewhere; merged build level with the session's start (R268); Sunset's framing tree thinned by clumps (owner:
   "looks good").
-- **Next:** the phone at Golden and Dusk on this build (owed, R268); then Dusk (Task 18) on: s35b's list in its log (the
+- **Next:** Dusk (Task 18) on: s35b's list in its log (the
   rides' lanterns, the far left wall), the owner's test. Phase 3: Sunset and Golden done on looks (2 of 9 places), 0 of 17 formally closed.
   - Still open from before: mid at Dusk/Sunrise and the mid rides on this laptop; the headland pack fetched at every
     start; `horizon.spec.ts` (pre-existing); the Firefox smoke timing.
