@@ -14,7 +14,6 @@ import {
   MOTES,
   RING_SPEED,
   ringAt,
-  SKEIN,
   type Sprite,
 } from '../../src/world/life';
 
@@ -218,8 +217,8 @@ describe('motes', () => {
   });
 });
 
-// Task 16k (s34): petals ride in behind Sunset's gust; a skein crosses the sun now and then
-describe('Sunset in the gust, and its skein', () => {
+// Task 16k (s34): petals ride in behind Sunset's gust (its skein of birds was removed by the owner in s35)
+describe('Sunset in the gust', () => {
   const petalsAt = (gust: { amp: number; front: number }) =>
     lifeSprites('sunset', 50, 50, HOURS.sunset.world, ground, false, gust).filter((s) => s.kind === 'petal').length;
   it('a gust in view adds petals; none without one or under reduced motion', () => {
@@ -229,11 +228,10 @@ describe('Sunset in the gust, and its skein', () => {
     const reduced = lifeSprites('sunset', 50, 50, HOURS.sunset.world, ground, true, { amp: 1, front: -20 });
     expect(reduced.some((s) => s.kind === 'petal')).toBe(false);
   });
-  it('seven birds cross in each window and none outside it', () => {
-    const birds = (t: number) => at('sunset', t).filter((s) => s.kind === 'flock').length;
-    expect(birds(SKEIN.first + SKEIN.cross / 2)).toBe(7);
-    expect(birds(SKEIN.first + SKEIN.every + SKEIN.cross / 2)).toBe(7);
-    expect(birds(SKEIN.first + SKEIN.cross + 5)).toBe(0);
-    expect(birds(SKEIN.first - 1)).toBe(0);
+  it('no skein at Sunset, only its gulls far off', () => {
+    for (const t of [5, 13, 30, 61, 120]) {
+      expect(at('sunset', t).filter((s) => s.kind === 'flock').length).toBe(0);
+      expect(at('sunset', t).some((s) => s.kind === 'gull')).toBe(true);
+    }
   });
 });
