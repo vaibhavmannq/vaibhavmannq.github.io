@@ -190,10 +190,10 @@ export function flowerClump(tall = 1): Shape {
       // sided, and the eye is rarely under a head)
       s.part.push(0.75, 0.75, 0.95, 0.95, 0.75, 0.95, 0.95, 0.95, 1.1);
       // the lower half (s34, 16 look pass): without it a head was a dome on a stalk, a pink mushroom cap at the lens;
-      // a shallow cone to a foot on the stalk, in the head's own shade
+      // a shallow cone to a foot on the stalk, in the head's own shade (s35: 0.42–0.6 darkened the pink band toward mauve)
       s.pos.push(...a, ...foot, ...b);
       s.bend.push(1, 1, 1);
-      s.part.push(0.6, 0.42, 0.6);
+      s.part.push(0.75, 0.6, 0.75);
     }
   }
   for (let i = 0; i < 3; i++) blade(s, r, (r() - 0.5) * 0.1, (r() - 0.5) * 0.1, 0.35 + 0.2 * r(), 0.03, 0.35, 0);
@@ -649,7 +649,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const seen = byKey.mul(baked.x).add(albedo.mul(skyIrr).mul(baked.y)).add(albedo.mul(fillIrr));
   const grey = dot(seen, vec3(0.2126, 0.7152, 0.0722));
   // Florets on a thrift head (s34, the look pass: up close a head read as one smooth pink ball): per pixel, dots of
-  // ~7 mm in the world with darker gaps, each a little different; only where a floret is over ~2 px, so a far head keeps
+  // ~7 mm in the world with darker gaps, each a little different (s35: softer, 0.78–1.32 turned the band mauve); only where a floret is over ~2 px, so a far head keeps
   // its plain colour and nothing shimmers. The head flag rides in the colour varying's spare slot (s30: each extra
   // varying cost ~1 ms at Sunset on low); the world position is the one the fog already passes.
   const thriftHead = step(1.5, kind)
@@ -661,7 +661,7 @@ export function createMeadow(plants: Plants, light: LightUniforms): Meadow {
   const cell = q.floor();
   const fromCentre = q.fract().sub(0.5).length();
   const cellHash = fract(sin(dot(cell, vec3(127.1, 311.7, 74.7))).mul(43758.5));
-  const dotted = mix(float(0.78), float(1.32), smoothstep(0.5, 0.15, fromCentre)).mul(cellHash.mul(0.3).add(0.85));
+  const dotted = mix(float(0.92), float(1.15), smoothstep(0.5, 0.15, fromCentre)).mul(cellHash.mul(0.16).add(0.92));
   const sharpEnough = smoothstep(0.9, 0.4, fwidth(q).length());
   material.colorNode = shaded.rgb.mul(mix(float(1), dotted, shaded.a.mul(sharpEnough).mul(float(1).sub(moonlit))));
 
