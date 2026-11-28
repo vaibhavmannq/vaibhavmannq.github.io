@@ -44,8 +44,9 @@ Golden done on looks; Golden's phone check on the final build owed (R268).
 ## Open / next
 - **The phone at Golden and Dusk on the merged build** (held at high, their rides): not done (unplugged at the close).
 - Golden's camera at the water's edge (the render's) if the owner wants the darker water to show: his call.
-- Dusk (s35b's list): its clouds (low dark banks with lit edges; cloudCards.ts, s35b asked to add a `twi` weight beside
-  the sun bank), 18e (the left wall, foam line, walk glint), the owner's test.
+- Dusk (s35b's log): twilight clouds tried and dropped (dark blobs with pale outlines; the owner prefers today's); 18e's
+  foam (60 % fainter, `?fm=`) and walk glint (candle-warm) done; the far left wall open (crags tried, dropped); the rides
+  checked (the 80-lantern ribbon fills the Dusk → Blue hour skim); the owner's test.
 - Temporary switches to tidy at Phase 4: `?grade= ?water= ?lantern= ?sunbank=` (Golden), `?rp= ?df= ?dsl= ?lf= ?lp=`
   (Dusk), and s34's `?rays= ?violet= ?lg= ?mote= ?nb=`.
 - Speed carries in Phase 4: the phone's II → III and I → II ~1 fps under the old build; a resolution dip in rides on
