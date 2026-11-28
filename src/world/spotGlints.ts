@@ -17,20 +17,27 @@ export interface SpotGlints extends WorldPart {
 
 export function createSpotGlints(spots: readonly SpotPath[]): SpotGlints {
   const breath = uniform(1);
-  const material = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
   const r = uv().sub(0.5).length().mul(2);
-  material.colorNode = vec3(1.0, 0.9, 0.7)
-    .mul(
-      float(1)
-        .sub(smoothstep(0.0, 1.0, r))
-        .pow(2.2),
-    )
-    .mul(breath)
-    .mul(1.4);
+  const glow = (col: [number, number, number], k: number) => {
+    const m = new SpriteNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+    m.colorNode = vec3(...col)
+      .mul(
+        float(1)
+          .sub(smoothstep(0.0, 1.0, r))
+          .pow(2.2),
+      )
+      .mul(breath)
+      .mul(k);
+    return m;
+  };
+  const material = glow([1.0, 0.9, 0.7], 1.4);
+  // Dusk (s35b, Task 18e): on its dark slope the cream glint read as a stray white orb; there it takes the lanterns'
+  // warm candle colour, dimmer, so it reads as one more small light of the evening
+  const duskMaterial = glow([1.0, 0.62, 0.32], 0.8);
   const group = new Group();
   const at = spots.map((spot) => {
     const p = toThree(glintAt(spot));
-    const sprite = new Sprite(material);
+    const sprite = new Sprite(spot.stop === 'dusk' ? duskMaterial : material);
     sprite.position.set(...p);
     // Golden's two keep the size the owner has seen; elsewhere a glint is as big on screen as one 6 m off at Golden
     // (Sunset's is 2 m from the eye, First light's 18 m)
@@ -59,6 +66,7 @@ export function createSpotGlints(spots: readonly SpotPath[]): SpotGlints {
     setTier() {},
     dispose() {
       material.dispose();
+      duskMaterial.dispose();
     },
   };
 }

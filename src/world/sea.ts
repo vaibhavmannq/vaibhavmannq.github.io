@@ -69,6 +69,11 @@ const RIPPLES: [number, number, number][] = [
 ];
 // s35b shots `18f`, `18f2`: at full slope the mirror smeared the clouds away; 0.6 keeps them, broken into bands
 const RP: number[] = [0.6, 0.5, 0.012];
+/** How much of the foam Dusk takes away (s35b, 18e); `?fm=` while tuning. */
+const FOAM_DUSK = (() => {
+  const v = Number.parseFloat(typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('fm') ?? ''));
+  return Number.isFinite(v) ? v : 0.6;
+})();
 /** Dusk's wind heading (shots.json dusk world.windAz): the ripples run with it. */
 const DUSK_WIND_AZ = 305;
 {
@@ -407,8 +412,12 @@ export function createSea(
       chop.value = 0.3 + 0.25 * f.hour.world.beaufort;
       glitterPow.value = glitterPower(chop.value);
       const fl = foamLevel(f.hour.world.beaufort);
-      foamEdge.value = fl.edge;
-      foamSheet.value = fl.sheet;
+      // Dusk (s35b, Task 18e): from the cliff top the foam at the far beach's edge read as one bright white line, the
+      // brightest thing in the left view after the lanterns; a calm force-1 swash at dusk is a faint grey lace.
+      // f.hour.ripple is Dusk's weight through its rides (hours.ts RIPPLE). `?fm=` while tuning.
+      const dusk = 1 - FOAM_DUSK * f.hour.ripple;
+      foamEdge.value = fl.edge * dusk;
+      foamSheet.value = fl.sheet * dusk;
       const [cx, cz] = glitterCarry([carried.value.x, carried.value.y], f.hour.world, f.dtS);
       carried.value.set(cx, cz);
       // The plane follows the camera so it always reaches the horizon.
