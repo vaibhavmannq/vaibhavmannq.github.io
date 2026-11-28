@@ -45,10 +45,12 @@ export const DUSK_LANTERNS = {
     [-12, 52],
     [-150, 190],
   ] as const,
-  n: 44,
-  bunch: 1.5,
-  w0: 3,
-  w1: 16,
+  // s35b, Task 18a (the Dusk render: a loose ribbon of lights running out to the arch; ours stopped halfway in a T-shaped
+  // row): 80 lanterns, spread evenly along the path (bunch 0.8), a wider band (?lf=44,1.5,3,16 was the s14 field)
+  n: 80,
+  bunch: 0.8,
+  w0: 4,
+  w1: 24,
   paper: { w: 0.42, h: 0.45 },
   float: 0.06,
 };
@@ -77,8 +79,11 @@ export interface FieldLantern {
  * Pure, seeded: the 44 lanterns, ordered from the cove outward (the order they light in). About half follow the one
  * before as a loose string (1.2–2.6 m on, the line bending slowly); the rest start anywhere on coast.py's band.
  */
-export function lanternField(seed = 61): FieldLantern[] {
-  const { path, n, bunch, w0, w1 } = DUSK_LANTERNS;
+export function lanternField(
+  seed = 61,
+  o: Partial<Pick<typeof DUSK_LANTERNS, 'n' | 'bunch' | 'w0' | 'w1'>> = {},
+): FieldLantern[] {
+  const { path, n, bunch, w0, w1 } = { ...DUSK_LANTERNS, ...o };
   const [[x0, y0], [x1, y1]] = path;
   const dx = x1 - x0;
   const dy = y1 - y0;
@@ -197,7 +202,20 @@ export interface DuskLanterns extends WorldPart {
 export function createDuskLanterns(reducedMotion = false): DuskLanterns {
   // reduced motion (M3 final review): the lanterns hold still and their streaks stop shimmering; they still light up
   const t = reducedMotion ? float(0) : time;
-  const field = lanternField();
+  // s35b 18a tuning (temporary): ?lf=n,bunch,w0,w1  ?lp=pool m,pool gain,streak m,streak w
+  const q = (k: string) =>
+    (typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get(k) ?? ''))
+      .split(',')
+      .map((v) => (v === '' ? Number.NaN : Number(v)));
+  const lf = q('lf');
+  const lpq = q('lp');
+  const pick = (a: number[], i: number, d: number) => (Number.isFinite(a[i]) ? (a[i] as number) : d);
+  const field = lanternField(61, {
+    n: pick(lf, 0, DUSK_LANTERNS.n),
+    bunch: pick(lf, 1, DUSK_LANTERNS.bunch),
+    w0: pick(lf, 2, DUSK_LANTERNS.w0),
+    w1: pick(lf, 3, DUSK_LANTERNS.w1),
+  });
   const n = field.length;
   const g = lanternShape() as InstancedBufferGeometry;
   const i0 = new Float32Array(n * 4);
@@ -267,8 +285,11 @@ export function createDuskLanterns(reducedMotion = false): DuskLanterns {
   sg.instanceCount = n;
   // s16: the same quad also lays a soft warm pool on the water around each lantern (about 3 m across): from Dusk's stop,
   // 40–150 m off and high, a lantern is a few pixels, and the pool is what says it is lit (owner video 4).
-  const STREAK = { w: 0.32, l: 2.5, pool: 1.4 };
-  const W = STREAK.pool * 2.1;
+  // s35b, Task 18a: from Dusk's height the 1.4 m pool and 2.5 m streak lay a wide ellipse with a spike under each
+  // lantern, a four-point star; video 4 shows a small halo and a short bar (?lp=1.4,0.8,2.5,0.32 was s16's)
+  const STREAK = { w: pick(lpq, 3, 0.25), l: pick(lpq, 2, 1.0), pool: pick(lpq, 0, 0.6) };
+  const POOL_GAIN = pick(lpq, 1, 0.4);
+  const W = Math.max(STREAK.pool * 2.1, STREAK.w * 1.2);
   const root = vec3(a0.x.add(drift.x), 0.012, a0.y.add(drift.y));
   const toEye = vec3(cameraPosition.x.sub(root.x), 0, cameraPosition.z.sub(root.z)).normalize();
   const across = vec3(toEye.z.negate(), 0, toEye.x);
@@ -308,7 +329,7 @@ export function createDuskLanterns(reducedMotion = false): DuskLanterns {
   const pool = float(1)
     .sub(smoothstep(0.0, STREAK.pool, d))
     .pow(2)
-    .mul(0.8);
+    .mul(POOL_GAIN);
   streakMat.colorNode = vec3(1.0, 0.48, 0.16)
     .mul(lit.mul(shiver).mul(isMine.mul(0.35).add(1)))
     .mul(streakLight.add(pool))

@@ -32,7 +32,8 @@ describe('the cove ground cover (plan M3 Task 1)', () => {
     expect(n).toBeGreaterThan(8000);
     // 60 000 until M8.5; Sunset's poppies (#4) and Dusk's flower field (#5) add ~6 800, cost measured (R186, R187)
     // + ~1 400 at Sunset's feet (Task 16l, s34: short mats, the cheapest plants)
-    expect(n).toBeLessThanOrEqual(73500);
+    // + ~1 300 on Dusk's right slope and plateau (Task 18d, s35b: thrift in tall grass; cost measured by s35)
+    expect(n).toBeLessThanOrEqual(75500);
     for (const id of COVE_STOPS) {
       const stop = STOPS.find((s) => s.id === id);
       if (!stop) throw new Error(id);

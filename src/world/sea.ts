@@ -56,6 +56,28 @@ const WAVES: [number, number, number, number][] = [
 ];
 
 /**
+ * Dusk's long ripples (s35b, Task 18f; the Dusk render, owner "yes for ripples"): [turn from the wind's heading, degrees;
+ * wavelength, m; slope a·k]. Metres long, so from the cliff top they still span pixels and break the mirror into
+ * bands; × u.ripple (Dusk only). `?rp=slope×,mirror,fade` while tuning.
+ */
+const RIPPLES: [number, number, number][] = [
+  [0, 6.5, 0.05],
+  [28, 9.5, 0.04],
+  [-35, 4.2, 0.03],
+];
+// s35b shots `18f`, `18f2`: at full slope the mirror smeared the clouds away; 0.6 keeps them, broken into bands
+const RP: number[] = [0.6, 0.5, 0.012];
+/** Dusk's wind heading (shots.json dusk world.windAz): the ripples run with it. */
+const DUSK_WIND_AZ = 305;
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('rp') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < RP.length) RP[i] = n;
+  });
+}
+
+/**
  * The swell (plan world-to-100 Phase 2 Task 13, C7 "still water"; reference book §3: "swell arrives in sets"), behind
  * `?sea=swell` while the original water stays the default (D48). Long waves from a far storm, arriving from the open sea
  * to the north-north-west (where the night's winds come from, 330–355°), in sets: two close wavelengths beat into groups,
@@ -249,7 +271,29 @@ export function createSea(
       sz = sz.add(c.mul(w.dz));
     }
   }
-  const n = normalize(vec3(gx.negate().mul(flatten).sub(sx), 1, gz.negate().mul(flatten).sub(sz)));
+  // Dusk's long ripples, along the hour's wind (three.js x, z), only where the hour asks (u.ripple)
+  const rippleOn = u.ripple as unknown as Node<'float'>;
+  let rx: Node<'float'> = float(0);
+  let rz: Node<'float'> = float(0);
+  for (const [turn, length, slope] of RIPPLES) {
+    const a = ((DUSK_WIND_AZ + turn) * Math.PI) / 180;
+    const dx = -Math.sin(a);
+    const dz = Math.cos(a);
+    const k = (2 * Math.PI) / length;
+    const c = cos(
+      p.x
+        .mul(dx * k)
+        .add(p.y.mul(dz * k))
+        .sub(time.mul(Math.sqrt(9.8 * k) * 0.5)),
+    )
+      .mul(slope * RP[0])
+      .mul(smoothstep(1.2, 0.35, pixel.mul(k)));
+    rx = rx.add(c.mul(dx));
+    rz = rz.add(c.mul(dz));
+  }
+  rx = rx.mul(rippleOn);
+  rz = rz.mul(rippleOn);
+  const n = normalize(vec3(gx.negate().mul(flatten).sub(sx).sub(rx), 1, gz.negate().mul(flatten).sub(sz).sub(rz)));
   const v = normalize(toCam);
   const fresnel = float(0.02).add(
     float(0.98).mul(
@@ -263,6 +307,7 @@ export function createSea(
   // offset, fading far more gently than the ripples'
   if (mode === 'swell' && reflection.uvNode)
     reflection.uvNode = reflection.uvNode.add(vec2(sx, sz).mul(SWELL_MIRROR).div(dist.mul(0.004).add(1)));
+  if (reflection.uvNode) reflection.uvNode = reflection.uvNode.add(vec2(rx, rz).mul(RP[1]).div(dist.mul(RP[2]).add(1)));
   const body = (u.ambSky as unknown as Node<'vec3'>).mul(vec3(0.05, 0.07, 0.08));
   // The sun's or moon's road as glitter (plan M2.5 Task 5; reference book §3: thousands of separate glints from wave
   // facets; a calmer sea gives a narrower road). Each facet gets its own small random slope and glints only when it

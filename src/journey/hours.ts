@@ -55,6 +55,8 @@ export const SHADOW_FLOOR: Record<StopId, RGB> = {
 export const SKY_FILL: Record<StopId, number> = {
   golden: 1,
   sunset: 1,
+  // s35b, Task 18c (the Dusk render: the headlands near-black against the glow): 1 and 0.6 tried (`?df=1,0.4`); it
+  // darkens toward the blacks the owner rules on (D56, D59), so s22's 2 stays until he judges the shots
   dusk: 2,
   bluehour: 1,
   night: 1,
@@ -73,7 +75,22 @@ export const SKY_FILL: Record<StopId, number> = {
  * Dusk the render's arch and stacks are dark silhouettes with reflections; the live fog, the night's heaviest (0.28),
  * paled them into flat ghosts in the horizon's own colour.
  */
+// s35b, Task 18c: 0.4 tried (the arch darker); held at 0.5 until the owner judges it (`?df=,0.4`)
 export const FOG_TRIM: Partial<Record<StopId, number>> = { dusk: 0.5 };
+
+/**
+ * Long slow ripples on the mirror (s35b, Task 18f; owner: "yes for ripples"; the Dusk render: rings of ripple that
+ * break the reflections from the cliff top). Seen from Dusk's 26 m the sea's fine ripples are under a pixel and fade, so
+ * the mirror read flat; these are metres long. Dusk only (D48: water is the owner's), through its rides.
+ */
+export const RIPPLE: Partial<Record<StopId, number>> = { dusk: 1 };
+// s35b Task 18 tuning (temporary): ?df=skyFill,fogTrim for Dusk
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('df') ?? '');
+  const [f, t] = q.split(',').map((v) => (v === '' ? Number.NaN : Number(v)));
+  if (Number.isFinite(f)) SKY_FILL.dusk = f as number;
+  if (Number.isFinite(t)) FOG_TRIM.dusk = t as number;
+}
 
 export const MIST: Record<StopId, number> = {
   golden: 0,
@@ -130,6 +147,7 @@ function preset(id: StopId): HourPreset {
     plankton: PLANKTON[id],
     road: 1,
     grade: id === 'golden' ? 1 : 0,
+    ripple: RIPPLE[id] ?? 0,
   };
 }
 
@@ -251,5 +269,6 @@ export function blendHours(a: HourPreset, b: HourPreset, w: number): HourPreset 
     plankton: lerp(a.plankton, b.plankton, w),
     road: roadBetween(a, b, w),
     grade: lerp(a.grade, b.grade, w),
+    ripple: lerp(a.ripple, b.ripple, w),
   };
 }
