@@ -76,6 +76,8 @@ export interface Sprite {
   /** radians, on screen */
   rot: number;
   alpha: number;
+  /** seen from the side, heading right on screen (Sunset's skein, s35); the others are seen from in front or behind */
+  side?: boolean;
 }
 
 const D2R = Math.PI / 180;
@@ -401,25 +403,37 @@ function skein(t: number, out: Sprite[]) {
   const tau = t - first - k * every;
   if (tau > SKEIN.cross) return;
   const r0 = rngFor(600, k);
-  const el0 = 1.6 + 1.2 * r0(); // over the sun's glow (the sun is 1 deg up)
+  const el0 = 1.7 + 1.0 * r0(); // over the sun's glow (the sun is 1 deg up)
+  const sink = 0.5 + 0.5 * r0(); // heading down toward the land to roost
+  // s35 (owner: "facing towards me and moving sideways … some aren't even flapping … straight horizontal path"): seen
+  // from the side, heads forward; flapping nearly all the time at each bird's own rate, short glides; the line rises a
+  // little and sinks along an arc, each bird weaving on its own and tilted along its path.
+  const elAt = (u: number, tt: number, i: number, ph: number) =>
+    el0 + 0.7 * Math.sin(Math.PI * u) - sink * u + 0.17 * i * (i % 2 === 0 ? 1 : -0.6) + 0.12 * Math.sin(1.1 * tt + ph);
   for (let i = 0; i < 7; i++) {
     const r = rngFor(610, k * 8 + i);
     const phase = r() * 6.283;
+    const rate = 3.0 + 0.9 * r(); // wingbeats per second, each its own
     const lag = i * (0.35 + 0.15 * r()); // each a little behind the one ahead
     const da = -15 + (40 * tau) / SKEIN.cross - lag * 2.2;
     const d = 100 + (i % 2 === 0 ? 1 : -1) * i * 3;
-    const el = el0 + 0.18 * i * (i % 2 === 0 ? 1 : -0.6) + 0.1 * Math.sin(0.6 * tau + phase);
+    const u = (da + 15) / 40;
+    const el = elAt(u, tau, i, phase);
+    // the path's slope on screen (degrees up per degree across, both near the same scale on screen)
+    const dt = 0.05;
+    const slope = (elAt((da + 15 + (40 * dt) / SKEIN.cross) / 40, tau + dt, i, phase) - el) / ((40 * dt) / SKEIN.cross);
     const [x, y, z] = from('sunset', da, d, el);
-    const gliding = Math.sin(0.9 * tau + phase) < -0.4;
+    const gliding = Math.sin(0.7 * tau + phase) > 0.93;
     out.push({
       kind: 'flock',
+      side: true,
       x,
       y,
       z,
-      size: 1.7, // s34 look pass: ~25 px at 100 m (at 150 m the wings were a pixel thick and vanished in the glow)
-      flap: gliding ? 0.1 : Math.sin(2 * Math.PI * 3.2 * tau + phase),
+      size: 2.0, // s34: ~25 px at 100 m; s35, side-on: 2 m so the body is ~3 px tall and a level-winged bird stays whole
+      flap: gliding ? 0.2 : Math.sin(2 * Math.PI * rate * tau + phase),
       flapping: !gliding,
-      rot: 0.05 * Math.sin(tau + phase),
+      rot: Math.atan(slope),
       alpha: sstep(0, 1, tau - lag * 0.15) * sstep(SKEIN.cross + 1, SKEIN.cross - 0.5, tau),
     });
   }
@@ -540,7 +554,11 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
   m.alphaTest = 0.04;
   m.positionNode = a.xyz;
   // wings: a quad twice as wide as tall; a petal a little narrower; dew round
-  m.scaleNode = vec2(a.w, a.w.mul(select(isWing, float(0.5), select(kind.lessThan(3.5), float(0.6), float(1)))));
+  const isSide = kind.greaterThan(2.1).and(kind.lessThan(2.4));
+  m.scaleNode = vec2(
+    a.w,
+    a.w.mul(select(isSide, float(1), select(isWing, float(0.5), select(kind.lessThan(3.5), float(0.6), float(1))))),
+  );
   m.rotationNode = b.z;
 
   // Wings (gull, bat, small bird): a centreline rising to the tips as the wings beat, an M when gliding; thicker at
@@ -564,7 +582,25 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
   const ears = smoothstep(0.05, 0.0, abs(x.sub(0.08)).add(y.sub(0.36).abs().mul(0.35)).sub(0.04));
   const batShape = max(max(membrane, batBody), ears);
   const isBat = kind.greaterThan(0.5).and(kind.lessThan(1.5));
-  const birdShape = select(isBat, batShape, max(wing, body));
+  // A bird from the side (Sunset's skein, s35): the body along its path, head forward (right on screen), a short fanned
+  // tail; the near wing a tapering blade from the shoulder, swept back, its visible length the beat's height (level
+  // wings are edge-on and all but vanish), the far wing a little shorter just behind it.
+  const sp = vec2(p.x.sub(0.5).mul(2), p.y.sub(0.5).mul(2));
+  const sBody = smoothstep(1.0, 0.75, vec2(sp.x.div(0.46), sp.y.div(0.16)).length());
+  const sHead = smoothstep(1.0, 0.7, sp.sub(vec2(0.5, 0.05)).length().div(0.13));
+  const sTail = smoothstep(1.0, 0.75, vec2(sp.x.add(0.56).div(0.2), sp.y.div(0.08)).length());
+  const blade = (sx: number, len: number) => {
+    const sh = vec2(0.06 + sx, 0.03);
+    const tip = sh.add(vec2(float(-0.3), sin(flap.mul(1.15))).mul(len));
+    const pa = sp.sub(sh);
+    const ba = tip.sub(sh);
+    const h = dot(pa, ba).div(dot(ba, ba).max(1e-4)).clamp(0, 1);
+    const dd = pa.sub(ba.mul(h)).length();
+    const th = mix(float(0.15), float(0.045), h);
+    return smoothstep(th, th.mul(0.5), dd);
+  };
+  const sideShape = max(max(max(sBody, sHead), sTail), max(blade(0, 0.85), blade(-0.07, 0.7)));
+  const birdShape = select(isSide, sideShape, select(isBat, batShape, max(wing, body)));
   const r = p.sub(0.5).mul(2);
   const petalShape = smoothstep(1.0, 0.7, r.length());
   const glint = exp(r.dot(r).mul(-30)).add(
@@ -638,7 +674,7 @@ export function createLife(u: LightUniforms, groundAt: HeightAt, reduced: boolea
           A[o + 1] = s.z;
           A[o + 2] = -s.y;
           A[o + 3] = s.size;
-          B[o] = KIND_INDEX[s.kind];
+          B[o] = s.side ? 2.25 : KIND_INDEX[s.kind];
           B[o + 1] = s.flap;
           B[o + 2] = s.rot;
           B[o + 3] = s.alpha * w;
