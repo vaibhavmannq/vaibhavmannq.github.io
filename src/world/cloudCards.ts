@@ -12,6 +12,7 @@ import {
   step,
   texture,
   time,
+  uniform,
   uv,
   vec2,
   vec3,
@@ -125,6 +126,16 @@ const CG = (() => {
   return Number.isFinite(v) ? v : 0.7;
 })();
 /** Golden's violet bank: how far low clouds' shaded sides turn violet under a sun within ~5° (s34). */
+/** Dusk's twilight clouds (s35b): strength, rim gain, darkness of the violet shade (× its own luminance). `?dc=` */
+const DC: number[] = [1, 0.8, 0.7];
+{
+  const q = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('dc') ?? '');
+  q.split(',').forEach((v, i) => {
+    const n = Number.parseFloat(v);
+    if (Number.isFinite(n) && i < DC.length) DC[i] = n;
+  });
+}
+
 const VB = (() => {
   const v = Number.parseFloat(
     typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('vb') ?? ''),
@@ -313,6 +324,8 @@ export function createCloudCards(
   const fwd = normalize(toEye.add(vec3(0.0001, 0, 0)));
   const right = vec3(fwd.z, 0, fwd.x.negate());
   const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, fog: false, side: DoubleSide });
+  /** Dusk's twilight look, from the blended weather (CloudWeather.twilight) */
+  const twi = uniform(0);
   material.name = 'cloudCards.material';
   material.positionNode = center.add(right.mul(corner.x.sub(0.5).mul(size.x))).add(vec3(0, corner.y.mul(size.y), 0));
 
@@ -425,8 +438,18 @@ export function createCloudCards(
   // Golden's sun bank (±2 in info.x): the render's bank is dark violet against the gold, not the bright sky's shade
   const isSunBank = step(1.5, abs(info.x));
   const shadeSun = mix(shadeBanked, violetShade, isSunBank);
+  // Dusk's twilight clouds (s35b, Task 18b; the Dusk render): with the sun just set, the low clouds are dark violet
+  // bodies against the glow, their edges and tops on the sun's side lit pink. × twi (CloudWeather.twilight: Dusk only).
+  // `?dc=strength,rim,dark` while tuning.
+  const twiOn = twi.mul(DC[0]);
+  const lowT = smoothstep(0.35, 0.02, dir.y);
+  const shadeTwi = mix(shadeSun, violetShade.mul(DC[2]), twiOn.mul(lowT));
+  const sunward = smoothstep(-0.2, 0.8, cosK);
+  const pink = vec3(1.0, 0.55, 0.62).mul(lum(sky as unknown as V3).max(0.05));
+  const rimT = pink.mul(edge.mul(sunward).mul(DC[1]).add(light.mul(sunward).mul(DC[1] * 0.35))).mul(twiOn);
   const col = mix(
-    mix(shadeSun, litNear, light)
+    mix(shadeTwi, litNear, light.mul(float(1).sub(twiOn.mul(lowT).mul(0.5))))
+      .add(rimT)
       .add(litNear.mul(silver.mul(float(1).add(nearSun.mul(CG * 2))).mul(sunSide)))
       .add(through.mul(float(1).sub(isSunBank.mul(0.6))))
       .add(under),
@@ -466,6 +489,7 @@ export function createCloudCards(
       );
       // the share of the cards out: Night and Midnight a few, the overcast hours nearly all
       // capped: past 0.85 the cards stack deep and cost (First light, s32) without looking denser
+      twi.value = w.twilight ?? 0;
       const share = Math.min(0.85, w.cover * 1.8);
       const grow = 0.9 + w.cover * 0.9;
       let [vx, vy] = windVector(f.hour.world).map((v) => v * 3) as [number, number];
